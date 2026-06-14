@@ -1,0 +1,23 @@
+{
+  "name": "lavinia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Terra monorepo: marketing site (apps/web) + the PG&E farmer dashboard (apps/dashboard)",
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "dev:web": "npm run dev -w @lavinia/web",
+    "dev:dashboard": "npm run dev -w @lavinia/dashboard"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
