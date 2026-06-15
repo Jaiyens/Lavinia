@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
+  <rect width="600" height="800" fill="#ffffff"/>
+  <g fill="none" stroke="#9a9a9a" stroke-width="1.6" opacity="0.55" stroke-linecap="round" stroke-linejoin="round">
+    <!-- head -->
+    <path d="M300 150 C 220 150 185 220 188 295 C 190 350 215 405 255 435 C 280 453 320 453 345 435 C 385 405 410 350 412 295 C 415 220 380 150 300 150 Z"/>
+    <!-- neck + shoulders -->
+    <path d="M262 440 L 262 500 M 338 440 L 338 500"/>
+    <path d="M150 720 C 160 600 210 520 262 500 C 300 545 300 545 338 500 C 390 520 440 600 450 720"/>
+    <!-- sketch hatching -->
+    <path d="M210 300 q 30 18 60 0 M 330 300 q 30 18 60 0" opacity="0.4"/>
+    <path d="M300 330 l 0 40 M 280 390 q 20 14 40 0" opacity="0.4"/>
+  </g>
+  <text x="300" y="775" text-anchor="middle" font-family="monospace" font-size="16" fill="#bdbdbd">portrait placeholder · drop /public/founders/&lt;name&gt;.jpg</text>
+</svg>
