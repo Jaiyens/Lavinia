@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Leaf } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Terra logo mark. Renders /logo.svg, and if that file is missing it falls
@@ -19,7 +20,7 @@ export function LogoMark({ className = "" }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo.svg"
+      src={withBasePath("/logo.svg")}
       alt=""
       aria-hidden
       className={className}

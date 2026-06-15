@@ -22,21 +22,31 @@ const googleProvider: Provider[] =
 
 /**
  * The public surface. Everything NOT public requires a session. Route groups ((app),
- * (auth)) are invisible in the URL, so we gate by an allowlist of real paths, not by an
- * "(app)" prefix:
+ * (auth)) are invisible in the URL, so we gate by an allowlist of real paths:
  *  - /login                the sign-in page itself ((auth) group)
+ *  - /tour                 the zero-commitment sample dashboard (Story 5.3)
  *  - /api/auth/*           the Auth.js HTTP handler (sign-in/callback/verify)
- *  - /dashboard/*          the legacy pre-rebuild onboarding tree (Story 5.2 replaces it;
- *                          it must keep working and its e2e must stay green - do not gate)
  * Next internals and static assets are excluded by the middleware matcher, not here.
+ *
+ * MULTI-ZONE: this app runs under the basePath "/dashboard". Normally the middleware sees
+ * the path already stripped of basePath, but reqWithEnvURL (triggered by AUTH_URL) can
+ * rebuild the request without Next's config, leaving "/dashboard" on the path. If we did
+ * not normalize, the old blanket "/dashboard" allowlist entry would mark EVERY route public
+ * and silently disable the gate. So strip a leading "/dashboard" first, then match — correct
+ * whether or not basePath was already stripped.
  */
 export function isPublicPath(pathname: string): boolean {
-  if (pathname === "/login") return true;
+  const p =
+    pathname === "/dashboard"
+      ? "/"
+      : pathname.startsWith("/dashboard/")
+        ? pathname.slice("/dashboard".length)
+        : pathname;
+  if (p === "/login") return true;
   // The public "Tour a sample" dashboard (Story 5.3): zero commitment, no sign-in. It is
   // pinned to the demo farm, so no real grower data is ever exposed.
-  if (pathname === "/tour") return true;
-  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return true;
+  if (p === "/tour") return true;
+  if (p === "/api/auth" || p.startsWith("/api/auth/")) return true;
   return false;
 }
 
@@ -67,6 +77,27 @@ export const authConfig: NextAuthConfig = {
     error: "/login",
   },
   callbacks: {
+    // Keep post-sign-in redirects inside the /dashboard Multi-Zone. Auth.js's default
+    // redirect callback resolves a relative callbackUrl against the ORIGIN only (no
+    // basePath), so "/" or "/energy" would land the user on the WEB zone (tryterra.ai/)
+    // instead of the dashboard. Re-prefix same-origin targets with /dashboard; send
+    // anything off-origin to the dashboard home.
+    redirect({ url, baseUrl }) {
+      const bp = "/dashboard";
+      const withBp = (path: string) =>
+        path === bp || path.startsWith(`${bp}/`) ? path : `${bp}${path}`;
+      if (url.startsWith("/")) return `${baseUrl}${withBp(url)}`;
+      try {
+        const u = new URL(url);
+        if (u.origin === baseUrl) {
+          u.pathname = withBp(u.pathname);
+          return u.toString();
+        }
+      } catch {
+        // not a valid absolute URL; fall through to the safe default
+      }
+      return `${baseUrl}${bp}`;
+    },
     // The middleware gate (AC3). Public paths pass; everything else needs a user. A
     // false return makes the NextAuth middleware redirect to `pages.signIn` (/login).
     authorized({ auth, request }) {
