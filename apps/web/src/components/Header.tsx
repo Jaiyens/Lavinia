@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { TerraMark } from "./TerraMark";
+import { GlassButton } from "./ui/GlassButton";
 import { nav } from "@/lib/site";
 
 export function Header() {
@@ -63,17 +64,33 @@ export function Header() {
             </div>
           </div>
 
-          <button
-            type="button"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className={`press -mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full md:hidden ${
-              onLight ? "text-ink" : "text-white"
-            }`}
-          >
-            {open ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Top-right CTA into the farmer dashboard (tryterra.ai/dashboard, the
+                Multi-Zone). Uses the site's liquid-glass button and adapts to the
+                header's light/dark scroll state like the rest of the nav. */}
+            <GlassButton
+              href="/dashboard"
+              tone="brand"
+              scrim={!onLight}
+              textClass={onLight ? "text-ink" : "text-white"}
+              className="hidden md:inline-flex"
+            >
+              Farmer Login
+              <ArrowRight size={15} />
+            </GlassButton>
+
+            <button
+              type="button"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              className={`press -mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full md:hidden ${
+                onLight ? "text-ink" : "text-white"
+              }`}
+            >
+              {open ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </nav>
       </div>
 
@@ -99,9 +116,17 @@ export function Header() {
                 </a>
               ))}
               <a
+                href="/dashboard"
+                onClick={() => setOpen(false)}
+                className="press mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-accent-500 px-5 py-3 text-sm font-medium text-white shadow-[0_8px_20px_-8px_rgba(9,40,60,0.35)]"
+              >
+                Farmer Login
+                <ArrowRight size={15} />
+              </a>
+              <a
                 href="#inquire"
                 onClick={() => setOpen(false)}
-                className="press mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-ink shadow-[0_8px_20px_-8px_rgba(9,40,60,0.35)] ring-1 ring-black/10"
+                className="press flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-ink shadow-[0_8px_20px_-8px_rgba(9,40,60,0.35)] ring-1 ring-black/10"
               >
                 Inquire
                 <ArrowRight size={15} />
