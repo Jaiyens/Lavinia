@@ -10,11 +10,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { TOU_PERIODS, type RateCard, type SeasonPrices } from "@/lib/energy/rates";
 
-/** Read and validate fixtures/pge-ag-rate-card.json into a RateCard. */
+// The rate card is a committed, immutable fixture that never changes at runtime, yet
+// EnergyDashboard reads it on every render (once per meter-verification pass). Memoize the
+// validated card at module scope so the disk read + JSON.parse + validation runs once per
+// server process instead of once per request (part of the Home<->Energy latency fix).
+let cachedCard: RateCard | null = null;
+
+/** Read and validate fixtures/pge-ag-rate-card.json into a RateCard (cached after first load). */
 export function loadRateCard(): RateCard {
+  if (cachedCard !== null) return cachedCard;
   const file = path.join(process.cwd(), "fixtures", "pge-ag-rate-card.json");
   const card = JSON.parse(readFileSync(file, "utf8")) as RateCard;
   validateRateCard(card);
+  cachedCard = card;
   return card;
 }
 

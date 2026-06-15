@@ -59,13 +59,15 @@ describe("demoFarm vs dashboardFarm", () => {
     expect(resolved?.dataKind).toBe("real");
   });
 
-  it("dashboardFarm hides the real farm from a DIFFERENT user (C2: no cross-tenant)", async () => {
+  it("dashboardFarm returns null for a signed-in user who owns no farm (-> onboarding, never the demo or another grower's data)", async () => {
+    // The gate: an authed operator with no connected farm must be routed to onboarding,
+    // not parked on the badged demo (that bug made sign-in skip onboarding). null is also
+    // what proves no cross-tenant leak - `otherId` never resolves the owner's real farm.
     const resolved = await dashboardFarm(prisma, otherId);
-    expect(resolved?.farm.id).toBe(demoId);
-    expect(resolved?.dataKind).toBe("representative");
+    expect(resolved).toBeNull();
   });
 
-  it("dashboardFarm with no userId never resolves a real farm (un-owned request)", async () => {
+  it("dashboardFarm with no userId falls back to the demo (the legacy/public /dashboard tree)", async () => {
     const resolved = await dashboardFarm(prisma);
     expect(resolved?.farm.id).toBe(demoId);
     expect(resolved?.dataKind).toBe("representative");
@@ -77,13 +79,14 @@ describe("demoFarm vs dashboardFarm", () => {
     expect(dash?.dataKind).toBe("representative");
   });
 
-  it("loadDashboard owner-scopes: the owner gets the real farm, another user gets the demo", async () => {
+  it("loadDashboard owner-scopes: the owner gets the real farm, a farmless user gets null (-> onboarding)", async () => {
     const mine = await loadDashboard(prisma, { userId: ownerId });
     expect(mine?.farm.id).toBe(realId);
     expect(mine?.dataKind).toBe("real");
 
+    // A signed-in user who owns no farm resolves null (not the demo), so the dashboard
+    // layout redirects them to onboarding instead of rendering the seed.
     const theirs = await loadDashboard(prisma, { userId: otherId });
-    expect(theirs?.farm.id).toBe(demoId);
-    expect(theirs?.dataKind).toBe("representative");
+    expect(theirs).toBeNull();
   });
 });

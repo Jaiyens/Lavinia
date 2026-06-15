@@ -1561,15 +1561,20 @@ export type DashboardFarm = {
 
 /**
  * The farm the dashboard renders. The signed-in operator's own connected farm
- * (currentFarm, owner-scoped on `userId`) always wins and shows no badge. When the caller
- * owns none - or passes no `userId` (an unauthenticated / legacy caller) - fall back to
- * the latest demo/seed farm (the representative Batth data) so the product is demonstrable
- * end to end, tagged so the UI shows a persistent "Representative data" badge. Null only
- * when there is no farm at all (a truly empty install), in which case the caller sends the
- * grower to onboarding.
+ * (currentFarm, owner-scoped on `userId`) always wins and shows no badge.
  *
- * Pass the authenticated `userId` (from auth()) on every dashboard surface; omitting it is
- * the safe default (demo only), never a real-data leak.
+ * Fallback rule (the gate that keeps the authed product honest):
+ *  - A `userId` was passed but they own no connected farm -> return null. The authed
+ *    surfaces ((app)/(dashboard)/layout, Almond, the finding action) treat null as
+ *    "no farm yet" and send the operator to onboarding to connect their OWN account.
+ *    They must NEVER land on the badged demo: that is what made sign-in skip onboarding
+ *    and made Almond talk about the seed's Westside Pump 17.
+ *  - No `userId` (the legacy /dashboard/pump-timing tree, a public surface) -> fall back
+ *    to the latest demo/seed farm so that tree stays demonstrable end to end, tagged
+ *    `representative` so the badge renders.
+ *
+ * Null also when there is no farm at all (a truly empty install). The public Tour uses
+ * `demoFarm` directly (demoOnly), never this fallback, so it always shows the demo.
  */
 export async function dashboardFarm(
   prisma: PrismaClient,
@@ -1577,6 +1582,9 @@ export async function dashboardFarm(
 ): Promise<DashboardFarm | null> {
   const real = await currentFarm(prisma, userId);
   if (real) return { farm: real, dataKind: "real" };
+  // Authenticated caller with no farm of their own: no demo fallback -> caller routes to
+  // onboarding. Only the un-owned (no userId) legacy/public path falls back to the demo.
+  if (userId) return null;
   return demoFarm(prisma);
 }
 

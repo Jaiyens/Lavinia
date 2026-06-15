@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
@@ -58,16 +58,32 @@ export function AgentRail() {
           );
         })}
       </nav>
-      {/* Sign out (Story 5.1). Unobtrusive rail footer; posts to the server action. */}
-      <form action={signOutAction} className="mt-auto pt-4">
-        <button
-          type="submit"
-          className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
+      {/* Account + sign out. Unobtrusive rail footer; account is a real destination, sign
+          out posts to the server action. */}
+      <div className="mt-auto flex flex-col gap-1 pt-4">
+        <Link
+          href="/account"
+          aria-current={pathname === "/account" ? "page" : undefined}
+          className={cn(
+            "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+            pathname === "/account"
+              ? "bg-primary-container font-semibold text-on-primary-container"
+              : "text-on-surface hover:bg-surface-container-low",
+          )}
         >
-          <LogOut size={18} aria-hidden />
-          <span>{en.auth.signOut}</span>
-        </button>
-      </form>
+          <UserRound size={18} aria-hidden />
+          <span>{en.account.navLabel}</span>
+        </Link>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
+          >
+            <LogOut size={18} aria-hidden />
+            <span>{en.auth.signOut}</span>
+          </button>
+        </form>
+      </div>
     </aside>
   );
 }

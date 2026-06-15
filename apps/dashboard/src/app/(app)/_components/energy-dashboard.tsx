@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
-import { loadDashboard } from "@/lib/dashboard/load";
 import { showPendingPullBanner } from "@/lib/dashboard/connection";
-import { loadFindings } from "@/lib/dashboard/findings";
 import { loadTrackedResults } from "@/lib/dashboard/results";
 import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
+import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
+import { resolveFarm, resolveMeters, resolveFindings } from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
 import { KpiStrip } from "./kpi-strip";
 import { LensToggle } from "./lens-toggle";
@@ -27,9 +29,12 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   // Otherwise owner-scope on the signed-in operator so they see their OWN farm (never
   // another grower's). The Tour skips the session read entirely - it is a public surface.
   const userId = demoOnly ? null : await sessionUserId();
-  const dash = await loadDashboard(prisma, { demoOnly, userId });
+  // Request-cached resolvers (shared with the (dashboard) layout): on a real navigation the
+  // farm/meters/findings are fetched once for the whole request, not re-queried per component
+  // against the remote database (part of the Home<->Energy latency fix).
+  const resolved = await resolveFarm(userId, demoOnly);
 
-  if (!dash) {
+  if (!resolved) {
     return (
       <div className="mx-auto max-w-md py-24 text-center">
         <h1 className="type-headline text-on-surface">{en.shell.noFarmTitle}</h1>
@@ -38,7 +43,8 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
     );
   }
 
-  const { farm, dataKind, meters } = dash;
+  const { farm, dataKind } = resolved;
+  const meters = await resolveMeters(farm.id);
   // AC3 (Story 5.3): when a real farm's live PG&E pull is still pending but RECONCILED bills
   // are already in, the dashboard keeps working off those bills and shows an honest
   // "connecting" banner. Never for the demo (the query is skipped) or a fully-active farm.
@@ -57,7 +63,7 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
     hasBills: meters.some((m) => m.coverageState === "reconciled"),
   });
   // The farm's pending findings; the drawer filters to its own meter (Story 3.1).
-  const findings = await loadFindings(prisma, farm.id);
+  const findings = await resolveFindings(farm.id);
   // Accepted recommendations' predicted-vs-realized results (Story 4.2, FR-20),
   // grouped by meter for the drawer's "What happened" section. Reads "pending" until
   // a bill posts after acceptance (by design in v1).
@@ -82,10 +88,21 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   }
 
   return (
-    <div className="py-6 lg:py-10">
+    <div className="relative py-6 lg:py-10">
+      <DotPattern
+        width={22}
+        height={22}
+        cr={1}
+        className={cn(
+          "pointer-events-none absolute inset-0 -z-10 h-[320px] text-primary/15",
+          "[mask-image:radial-gradient(360px_circle_at_top,white,transparent)]",
+        )}
+      />
       {dataKind === "representative" && (
-        <div className="mb-4 inline-flex items-center rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-2.5 py-1 type-label-caps text-on-surface-variant">
-          {en.shell.representativeBadge}
+        <div className="mb-4 inline-flex items-center rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-2.5 py-1">
+          <AnimatedShinyText className="type-label-caps text-on-surface-variant" shimmerWidth={80}>
+            {en.shell.representativeBadge}
+          </AnimatedShinyText>
         </div>
       )}
 

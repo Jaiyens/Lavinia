@@ -94,6 +94,14 @@ export const en = {
     linkSent: "Check your email for a sign-in link.",
     error: "That did not work. Try again.",
     signOut: "Sign out",
+    // The magic-link email itself (Story 5.1, real sender). Plain operator English.
+    email: {
+      subject: "Your Terra sign-in link",
+      heading: "Sign in to Terra",
+      body: "Tap the button below to sign in. This link works once and expires in 24 hours.",
+      button: "Sign in to Terra",
+      ignore: "If you did not ask to sign in, you can ignore this email.",
+    },
   },
   // Connect-a-source onboarding (Epic 5, Story 5.2). Operator-operable: identify the farm,
   // connect at least one source, confirm, land in the dashboard. Plain operator English;
@@ -142,6 +150,47 @@ export const en = {
     link: "Tour a sample",
     connectCta: "Connect your farm",
     connectNote: "This is representative data. Connect your own farm to see your numbers.",
+  },
+  // The Home landing (the farm known at a glance). Distinct from the Energy tool: a calm
+  // overview that opens into the agents, not the full meter dashboard. Plain operator
+  // English; no kW/jargon, no em dashes, no exclamation marks.
+  home: {
+    eyebrow: "Your farm",
+    metersSummary: (meters: number, accounts: number): string =>
+      `${meters} ${meters === 1 ? "meter" : "meters"} across ${accounts} ${accounts === 1 ? "account" : "accounts"}`,
+    stat: {
+      meters: "Meters",
+      attention: "Need attention",
+      savings: "Savings found",
+      allClear: "All clear",
+    },
+    agentsHeading: "Your agents",
+    energyBlurb: "Rates, bills, demand charges, and solar across every meter.",
+    energyOpen: "Open Energy",
+    energyAttention: (n: number): string =>
+      n === 0
+        ? "Nothing needs you right now."
+        : `${n} ${n === 1 ? "thing needs" : "things need"} a look.`,
+    attentionHeading: "What needs a look",
+    attentionEmpty: "Nothing needs you right now. We will flag it here when it does.",
+    attentionViewAll: "See all in Energy",
+  },
+  // The account / profile page (signed-in operator's own details + connected sources).
+  account: {
+    navLabel: "Account",
+    eyebrow: "Account",
+    title: "Your account",
+    signedInAs: "Signed in as",
+    nameLabel: "Name",
+    emailLabel: "Email",
+    noName: "Not set",
+    farmHeading: "Farm",
+    farmLabel: "Farm name",
+    sourcesHeading: "Connected sources",
+    sourcesEmpty: "No sources connected yet.",
+    sourceStatus: (type: string, status: string): string => `${type} - ${status}`,
+    connectMore: "Connect another account",
+    signOut: "Sign out",
   },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).

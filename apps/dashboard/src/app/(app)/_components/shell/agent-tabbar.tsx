@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { AGENTS, isAgentActive } from "./agents";
@@ -45,6 +46,18 @@ export function AgentTabBar() {
           </Link>
         );
       })}
+      {/* Account is a real destination, not an agent; it sits at the end of the bar. */}
+      <Link
+        href="/account"
+        aria-current={pathname === "/account" ? "page" : undefined}
+        className={cn(
+          "flex h-16 flex-1 flex-col items-center justify-center gap-0.5 type-label-caps transition-colors",
+          pathname === "/account" ? "font-semibold text-primary" : "text-on-surface-variant",
+        )}
+      >
+        <UserRound size={20} aria-hidden />
+        <span>{en.account.navLabel}</span>
+      </Link>
     </nav>
   );
 }

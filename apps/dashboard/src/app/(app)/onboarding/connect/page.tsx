@@ -11,11 +11,11 @@ export const dynamic = "force-dynamic";
 export default async function OnboardingConnectPage({
   searchParams,
 }: {
-  searchParams: Promise<{ farm?: string }>;
+  searchParams: Promise<{ farm?: string; add?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const { farm: farmId } = await searchParams;
+  const { farm: farmId, add } = await searchParams;
   if (!farmId) notFound();
   // Ownership-scoped read: a farm id arrives in the URL, so it is not trusted. Loading by
   // (id, userId) keeps one operator from reading another operator's farm (no cross-tenant
@@ -26,12 +26,16 @@ export default async function OnboardingConnectPage({
   });
   if (!farm) notFound();
 
-  // A finalized farm (active connection) belongs on the dashboard, not back in connect.
-  const active = await prisma.connection.findFirst({
-    where: { farmId, type: "pge_smd", status: "active" },
-    select: { id: true },
-  });
-  if (active) redirect("/");
+  // A finalized farm (active connection) normally belongs on the dashboard, not back in
+  // connect. The one exception is `?add=1` (the Account page's "Connect another account"):
+  // an already-connected operator deliberately returning to add more accounts/sources.
+  if (!add) {
+    const active = await prisma.connection.findFirst({
+      where: { farmId, type: "pge_smd", status: "active" },
+      select: { id: true },
+    });
+    if (active) redirect("/");
+  }
 
   const summary = await summarizeFarmSources(prisma, farmId);
   const total = summary.metersWithUsage + summary.metersWithBilling + summary.inventoryOnlyMeters;

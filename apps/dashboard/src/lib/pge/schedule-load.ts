@@ -9,8 +9,14 @@ import type { MeterReadSchedule } from "./schedule";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Read and validate fixtures/pge-meter-read-schedule.json. Throws on a malformed file. */
+// Committed, immutable fixture read on every dashboard render; memoize the validated
+// result at module scope so the parse + validation runs once per process (part of the
+// Home<->Energy latency fix).
+let cachedSchedule: MeterReadSchedule | null = null;
+
+/** Read and validate fixtures/pge-meter-read-schedule.json (cached after first load). Throws on a malformed file. */
 export function loadMeterReadSchedule(): MeterReadSchedule {
+  if (cachedSchedule !== null) return cachedSchedule;
   const file = path.join(process.cwd(), "fixtures", "pge-meter-read-schedule.json");
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
   if (typeof parsed !== "object" || parsed === null) {
@@ -42,10 +48,11 @@ export function loadMeterReadSchedule(): MeterReadSchedule {
     }
     cycles[code] = dates as string[];
   }
-  return {
+  cachedSchedule = {
     year: obj.year,
     mayShiftNote: typeof obj.mayShiftNote === "string" ? obj.mayShiftNote : null,
     cycles,
   };
+  return cachedSchedule;
 }
 

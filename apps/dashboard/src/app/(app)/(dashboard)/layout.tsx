@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
-import { dashboardFarm } from "@/lib/onboarding/farm";
-import { loadFindings, type FindingView } from "@/lib/dashboard/findings";
+import type { FindingView } from "@/lib/dashboard/findings";
+import { resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
 import { FindingsRail } from "../_components/shell/findings-rail";
@@ -29,9 +28,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // Owner-scope on the signed-in operator: they resolve their OWN farm, or the badged demo
   // when they own none (never another grower's farm). Auth itself is enforced by the parent
   // (app) layout; this passes the id along so the shell renders the right farm.
-  const resolved = await dashboardFarm(prisma, await sessionUserId());
+  const resolved = await resolveFarm(await sessionUserId(), false);
   if (resolved === null) redirect(CONNECT_SOURCE_PATH);
-  const findings: FindingView[] = await loadFindings(prisma, resolved.farm.id);
+  const findings: FindingView[] = await resolveFindings(resolved.farm.id);
   return (
     <NuqsAdapter>
       <div className="flex min-h-dvh w-full bg-paper text-on-surface">
