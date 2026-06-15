@@ -45,10 +45,15 @@ export const authConfig: NextAuthConfig = {
   // under self-hosted `next start` (the e2e runner) with UntrustedHost. Vercel sets this
   // automatically in prod, but `trustHost: true` keeps `next start` and previews working too.
   trustHost: true,
-  // This app runs under the Next.js basePath "/dashboard" (Multi-Zone on tryterra.ai), so
-  // the Auth.js HTTP handler lives at /dashboard/api/auth, not /api/auth. Tell Auth.js so
-  // its callback URLs (e.g. the Google OAuth redirect) and sign-in redirects are correct.
-  // Keep in sync with next.config.ts basePath. Google OAuth redirect URI must therefore be
+  // Multi-Zone basePath ("/dashboard"): Auth.js's basePath is the FULL public path,
+  // "/dashboard/api/auth", so the sign-in + OAuth callback URLs it generates keep the
+  // "/dashboard" prefix (it builds them as origin + basePath + /callback/<provider>).
+  // Next.js STRIPS "/dashboard" from the request before the route handler runs, so the
+  // handler in (auth)/api/auth/[...nextauth]/route.ts RE-ADDS it before calling Auth.js;
+  // without that, action parsing fails (UnknownAction 400) because the stripped path
+  // "/api/auth/*" no longer matches this basePath. The origin in those URLs comes from
+  // AUTH_URL (https://tryterra.ai in prod — required because behind the web zone the
+  // dashboard's own host is its vercel.app, not tryterra.ai). Google OAuth redirect URI:
   // <origin>/dashboard/api/auth/callback/google.
   basePath: "/dashboard/api/auth",
   // Only adapter-free providers here (edge-safe). The email magic-link provider is added
