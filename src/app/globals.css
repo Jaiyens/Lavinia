@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Terra design tokens, light base, Orchard-style red accent,
+ * frosted / liquid glass. Neutrals use the grass-* names (gray ramp).
+ * ------------------------------------------------------------------ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, monospace;
+
+  /* Neutral gray ramp */
+  --color-grass-50: #fafafa;
+  --color-grass-100: #f4f4f5;
+  --color-grass-200: #e4e4e7;
+  --color-grass-300: #d4d4d8;
+  --color-grass-400: #a1a1aa;
+  --color-grass-500: #71717a;
+  --color-grass-600: #3f3f46;
+  --color-grass-700: #27272a;
+  --color-grass-800: #18181b;
+  --color-grass-900: #09090b;
+
+  /* Grass-green accent */
+  --color-accent-50: #f1f9f2;
+  --color-accent-100: #e0f1e2;
+  --color-accent-200: #c2e7c8;
+  --color-accent-300: #93d49d;
+  --color-accent-400: #5cbf6a;
+  --color-accent-500: #2fa84f;
+  --color-accent-600: #228a3e;
+  --color-accent-700: #1c6e33;
+
+  --color-cream: #fafafa;
+  --color-paper: #ffffff;
+  --color-mist: #f5f5f6;
+  --color-ink: #09090b;
+  --color-ink-soft: #3f3f46;
+  --color-ink-mute: #71717a;
+  --color-line: #e7e7ea;
+
+  --color-background: #ffffff;
+  --color-foreground: var(--color-ink);
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv01", "cv03", "cv04", "ss03";
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-accent-500);
+    color: #fff;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilities
+ * ------------------------------------------------------------------ */
+@layer utilities {
+  .container-x {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 75rem;
+    padding-inline: 1.5rem;
+  }
+
+  .fig-label,
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-mute);
+  }
+
+  .text-accent { color: var(--color-accent-500); }
+
+  /* Frosted glass, reads over the continuous backdrop blobs */
+  .glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 0 0 1px rgba(9, 9, 11, 0.04),
+      0 1px 2px rgba(9, 9, 11, 0.04),
+      0 26px 50px -30px rgba(9, 9, 11, 0.28);
+  }
+
+  /* Liquid Glass — a translucent material that refracts the content behind it
+     (real SVG lensing on Chromium; frosted-blur fallback elsewhere), with a
+     bright specular rim, glass-thickness highlights, and a soft cast shadow. */
+  .glass-liquid {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
+    backdrop-filter: blur(5px) saturate(1.8) brightness(1.06) url(#liquid-lens);
+    -webkit-backdrop-filter: blur(9px) saturate(1.8) brightness(1.05);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.95),
+      inset 0 -10px 22px -12px rgba(255, 255, 255, 0.55),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 2px 6px rgba(9, 9, 11, 0.14),
+      0 22px 48px -20px rgba(9, 9, 11, 0.42);
+  }
+
+  /* Specular rim — light catches the glass edge, brightest top-left */
+  .glass-rim::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.2px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.35) 28%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.12) 72%,
+      rgba(255, 255, 255, 0.7) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .field-lines {
+    background-image: repeating-linear-gradient(
+      90deg, transparent 0, transparent 38px,
+      rgba(9, 9, 11, 0.06) 38px, rgba(9, 9, 11, 0.06) 39px);
+  }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Red primary CTA */
+  .cta-pill {
+    background: linear-gradient(180deg, var(--color-accent-500), var(--color-accent-600));
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 1px 2px rgba(15, 70, 30, 0.4),
+      0 12px 28px -12px rgba(34, 138, 62, 0.7);
+  }
+  .cta-pill:hover {
+    background: linear-gradient(180deg, var(--color-accent-400), var(--color-accent-500));
+  }
+
+  .pill-light {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+    backdrop-filter: blur(8px);
+  }
+  .pill-light:hover { border-color: var(--color-accent-300); }
+
+  .press {
+    transition:
+      transform 150ms var(--ease-out-soft),
+      box-shadow 150ms var(--ease-out-soft),
+      background 150ms var(--ease-out-soft),
+      border-color 150ms var(--ease-out-soft);
+    will-change: transform;
+  }
+  .press:active { transform: scale(0.97); }
+}
+
+/* ------------------------------------------------------------------ *
+ * Keyframes
+ * ------------------------------------------------------------------ */
+@keyframes blob-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, -4%, 0) scale(1.12); }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); opacity: 0; }
+  12% { opacity: 1; } 88% { opacity: 1; }
+  100% { transform: translateY(900%); opacity: 0; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes equalize {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+@keyframes float-key {
+  0% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-12px) rotate(var(--rot, 0deg)); }
+  100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+}
+
+.animate-scanline { animation: scanline 3.6s var(--ease-out-soft) infinite; }
+.animate-pulse-ring { animation: pulse-ring 2.8s ease-out infinite; }
+.animate-float-key { animation: float-key 6s ease-in-out infinite; }
+.animate-blob { animation: blob-drift 26s ease-in-out infinite; }
+
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* marquee banner (e.g. the "Including" farms strip on mobile) */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 16s linear infinite; }
+
+/* Magic UI aurora text */
+@keyframes aurora {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-aurora {
+  animation-name: aurora;
+  animation-timing-function: ease;
+  animation-iteration-count: infinite;
+}
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.animate-fade-rise { animation: fade-rise 0.8s ease-out both; }
+.animate-fade-rise-delay { animation: fade-rise 0.8s ease-out 0.2s both; }
+.animate-fade-rise-delay-2 { animation: fade-rise 0.8s ease-out 0.4s both; }
+
+/* film grain for the product carousel */
+.grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-rise,
+  .animate-fade-rise-delay,
+  .animate-fade-rise-delay-2 {
+    animation: none;
+  }
+}
