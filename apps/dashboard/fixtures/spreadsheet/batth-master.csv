@@ -1,0 +1,184 @@
+Legal Entity,Acct #,SA ID,Meter Number,Pump ID,Pump Name,Rate Schedule,Cycle Code,Outage Block,Service Address,Lat,Long,GPM,HP,Crop,Legacy,Status,Kind,NEMA,Net Metering,True-Up Month,Solar kW,Ranch
+Batth Farms LLC,07300000000,1000007919,M-1001,P001,Home Ranch Well 1,AG-B,2-02,,"101 County Road, Madera, CA",36.510,-119.810,313,27,Pistachios,,BAD,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300009973,1000015838,M-1002,P002,Home Ranch Well 2,AG-C,3-03,,"102 County Road, Madera, CA",36.520,-119.820,326,34,Walnuts,,NEW WELL,pump,,,,,Home Ranch
+Batth Farms LLC,07300019946,1000023757,M-1003,P003,Home Ranch Well 3,B-1,4-04,,"103 County Road, Madera, CA",36.530,-119.830,339,41,,yes,OLD,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300029919,1000031676,M-1004,P004,Avenue 7 Well 4,B-19,5-05,,"104 County Road, Madera, CA",36.540,-119.840,352,48,Almonds,,,pump,,,,,Avenue 7
+Batth Farms LLC,07300039892,1000039595,M-1005,P005,Avenue 7 Well 5,AG-A,6-06,,"105 County Road, Madera, CA",36.550,-119.850,365,55,Pistachios,,GOOD,pump,,,,,Avenue 7
+"Batth Farms, LLC.",07300049865,1000047514,M-1006,P006,Avenue 7 Well 6,AG-4B,7-07,,"106 County Road, Madera, CA",36.560,-119.860,378,62,Walnuts,,BAD,pump,,,,,Avenue 7
+Batth Farms LLC,07300059838,1000055433,M-1007,P007,Road 22 Well 7,AG-C,8-08,,"107 County Road, Madera, CA",36.570,-119.870,,,,,NEW WELL,pump,,,,,Road 22
+"Batth Farms, LLC.",07300069811,1000063352,M-1008,P008,Road 22 Well 8,B-1,9-09,,"108 County Road, Madera, CA",36.580,-119.880,404,76,Almonds,,OLD,pump,,,,,Road 22
+Batth Farms LLC,07300079784,1000071271,M-1009,P009,Road 22 Well 9,B-19,1-10,BLK-10,"109 County Road, Madera, CA",36.590,-119.890,417,83,Pistachios,,,pump,,,,,Road 22
+"Batth Farms, LLC.",07300089757,1000079190,M-1010,P010,Mill Site Well 10,AG-A,2-11,,"110 County Road, Madera, CA",36.600,-119.900,430,90,Walnuts,,GOOD,pump,,,,,Mill Site
+Batth Farms LLC,07300099730,1000087109,M-1011,P011,Mill Site Well 11,AG-B,3-12,,"111 County Road, Madera, CA",,,443,97,,,BAD,pump,,,,,Mill Site
+"Batth Farms, LLC.",07300109703,1000095028,M-1012,P012,Mill Site Well 12,AG-5B,4-13,,"112 County Road, Madera, CA",36.620,-119.920,456,24,Almonds,,NEW WELL,pump,,,,,Mill Site
+Batth Farms LLC,07300119676,1000102947,M-1013,P013,South Block Well 13,B-1,5-14,,"113 County Road, Madera, CA",36.630,-119.930,469,31,Pistachios,,OLD,pump,,,,,South Block
+"Batth Farms, LLC.",07300129649,1000110866,M-1014,P014,South Block Well 14,B-19,6-15,,"114 County Road, Madera, CA",36.640,-119.940,,,Walnuts,,,pump,,,,,South Block
+Batth Farms LLC,07300139622,1000118785,M-1015,P015,South Block Well 15,AG-A,7-16,,"115 County Road, Madera, CA",36.650,-119.950,495,45,,,GOOD,pump,,,,,South Block
+Batth Brothers Partnership,07300149595,1000126704,M-1016,P016,Riverbend Well 16,AG-B,8-17,,"116 County Road, Madera, CA",36.660,-119.960,508,52,Almonds,,BAD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300159568,1000134623,M-1017,P017,Riverbend Well 17,AG-C,9-18,,"117 County Road, Madera, CA",36.670,-119.970,521,59,Pistachios,,NEW WELL,pump,,,,,Riverbend
+Batth Brothers Partnership,07300169541,1000142542,M-1018,P018,Riverbend Well 18,AG-4B,1-19,BLK-5,"118 County Road, Madera, CA",36.680,-119.980,534,66,Walnuts,,OLD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300179514,1000150461,M-1019,P019,Lakeview Well 19,B-19,2-20,,"119 County Road, Madera, CA",36.690,-119.990,547,73,,,,pump,,,,,Lakeview
+Batth Brothers Partnership,07300189487,1000158380,M-1020,P020,Lakeview Well 20,AG-A,3-21,,"120 County Road, Madera, CA",36.700,-120.000,560,80,Almonds,,GOOD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300199460,1000166299,M-1021,P021,Lakeview Well 21,AG-B,4-22,,"121 County Road, Madera, CA",36.710,-120.010,,,Pistachios,,BAD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300209433,1000174218,M-1022,P022,Dairy Field Well 22,AG-C,5-23,,"122 County Road, Madera, CA",,,586,94,Walnuts,,NEW WELL,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300219406,1000182137,M-1023,P023,Shop Meter 23,B-1,6-24,,"123 County Road, Madera, CA",36.730,-120.030,,,,,OLD,non_pump,,,,,Dairy Field
+Batth Brothers Partnership,07300229379,1000190056,M-1024,P024,Dairy Field Well 24,AG-5B,7-25,,"124 County Road, Madera, CA",36.740,-120.040,612,28,Almonds,,,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300239352,1000197975,M-1025,P025,North Forty Well 25,AG-A,8-26,,"125 County Road, Madera, CA",36.750,-120.050,625,35,Pistachios,,GOOD,pump,,,,,North Forty
+Batth Brothers Partnership,07300249325,1000205894,M-1026,P026,North Forty Well 26,AG-B,9-27,,"126 County Road, Madera, CA",36.760,-120.060,638,42,Walnuts,,BAD,pump,,,,,North Forty
+S & K Batth Inc,07300259298,1000213813,M-1027,P027,North Forty Well 27,AG-C,1-28,BLK-14,"127 County Road, Madera, CA",36.770,-120.070,651,49,,,NEW WELL,pump,,,,,North Forty
+S & K Batth Inc,07300269271,1000221732,M-1028,P028,Westside Well 28,B-1,2-01,,"128 County Road, Madera, CA",36.780,-120.080,,,Almonds,,OLD,pump,,,,,Westside
+S & K Batth Inc,07300279244,1000229651,M-1029,P029,Westside Well 29,B-19,3-02,,"129 County Road, Madera, CA",36.790,-120.090,677,63,Pistachios,,,pump,,,,,Westside
+S & K Batth Inc,07300289217,1000237570,M-1030,P030,Westside Well 30,AG-4B,4-03,,"130 County Road, Madera, CA",36.800,-120.100,690,70,Walnuts,,GOOD,pump,,,,,Westside
+S & K Batth Inc,07300299190,1000245489,M-1031,P031,Eastgate Well 31,AG-B,5-04,,"131 County Road, Madera, CA",36.810,-120.110,703,77,,,BAD,pump,,,,,Eastgate
+S & K Batth Inc,07300309163,1000253408,M-1032,P032,Eastgate Well 32,AG-C,6-05,,"132 County Road, Madera, CA",36.820,-120.120,716,84,Almonds,,NEW WELL,pump,,,,,Eastgate
+S & K Batth Inc,07300319136,1000261327,M-1033,P033,Eastgate Well 33,B-1,7-06,,"133 County Road, Madera, CA",,,729,91,Pistachios,,OLD,pump,,,,,Eastgate
+S & K Batth Inc,07300329109,1000269246,M-1034,P034,Cottonwood Well 34,B-19,8-07,,"134 County Road, Madera, CA",36.840,-120.140,742,98,Walnuts,,,pump,,,,,Cottonwood
+S & K Batth Inc,07300339082,1000277165,M-1035,P035,Cottonwood Well 35,AG-A,9-08,,"135 County Road, Madera, CA",36.850,-120.150,,,,,GOOD,pump,,,,,Cottonwood
+S & K Batth Inc,07300349055,1000285084,M-1036,P036,Cottonwood Well 36,AG-5B,1-09,BLK-9,"136 County Road, Madera, CA",36.860,-120.160,768,32,Almonds,,BAD,pump,,,,,Cottonwood
+Gill & Batth Farms LLC,07300359028,1000293003,M-1037,P037,Sand Creek Well 37,AG-C,2-10,,"137 County Road, Madera, CA",36.870,-120.170,781,39,Pistachios,,NEW WELL,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300369001,1000300922,M-1038,P038,Sand Creek Well 38,B-1,3-11,,"138 County Road, Madera, CA",36.880,-120.180,794,46,Walnuts,,OLD,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300378974,1000308841,M-1039,P039,Sand Creek Well 39,B-19,4-12,,"139 County Road, Madera, CA",36.890,-120.190,807,53,,,,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300388947,1000316760,M-1040,P040,Oak Knoll Well 40,AG-A,5-13,,"140 County Road, Madera, CA",36.900,-119.800,820,60,Almonds,,GOOD,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300398920,1000324679,M-1041,P041,Oak Knoll Well 41,AG-B,6-14,,"141 County Road, Madera, CA",36.910,-119.810,833,67,Pistachios,,BAD,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300408893,1000332598,M-1042,P042,Oak Knoll Well 42,AG-4B,7-15,,"142 County Road, Madera, CA",36.920,-119.820,,,Walnuts,,NEW WELL,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300418866,1000340517,M-1043,P043,Tule Flat Well 43,B-1,8-16,,"143 County Road, Madera, CA",36.930,-119.830,859,81,,,OLD,pump,,,,,Tule Flat
+Gill & Batth Farms LLC,07300428839,1000348436,M-1044,P044,Tule Flat Well 44,B-19,9-17,,"144 County Road, Madera, CA",,,872,88,Almonds,,,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300438812,1000356355,M-1045,P045,Tule Flat Well 45,AG-A,1-18,BLK-4,"145 County Road, Madera, CA",36.950,-119.850,885,95,Pistachios,,GOOD,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300448785,1000364274,M-1046,P046,Shop Meter 46,AG-B,2-19,,"146 County Road, Madera, CA",36.960,-119.860,,,Walnuts,,BAD,non_pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300458758,1000372193,M-1047,P047,Cedar Grove Well 47,AG-C,3-20,,"147 County Road, Madera, CA",36.970,-119.870,911,29,,,NEW WELL,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300468731,1000380112,M-1048,P048,Cedar Grove Well 48,AG-5B,4-21,,"148 County Road, Madera, CA",36.980,-119.880,924,36,Almonds,,OLD,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300478704,1000388031,M-1049,P049,Pioneer Well 49,B-19,5-22,,"149 County Road, Madera, CA",36.990,-119.890,,,Pistachios,,,pump,,,,,Pioneer
+Sahota Ranches Inc,07300488677,1000395950,M-1050,P050,Solar Array A Meter,NEMEXPM,6-23,,"150 County Road, Madera, CA",36.500,-119.900,,,Walnuts,,GOOD,non_pump,AGG-A,nem2,April,840,Pioneer
+Sahota Ranches Inc,07300498650,1000403869,M-1051,P051,Pioneer Well 51,AG-B,7-24,,"151 County Road, Madera, CA",36.510,-119.910,963,57,,,BAD,pump,AGG-A,,,,Pioneer
+Deol Family Trust,07300508623,1000411788,M-1052,P052,Sunrise Well 52,AG-C,8-25,,"152 County Road, Madera, CA",36.520,-119.920,976,64,Almonds,,NEW WELL,pump,AGG-A,,,,Sunrise
+Deol Family Trust,07300518596,1000419707,M-1053,P053,Sunrise Well 53,B-1,9-26,,"153 County Road, Madera, CA",36.530,-119.930,989,71,Pistachios,,OLD,pump,AGG-A,,,,Sunrise
+Deol Family Trust,07300528569,1000427626,M-1054,P054,Sunrise Well 54,AG-4B,1-27,BLK-13,"154 County Road, Madera, CA",36.540,-119.940,1002,78,Walnuts,,,pump,AGG-A,,,,Sunrise
+Deol Family Trust,07300538542,1000435545,M-1055,P055,Hilltop Well 55,AG-A,2-28,,"155 County Road, Madera, CA",,,1015,85,,,GOOD,pump,,,,,Hilltop
+Deol Family Trust,07300548515,1000443464,M-1056,P056,Hilltop Well 56,AG-B,3-01,,"156 County Road, Madera, CA",36.560,-119.960,,,Almonds,,BAD,pump,,,,,Hilltop
+Deol Family Trust,07300558488,1000451383,M-1057,P057,Hilltop Well 57,AG-C,4-02,,"157 County Road, Madera, CA",36.570,-119.970,1041,99,Pistachios,,NEW WELL,pump,,,,,Hilltop
+Batth Farms LLC,07300000000,1000459302,M-1058,P058,Home Ranch Well 58,B-1,5-03,,"158 County Road, Madera, CA",36.580,-119.980,1054,26,Walnuts,,OLD,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300009973,1000467221,M-1059,P059,Home Ranch Well 59,B-19,6-04,,"159 County Road, Madera, CA",36.590,-119.990,1067,33,,,,pump,,,,,Home Ranch
+Batth Farms LLC,07300019946,1000475140,M-1060,P060,Home Ranch Well 60,AG-5B,7-05,,"160 County Road, Madera, CA",36.600,-120.000,1080,40,Almonds,,GOOD,pump,AGG-A;AGG-B,,,,Home Ranch
+"Batth Farms, LLC.",07300029919,1000483059,M-1061,P061,Avenue 7 Well 61,AG-B,8-06,,"161 County Road, Madera, CA",36.610,-120.010,1093,47,Pistachios,,BAD,pump,,,,,Avenue 7
+Batth Farms LLC,07300039892,1000490978,M-1062,P062,Avenue 7 Well 62,AG-C,9-07,,"162 County Road, Madera, CA",36.620,-120.020,1106,54,Walnuts,,NEW WELL,pump,,,,,Avenue 7
+"Batth Farms, LLC.",07300049865,1000498897,M-1063,P063,Avenue 7 Well 63,B-1,1-08,BLK-8,"163 County Road, Madera, CA",36.630,-120.030,,,,,OLD,pump,,,,,Avenue 7
+Batth Farms LLC,07300059838,1000506816,M-1064,P064,Road 22 Well 64,B-19,2-09,,"164 County Road, Madera, CA",36.640,-120.040,1132,68,Almonds,,,pump,,,,,Road 22
+"Batth Farms, LLC.",07300069811,1000514735,M-1065,P065,Road 22 Well 65,AG-A,3-10,,"165 County Road, Madera, CA",36.650,-120.050,1145,75,Pistachios,,GOOD,pump,,,,,Road 22
+Batth Farms LLC,07300079784,1000522654,M-1066,P066,Road 22 Well 66,AG-4B,4-11,,"166 County Road, Madera, CA",,,1158,82,Walnuts,,BAD,pump,,,,,Road 22
+"Batth Farms, LLC.",07300089757,1000530573,M-1067,P067,Mill Site Well 67,AG-C,5-12,,"167 County Road, Madera, CA",36.670,-120.070,1171,89,,,NEW WELL,pump,,,,,Mill Site
+Batth Farms LLC,07300099730,1000538492,M-1068,P068,Mill Site Well 68,B-1,6-13,,"168 County Road, Madera, CA",36.680,-120.080,1184,96,Almonds,,OLD,pump,,,,,Mill Site
+"Batth Farms, LLC.",07300109703,1000546411,M-1069,P069,Shop Meter 69,B-19,7-14,,"169 County Road, Madera, CA",36.690,-120.090,,,Pistachios,,,non_pump,,,,,Mill Site
+Batth Farms LLC,07300119676,1000554330,M-1070,P070,South Block Well 70,AG-A,8-15,,"170 County Road, Madera, CA",36.700,-120.100,,,Walnuts,,GOOD,pump,,,,,South Block
+"Batth Farms, LLC.",07300129649,1000562249,M-1071,P071,South Block Well 71,AG-B,9-16,,"171 County Road, Madera, CA",36.710,-120.110,323,37,,,BAD,pump,,,,,South Block
+Batth Farms LLC,07300139622,1000570168,M-1072,P072,South Block Well 72,AG-5B,1-17,BLK-3,"172 County Road, Madera, CA",36.720,-120.120,336,44,Almonds,,NEW WELL,pump,,,,,South Block
+Batth Brothers Partnership,07300149595,1000578087,M-1073,P073,Riverbend Well 73,B-1,2-18,,"173 County Road, Madera, CA",36.730,-120.130,349,51,Pistachios,,OLD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300159568,1000586006,M-1074,P074,Riverbend Well 74,B-19,3-19,,"174 County Road, Madera, CA",36.740,-120.140,362,58,Walnuts,,,pump,,,,,Riverbend
+Batth Brothers Partnership,07300169541,1000593925,M-1075,P075,Riverbend Well 75,AG-A,4-20,,"175 County Road, Madera, CA",36.750,-120.150,375,65,,,GOOD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300179514,1000601844,M-1076,P076,Lakeview Well 76,AG-B,5-21,,"176 County Road, Madera, CA",36.760,-120.160,388,72,Almonds,,BAD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300189487,1000609763,M-1077,P077,Lakeview Well 77,AG-C,6-22,,"177 County Road, Madera, CA",,,,,Pistachios,,NEW WELL,pump,,,,,Lakeview
+Batth Brothers Partnership,07300199460,1000617682,M-1078,P078,Lakeview Well 78,AG-4B,7-23,,"178 County Road, Madera, CA",36.780,-120.180,414,86,Walnuts,,OLD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300209433,1000625601,M-1079,P079,Dairy Field Well 79,B-19,8-24,,"179 County Road, Madera, CA",36.790,-120.190,427,93,,,,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300219406,1000633520,M-1080,P080,Dairy Field Well 80,AG-A,9-25,,"180 County Road, Madera, CA",36.800,-119.800,440,20,Almonds,,GOOD,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300229379,1000641439,M-1081,P081,Dairy Field Well 81,AG-B,1-26,BLK-12,"181 County Road, Madera, CA",36.810,-119.810,453,27,Pistachios,,BAD,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300239352,1000649358,M-1082,P082,North Forty Well 82,AG-C,2-27,,"182 County Road, Madera, CA",36.820,-119.820,466,34,Walnuts,,NEW WELL,pump,,,,,North Forty
+Batth Brothers Partnership,07300249325,1000657277,M-1083,P083,North Forty Well 83,B-1,3-28,,"183 County Road, Madera, CA",36.830,-119.830,479,41,,,OLD,pump,,,,,North Forty
+S & K Batth Inc,07300259298,1000665196,M-1084,P084,North Forty Well 84,AG-5B,4-01,,"184 County Road, Madera, CA",36.840,-119.840,,,Almonds,,,pump,,,,,North Forty
+S & K Batth Inc,07300269271,1000673115,M-1085,P085,Westside Well 85,AG-A,5-02,,"185 County Road, Madera, CA",36.850,-119.850,505,55,Pistachios,,GOOD,pump,,,,,Westside
+S & K Batth Inc,07300279244,1000681034,M-1086,P086,Westside Well 86,AG-B,6-03,,"186 County Road, Madera, CA",36.860,-119.860,518,62,Walnuts,,BAD,pump,,,,,Westside
+S & K Batth Inc,07300289217,1000688953,M-1087,P087,Westside Well 87,AG-C,7-04,,"187 County Road, Madera, CA",36.870,-119.870,531,69,,,NEW WELL,pump,,,,,Westside
+S & K Batth Inc,07300299190,1000696872,M-1088,P088,Eastgate Well 88,B-1,8-05,,"188 County Road, Madera, CA",,,544,76,Almonds,,OLD,pump,,,,,Eastgate
+S & K Batth Inc,07300309163,1000704791,M-1089,P089,Eastgate Well 89,B-19,9-06,,"189 County Road, Madera, CA",36.890,-119.890,557,83,Pistachios,,,pump,,,,,Eastgate
+S & K Batth Inc,07300319136,1000712710,M-1090,P090,Eastgate Well 90,AG-4B,1-07,BLK-7,"190 County Road, Madera, CA",36.900,-119.900,570,90,Walnuts,,GOOD,pump,,,,,Eastgate
+S & K Batth Inc,07300329109,1000720629,M-1091,P091,Cottonwood Well 91,AG-B,2-08,,"191 County Road, Madera, CA",36.910,-119.910,,,,,BAD,pump,,,,,Cottonwood
+S & K Batth Inc,07300339082,1000728548,M-1092,P092,Shop Meter 92,AG-C,3-09,,"192 County Road, Madera, CA",36.920,-119.920,,,Almonds,,NEW WELL,non_pump,,,,,Cottonwood
+S & K Batth Inc,07300349055,1000736467,M-1093,P093,Cottonwood Well 93,B-1,4-10,,"193 County Road, Madera, CA",36.930,-119.930,609,31,Pistachios,,OLD,pump,,,,,Cottonwood
+Gill & Batth Farms LLC,07300359028,1000744386,M-1094,P094,Sand Creek Well 94,B-19,5-11,,"194 County Road, Madera, CA",36.940,-119.940,622,38,Walnuts,,,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300369001,1000752305,M-1095,P095,Sand Creek Well 95,AG-A,6-12,,"195 County Road, Madera, CA",36.950,-119.950,635,45,,,GOOD,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300378974,1000760224,M-1096,P096,Sand Creek Well 96,AG-5B,7-13,,"196 County Road, Madera, CA",36.960,-119.960,648,52,Almonds,,BAD,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300388947,1000768143,M-1097,P097,Oak Knoll Well 97,AG-C,8-14,,"197 County Road, Madera, CA",36.970,-119.970,661,59,Pistachios,,NEW WELL,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300398920,1000776062,M-1098,P098,Oak Knoll Well 98,B-1,9-15,,"198 County Road, Madera, CA",36.980,-119.980,,,Walnuts,,OLD,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300408893,1000783981,M-1099,P099,Oak Knoll Well 99,B-19,1-16,BLK-2,"199 County Road, Madera, CA",,,687,73,,,,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300418866,1000791900,M-1100,P100,Tule Flat Well 100,AG-A,2-17,,"200 County Road, Madera, CA",36.500,-120.000,700,80,Almonds,,GOOD,pump,,,,,Tule Flat
+Gill & Batth Farms LLC,07300428839,1000799819,M-1101,P101,Tule Flat Well 101,AG-B,3-18,,"201 County Road, Madera, CA",36.510,-120.010,713,87,Pistachios,,BAD,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300438812,1000807738,M-1102,P102,Tule Flat Well 102,AG-4B,4-19,,"202 County Road, Madera, CA",36.520,-120.020,726,94,Walnuts,,NEW WELL,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300448785,1000815657,M-1103,P103,Cedar Grove Well 103,B-1,5-20,,"203 County Road, Madera, CA",36.530,-120.030,739,21,,,OLD,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300458758,1000823576,M-1104,P104,Cedar Grove Well 104,B-19,6-21,,"204 County Road, Madera, CA",36.540,-120.040,752,28,Almonds,,,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300468731,1000831495,M-1105,P105,Cedar Grove Well 105,AG-A,7-22,,"205 County Road, Madera, CA",36.550,-120.050,,,Pistachios,,GOOD,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300478704,1000839414,M-1106,P106,Pioneer Well 106,AG-B,8-23,,"206 County Road, Madera, CA",36.560,-120.060,778,42,Walnuts,,BAD,pump,,,,,Pioneer
+Sahota Ranches Inc,07300488677,1000847333,M-1107,P107,Pioneer Well 107,AG-C,9-24,,"207 County Road, Madera, CA",36.570,-120.070,791,49,,,NEW WELL,pump,,,,,Pioneer
+Sahota Ranches Inc,07300498650,1000855252,M-1108,P108,Pioneer Well 108,AG-5B,1-25,BLK-11,"208 County Road, Madera, CA",36.580,-120.080,804,56,Almonds,,OLD,pump,,,,,Pioneer
+Deol Family Trust,07300508623,1000863171,M-1109,P109,Sunrise Well 109,B-19,2-26,,"209 County Road, Madera, CA",36.590,-120.090,817,63,Pistachios,,,pump,,,,,Sunrise
+Deol Family Trust,07300518596,1000871090,M-1110,P110,Sunrise Well 110,AG-A,3-27,,"210 County Road, Madera, CA",,,830,70,Walnuts,,GOOD,pump,,,,,Sunrise
+Deol Family Trust,07300528569,1000879009,M-1111,P111,Sunrise Well 111,AG-B,4-28,,"211 County Road, Madera, CA",36.610,-120.110,843,77,,,BAD,pump,,,,,Sunrise
+Deol Family Trust,07300538542,1000886928,M-1112,P112,Hilltop Well 112,AG-C,5-01,,"212 County Road, Madera, CA",36.620,-120.120,,,Almonds,,NEW WELL,pump,,,,,Hilltop
+Deol Family Trust,07300548515,1000894847,M-1113,P113,Hilltop Well 113,B-1,6-02,,"213 County Road, Madera, CA",36.630,-120.130,869,91,Pistachios,,OLD,pump,,,,,Hilltop
+Deol Family Trust,07300558488,1000902766,M-1114,P114,Hilltop Well 114,AG-4B,7-03,,"214 County Road, Madera, CA",36.640,-120.140,882,98,Walnuts,,,pump,,,,,Hilltop
+Batth Farms LLC,07300000000,1000910685,M-1115,P115,Shop Meter 115,AG-A,8-04,,"215 County Road, Madera, CA",36.650,-120.150,,,,,GOOD,non_pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300009973,1000918604,M-1116,P116,Home Ranch Well 116,AG-B,9-05,,"216 County Road, Madera, CA",36.660,-120.160,908,32,Almonds,,BAD,pump,,,,,Home Ranch
+Batth Farms LLC,07300019946,1000926523,M-1117,P117,Home Ranch Well 117,AG-C,1-06,BLK-6,"217 County Road, Madera, CA",36.670,-120.170,921,39,Pistachios,,NEW WELL,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300029919,1000934442,M-1118,P118,Avenue 7 Well 118,B-1,2-07,,"218 County Road, Madera, CA",36.680,-120.180,934,46,Walnuts,,OLD,pump,,,,,Avenue 7
+Batth Farms LLC,07300039892,1000942361,M-1119,P119,Avenue 7 Well 119,B-19,3-08,,"219 County Road, Madera, CA",36.690,-120.190,,,,,,pump,,,,,Avenue 7
+"Batth Farms, LLC.",07300049865,1000950280,M-1120,P120,Solar Array B Meter,NEMEXPM,4-09,,"220 County Road, Madera, CA",36.700,-119.800,,,Almonds,,GOOD,non_pump,AGG-B,nem2,October,1092,Avenue 7
+Batth Farms LLC,07300059838,1000958199,M-1121,P121,Road 22 Well 121,AG-B,5-10,,"221 County Road, Madera, CA",,,973,67,Pistachios,,BAD,pump,AGG-B,,,,Road 22
+"Batth Farms, LLC.",07300069811,1000966118,M-1122,P122,Road 22 Well 122,AG-C,6-11,,"222 County Road, Madera, CA",36.720,-119.820,986,74,Walnuts,,NEW WELL,pump,AGG-B,,,,Road 22
+Batth Farms LLC,07300079784,1000974037,M-1123,P123,Road 22 Well 123,B-1,7-12,,"223 County Road, Madera, CA",36.730,-119.830,999,81,,,OLD,pump,AGG-B,,,,Road 22
+"Batth Farms, LLC.",07300089757,1000981956,M-1124,P124,Mill Site Well 124,B-19,8-13,,"224 County Road, Madera, CA",36.740,-119.840,1012,88,Almonds,,,pump,AGG-B,,,,Mill Site
+Batth Farms LLC,07300099730,1000989875,M-1125,P125,Mill Site Well 125,AG-A,9-14,,"225 County Road, Madera, CA",36.750,-119.850,1025,95,Pistachios,,GOOD,pump,,,,,Mill Site
+"Batth Farms, LLC.",07300109703,1000997794,M-1126,P126,Mill Site Well 126,AG-4B,1-15,BLK-1,"226 County Road, Madera, CA",36.760,-119.860,,,Walnuts,,BAD,pump,,,,,Mill Site
+Batth Farms LLC,07300119676,1001005713,M-1127,P127,South Block Well 127,AG-C,2-16,,"227 County Road, Madera, CA",36.770,-119.870,1051,29,,,NEW WELL,pump,,,,,South Block
+"Batth Farms, LLC.",07300129649,1001013632,M-1128,P128,South Block Well 128,B-1,3-17,,"228 County Road, Madera, CA",36.780,-119.880,1064,36,Almonds,,OLD,pump,,,,,South Block
+Batth Farms LLC,07300139622,1001021551,M-1129,P129,South Block Well 129,B-19,4-18,,"229 County Road, Madera, CA",36.790,-119.890,1077,43,Pistachios,,,pump,,,,,South Block
+Batth Brothers Partnership,07300149595,1001029470,M-1130,P130,Riverbend Well 130,AG-A,5-19,,"230 County Road, Madera, CA",36.800,-119.900,1090,50,Walnuts,,GOOD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300159568,1001037389,M-1131,P131,Riverbend Well 131,AG-B,6-20,,"231 County Road, Madera, CA",36.810,-119.910,1103,57,,,BAD,pump,,,,,Riverbend
+Batth Brothers Partnership,07300169541,1001045308,M-1132,P132,Riverbend Well 132,AG-5B,7-21,,"232 County Road, Madera, CA",,,1116,64,Almonds,,NEW WELL,pump,,,,,Riverbend
+Batth Brothers Partnership,07300179514,1001053227,M-1133,P133,Lakeview Well 133,B-1,8-22,,"233 County Road, Madera, CA",36.830,-119.930,,,Pistachios,,OLD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300189487,1001061146,M-1134,P134,Lakeview Well 134,B-19,9-23,,"234 County Road, Madera, CA",36.840,-119.940,1142,78,Walnuts,,,pump,,,,,Lakeview
+Batth Brothers Partnership,07300199460,1001069065,M-1135,P135,Lakeview Well 135,AG-A,1-24,BLK-10,"235 County Road, Madera, CA",36.850,-119.950,1155,85,,,GOOD,pump,,,,,Lakeview
+Batth Brothers Partnership,07300209433,1001076984,M-1136,P136,Dairy Field Well 136,AG-B,2-25,,"236 County Road, Madera, CA",36.860,-119.960,1168,92,Almonds,,BAD,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300219406,1001084903,M-1137,P137,Dairy Field Well 137,AG-C,3-26,,"237 County Road, Madera, CA",36.870,-119.970,1181,99,Pistachios,,NEW WELL,pump,,,,,Dairy Field
+Batth Brothers Partnership,07300229379,1001092822,M-1138,P138,Shop Meter 138,AG-4B,4-27,,"238 County Road, Madera, CA",36.880,-119.980,,,Walnuts,,OLD,non_pump,,,,,Dairy Field
+Batth Brothers Partnership,07300239352,1001100741,M-1139,P139,North Forty Well 139,B-19,5-28,,"239 County Road, Madera, CA",36.890,-119.990,307,33,,,,pump,,,,,North Forty
+Batth Brothers Partnership,07300249325,1001108660,M-1140,P140,North Forty Well 140,AG-A,6-01,,"240 County Road, Madera, CA",36.900,-120.000,,,Almonds,,GOOD,pump,,,,,North Forty
+S & K Batth Inc,07300259298,1001116579,M-1141,P141,North Forty Well 141,AG-B,7-02,,"241 County Road, Madera, CA",36.910,-120.010,333,47,Pistachios,,BAD,pump,,,,,North Forty
+S & K Batth Inc,07300269271,1001124498,M-1142,P142,Westside Well 142,AG-C,8-03,,"242 County Road, Madera, CA",36.920,-120.020,346,54,Walnuts,,NEW WELL,pump,,,,,Westside
+S & K Batth Inc,07300279244,1001132417,M-1143,P143,Westside Well 143,B-1,9-04,,"243 County Road, Madera, CA",,,359,61,,,OLD,pump,,,,,Westside
+S & K Batth Inc,07300289217,1001140336,M-1144,P144,Westside Well 144,AG-5B,1-05,BLK-5,"244 County Road, Madera, CA",36.940,-120.040,372,68,Almonds,,,pump,,,,,Westside
+S & K Batth Inc,07300299190,1001148255,M-1145,P145,Eastgate Well 145,AG-A,2-06,,"245 County Road, Madera, CA",36.950,-120.050,385,75,Pistachios,,GOOD,pump,,,,,Eastgate
+S & K Batth Inc,07300309163,1001156174,M-1146,P146,Eastgate Well 146,AG-B,3-07,,"246 County Road, Madera, CA",36.960,-120.060,398,82,Walnuts,,BAD,pump,,,,,Eastgate
+S & K Batth Inc,07300319136,1001164093,M-1147,P147,Eastgate Well 147,AG-C,4-08,,"247 County Road, Madera, CA",36.970,-120.070,,,,,NEW WELL,pump,,,,,Eastgate
+S & K Batth Inc,07300329109,1001172012,M-1148,P148,Cottonwood Well 148,B-1,5-09,,"248 County Road, Madera, CA",36.980,-120.080,424,96,Almonds,,OLD,pump,,,,,Cottonwood
+S & K Batth Inc,07300339082,1001179931,M-1149,P149,Cottonwood Well 149,B-19,6-10,,"249 County Road, Madera, CA",36.990,-120.090,437,23,Pistachios,,,pump,,,,,Cottonwood
+S & K Batth Inc,07300349055,1001187850,M-1150,P150,Cottonwood Well 150,AG-4B,7-11,,"250 County Road, Madera, CA",36.500,-120.100,450,30,Walnuts,,GOOD,pump,,,,,Cottonwood
+Gill & Batth Farms LLC,07300359028,1001195769,M-1151,P151,Sand Creek Well 151,AG-B,8-12,,"251 County Road, Madera, CA",36.510,-120.110,463,37,,,BAD,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300369001,1001203688,M-1152,P152,Sand Creek Well 152,AG-C,9-13,,"252 County Road, Madera, CA",36.520,-120.120,476,44,Almonds,,NEW WELL,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300378974,1001211607,M-1153,P153,Sand Creek Well 153,B-1,1-14,BLK-14,"253 County Road, Madera, CA",36.530,-120.130,489,51,Pistachios,,OLD,pump,,,,,Sand Creek
+Gill & Batth Farms LLC,07300388947,1001219526,M-1154,P154,Oak Knoll Well 154,B-19,2-15,,"254 County Road, Madera, CA",,,,,Walnuts,,,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300398920,1001227445,M-1155,P155,Oak Knoll Well 155,AG-A,3-16,,"255 County Road, Madera, CA",36.550,-120.150,515,65,,,GOOD,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300408893,1001235364,M-1156,P156,Oak Knoll Well 156,AG-5B,4-17,,"256 County Road, Madera, CA",36.560,-120.160,528,72,Almonds,,BAD,pump,,,,,Oak Knoll
+Gill & Batth Farms LLC,07300418866,1001243283,M-1157,P157,Tule Flat Well 157,AG-C,5-18,,"257 County Road, Madera, CA",36.570,-120.170,541,79,Pistachios,,NEW WELL,pump,,,,,Tule Flat
+Gill & Batth Farms LLC,07300428839,1001251202,M-1158,P158,Tule Flat Well 158,B-1,6-19,,"258 County Road, Madera, CA",36.580,-120.180,554,86,Walnuts,,OLD,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300438812,1001259121,M-1159,P159,Tule Flat Well 159,B-19,7-20,,"259 County Road, Madera, CA",36.590,-120.190,567,93,,,,pump,,,,,Tule Flat
+Sahota Ranches Inc,07300448785,1001267040,M-1160,P160,Cedar Grove Well 160,AG-A,8-21,,"260 County Road, Madera, CA",36.600,-119.800,580,20,Almonds,,GOOD,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300458758,1001274959,M-1161,P161,Shop Meter 161,AG-B,9-22,,"261 County Road, Madera, CA",36.610,-119.810,,,Pistachios,,BAD,non_pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300468731,1001282878,M-1162,P162,Cedar Grove Well 162,AG-4B,1-23,BLK-9,"262 County Road, Madera, CA",36.620,-119.820,606,34,Walnuts,,NEW WELL,pump,,,,,Cedar Grove
+Sahota Ranches Inc,07300478704,1001290797,M-1163,P163,Pioneer Well 163,B-1,2-24,,"263 County Road, Madera, CA",36.630,-119.830,619,41,,,OLD,pump,,,,,Pioneer
+Sahota Ranches Inc,07300488677,1001298716,M-1164,P164,Pioneer Well 164,B-19,3-25,,"264 County Road, Madera, CA",36.640,-119.840,632,48,Almonds,,,pump,,,,,Pioneer
+Sahota Ranches Inc,07300498650,1001306635,M-1165,P165,Pioneer Well 165,AG-A,4-26,,"265 County Road, Madera, CA",,,645,55,Pistachios,,GOOD,pump,,,,,Pioneer
+Deol Family Trust,07300508623,1001314554,M-1166,P166,Sunrise Well 166,AG-B,5-27,,"266 County Road, Madera, CA",36.660,-119.860,658,62,Walnuts,,BAD,pump,,,,,Sunrise
+Deol Family Trust,07300518596,1001322473,M-1167,P167,Sunrise Well 167,AG-C,6-28,,"267 County Road, Madera, CA",36.670,-119.870,671,69,,,NEW WELL,pump,,,,,Sunrise
+Deol Family Trust,07300528569,1001330392,M-1168,P168,Sunrise Well 168,AG-5B,7-01,,"268 County Road, Madera, CA",36.680,-119.880,,,Almonds,,OLD,pump,,,,,Sunrise
+Deol Family Trust,07300538542,1001338311,M-1169,P169,Hilltop Well 169,B-19,8-02,,"269 County Road, Madera, CA",36.690,-119.890,697,83,Pistachios,,,pump,,,,,Hilltop
+Deol Family Trust,07300548515,1001346230,M-1170,P170,Hilltop Well 170,AG-A,9-03,,"270 County Road, Madera, CA",36.700,-119.900,710,90,Walnuts,,GOOD,pump,,,,,Hilltop
+Deol Family Trust,07300558488,1001354149,M-1171,P171,Hilltop Well 171,AG-B,1-04,BLK-4,"271 County Road, Madera, CA",36.710,-119.910,723,97,,,BAD,pump,,,,,Hilltop
+Batth Farms LLC,07300000000,1001362068,M-1172,P172,Home Ranch Well 172,AG-C,2-05,,"272 County Road, Madera, CA",36.720,-119.920,736,24,Almonds,,NEW WELL,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300009973,1001369987,M-1173,P173,Home Ranch Well 173,B-1,3-06,,"273 County Road, Madera, CA",36.730,-119.930,749,31,Pistachios,,OLD,pump,,,,,Home Ranch
+Batth Farms LLC,07300019946,1001377906,M-1174,P174,Home Ranch Well 174,AG-4B,4-07,,"274 County Road, Madera, CA",36.740,-119.940,762,38,Walnuts,,,pump,,,,,Home Ranch
+"Batth Farms, LLC.",07300029919,1001385825,M-1175,P175,Avenue 7 Well 175,AG-A,5-08,,"275 County Road, Madera, CA",36.750,-119.950,,,,,GOOD,pump,,,,,Avenue 7
+Batth Farms LLC,07300039892,1001393744,M-1176,P176,Avenue 7 Well 176,AG-B,6-09,,"276 County Road, Madera, CA",,,788,52,Almonds,,BAD,pump,,,,,Avenue 7
+"Batth Farms, LLC.",07300049865,1001401663,M-1177,P177,Avenue 7 Well 177,AG-C,7-10,,"277 County Road, Madera, CA",36.770,-119.970,801,59,Pistachios,,NEW WELL,pump,,,,,Avenue 7
+Batth Farms LLC,07300059838,1001409582,M-1178,P178,Road 22 Well 178,B-1,8-11,,"278 County Road, Madera, CA",36.780,-119.980,814,66,Walnuts,,OLD,pump,,,,,Road 22
+"Batth Farms, LLC.",07300069811,1001417501,M-1179,P179,Road 22 Well 179,B-19,9-12,,"279 County Road, Madera, CA",36.790,-119.990,827,73,,,,pump,,,,,Road 22
+Batth Farms LLC,07300079784,1001425420,M-1180,P180,Road 22 Well 180,AG-5B,1-13,BLK-13,"280 County Road, Madera, CA",36.800,-120.000,840,80,Almonds,,GOOD,pump,,,,,Road 22
+"Batth Farms, LLC.",07300089757,1001433339,M-1181,P181,Mill Site Well 181,AG-B,2-14,,"281 County Road, Madera, CA",36.810,-120.010,853,87,Pistachios,,BAD,pump,,,,,Mill Site
+Batth Farms LLC,07300099730,1001441258,M-1182,P182,Mill Site Well 182,AG-C,3-15,,"282 County Road, Madera, CA",36.820,-120.020,,,Walnuts,,NEW WELL,pump,,,,,Mill Site
+"Batth Farms, LLC.",07300109703,1001449177,M-1183,P183,Mill Site Well 183,B-1,4-16,,"283 County Road, Madera, CA",36.830,-120.030,879,21,,,OLD,pump,,,,,Mill Site

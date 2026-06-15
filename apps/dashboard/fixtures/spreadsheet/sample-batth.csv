@@ -1,0 +1,7 @@
+Legal Entity,Acct #,SA ID,Meter Number,Pump ID,Pump Name,Rate Schedule,Cycle Code,Service Address,Lat,Long,GPM,HP,Net Metering,True-Up Month,Solar kW,Status,Kind,Ranch
+Batth Farms LLC,07302408880,1007066742,M-8841,P001,Home Ranch Well 1,AG-C,3-07,"4624 W Nebraska Ave, Caruthers, CA",36.539,-119.83,"1,200",75,,,,GOOD,pump,Home Ranch
+Batth Farms LLC,07302408880,1010898065,M-8842,P002,Home Ranch Solar Meter,NEMEXPM,3-07,"4624 W Nebraska Ave, Caruthers, CA",36.539,-119.83,,,nem2,April,840,GOOD,non_pump,Home Ranch
+Batth Brothers Partnership,07551200221,8590312001,M-1001,P003,Avenue 7 Well A,AG-B,5-12,"Avenue 7, Madera, CA",36.95,-120.05,950,60,,,,BAD,pump,Avenue 7
+Batth Brothers Partnership,07551200221,8590312002,M-1002,P004,Avenue 7 Well B,AG-5B,5-12,"Avenue 7, Madera, CA",36.95,-120.05,900,60,,,,GOOD,pump,Avenue 7
+S & K Batth Inc,07880455190,8590312003,M-2001,P005,Road 22 Booster,AG-A,8-03,"Road 22, Madera, CA",36.93,-120.10,400,30,,,,NEW WELL,pump,Road 22
+S & K Batth Inc,07880455190,7720450004,M-2002,P006,Shop Meter,B-1,8-03,"Road 22, Madera, CA",36.93,-120.10,,,,,,OLD,non_pump,Road 22

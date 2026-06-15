@@ -1,0 +1,498 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Do not scan the BMAD planning/implementation artifacts for utility classes. Story prose
+   quotes Tailwind-like tokens (e.g. arbitrary-value examples) that would otherwise be parsed
+   as class candidates and emit invalid generated CSS. Only real source under src/ should be scanned. */
+@source not "../../_bmad-output";
+
+:root {
+  /* Bright, warm white-and-green system. One dominant green, gold + sky accents. */
+  --bg: #faf9f4;
+  --tint: #f1f4ec;
+  /* Legacy white-card surface. The DESIGN.md `surface` (paper) lives in the
+     design-system block below; this white tone is DESIGN's `surface-bright`. */
+  --surface-bright: #ffffff;
+  --ink: #16190f;
+  --ink-soft: #3f4435;
+  --muted: #6e7560;
+  --green: #2fa84f;
+  --green-deep: #1c7a2b;
+  --green-hover: #166522;
+  --green-tint: #e7f2e3;
+  --gold: #f2c14e;
+  --sky: #cde7f2;
+  --line: #e7e8df;
+
+  /* The one reserved red: money at risk right now (a demand-charge hit, a possible
+     over-charge), and nowhere else. Deep enough to clear WCAG AA on the paper bg. */
+  --risk: #b3261e;
+  --risk-hover: #8f1d17;
+  --risk-tint: #f7e7e5;
+
+  /* Faint border/strong line used by app-shell chrome. */
+  --line-strong: #d6d8cc;
+  --faint: #9aa089;
+
+  /* Layout + elevation. */
+  --content-max: 1200px;
+  --shadow-soft: 0 1px 2px rgba(20, 25, 15, 0.05);
+  --shadow-card: 0 12px 32px rgba(20, 25, 15, 0.08);
+
+  /* ----------------------------------------------------------------------
+     DESIGN.md design-system tokens (Epic 2 — source of truth for all new UI).
+     Verbatim hex from DESIGN.md frontmatter `colors:`. Editorial agrarian-luxury:
+     one dominant green, one clay alert, everything else warm neutral. New
+     components reference these via Tailwind utilities (bg-paper, text-on-surface,
+     border-outline-variant, bg-primary, text-money-positive, bg-alert, ...).
+     Depth order: tonal warm-paper layering (step surface-container-*) FIRST,
+     then a 1px outline-variant hairline, then a soft shadow only for the drawer /
+     bottom sheet. Three colors max on any screen: green, clay, charcoal-on-paper.
+     ---------------------------------------------------------------------- */
+
+  /* Surfaces — warm paper canvas stepping up through off-whites, never gray-on-white. */
+  --surface: #faf9f4; /* the paper canvas (== --bg); DESIGN surface / background */
+  --surface-dim: #ece9e0;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f6f4ec;
+  --surface-container: #f1eee4;
+  --surface-container-high: #ebe8dd;
+  --surface-container-highest: #e5e1d5;
+
+  /* Ink — warm charcoal, never pure black; muted warm gray for secondary text. */
+  --on-surface: #1a1a17;
+  --on-surface-variant: #5a554c;
+  --inverse-surface: #2c2c28;
+  --inverse-on-surface: #f4f2ec;
+
+  /* Lines — hairline borders before shadows. */
+  --outline: #9a9384;
+  --outline-variant: #d9d4c6;
+
+  /* Brand green — dominant: nav, primary actions, in-the-money state. */
+  --primary: #2fa84f;
+  --on-primary: #ffffff;
+  --primary-container: #c9ebd2;
+  --on-primary-container: #0c3d1c;
+
+  /* Positive money — a slightly brighter green, the only second green, for savings/credits. */
+  --money-positive: #1fbf5a;
+  --on-money-positive: #ffffff;
+
+  /* Alert — one warm clay/terracotta tone, used sparingly for `act` severity and
+     high-dollar-at-risk. The traffic-light "bad", kept warm. `watch` has NO color. */
+  --alert: #bd4b34;
+  --on-alert: #ffffff;
+  --alert-container: #f7ddd4;
+  --on-alert-container: #4e1306;
+
+  /* Soft warm ambient shadow (DESIGN.md): large blur, very low opacity — a soft
+     light on paper. Only the drawer and the mobile bottom sheet lift meaningfully. */
+  --shadow-elevated: 0 8px 28px rgba(26, 26, 23, 0.06);
+
+  /* Layout rails + radius (DESIGN.md spacing/rounded). */
+  --agent-rail: 240px;
+  --findings-rail: 320px;
+  --radius-control: 0.375rem; /* default: buttons, inputs, kpi cards, table */
+  --radius-lg: 0.75rem; /* larger objects: drawer, bottom sheet, map, modal */
+}
+
+@theme inline {
+  /* New design-system tokens (bg-bg, text-ink, bg-green-deep, ...). */
+  --color-bg: var(--bg);
+  --color-tint: var(--tint);
+  /* `bg-surface` (legacy white card) is mapped to --surface-bright in the legacy
+     aliases block below, since --surface is now the DESIGN paper canvas (= bg-paper). */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-green: var(--green);
+  --color-green-deep: var(--green-deep);
+  --color-green-hover: var(--green-hover);
+  --color-green-tint: var(--green-tint);
+  --color-gold: var(--gold);
+  --color-sky: var(--sky);
+  --color-risk: var(--risk);
+  --color-risk-hover: var(--risk-hover);
+  --color-risk-tint: var(--risk-tint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* Legacy semantic aliases, remapped bright so the dashboard + onboarding
+     flip automatically without touching every file. (--surface used to be white;
+     it is now the DESIGN paper canvas, so the legacy white-card aliases point at
+     --surface-bright to keep the legacy pump-timing tool's cards white.) */
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-faint: var(--faint);
+  --color-surface: var(--surface-bright);
+  --color-card: var(--surface-bright);
+  --color-card-hover: var(--tint);
+  --color-border: var(--line);
+  --color-border-strong: var(--line-strong);
+  /* One accent for the whole dashboard: the deep brand green. It always means
+     something positive (a saving, a primary action, an active state). */
+  --color-accent: var(--green-deep);
+  --color-accent-ink: var(--surface-bright);
+
+  /* DESIGN.md design-system utilities (Epic 2). bg-paper / bg-surface-container-* /
+     text-on-surface / text-on-surface-variant / border-outline-variant / bg-primary /
+     text-on-primary / bg-primary-container / text-money-positive / bg-alert /
+     text-alert / bg-alert-container / bg-inverse-surface, etc. */
+  --color-paper: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-money-positive: var(--money-positive);
+  --color-on-money-positive: var(--on-money-positive);
+  --color-alert: var(--alert);
+  --color-on-alert: var(--on-alert);
+  --color-alert-container: var(--alert-container);
+  --color-on-alert-container: var(--on-alert-container);
+
+  /* Layout rail widths (w-agent-rail / w-findings-rail). Radius is referenced via
+     the :root --radius-control / --radius-lg tokens (rounded-[var(--radius-lg)])
+     so Tailwind's default rounded-* scale is left untouched for the legacy tool. */
+  --spacing-agent-rail: var(--agent-rail);
+  --spacing-findings-rail: var(--findings-rail);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
+  --font-display: var(--font-inter);
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+    }
+  50% {
+    background-position: 100% 100%;
+    }
+  to {
+    background-position: 0% 0%;
+    }
+  }
+  --animate-shiny-text: shiny-text 8s infinite
+;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;
+    }
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;
+    }
+  }
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Display style for the wordmark and big headlines: Inter, tight tracking, heavy. */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Eyebrow: uppercase, wide tracking, small, green by default. */
+.eyebrow {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--green-deep);
+}
+
+/* Tabular figures so columns of numbers and money align. Applied to every dollar,
+   usage, and data value in the dashboard (the spec's tabular-numerals rule). */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A big money/hero figure: Inter at tabular figures, tight leading and tracking.
+   The largest element on its screen, per the design system. */
+.figure {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  font-weight: 700;
+}
+
+.eyebrow-muted {
+  color: var(--muted);
+}
+
+/* Legacy uppercase label used by nav + buttons. */
+.label-caps {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------------
+   DESIGN.md typography roles (Epic 2). One typeface (Inter, via --font-inter);
+   hierarchy from weight + size only, never from mixing families. Sizes are rem
+   (= the DESIGN.md px at the 16px root) so they scale with dynamic type.
+   Tabular figures are baked into every figure-bearing role so columns of meter
+   costs align to the digit and no downstream story can forget.
+   ------------------------------------------------------------------------ */
+.type-money-hero {
+  font-family: var(--font-display);
+  font-size: 3.5rem; /* 56px */
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.type-display-lg {
+  font-family: var(--font-display);
+  font-size: 2.5rem; /* 40px */
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+@media (max-width: 640px) {
+  /* display-lg-mobile */
+  .type-display-lg {
+    font-size: 1.875rem; /* 30px */
+    letter-spacing: -0.01em;
+  }
+}
+.type-headline {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
+  line-height: 1.2;
+}
+.type-title {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  line-height: 1.3;
+}
+.type-body-lg {
+  font-size: 1.0625rem; /* 17px */
+  font-weight: 400;
+  line-height: 1.5;
+}
+.type-body-md {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 400;
+  line-height: 1.5;
+}
+.type-num {
+  font-size: 0.9375rem; /* 15px num-tabular */
+  font-weight: 400;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.type-label-caps {
+  font-size: 0.75rem; /* 12px */
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.type-caption {
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Faint paper grain for the onboarding flow. A subtle fixed noise wash above the paper
+   background and below content. `isolation: isolate` makes the page its own stacking
+   context, so the negative-z grain stays behind content even when inner stages get a
+   transform (the motion cross-fades). Never heavy: it should read as texture, not pattern. */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--green-tint);
+  color: var(--ink);
+}
+
+/* Soft green focus ring, never a hard outline. */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(47, 163, 54, 0.35);
+  border-radius: 4px;
+}
+
+/* SVG elements have no CSS box, so the box-shadow ring above cannot paint on them; the
+   chart's focusable bar hit-targets get a stroke ring instead (same green intent). */
+.chart-bar-hit:focus-visible {
+  stroke: var(--primary);
+  stroke-width: 2px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes terra-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes terra-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: terra-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggered entrance for the home: each child rises in turn. Set --i on the child to
+   order it. One orchestrated moment, ease-out, no bounce; honored by the reduced-motion
+   block below (which zeroes the duration so the final state renders instantly). */
+@keyframes terra-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: terra-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+/* The meter drawer's entrance (Story 2.5): slide in from the right on desktop, up from the
+   bottom on mobile, with the house easing - calm, no bounce. The reduced-motion block below
+   renders the final state instantly. */
+@keyframes terra-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes terra-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.drawer-in {
+  animation: terra-drawer-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (max-width: 767px) {
+  .drawer-in {
+    animation-name: terra-sheet-in;
+  }
+}
+
+/* A quiet one-shot pulse on a freshly surfaced recommendation. No popup, no loop. */
+@keyframes terra-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(28, 122, 43, 0.32);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(28, 122, 43, 0);
+  }
+}
+
+.pulse-once {
+  animation: terra-pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .rise,
+  .reveal,
+  .pulse-once,
+  .drawer-in {
+    animation: none !important;
+    animation-delay: 0ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

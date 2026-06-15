@@ -1,0 +1,3 @@
+Entity,Account,Service ID,Meter,Name,Rate,Serial Code,Location,Latitude,Longitude,GPM,HP,NEM,True-Up,Solar kW,Kind,Block
+Batth Farms LLC,07302408880,1007066742,,Home Ranch Well 1,AG-C,3-07,"4624 W Nebraska Ave, Caruthers, CA",36.539,-119.83,1200,75,,,,pump,Home Ranch
+Batth Farms LLC,07302408880,1010898065,,Home Ranch Solar,NEM2,3-07,"4624 W Nebraska Ave, Caruthers, CA",36.539,-119.83,,,nem2,April,840,non_pump,Home Ranch

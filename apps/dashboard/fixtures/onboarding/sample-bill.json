@@ -1,0 +1,9 @@
+{
+  "$comment": "Canned result for the bill-photo vision stub (src/lib/onboarding/vision.ts). Stands in for what a real vision model would read off a photographed PG&E bill: the account name, service ID, meter serial, rate schedule, the billing/meter-read cycle code, and the service address. It pre-fills the manual onboarding form for one pump. This service ID is not in any Green Button fixture, so the bill-photo path creates its own pump. TODO: replace the stub with Claude vision via Vercel AI Gateway; this fixture then becomes a test fixture only.",
+  "accountName": "Olsen Family Farms",
+  "serviceId": "7720450050",
+  "meterSerial": "1010088820",
+  "rateSchedule": "AG-C",
+  "billingSerial": "MR-14",
+  "address": "21500 Avenue 18, Madera, CA 93637"
+}

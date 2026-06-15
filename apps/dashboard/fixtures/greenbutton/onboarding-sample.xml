@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample PG&E Share My Data (Green Button / ESPI) export used by ONBOARDING as the
+  stand-in for a live Share My Data pull (see src/lib/onboarding/source.ts). It is a
+  fresh account (Olsen Family Farms) with four service IDs the seeded sample farm does
+  not use, so onboarding always imports them as new pumps:
+
+    7720450001  Home Well   AG-C  ~110 kW   -> classifies as a pump
+    7720450002  East Well   AG-C   ~95 kW   -> classifies as a pump
+    7720450003  South Well  AG-B   ~72 kW   -> classifies as a pump
+    7720450004  Shop Meter  B-1   ~6 kW flat -> classifies as a NON-pump (office/shop)
+
+  The point is that auto-classification visibly separates the three big seasonal
+  agricultural loads from the small flat commercial one. One billing cycle each
+  (closing 2026-06-12). Each meter carries a day-spanning set of 15-minute readings,
+  mult 0 (Wh): the pumps sit idle through the day then run hard in the evening (a low
+  load factor, spiky), while the shop draws a small steady load all day (a high load
+  factor, flat), so the shape signal is exercised, not just the tariff and peak.
+  Same conventions as sandhu-multi-meter.xml; see fixtures/greenbutton/README.md.
+-->
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:espi="http://naesb.org/espi">
+  <id>urn:uuid:7720a000-0000-4a00-9f00-olsen-onboard</id>
+  <title>Green Button Usage Feed - Olsen Family Farms</title>
+  <updated>2026-06-13T08:00:00Z</updated>
+  <link rel="self" href="https://api.pge.com/GreenButtonConnect/espi/1_1/resource/Batch/Subscription/SUB-OLSEN1"/>
+
+  <!-- ============ 7720450001  Home Well  (AG-C, ~110 kW pump) ============ -->
+  <entry>
+    <id>urn:uuid:7720a000-0001-up</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001"/>
+    <title>Home Well</title>
+    <content>
+      <espi:UsagePoint><espi:ServiceCategory><espi:kind>0</espi:kind></espi:ServiceCategory></espi:UsagePoint>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0001-loc</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail><espi:number>21500</espi:number><espi:name>Avenue 18</espi:name></espi:streetDetail>
+          <espi:townDetail><espi:name>Madera</espi:name><espi:county>Madera</espi:county><espi:stateOrProvince>CA</espi:stateOrProvince><espi:country>US</espi:country></espi:townDetail>
+          <espi:postalCode>93637</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0001-mr</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450001/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content><espi:MeterReading/></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0001-rt</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content>
+      <espi:ReadingType><espi:intervalLength>900</espi:intervalLength><espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier><espi:uom>72</espi:uom></espi:ReadingType>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0001-ib</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450001/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:interval>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780369200</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780380000</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780390800</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780401600</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780412400</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780430400</espi:start></espi:timePeriod><espi:value>24000</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780431300</espi:start></espi:timePeriod><espi:value>27500</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780432200</espi:start></espi:timePeriod><espi:value>25000</espi:value></espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0001-us</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450001/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:billingPeriod>
+        <espi:billLastPeriod>620000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod><espi:itemKind>2</espi:itemKind><espi:note>Maximum Demand Charge</espi:note><espi:amount>198000000</espi:amount></espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod><espi:itemKind>2</espi:itemKind><espi:note>Summer Peak Demand Charge</espi:note><espi:amount>110000000</espi:amount></espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+
+  <!-- ============ 7720450002  East Well  (AG-C, ~95 kW pump) ============ -->
+  <entry>
+    <id>urn:uuid:7720a000-0002-up</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002"/>
+    <title>East Well</title>
+    <content><espi:UsagePoint><espi:ServiceCategory><espi:kind>0</espi:kind></espi:ServiceCategory></espi:UsagePoint></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0002-loc</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail><espi:number>8900</espi:number><espi:name>Road 24</espi:name></espi:streetDetail>
+          <espi:townDetail><espi:name>Madera</espi:name><espi:county>Madera</espi:county><espi:stateOrProvince>CA</espi:stateOrProvince><espi:country>US</espi:country></espi:townDetail>
+          <espi:postalCode>93637</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0002-mr</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450002/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content><espi:MeterReading/></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0002-rt</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content><espi:ReadingType><espi:intervalLength>900</espi:intervalLength><espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier><espi:uom>72</espi:uom></espi:ReadingType></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0002-ib</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450002/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:interval>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780369200</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780380000</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780390800</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780401600</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780412400</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780430400</espi:start></espi:timePeriod><espi:value>21000</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780431300</espi:start></espi:timePeriod><espi:value>23750</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780432200</espi:start></espi:timePeriod><espi:value>22000</espi:value></espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0002-us</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450002/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:billingPeriod>
+        <espi:billLastPeriod>540000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod><espi:itemKind>2</espi:itemKind><espi:note>Maximum Demand Charge</espi:note><espi:amount>171000000</espi:amount></espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod><espi:itemKind>2</espi:itemKind><espi:note>Summer Peak Demand Charge</espi:note><espi:amount>95000000</espi:amount></espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+
+  <!-- ============ 7720450003  South Well  (AG-B, ~72 kW pump) ============ -->
+  <entry>
+    <id>urn:uuid:7720a000-0003-up</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003"/>
+    <title>South Well</title>
+    <content><espi:UsagePoint><espi:ServiceCategory><espi:kind>0</espi:kind></espi:ServiceCategory></espi:UsagePoint></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0003-loc</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail><espi:number>12350</espi:number><espi:name>Avenue 9</espi:name></espi:streetDetail>
+          <espi:townDetail><espi:name>Chowchilla</espi:name><espi:county>Madera</espi:county><espi:stateOrProvince>CA</espi:stateOrProvince><espi:country>US</espi:country></espi:townDetail>
+          <espi:postalCode>93610</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0003-mr</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450003/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content><espi:MeterReading/></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0003-rt</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content><espi:ReadingType><espi:intervalLength>900</espi:intervalLength><espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier><espi:uom>72</espi:uom></espi:ReadingType></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0003-ib</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450003/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:interval>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780369200</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780380000</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780390800</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780401600</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780412400</espi:start></espi:timePeriod><espi:value>0</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780430400</espi:start></espi:timePeriod><espi:value>16000</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780431300</espi:start></espi:timePeriod><espi:value>18000</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780432200</espi:start></espi:timePeriod><espi:value>17000</espi:value></espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0003-us</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450003/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:billingPeriod>
+        <espi:billLastPeriod>390000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-B</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod><espi:itemKind>2</espi:itemKind><espi:note>Maximum Demand Charge</espi:note><espi:amount>122400000</espi:amount></espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+
+  <!-- ============ 7720450004  Shop Meter  (B-1, ~6 kW flat NON-pump) ============ -->
+  <entry>
+    <id>urn:uuid:7720a000-0004-up</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004"/>
+    <title>Shop Meter</title>
+    <content><espi:UsagePoint><espi:ServiceCategory><espi:kind>0</espi:kind></espi:ServiceCategory></espi:UsagePoint></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0004-loc</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail><espi:number>455</espi:number><espi:name>South Gateway Drive</espi:name></espi:streetDetail>
+          <espi:townDetail><espi:name>Madera</espi:name><espi:county>Madera</espi:county><espi:stateOrProvince>CA</espi:stateOrProvince><espi:country>US</espi:country></espi:townDetail>
+          <espi:postalCode>93637</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0004-mr</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450004/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content><espi:MeterReading/></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0004-rt</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content><espi:ReadingType><espi:intervalLength>900</espi:intervalLength><espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier><espi:uom>72</espi:uom></espi:ReadingType></content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0004-ib</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/7720450004/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:interval>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780369200</espi:start></espi:timePeriod><espi:value>1250</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780380000</espi:start></espi:timePeriod><espi:value>1300</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780390800</espi:start></espi:timePeriod><espi:value>1375</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780401600</espi:start></espi:timePeriod><espi:value>1500</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780412400</espi:start></espi:timePeriod><espi:value>1450</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780430400</espi:start></espi:timePeriod><espi:value>1375</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780431300</espi:start></espi:timePeriod><espi:value>1300</espi:value></espi:IntervalReading>
+        <espi:IntervalReading><espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780432200</espi:start></espi:timePeriod><espi:value>1250</espi:value></espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:7720a000-0004-us</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/7720450004/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod><espi:duration>2592000</espi:duration><espi:start>1778630400</espi:start></espi:billingPeriod>
+        <espi:billLastPeriod>24000000</espi:billLastPeriod>
+        <espi:tariffProfile>B-1</espi:tariffProfile>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+</feed>

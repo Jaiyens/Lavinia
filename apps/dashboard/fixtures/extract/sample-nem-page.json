@@ -1,0 +1,21 @@
+{
+  "pageType": "nem_reconciliation",
+  "saId": "1010898065",
+  "monthlyRows": [
+    { "periodStart": "2025-04-01", "periodEnd": "2025-04-30", "kWh": 12480.4, "amountCents": null },
+    { "periodStart": "2025-05-01", "periodEnd": "2025-05-31", "kWh": 28140.9, "amountCents": null },
+    { "periodStart": "2025-06-01", "periodEnd": "2025-06-30", "kWh": 41022.6, "amountCents": null },
+    { "periodStart": "2025-07-01", "periodEnd": "2025-07-31", "kWh": 52310.1, "amountCents": null },
+    { "periodStart": "2025-08-01", "periodEnd": "2025-08-31", "kWh": 47588.3, "amountCents": null },
+    { "periodStart": "2025-09-01", "periodEnd": "2025-09-30", "kWh": 33004.7, "amountCents": null },
+    { "periodStart": "2025-10-01", "periodEnd": "2025-10-31", "kWh": 8902.2, "amountCents": null },
+    { "periodStart": "2025-11-01", "periodEnd": "2025-11-30", "kWh": -4218.5, "amountCents": null },
+    { "periodStart": "2025-12-01", "periodEnd": "2025-12-31", "kWh": -6840.0, "amountCents": null },
+    { "periodStart": "2026-01-01", "periodEnd": "2026-01-31", "kWh": -7155.9, "amountCents": null },
+    { "periodStart": "2026-02-01", "periodEnd": "2026-02-28", "kWh": -3502.1, "amountCents": null },
+    { "periodStart": "2026-03-01", "periodEnd": "2026-03-31", "kWh": 2240.8, "amountCents": null }
+  ],
+  "trueUpMonth": 4,
+  "trueUpDate": "2026-04-15",
+  "trueUpAmountCents": 1842300
+}

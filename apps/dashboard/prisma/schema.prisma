@@ -1,0 +1,454 @@
+// Terra shared data model, first-class entities reused by every tool.
+// SQLite has no native enums, so union fields are String with the allowed
+// values documented inline and mirrored as TS types in
+// src/lib/recommendations/types.ts. Promote these to real enums on Postgres.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Runtime uses the pooled Neon endpoint; migrations / db push use the direct (unpooled)
+  // endpoint via directUrl (pgbouncer cannot run the DDL + advisory locks migrations need).
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model Farm {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("America/Los_Angeles")
+  // Seed/fixture demo farms (e.g. Batth) are marked so they never present as the
+  // grower's live farm on the dashboard. A real connected farm has isDemo = false.
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // The signed-in grower who owns this farm (Auth.js User). Nullable: demo/seed
+  // farms and any pre-auth farm own no user. Story 5.1 adds the column; Story 5.2
+  // attaches connected farms to the user and filters the dashboard by ownership.
+  // dashboardFarm()/currentFarm() do NOT yet filter on userId (see farm.ts).
+  userId String?
+
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  blocks          Block[]
+  ranches         Ranch[]
+  pumps           Pump[]
+  entities        Entity[]
+  accounts        Account[]
+  solarArrays     SolarArray[]
+  people          Person[]
+  connections     Connection[]
+  recommendations Recommendation[]
+
+  @@index([userId])
+}
+
+// A legal billing entity. Batth runs ~6 of these; each owns several PG&E accounts.
+// The top of the Entity -> Account -> Meter hierarchy that makes 57 accounts across
+// 6 entities navigable. Entity assignment for an account is filled in from the
+// grower's master spreadsheet (the Bayou/ESPI feeds don't name the legal entity).
+model Entity {
+  id          String   @id @default(cuid())
+  name        String
+  // The legal entity carries two names the master spreadsheet separates: billingName
+  // is how PG&E prints it (7 typo'd variants dedupe to 6 entities) and actualOwner is
+  // the true legal owner. Both nullable here; Story 1.2 populates them from the
+  // spreadsheet (the 7 billing-name variants -> billingName, 6 owners -> actualOwner).
+  billingName String?
+  actualOwner String?
+  farmId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  farm     Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@index([farmId])
+}
+
+// A PG&E account (the billing unit; ~57 for Batth). Carries the account number and
+// links up to an Entity (nullable until the spreadsheet assigns it) and down to the
+// meters that bill under it. accountNumber is a real link here, not a loose string.
+model Account {
+  id        String   @id @default(cuid())
+  number    String // PG&E account number
+  farmId    String
+  entityId  String? // assigned once known (spreadsheet reconciliation)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Account-level billing coverage (FR-6): no_bill | needs_review | reconciled. Account-
+  // level reconcile sets it in Story 1.7. Mirrored as CoverageState in TS.
+  coverageState String @default("no_bill")
+
+  farm   Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  entity Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  pumps  Pump[]
+
+  @@unique([farmId, number]) // account numbers are unique; scope by farm to be safe
+  @@index([farmId])
+  @@index([entityId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  name      String
+  acreage   Float?
+  farmId    String
+  cropId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop  Crop?  @relation(fields: [cropId], references: [id])
+  pumps Pump[] // m-n: pumps that serve this block
+
+  @@index([farmId])
+}
+
+model Pump {
+  id                  String   @id @default(cuid())
+  name                String
+  serviceId           String? // PG&E service ID / ESPI UsagePoint
+  meterSerial         String?
+  rateSchedule        String? // e.g. "AG-C". Stored as read from the spreadsheet, never inferred.
+  // deprecated: collapsing into serialCode in Story 1.2 (the new spreadsheet importer
+  // and greenbutton/schedule.ts move to serialCode, then this column is dropped).
+  billingSerial       String? // serial code that drives the meter-read / cycle close
+  // The canonical billing-cycle letter going forward (supersedes billingSerial). Kept
+  // strictly distinct from rotatingOutageBlock: only the serial letter drives cycle close.
+  serialCode          String?
+  rotatingOutageBlock String? // PG&E rotating-outage block; never used for cycle close
+  location            String? // rough address from ESPI ServiceLocation
+  horsepower          Float?
+  // Meter commodity, distinct from powerSource (the pump motor's prime mover). The
+  // engine is electric-only in v1; gas meters are carried through the normalizer but
+  // not persisted as Pumps, so this stays "electric" here. Having the column makes
+  // turning gas on later a flag flip, not a migration.
+  fuel                String   @default("electric") // "electric" | "gas"
+  // The PG&E account this meter bills under. Nullable: the ESPI feed carries no
+  // account number, so ESPI-imported pumps link up only once the spreadsheet does.
+  accountId           String?
+  // Set at onboarding. kind is auto-classified from the usage signature (a big
+  // seasonal load is a pump; a small flat one is an office/shop) and the farmer
+  // can override it; non-pump meters are excluded from pump-timing advice.
+  kind                String   @default("pump") // "pump" | "non_pump"
+  powerSource         String   @default("electric") // "electric" | "diesel" | "gas"
+  // Map pin. Pre-placed from `location` at onboarding, dragged to the real spot.
+  latitude            Float?
+  longitude           Float?
+  // Pump capacity in gallons per minute, where the grower's records carry it.
+  gpm                 Float?
+  // Net-metering attributes for a solar-paired meter. nemType is the program
+  // (e.g. "nem2"); trueUpMonth (1-12) is when credits/charges settle annually;
+  // solarKw is the paired array's nameplate. All null on a meter with no solar.
+  // (SolarArray models the NEMA allocation graph; isSolar is the day-one flag.)
+  nemType             String?
+  trueUpMonth         Int?
+  solarKw             Float?
+  // The printed annual true-up settlement (Story 3.4): amount in integer cents
+  // (negative = net credit to the grower) and the statement date, as the NEM
+  // reconciliation page prints them. Null until a true-up statement is extracted.
+  trueUpAmountCents   Int?
+  trueUpDate          DateTime?
+  // The grower's own "P0xx" Pump ID descriptor from the master spreadsheet, distinct
+  // from serviceId (SA ID) and the cuid primary key. Story 1.6 identity-checks on it.
+  growerPumpId        String?
+  // Legacy AG-4/AG-5 schedule flag. The 27 legacy-flagged meters lead rate optimization.
+  isLegacy            Boolean  @default(false)
+  // Pump health from the master spreadsheet's Status field (FR-17). Mirrored as PumpStatus.
+  status              String? // "GOOD" | "BAD" | "NEW WELL" | "OLD"
+  // Explicit solar flag (FR-1 "each Meter carries a Solar flag"), legible day one even
+  // before the SolarArray/NEMA graph is wired from billing.
+  isSolar             Boolean  @default(false)
+  cropId              String? // crop carried on the meter (FR-1), alongside ranch/block crop
+  ranchId             String? // rollup membership (Entity -> Account -> Ranch -> Meter)
+  // Billing coverage for this meter (FR-6): no_bill | needs_review | reconciled. Defaults
+  // to no_bill; Story 1.7 sets it from reconciliation. Mirrored as CoverageState in TS.
+  coverageState       String   @default("no_bill")
+  farmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  farm             Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  account          Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  crop             Crop?           @relation(fields: [cropId], references: [id])
+  ranch            Ranch?          @relation(fields: [ranchId], references: [id], onDelete: SetNull)
+  blocks           Block[] // m-n: block(s) this pump serves
+  benefitingArrays SolarArray[]    @relation("NemAllocation") // NEMA: arrays whose credits offset this meter
+  intervals        UsageInterval[] // 15-minute metered usage (Green Button)
+  billingPeriods   BillingPeriod[] // per-cycle summary (tariff, demand charge, peak)
+  nemPeriods       NemPeriod[] // printed NEM reconciliation months (Story 3.4)
+
+  // A PG&E service ID is unique within a farm. SQLite treats NULL serviceIds as
+  // distinct, so pumps without one are unaffected; lets the importer upsert by it.
+  @@unique([farmId, serviceId])
+  @@index([farmId])
+  @@index([accountId])
+}
+
+// 15-minute interval usage for a Pump, parsed from Green Button / ESPI data.
+// kWh stays unit-true to the meter; kW (demand) is derived in src/lib/energy.
+// Shared primitive: any later tool that reads a metered load reuses this series.
+model UsageInterval {
+  id          String   @id @default(cuid())
+  pumpId      String
+  start       DateTime // interval start, UTC
+  durationSec Int      @default(900) // PG&E intervals are 900s (15 min)
+  kWh         Float
+  createdAt   DateTime @default(now())
+
+  pump Pump @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+
+  @@unique([pumpId, start]) // one reading per interval; makes re-import idempotent
+  @@index([pumpId, start])
+}
+
+// One billing cycle's summary for a Pump (an ESPI UsageSummary). Dollar figures
+// are read from the bill/ESPI data, never hardcoded. peakKw is the derived
+// highest 15-minute demand in the window and is what sets the demand charge.
+model BillingPeriod {
+  id              String    @id @default(cuid())
+  pumpId          String
+  start           DateTime
+  close           DateTime
+  // The actual posted billing-cycle close from the scanned bill (AR-14): distinct from
+  // `close` (the source period end) and from the scheduled serial-code close. Null until
+  // a bill is extracted.
+  cycleClose        DateTime?
+  // The SA's printed total in integer cents (AR-6). Story 1.7 reconciles the sum of this
+  // period's BillingLineItem.amountCents against it within one cent. Null until extracted.
+  printedTotalCents Int?
+  tariff          String? // rate schedule, e.g. "AG-C"
+  demandChargeUsd Float? // total of the cycle's demand line items
+  peakKw          Float? // derived max demand (highest 15-min kW)
+  peakAt          DateTime? // when that peak occurred
+  totalBillUsd    Float? // billLastPeriod
+  // Total metered energy for the cycle (kWh). The summary feed carries this even for
+  // meters with no 15-minute interval history, so fleet-wide usage is readable without
+  // re-deriving from intervals. Null when the source did not carry a cycle total.
+  totalKwh        Float?
+  source          String    @default("green_button")
+  createdAt       DateTime  @default(now())
+
+  pump             Pump              @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+  billingLineItems BillingLineItem[] // the per-line-item breakdown that reconciles to printedTotalCents
+
+  @@unique([pumpId, start]) // one summary per cycle; makes re-import idempotent
+  @@index([pumpId, start])
+}
+
+// One line item composing a BillingPeriod's printed total (a TOU energy bucket, the
+// demand charge, an NBC, or another printed line). Billed amounts are integer cents
+// (AR-6, the reconciliation surface); quantity/rate keep full precision. Story 1.7 sums
+// amountCents across a period's line items and reconciles to BillingPeriod.printedTotalCents.
+model BillingLineItem {
+  id              String   @id @default(cuid())
+  billingPeriodId String
+  kind            String // "tou_energy" | "demand" | "nbc" | "other"
+  label           String?
+  amountCents     Int // integer US cents, never a float
+  quantity        Float? // kWh / kW, full precision
+  unit            String? // "kWh" | "kW"
+  rate            Float? // $/unit, full precision
+  createdAt       DateTime @default(now())
+
+  billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Cascade)
+
+  @@index([billingPeriodId])
+}
+
+model Crop {
+  id              String @id @default(cuid())
+  name            String @unique
+  cropCoefficient Float? // Kc for CIMIS water math (later tool)
+
+  blocks  Block[]
+  ranches Ranch[]
+  pumps   Pump[]
+}
+
+// The rollup level between Account and Meter (Entity -> Account -> Ranch -> Meter).
+// Farm-scoped grouping that meters point to via Pump.ranchId; intentionally not nested
+// strictly under Account (a ranch can hold meters from more than one account, and the
+// billing link already lives on Pump.accountId). Distinct from the existing Block model,
+// which the seed and the m-n served-block concept still use; Story 1.2 decides whether
+// Block merges into Ranch once real ranch data lands.
+model Ranch {
+  id        String   @id @default(cuid())
+  name      String
+  acreage   Float?
+  farmId    String
+  cropId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop  Crop?  @relation(fields: [cropId], references: [id])
+  pumps Pump[] // meters grouped under this ranch
+
+  @@index([farmId])
+}
+
+// A solar array (Batth runs two: 840 kW and 1,092 kW). Models the NEMA allocation as an
+// explicit Array -> benefiting-Meter graph rather than flat meter flags: one array's
+// credits offset many meters, and a meter can draw from more than one array. trueUpMonth
+// is per array. Named SolarArray (never Array) to avoid shadowing the JS global Array<T>.
+model SolarArray {
+  id          String   @id @default(cuid())
+  name        String?
+  nameplateKw Float // array nameplate, e.g. 840 or 1092
+  nemType     String? // "nem2" | "nem2_agg"
+  trueUpMonth Int? // per-array annual true-up month (1-12)
+  saId        String? // the generating meter's SA ID (the array's own service)
+  farmId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  farm             Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  benefitingMeters Pump[] @relation("NemAllocation") // NEMA m-n: meters this array's credits offset
+
+  @@index([farmId])
+}
+
+// One printed NEM reconciliation month for a generating meter (Story 3.4): the
+// monthly net position exactly as PG&E's NEM statement prints it. The minimum
+// NEM persistence - the full SolarArray/NEMA allocation graph stays deferred.
+// netKwh negative = net export that month; amountCents negative = credit.
+model NemPeriod {
+  id          String   @id @default(cuid())
+  pumpId      String
+  start       DateTime
+  close       DateTime
+  netKwh      Float
+  amountCents Int // integer cents, as printed (money law: never float dollars)
+  source      String   @default("scanned_bill")
+  createdAt   DateTime @default(now())
+
+  pump Pump @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+
+  // One row per printed month per meter; the importer upserts on this.
+  @@unique([pumpId, start])
+  @@index([pumpId])
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  // Owner email captured at onboarding's "save it" step. Nullable: managers and
+  // irrigators added later (and the owner row created before the save step) have none.
+  email     String?
+  role      String // "owner" | "manager" | "irrigator"
+  language  String   @default("en") // "en" | "es"
+  farmId    String
+  createdAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+}
+
+model Connection {
+  id           String    @id @default(cuid())
+  type         String // "pge_smd" | "cimis" | "pesticide" | "payroll"
+  status       String    @default("pending") // "pending" | "active" | "revoked"
+  // How the data backing this connection actually arrived (provenance). Distinguishes a
+  // true live Share-My-Data authorization from data that merely makes the farm the
+  // dashboard farm (an uploaded bill or Green Button export), so the LOA-upgrade flow can
+  // tell "already SMD-authorized" from "bill-only" instead of overloading type:"pge_smd".
+  // Mirrored by the ConnectionSource union in src/lib/onboarding/sources.ts.
+  source       String? // "smd" | "green_button" | "bill_upload" | "sample"
+  externalRef  String? // provider-side id / authorization reference
+  farmId       String
+  createdAt    DateTime  @default(now())
+  authorizedAt DateTime?
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+}
+
+model Recommendation {
+  id         String    @id @default(cuid())
+  farmId     String
+  tool       String // e.g. "pump-timing"
+  situation  String
+  action     Json // structured + displayable now, executable later
+  impactUsd  Float?
+  impactNote String?
+  severity   String    @default("info") // "info" | "watch" | "act"
+  status     String    @default("pending") // "pending" | "done" | "dismissed" | "overridden"
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  result     Json? // predicted vs actual after the loop closes
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, status])
+  @@index([farmId, tool])
+}
+
+// --- Auth.js v5 (@auth/prisma-adapter) ----------------------------------------
+// The four tables the Prisma adapter needs for sign-in (Story 5.1). One twist: the
+// adapter calls a delegate named `account` for OAuth links, but Terra ALREADY has a
+// `model Account` (the PG&E billing account, above), which we must not disturb. So the
+// OAuth-link model is named `AuthAccount` here and lib/auth.ts wraps the adapter to map
+// its `account` delegate onto `authAccount`. Session is JWT-strategy (see lib/auth.ts),
+// so the Session table is created but not populated; it stays for adapter-schema
+// completeness and a possible future switch to database sessions.
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts AuthAccount[]
+  sessions Session[]
+  farms    Farm[]
+}
+
+// OAuth account link (renamed from the adapter's default `Account` to avoid colliding
+// with the PG&E billing Account). lib/auth.ts maps the adapter's `account` -> `authAccount`.
+model AuthAccount {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

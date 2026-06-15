@@ -1,0 +1,93 @@
+// The PG&E data source boundary. v1 stands in for a live Share My Data pull by
+// reading a committed Green Button sample (zero external calls); the seam is shaped
+// so real Self-Access auth drops in later without touching any caller. Server-side
+// (fs); mirrors loadMeterReadSchedule in src/lib/greenbutton/schedule.ts.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { BayouResponses } from "@/lib/normalize";
+import { bayouConfigured, fetchBayouPull } from "@/lib/bayou/client";
+
+/** Which committed sample feed to stand in for the live pull. */
+export type SampleFeed = "onboarding-sample" | "sandhu-multi-meter" | "single-meter";
+
+const DEFAULT_FEED: SampleFeed = "onboarding-sample";
+
+/**
+ * Read a committed Green Button XML fixture by name. Resolved from the project root
+ * (process.cwd()), not import.meta.url: this runs in Next's bundled server runtime
+ * (where import.meta.url points inside .next), as well as Vitest and the tsx seed,
+ * which all run from the repo root. fixtures/ is shipped on Vercel via
+ * outputFileTracingIncludes in next.config.ts.
+ */
+export function loadSampleGreenButton(feed: SampleFeed = DEFAULT_FEED): string {
+  const path = join(process.cwd(), "fixtures", "greenbutton", `${feed}.xml`);
+  return readFileSync(path, "utf8");
+}
+
+/** What a real Share My Data authorization looks like to this seam. */
+export type GreenButtonSource = {
+  /** Provider-side authorization reference (Connection.externalRef). */
+  externalRef?: string | null;
+  /** v1 only: which committed sample to return. */
+  sampleFeed?: SampleFeed;
+};
+
+/**
+ * Fetch a farm's Green Button feed as ESPI XML. v1 returns a committed sample so
+ * the app runs with zero external calls; the return type (raw ESPI XML) is exactly
+ * what the real pull yields, so `parseGreenButton` / `importGreenButton` are unchanged.
+ *
+ * TODO: implement the real PG&E Share My Data Self-Access flow here (OAuth bearer
+ * token from the Connection, then GET the ESPI Batch/Subscription resource). Callers
+ * keep calling fetchGreenButton; only this body changes.
+ */
+export async function fetchGreenButton(
+  source: GreenButtonSource = {},
+): Promise<string> {
+  return loadSampleGreenButton(source.sampleFeed ?? DEFAULT_FEED);
+}
+
+// --- Bayou path -----------------------------------------------------------------
+// The second data source. Bayou returns JSON (customer + bills + intervals) instead
+// of ESPI XML, but the normalize layer maps both to the same NormalizedMeter shape,
+// so the importer is unchanged. v1 stands in for a live pull with the committed
+// Speculoos sample (the real 200s for customer 271489; see fixtures/bayou/README.md).
+
+/**
+ * Read the committed Bayou sample pull. Resolved from process.cwd() (not
+ * import.meta.url) for the same reason as loadSampleGreenButton: this runs in Next's
+ * bundled server runtime as well as Vitest and the tsx seed, all from the repo root.
+ * fixtures/ is shipped on Vercel via outputFileTracingIncludes in next.config.ts.
+ */
+export function loadSampleBayou(): BayouResponses {
+  const dir = join(process.cwd(), "fixtures", "bayou");
+  const read = (name: string): unknown => JSON.parse(readFileSync(join(dir, name), "utf8"));
+  return {
+    customer: read("customer.json"),
+    bills: read("bills.json"),
+    intervals: read("intervals.json"),
+  };
+}
+
+/** What a real Bayou authorization looks like to this seam. */
+export type BayouSource = {
+  /** Bayou customer id (Connection.externalRef on the real flow). */
+  customerId?: string | null;
+};
+
+/**
+ * Fetch a farm's Bayou data as the three JSON responses. With a customerId and the
+ * API configured (BAYOU_DOMAIN + BAYOU_API_KEY), this does the real v2 pull
+ * (GET /customers/{id}{,/bills,/intervals}); without either, it returns the committed
+ * Speculoos sample so tests and offline dev keep running with zero external calls.
+ * Either way the return shape is identical, so normalizeBayou / importBayou are
+ * unchanged. The async create-customer / await-readiness steps live in the connect
+ * flow (src/lib/onboarding/farm.ts); by the time this runs the data is ready to GET.
+ */
+export async function fetchBayou(source: BayouSource = {}): Promise<BayouResponses> {
+  if (source.customerId && bayouConfigured()) {
+    return fetchBayouPull(source.customerId);
+  }
+  return loadSampleBayou();
+}

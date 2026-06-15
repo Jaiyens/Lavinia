@@ -1,0 +1,99 @@
+# generated: 2026-06-08T23:32:10-0700
+# last_updated: 2026-06-09T16:30:00-0700
+# project: Terra
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-06-08T23:32:10-0700
+last_updated: 2026-06-09T00:00:00-0700
+project: Terra
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: The Reconciled Data Engine
+  epic-1: done
+  1-1-evolve-the-prisma-data-model-for-the-farm-inventory: done
+  1-2-import-the-master-spreadsheet-into-the-inventory: done
+  1-3-canonical-billing-shape-zod-extraction-contract-and-billing-tables: done
+  1-4-extract-a-scanned-bills-charge-pages: done
+  1-5-extract-nem-reconciliation-pages: done
+  1-6-normalize-and-join-extraction-to-inventory-on-sa-id-identity-checked: done
+  1-7-reconciliation-guardrail-and-honest-coverage-state: done
+  1-8-run-the-end-to-end-import-on-the-real-demo-account: done
+  epic-1-retrospective: optional
+
+  # Epic 2: The Legible Dashboard (the farm, known at a glance)
+  epic-2: done
+  2-1-design-token-system-and-base-ui-primitives: done
+  2-2-three-zone-os-shell-agent-rail-lens-toggle-and-responsive-collapse: done
+  2-3-kpi-strip-with-honest-coverage-indicator: done
+  2-4-meter-table-the-p0-lens: done
+  2-5-meter-drawer-the-shared-drill-in: done
+  2-6-rollup-and-filter: done
+  2-7-csv-export: done
+  2-8-tou-cost-chart-the-chart-lens: done
+  2-9-farm-map-the-map-lens: done
+  epic-2-retrospective: optional
+
+  # Epic 3: Find the Money (recommendations & levers)
+  epic-3: done
+  3-1-recommendation-feed-findings-rail-and-finding-card: done
+  3-2-dated-pge-tariff-fixture-and-the-rate-model: done
+  3-3-rate-optimization-lever-with-back-test-gate: done
+  3-4-solar-nem-demand-insight: done
+  3-5-billing-cycle-calendar-lens: done
+  3-6-pump-health-flag: done
+  3-7-dr-enrollment-info: done
+  epic-3-retrospective: optional
+
+  # Epic 4: Close the Loop (accuracy & realized results)
+  epic-4: done
+  4-1-bill-accuracy-verification-badge: done
+  4-2-recommendation-predicted-vs-realized-result: done
+  epic-4-retrospective: optional
+
+  # Epic 5: Get In (sign-in & connect a source)
+  epic-5: done
+  5-1-sign-in-with-google-sso-or-magic-link: done
+  5-2-connect-a-data-source-operator-operable-onboarding: done
+  5-3-tour-a-sample-demo-separation-and-connection-states: done
+  epic-5-retrospective: done
+
+  # Epic 6: Ask Almond (the farm assistant)
+  epic-6: done
+  6-1-almond-backend-farm-scoped-tool-calling-chat-api: done
+  6-2-almond-chat-ui-notion-style-launcher-and-panel: done
+  6-3-almond-polish-grounded-result-rendering-starters-and-e2e: done
+  epic-6-retrospective: optional

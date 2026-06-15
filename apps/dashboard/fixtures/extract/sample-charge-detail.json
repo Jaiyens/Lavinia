@@ -1,0 +1,20 @@
+{
+  "pageType": "per_sa_charge_detail",
+  "saId": "1007066742",
+  "meterNumber": "M-8841",
+  "growerPumpId": "P001",
+  "rateName": "AG-5B",
+  "serviceStart": "2026-02-01",
+  "serviceEnd": "2026-02-28",
+  "cycleClose": "2026-02-28",
+  "touEnergy": [
+    { "period": "Peak", "kWh": 1234.567891, "rate": 0.41327, "amountCents": 51012 },
+    { "period": "Part-Peak", "kWh": 800.0, "rate": 0.29011, "amountCents": 23209 },
+    { "period": "Off-Peak", "kWh": 4200.5, "rate": 0.18004, "amountCents": 75626 }
+  ],
+  "demandKw": 47.2,
+  "demandAmountCents": 88100,
+  "nbcLineItems": [{ "label": "PCIA", "amountCents": 4210 }],
+  "otherLineItems": [{ "label": "Customer Charge", "amountCents": 3500 }],
+  "printedTotalCents": 245657
+}

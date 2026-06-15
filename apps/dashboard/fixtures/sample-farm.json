@@ -1,0 +1,91 @@
+{
+  "$comment": "Seed input for one realistic sample farm: a Central Valley pistachio and almond operation. Relations are wired by slug (block.crop -> crop.slug, pump.blocks -> block.slug) so the seed can resolve ids at insert time. This is synthetic onboarding data, not metered usage; Green Button XML and the meter-read schedule live in their own fixtures. Never put $/kW rates here; those come from the bill/ESPI data.",
+  "farm": {
+    "name": "Sandhu Family Farms",
+    "timezone": "America/Los_Angeles"
+  },
+  "owner": {
+    "name": "Gurpreet Sandhu",
+    "role": "owner",
+    "language": "en"
+  },
+  "connection": {
+    "type": "pge_smd",
+    "status": "active",
+    "externalRef": "PGE-SMD-AUTH-7F3A2C",
+    "authorizedAt": "2026-03-15T16:00:00.000Z"
+  },
+  "crops": [
+    { "slug": "pistachio", "name": "Pistachio", "cropCoefficient": 1.13 },
+    { "slug": "almond", "name": "Almond", "cropCoefficient": 1.05 }
+  ],
+  "blocks": [
+    { "slug": "home-ranch-pistachio", "name": "Home Ranch Pistachio", "acreage": 122, "crop": "pistachio" },
+    { "slug": "north-pistachio", "name": "North Pistachio", "acreage": 96, "crop": "pistachio" },
+    { "slug": "west-pistachio", "name": "West Pistachio", "acreage": 58, "crop": "pistachio" },
+    { "slug": "river-almonds", "name": "River Almonds", "acreage": 84, "crop": "almond" },
+    { "slug": "south-almonds", "name": "South Almonds", "acreage": 110, "crop": "almond" }
+  ],
+  "pumps": [
+    {
+      "name": "Home Ranch Well",
+      "serviceId": "8590312001",
+      "meterSerial": "1010012345",
+      "rateSchedule": "AG-C",
+      "billingSerial": "MR-14",
+      "location": "Avenue 12, Madera County, CA",
+      "horsepower": 150,
+      "blocks": ["home-ranch-pistachio"]
+    },
+    {
+      "name": "North Well",
+      "serviceId": "8590312002",
+      "meterSerial": "1010012346",
+      "rateSchedule": "AG-C",
+      "billingSerial": "MR-14",
+      "location": "Road 22, Madera County, CA",
+      "horsepower": 125,
+      "blocks": ["north-pistachio"]
+    },
+    {
+      "name": "River Well",
+      "serviceId": "8590312003",
+      "meterSerial": "1010012347",
+      "rateSchedule": "AG-B",
+      "billingSerial": "MR-07",
+      "location": "Avenue 9, Madera County, CA",
+      "horsepower": 100,
+      "blocks": ["river-almonds"]
+    },
+    {
+      "name": "South Well",
+      "serviceId": "8590312004",
+      "meterSerial": "1010012348",
+      "rateSchedule": "AG-C",
+      "billingSerial": "MR-21",
+      "location": "Road 26, Madera County, CA",
+      "horsepower": 150,
+      "blocks": ["south-almonds"]
+    },
+    {
+      "name": "West Booster",
+      "serviceId": "8590312005",
+      "meterSerial": "1010012349",
+      "rateSchedule": "AG-B",
+      "billingSerial": "MR-07",
+      "location": "Avenue 15, Madera County, CA",
+      "horsepower": 75,
+      "blocks": ["west-pistachio"]
+    },
+    {
+      "name": "Shared Lift",
+      "serviceId": "8590312006",
+      "meterSerial": "1010012350",
+      "rateSchedule": "AG-B",
+      "billingSerial": "MR-21",
+      "location": "Road 24, Madera County, CA",
+      "horsepower": 100,
+      "blocks": ["river-almonds", "south-almonds"]
+    }
+  ]
+}

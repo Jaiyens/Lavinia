@@ -1,0 +1,115 @@
+{
+  "$comment": "Representative Batth Farms seed config. NOT Batth's literal export. Grounded in the documented Batth shape (CLAUDE.md): ~183 meters across ~57 PG&E accounts and 6 legal entities, two solar arrays (840 kW, 1092 kW) on NEM2, and a sprawl of legacy (AG-4/AG-5) + current (AG-A/AG-B/AG-C) rate schedules. prisma/batth-farm.ts expands this config into the full meter set, 12 months of bills per meter, and interval history for the meters that drive findings. Deterministic (fixed PRNG seed), zero external calls. Replace with the real Green Button export when it lands; the engine is unchanged.",
+  "farm": { "name": "Batth Farms", "timezone": "America/Los_Angeles" },
+  "owner": { "name": "Harbhajan Batth", "role": "owner", "language": "en" },
+  "connection": {
+    "type": "pge_smd",
+    "status": "active",
+    "externalRef": "PGE-SMD-AUTH-BATTH",
+    "authorizedAt": "2026-05-20T16:00:00.000Z"
+  },
+  "entities": [
+    "Batth Farms LLC",
+    "Batth Brothers Partnership",
+    "S & K Batth Inc",
+    "Batth Land Holdings LLC",
+    "Harbhajan Batth Trust",
+    "Sandhar-Batth Orchards LP"
+  ],
+  "crops": [
+    { "slug": "almond", "name": "Almond", "cropCoefficient": 1.05 },
+    { "slug": "pistachio", "name": "Pistachio", "cropCoefficient": 1.13 },
+    { "slug": "walnut", "name": "Walnut", "cropCoefficient": 1.1 }
+  ],
+  "ranches": [
+    { "slug": "home-ranch", "name": "Home Ranch", "acreage": 420, "crop": "almond", "entity": 0 },
+    { "slug": "avenue-7", "name": "Avenue 7", "acreage": 310, "crop": "almond", "entity": 0 },
+    { "slug": "road-22", "name": "Road 22", "acreage": 260, "crop": "pistachio", "entity": 1 },
+    { "slug": "river-block", "name": "River Block", "acreage": 280, "crop": "almond", "entity": 1 },
+    { "slug": "south-pistachio", "name": "South Pistachio", "acreage": 340, "crop": "pistachio", "entity": 2 },
+    { "slug": "westside", "name": "Westside", "acreage": 220, "crop": "almond", "entity": 2 },
+    { "slug": "north-walnuts", "name": "North Walnuts", "acreage": 190, "crop": "walnut", "entity": 3 },
+    { "slug": "avenue-15", "name": "Avenue 15", "acreage": 300, "crop": "almond", "entity": 3 },
+    { "slug": "gravel-pit", "name": "Gravel Pit Ranch", "acreage": 150, "crop": "pistachio", "entity": 4 },
+    { "slug": "dairy-field", "name": "Dairy Field", "acreage": 175, "crop": "almond", "entity": 4 },
+    { "slug": "lateral-3", "name": "Lateral 3", "acreage": 260, "crop": "almond", "entity": 5 },
+    { "slug": "old-vineyard", "name": "Old Vineyard", "acreage": 210, "crop": "walnut", "entity": 5 }
+  ],
+  "meterCount": 183,
+  "accountCount": 57,
+  "rateMix": { "AG-C": 74, "AG-B": 48, "AG-A": 20, "AG-4": 16, "AG-5": 10, "B-1": 15 },
+  "demoMonths": 12,
+  "special": [
+    {
+      "role": "hero",
+      "name": "Lateral 3 Booster",
+      "ranch": "lateral-3",
+      "rateSchedule": "AG-C",
+      "horsepower": 150,
+      "gpm": 1800,
+      "profile": "low_lf"
+    },
+    {
+      "role": "legacy-misrate",
+      "name": "Old Vineyard Well",
+      "ranch": "old-vineyard",
+      "rateSchedule": "AG-5",
+      "horsepower": 125,
+      "gpm": 1500,
+      "profile": "low_lf"
+    },
+    {
+      "role": "misrate",
+      "name": "Gravel Pit Well 2",
+      "ranch": "gravel-pit",
+      "rateSchedule": "AG-B",
+      "horsepower": 100,
+      "gpm": 1200,
+      "profile": "low_lf"
+    },
+    {
+      "role": "solar",
+      "name": "Home Ranch Solar Well",
+      "ranch": "home-ranch",
+      "rateSchedule": "AG-B",
+      "horsepower": 200,
+      "gpm": 2400,
+      "profile": "solar",
+      "solarKw": 840,
+      "nemType": "nem2",
+      "trueUpMonth": 4
+    },
+    {
+      "role": "solar",
+      "name": "South Pistachio Solar Well",
+      "ranch": "south-pistachio",
+      "rateSchedule": "AG-C",
+      "horsepower": 250,
+      "gpm": 3000,
+      "profile": "solar",
+      "solarKw": 1092,
+      "nemType": "nem2",
+      "trueUpMonth": 9
+    },
+    {
+      "role": "demand-spike",
+      "name": "Westside Pump 17",
+      "ranch": "westside",
+      "rateSchedule": "AG-B",
+      "horsepower": 180,
+      "gpm": 2000,
+      "profile": "steady",
+      "spike": { "month1": 7, "day": 16, "factor": 1.9 }
+    },
+    {
+      "role": "bill-audit",
+      "name": "Dairy Field Pump 4",
+      "ranch": "dairy-field",
+      "rateSchedule": "AG-A",
+      "horsepower": 90,
+      "gpm": 1100,
+      "profile": "low_lf",
+      "inflate": { "month1": 8, "factor": 1.35 }
+    }
+  ]
+}

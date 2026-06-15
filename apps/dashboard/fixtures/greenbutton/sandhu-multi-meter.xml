@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample PG&E Share My Data (Green Button / ESPI) export for ONE account holding
+  THREE service IDs (a multi-meter account): Sandhu Family Farms' Home Ranch Well,
+  North Well, and River Well. Built to the published NAESB ESPI / Atom schema so
+  the parser is unchanged when real Self-Access data flows later.
+
+  Structure: an Atom <feed> of <entry> elements, each wrapping one ESPI resource
+  in <content>, linked by <link rel="self|up|related"> hrefs under
+  .../UsagePoint/{serviceId}/... paths. Per UsagePoint: one MeterReading + one
+  ReadingType (units), two IntervalBlocks (one per billing cycle of 15-minute
+  IntervalReadings), two UsageSummary entries (tariff + demand charge per cycle),
+  and one ServiceLocation (address).
+
+  Conventions (see fixtures/greenbutton/README.md):
+  - Interval <value> is energy in the ReadingType's uom (72 = Wh) scaled by
+    powerOfTenMultiplier: kWh = value * 10^mult / 1000. Home Ranch and North use
+    mult 0 (Wh); River uses mult 3 (kWh) to exercise the scaler.
+  - Monetary fields (billLastPeriod, LineItem amount) are in 1/100,000 of the
+    currency: 201600000 = $2,016.00.
+  - Demand charge = LineItems whose note matches /demand/i. AG-C cycles carry both
+    a Maximum Demand Charge and a Summer Peak Demand Charge; AG-B carries only the
+    Maximum Demand Charge (AG-C adds the summer peak demand charge).
+  - Interval series are abbreviated to a representative afternoon cluster per cycle
+    with one engineered peak, so tests assert exact kW. A real feed has ~2,880
+    intervals per cycle; the parser handles any count.
+-->
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:espi="http://naesb.org/espi">
+  <id>urn:uuid:6b3f9c20-0001-4a00-9f00-sandhu-multi</id>
+  <title>Green Button Usage Feed - Sandhu Family Farms</title>
+  <updated>2026-07-16T08:00:00Z</updated>
+  <link rel="self" href="https://api.pge.com/GreenButtonConnect/espi/1_1/resource/Batch/Subscription/SUB-7F3A2C"/>
+
+  <!-- Local time parameters (DST rules); the parser ignores resources it doesn't model. -->
+  <entry>
+    <id>urn:uuid:6b3f9c20-1000-4a00-9f00-localtime</id>
+    <link rel="self" href="/espi/1_1/resource/LocalTimeParameters/01"/>
+    <title>Pacific</title>
+    <content>
+      <espi:LocalTimeParameters>
+        <espi:dstEndRule>B40E2000</espi:dstEndRule>
+        <espi:dstOffset>3600</espi:dstOffset>
+        <espi:dstStartRule>360E2000</espi:dstStartRule>
+        <espi:tzOffset>-28800</espi:tzOffset>
+      </espi:LocalTimeParameters>
+    </content>
+  </entry>
+
+  <!-- ============================ Home Ranch Well : 8590312001 : AG-C ============================ -->
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-up01</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/UsageSummary"/>
+    <title>Home Ranch Well</title>
+    <content>
+      <espi:UsagePoint>
+        <espi:ServiceCategory>
+          <espi:kind>0</espi:kind>
+        </espi:ServiceCategory>
+      </espi:UsagePoint>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-loc01</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail>
+            <espi:number>16400</espi:number>
+            <espi:name>Avenue 12</espi:name>
+          </espi:streetDetail>
+          <espi:townDetail>
+            <espi:name>Madera</espi:name>
+            <espi:county>Madera</espi:county>
+            <espi:stateOrProvince>CA</espi:stateOrProvince>
+            <espi:country>US</espi:country>
+          </espi:townDetail>
+          <espi:postalCode>93637</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-mr01</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01"/>
+    <link rel="up" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01/ReadingType/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01/IntervalBlock"/>
+    <title>Demand Interval</title>
+    <content>
+      <espi:MeterReading/>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-rt01</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content>
+      <espi:ReadingType>
+        <espi:accumulationBehaviour>4</espi:accumulationBehaviour>
+        <espi:commodity>1</espi:commodity>
+        <espi:flowDirection>1</espi:flowDirection>
+        <espi:intervalLength>900</espi:intervalLength>
+        <espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier>
+        <espi:uom>72</espi:uom>
+      </espi:ReadingType>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-ib01a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778803200</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780437600</espi:start></espi:timePeriod>
+          <espi:value>22000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780438500</espi:start></espi:timePeriod>
+          <espi:value>25000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780439400</espi:start></espi:timePeriod>
+          <espi:value>28000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780440300</espi:start></espi:timePeriod>
+          <espi:value>26000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780441200</espi:start></espi:timePeriod>
+          <espi:value>20000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780442100</espi:start></espi:timePeriod>
+          <espi:value>15000</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-ib01b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01/IntervalBlock/02"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312001/MeterReading/01"/>
+    <title>Cycle closing 2026-07-15</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1781308800</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782943200</espi:start></espi:timePeriod>
+          <espi:value>30000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782944100</espi:start></espi:timePeriod>
+          <espi:value>34500</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782945000</espi:start></espi:timePeriod>
+          <espi:value>32000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782945900</espi:start></espi:timePeriod>
+          <espi:value>25000</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-us01a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778803200</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>854050000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>201600000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Summer Peak Demand Charge</espi:note>
+          <espi:amount>126000000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2001-4a00-9f00-us01b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312001/UsageSummary/02"/>
+    <title>Bill closing 2026-07-15</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1781308800</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>998000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>248400000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Summer Peak Demand Charge</espi:note>
+          <espi:amount>172500000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+
+  <!-- ============================ North Well : 8590312002 : AG-C ============================ -->
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-up02</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002"/>
+    <title>North Well</title>
+    <content>
+      <espi:UsagePoint>
+        <espi:ServiceCategory>
+          <espi:kind>0</espi:kind>
+        </espi:ServiceCategory>
+      </espi:UsagePoint>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-loc02</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail>
+            <espi:number>22150</espi:number>
+            <espi:name>Road 22</espi:name>
+          </espi:streetDetail>
+          <espi:townDetail>
+            <espi:name>Madera</espi:name>
+            <espi:county>Madera</espi:county>
+            <espi:stateOrProvince>CA</espi:stateOrProvince>
+            <espi:country>US</espi:country>
+          </espi:townDetail>
+          <espi:postalCode>93638</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-mr02</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content>
+      <espi:MeterReading/>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-rt02</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content>
+      <espi:ReadingType>
+        <espi:intervalLength>900</espi:intervalLength>
+        <espi:powerOfTenMultiplier>0</espi:powerOfTenMultiplier>
+        <espi:uom>72</espi:uom>
+      </espi:ReadingType>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-ib02a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01"/>
+    <title>Cycle closing 2026-06-12</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778803200</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780437600</espi:start></espi:timePeriod>
+          <espi:value>20000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780438500</espi:start></espi:timePeriod>
+          <espi:value>24000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780439400</espi:start></espi:timePeriod>
+          <espi:value>22000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780440300</espi:start></espi:timePeriod>
+          <espi:value>18000</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-ib02b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01/IntervalBlock/02"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312002/MeterReading/01"/>
+    <title>Cycle closing 2026-07-15</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1781308800</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782943200</espi:start></espi:timePeriod>
+          <espi:value>22000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782944100</espi:start></espi:timePeriod>
+          <espi:value>26000</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782945000</espi:start></espi:timePeriod>
+          <espi:value>24000</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-us02a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/UsageSummary/01"/>
+    <title>Bill closing 2026-06-12</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778803200</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>742000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>172800000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Summer Peak Demand Charge</espi:note>
+          <espi:amount>108000000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2002-4a00-9f00-us02b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312002/UsageSummary/02"/>
+    <title>Bill closing 2026-07-15</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1781308800</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>798000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-C</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>187200000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Summer Peak Demand Charge</espi:note>
+          <espi:amount>117000000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+
+  <!-- ============================ River Well : 8590312003 : AG-B (mult 3) ============================ -->
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-up03</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003"/>
+    <title>River Well</title>
+    <content>
+      <espi:UsagePoint>
+        <espi:ServiceCategory>
+          <espi:kind>0</espi:kind>
+        </espi:ServiceCategory>
+      </espi:UsagePoint>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-loc03</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/ServiceLocation/01"/>
+    <title>Service Location</title>
+    <content>
+      <espi:ServiceLocation>
+        <espi:mainAddress>
+          <espi:streetDetail>
+            <espi:number>9300</espi:number>
+            <espi:name>Avenue 9</espi:name>
+          </espi:streetDetail>
+          <espi:townDetail>
+            <espi:name>Madera</espi:name>
+            <espi:county>Madera</espi:county>
+            <espi:stateOrProvince>CA</espi:stateOrProvince>
+            <espi:country>US</espi:country>
+          </espi:townDetail>
+          <espi:postalCode>93637</espi:postalCode>
+        </espi:mainAddress>
+      </espi:ServiceLocation>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-mr03</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01/ReadingType/01"/>
+    <title>Demand Interval</title>
+    <content>
+      <espi:MeterReading/>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-rt03</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01/ReadingType/01"/>
+    <title>kWh</title>
+    <content>
+      <espi:ReadingType>
+        <espi:intervalLength>900</espi:intervalLength>
+        <espi:powerOfTenMultiplier>3</espi:powerOfTenMultiplier>
+        <espi:uom>72</espi:uom>
+      </espi:ReadingType>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-ib03a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01/IntervalBlock/01"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01"/>
+    <title>Cycle closing 2026-06-05</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778198400</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780005600</espi:start></espi:timePeriod>
+          <espi:value>14</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780006500</espi:start></espi:timePeriod>
+          <espi:value>18</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1780007400</espi:start></espi:timePeriod>
+          <espi:value>16</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-ib03b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01/IntervalBlock/02"/>
+    <link rel="related" href="/espi/1_1/resource/UsagePoint/8590312003/MeterReading/01"/>
+    <title>Cycle closing 2026-07-08</title>
+    <content>
+      <espi:IntervalBlock>
+        <espi:interval>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1780704000</espi:start>
+        </espi:interval>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782424800</espi:start></espi:timePeriod>
+          <espi:value>17</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782425700</espi:start></espi:timePeriod>
+          <espi:value>20</espi:value>
+        </espi:IntervalReading>
+        <espi:IntervalReading>
+          <espi:timePeriod><espi:duration>900</espi:duration><espi:start>1782426600</espi:start></espi:timePeriod>
+          <espi:value>15</espi:value>
+        </espi:IntervalReading>
+      </espi:IntervalBlock>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-us03a</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/UsageSummary/01"/>
+    <title>Bill closing 2026-06-05</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2419200</espi:duration>
+          <espi:start>1778198400</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>521000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-B</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>122400000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+  <entry>
+    <id>urn:uuid:6b3f9c20-2003-4a00-9f00-us03b</id>
+    <link rel="self" href="/espi/1_1/resource/UsagePoint/8590312003/UsageSummary/02"/>
+    <title>Bill closing 2026-07-08</title>
+    <content>
+      <espi:UsageSummary>
+        <espi:billingPeriod>
+          <espi:duration>2764800</espi:duration>
+          <espi:start>1780704000</espi:start>
+        </espi:billingPeriod>
+        <espi:billLastPeriod>564000000</espi:billLastPeriod>
+        <espi:tariffProfile>AG-B</espi:tariffProfile>
+        <espi:costAdditionalDetailLastPeriod>
+          <espi:itemKind>2</espi:itemKind>
+          <espi:note>Maximum Demand Charge</espi:note>
+          <espi:amount>136000000</espi:amount>
+        </espi:costAdditionalDetailLastPeriod>
+      </espi:UsageSummary>
+    </content>
+  </entry>
+</feed>

@@ -1,0 +1,64 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# prisma local sqlite db
+/prisma/dev.db
+/prisma/dev.db-journal
+# throwaway db for the playwright e2e run
+/prisma/e2e.db
+/prisma/e2e.db-journal
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Grower bill PDFs contain PII (name, address, account #) - never commit the raw bill
+docs/*.pdf
+
+# Real grower reconciled fixture: contains the real account #, charges, and business-name
+# descriptors (PII). Kept on disk for local dev (db:import-fixture); a scrubbed/synthetic
+# fixture is the follow-up for shared CI. Regenerate with `npm run import:demo`.
+fixtures/extract/batth-account-*.json
+BatthFarmAccountPdf.pdf
