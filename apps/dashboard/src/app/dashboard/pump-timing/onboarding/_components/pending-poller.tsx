@@ -1,23 +1,23 @@
 "use client";
 
-// The waiting screen's engine. After the grower signs in to PG&E, Bayou pulls their
-// bills and usage in the background (seconds to a long while on a big first pull). This
-// polls the connection state every few seconds, shows honest live progress (how many
+// The waiting screen's engine. After the grower signs in to PG&E, the provider pulls
+// their bills and usage in the background (seconds to a long while on a big first pull).
+// This polls the connection state every few seconds, shows honest live progress (how many
 // bills have been read of the total), and once everything is ready imports it and moves
-// on to the results screen. If the pull stalls on Bayou's side (a slow interval pull or
-// a bill parse issue), the grower can "Continue with what's ready" to import what has
-// landed so far instead of waiting. Leaving the page is safe: the pull continues on
-// Bayou's side, and returning resumes the poll (or use the Resume banner on Connect).
+// on to the results screen. If the pull stalls on the provider's side, the grower can
+// "Continue with what's ready" to import what has landed so far instead of waiting.
+// Leaving the page is safe: the pull continues, and returning resumes the poll (or use
+// the Resume banner on Connect). This legacy step-list is superseded by the reveal flow.
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import type { BayouReadiness } from "@/lib/onboarding/farm";
+import type { Readiness } from "@/lib/onboarding/farm";
 import {
-  bayouStatusAction,
+  connectionStatusAction,
   continueWithReadyAction,
-  finishBayouAction,
+  finishConnectionAction,
 } from "../actions";
 
 const POLL_MS = 5000;
@@ -33,7 +33,7 @@ type Step = {
 
 export function PendingPoller({ farmId }: { farmId: string }) {
   const c = en.onboarding.pending;
-  const [status, setStatus] = useState<BayouReadiness | null>(null);
+  const [status, setStatus] = useState<Readiness | null>(null);
   const [importing, setImporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [slow, setSlow] = useState(false);
@@ -49,7 +49,7 @@ export function PendingPoller({ farmId }: { farmId: string }) {
     async function tick() {
       if (!active) return;
       try {
-        const s = await bayouStatusAction(farmId);
+        const s = await connectionStatusAction(farmId);
         if (!active) return;
         setStatus(s);
         setSlow(Date.now() - startedAt.current > SLOW_AFTER_MS);
@@ -57,7 +57,7 @@ export function PendingPoller({ farmId }: { farmId: string }) {
           setImporting(true);
           // Redirects to the results screen on success; false means a transient
           // not-ready, so keep polling.
-          const ok = await finishBayouAction(farmId);
+          const ok = await finishConnectionAction(farmId);
           if (!active) return;
           if (!ok) {
             setImporting(false);

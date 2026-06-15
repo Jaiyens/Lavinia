@@ -9,18 +9,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
-  type BayouReadiness,
+  type Readiness,
   type RevealCounts,
-  bayouReadiness,
-  bayouReveal,
   connectGreenButtonUpload,
   connectManual,
   connectSpreadsheet,
   connectSampleFeed,
-  finishBayouConnection,
+  finishPgeConnection,
   parseConfirmationPayload,
+  pgeReadiness,
+  pgeReveal,
   saveConfirmation,
-  startBayouConnection,
+  startPgeConnection,
 } from "@/lib/onboarding/farm";
 import { runEngines } from "@/lib/recommendations/run";
 import { topFinding } from "@/lib/recommendations/top-finding";
@@ -109,35 +109,36 @@ export async function connectSpreadsheetAction(
   redirect(`${ONBOARDING}/confirm?farm=${farmId}`);
 }
 
-// --- the real PG&E-via-Bayou flow ----------------------------------------------
+// --- the live PG&E connect flow (UtilityAPI by default; Bayou behind PGE_PROVIDER) ---
 
-/** Success carries what the client needs to render the onboarding form; failure
- * carries the real reason (e.g. a bad key or wrong Bayou environment) so the UI can
+/** Success carries what the client needs to open the authorization page; failure
+ * carries the real reason (e.g. a missing token or wrong environment) so the UI can
  * show it instead of a generic message. */
-export type StartBayouState =
+export type StartConnectionState =
   | {
       ok: true;
       farmId: string;
-      onboardingToken: string;
-      onboardingLink: string;
-      /** True when an existing account's session was reused: skip the login form. */
+      /** Hosted authorization page to open (UtilityAPI form, or Bayou's hosted link). */
+      redirectUrl: string;
+      /** True when an existing session was reused (Bayou): skip the sign-in page. */
       alreadyAuthenticated: boolean;
     }
   | { ok: false; error: string };
 
 /**
- * Start a live PG&E connection. On success, returns the customer + onboarding token
- * the client uses to render Bayou's login form (the grower enters credentials there,
- * never in Terra). On failure, returns the error message rather than throwing, so the
- * connect screen can surface it (thrown server-action errors get sanitized away).
+ * Start a live PG&E connection with the configured provider. On success, returns the
+ * hosted authorization url the client opens (the grower signs in to PG&E there, never in
+ * Terra). On failure, returns the error message rather than throwing, so the connect
+ * screen can surface it (thrown server-action errors get sanitized away).
  */
-export async function startBayouAction(
+export async function startConnectionAction(
   opts: { forceNew?: boolean } = {},
-): Promise<StartBayouState> {
+): Promise<StartConnectionState> {
   try {
-    const { farmId, onboardingToken, onboardingLink, alreadyAuthenticated } =
-      await startBayouConnection(prisma, { forceNew: opts.forceNew });
-    return { ok: true, farmId, onboardingToken, onboardingLink, alreadyAuthenticated };
+    const { farmId, redirectUrl, alreadyAuthenticated } = await startPgeConnection(prisma, {
+      forceNew: opts.forceNew,
+    });
+    return { ok: true, farmId, redirectUrl, alreadyAuthenticated };
   } catch (e) {
     return {
       ok: false,
@@ -146,9 +147,9 @@ export async function startBayouAction(
   }
 }
 
-/** Poll where a farm's Bayou pull stands (read-only). The pending screen calls this. */
-export async function bayouStatusAction(farmId: string): Promise<BayouReadiness> {
-  return bayouReadiness(prisma, farmId);
+/** Poll where a farm's pull stands (read-only). The legacy pending screen calls this. */
+export async function connectionStatusAction(farmId: string): Promise<Readiness> {
+  return pgeReadiness(prisma, farmId);
 }
 
 /**
@@ -156,8 +157,8 @@ export async function bayouStatusAction(farmId: string): Promise<BayouReadiness>
  * screen has findings, then show the results screen. A no-op (returns false) if the
  * data is not ready yet, so the poller keeps waiting.
  */
-export async function finishBayouAction(farmId: string): Promise<boolean> {
-  const result = await finishBayouConnection(prisma, farmId);
+export async function finishConnectionAction(farmId: string): Promise<boolean> {
+  const result = await finishPgeConnection(prisma, farmId);
   if (!result) return false;
   await runEngines(prisma, farmId);
   // Bust the client router cache so the dashboard shows this farm, not a stale one.
@@ -166,12 +167,12 @@ export async function finishBayouAction(farmId: string): Promise<boolean> {
 }
 
 /**
- * "Continue with what's ready": import whatever Bayou has so far (force), so a slow
- * interval pull or a bill parse issue on Bayou's side does not strand the grower on the
- * waiting screen. Runs the engines and lands on the results screen.
+ * "Continue with what's ready": import whatever the provider has so far (force), so a
+ * slow collection does not strand the grower on the waiting screen. Runs the engines and
+ * lands on the results screen.
  */
 export async function continueWithReadyAction(farmId: string): Promise<void> {
-  const result = await finishBayouConnection(prisma, farmId, { force: true });
+  const result = await finishPgeConnection(prisma, farmId, { force: true });
   if (result) await runEngines(prisma, farmId);
   revalidatePath("/dashboard/pump-timing");
   redirect(`${ONBOARDING}/connected?farm=${farmId}`);
@@ -180,8 +181,8 @@ export async function continueWithReadyAction(farmId: string): Promise<void> {
 // --- the rebuilt reveal -> finding -> save flow ---------------------------------
 
 /** Poll the live counts for the reveal screen (accounts, meters, bills). Read-only. */
-export async function bayouRevealAction(farmId: string): Promise<RevealCounts> {
-  return bayouReveal(prisma, farmId);
+export async function connectionRevealAction(farmId: string): Promise<RevealCounts> {
+  return pgeReveal(prisma, farmId);
 }
 
 /** The reveal's finding payload: the dollar hero, plus whether it is a badged sample. */
@@ -230,14 +231,14 @@ async function sampleFinding(): Promise<FindingView | null> {
  * finding screen. Imports + runs the engines (idempotent), then reads the farm's own top
  * finding; when there is none yet, falls back to a badged sample finding so the screen is
  * never empty. Returns null when the data is not ready and not forced, so the reveal
- * keeps polling. Unlike finishBayouAction it does NOT redirect: the reveal machine
+ * keeps polling. Unlike finishConnectionAction it does NOT redirect: the reveal machine
  * cross-fades reveal -> finding in place.
  */
 export async function finishRevealAction(
   farmId: string,
   opts?: { force?: boolean },
 ): Promise<RevealFinish | null> {
-  const result = await finishBayouConnection(
+  const result = await finishPgeConnection(
     prisma,
     farmId,
     opts?.force ? { force: true } : {},

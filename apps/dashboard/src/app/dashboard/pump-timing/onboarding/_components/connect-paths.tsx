@@ -11,7 +11,7 @@ import {
   connectSpreadsheetAction,
   scanBillAction,
 } from "../actions";
-import { BayouConnect } from "./bayou-connect";
+import { UtilityApiConnect } from "./utilityapi-connect";
 import { SubmitButton } from "./submit-button";
 import type { BillScanResult } from "@/lib/onboarding/vision";
 
@@ -104,7 +104,7 @@ export function ConnectPaths() {
   return (
     <div className="space-y-8">
       {/* The one primary action: connect a live PG&E account. */}
-      <BayouConnect />
+      <UtilityApiConnect />
 
       {/* Bulk path: upload a real PG&E Green Button export. One file can carry every
           account and meter, so this is how a large operation loads everything at once. */}

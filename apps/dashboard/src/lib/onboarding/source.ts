@@ -5,8 +5,14 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { BayouResponses } from "@/lib/normalize";
+import type { BayouResponses, UtilityApiResponses } from "@/lib/normalize";
 import { bayouConfigured, fetchBayouPull } from "@/lib/bayou/client";
+import {
+  getUtilityApiGreenButton,
+  getUtilityApiMetersRaw,
+  meterUidsFromRaw,
+  utilityApiConfigured,
+} from "@/lib/utilityapi/client";
 
 /** Which committed sample feed to stand in for the live pull. */
 export type SampleFeed = "onboarding-sample" | "sandhu-multi-meter" | "single-meter";
@@ -38,9 +44,13 @@ export type GreenButtonSource = {
  * the app runs with zero external calls; the return type (raw ESPI XML) is exactly
  * what the real pull yields, so `parseGreenButton` / `importGreenButton` are unchanged.
  *
- * TODO: implement the real PG&E Share My Data Self-Access flow here (OAuth bearer
- * token from the Connection, then GET the ESPI Batch/Subscription resource). Callers
- * keep calling fetchGreenButton; only this body changes.
+ * The live PG&E connect now flows through UtilityAPI (see fetchUtilityApi below), which
+ * already returns Green Button XML through this same normalizeEspi parser. This seam is
+ * the future home of a DIRECT PG&E Share My Data integration (own the OAuth pipe, no
+ * per-meter aggregator cost): implement the real Self-Access flow here (OAuth bearer
+ * token from the Connection, then GET the ESPI Batch/Subscription resource) and the
+ * importer/normalizer are unchanged. Deferred until the X.509 + certification burden is
+ * justified; callers keep calling fetchGreenButton, only this body changes.
  */
 export async function fetchGreenButton(
   source: GreenButtonSource = {},
@@ -90,4 +100,53 @@ export async function fetchBayou(source: BayouSource = {}): Promise<BayouRespons
     return fetchBayouPull(source.customerId);
   }
   return loadSampleBayou();
+}
+
+// --- UtilityAPI path ------------------------------------------------------------
+// The live PG&E connect that replaced Bayou. UtilityAPI returns a native /meters JSON
+// (identity + account numbers + gas) plus a Green Button (ESPI XML) export per meter
+// (intervals + billing); the hybrid normalizer (normalizeUtilityApi) merges them, so the
+// importer is unchanged. v1 stands in for a live pull with a committed multi-account
+// sample (fixtures/utilityapi/meters.json + the reused onboarding Green Button XML).
+
+/**
+ * Read the committed UtilityAPI sample pull: the multi-account /meters JSON plus the
+ * shared onboarding Green Button XML as the per-meter interval/billing feed. Resolved
+ * from process.cwd() (not import.meta.url) for the same reason as loadSampleGreenButton.
+ */
+export function loadSampleUtilityApi(): UtilityApiResponses {
+  const meters: unknown = JSON.parse(
+    readFileSync(join(process.cwd(), "fixtures", "utilityapi", "meters.json"), "utf8"),
+  );
+  return { meters, greenButtonXml: loadSampleGreenButton("onboarding-sample") };
+}
+
+/** What a real UtilityAPI authorization looks like to this seam. */
+export type UtilityApiSource = {
+  /** Authorization uids for the farm's form (resolved from the Connection's form uid). */
+  authUids?: string[];
+};
+
+/**
+ * Fetch a farm's UtilityAPI data: the native /meters body and a Green Button export per
+ * meter. With authorization uids and a token (UTILITYAPI_TOKEN), this does the real v2
+ * pull; without either, it returns the committed multi-account sample so tests and
+ * offline dev keep running with zero external calls. Either way the return shape is
+ * identical, so normalizeUtilityApi / importUtilityApi are unchanged. The async
+ * create-form / await-authorization steps live in the connect flow
+ * (src/lib/onboarding/farm.ts); by the time this runs the data is ready to GET.
+ */
+export async function fetchUtilityApi(
+  source: UtilityApiSource = {},
+): Promise<UtilityApiResponses> {
+  const authUids = source.authUids ?? [];
+  if (authUids.length > 0 && utilityApiConfigured()) {
+    const meters = await getUtilityApiMetersRaw(authUids);
+    const meterUids = meterUidsFromRaw(meters);
+    const greenButtonXml = await Promise.all(
+      meterUids.map((uid) => getUtilityApiGreenButton(uid)),
+    );
+    return { meters, greenButtonXml };
+  }
+  return loadSampleUtilityApi();
 }

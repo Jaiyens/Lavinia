@@ -69,7 +69,7 @@ export function Header() {
                 Multi-Zone). Uses the site's liquid-glass button and adapts to the
                 header's light/dark scroll state like the rest of the nav. */}
             <GlassButton
-              href="/dashboard"
+              href="https://app.tryterra.ai"
               tone="brand"
               scrim={!onLight}
               textClass={onLight ? "text-ink" : "text-white"}
@@ -116,7 +116,7 @@ export function Header() {
                 </a>
               ))}
               <a
-                href="/dashboard"
+                href="https://app.tryterra.ai"
                 onClick={() => setOpen(false)}
                 className="press mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-accent-500 px-5 py-3 text-sm font-medium text-white shadow-[0_8px_20px_-8px_rgba(9,40,60,0.35)]"
               >

@@ -1,0 +1,89 @@
+{
+  "meters": [
+    {
+      "uid": "5500001",
+      "authorization_uid": "9900001",
+      "status": "updated",
+      "is_activated": true,
+      "is_archived": false,
+      "bill_count": 1,
+      "interval_count": 96,
+      "base": {
+        "service_identifier": "7720450001",
+        "meter_numbers": ["1010100001"],
+        "billing_account": "3007654001",
+        "service_class": "electric",
+        "service_tariff": "AG-C",
+        "service_address": "13200 Avenue 24, Chowchilla, CA 93610"
+      }
+    },
+    {
+      "uid": "5500002",
+      "authorization_uid": "9900002",
+      "status": "updated",
+      "is_activated": true,
+      "is_archived": false,
+      "bill_count": 1,
+      "interval_count": 96,
+      "base": {
+        "service_identifier": "7720450002",
+        "meter_numbers": ["1010100002"],
+        "billing_account": "3007654002",
+        "service_class": "electric",
+        "service_tariff": "AG-C",
+        "service_address": "13540 Road 26, Chowchilla, CA 93610"
+      }
+    },
+    {
+      "uid": "5500003",
+      "authorization_uid": "9900002",
+      "status": "updated",
+      "is_activated": true,
+      "is_archived": false,
+      "bill_count": 1,
+      "interval_count": 96,
+      "base": {
+        "service_identifier": "7720450003",
+        "meter_numbers": ["1010100003"],
+        "billing_account": "3007654002",
+        "service_class": "electric",
+        "service_tariff": "AG-B",
+        "service_address": "13980 Road 26, Chowchilla, CA 93610"
+      }
+    },
+    {
+      "uid": "5500004",
+      "authorization_uid": "9900003",
+      "status": "updated",
+      "is_activated": true,
+      "is_archived": false,
+      "bill_count": 1,
+      "interval_count": 96,
+      "base": {
+        "service_identifier": "7720450004",
+        "meter_numbers": ["1010100004"],
+        "billing_account": "3007654003",
+        "service_class": "electric",
+        "service_tariff": "B-1",
+        "service_address": "100 Shop Road, Chowchilla, CA 93610"
+      }
+    },
+    {
+      "uid": "5500090",
+      "authorization_uid": "9900003",
+      "status": "updated",
+      "is_activated": true,
+      "is_archived": false,
+      "bill_count": 1,
+      "interval_count": 0,
+      "base": {
+        "service_identifier": "7720450090",
+        "meter_numbers": ["G010100090"],
+        "billing_account": "3007654003",
+        "service_class": "gas",
+        "service_tariff": "G-NR1",
+        "service_address": "100 Shop Road, Chowchilla, CA 93610"
+      }
+    }
+  ]
+}

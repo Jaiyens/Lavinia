@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { resumableBayouFarm } from "@/lib/onboarding/farm";
+import { resumablePgeFarm } from "@/lib/onboarding/farm";
 import { Hook } from "./_components/hook";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingConnectPage() {
-  const resume = await resumableBayouFarm(prisma);
+  const resume = await resumablePgeFarm(prisma);
   return (
     <main className="grain min-h-[100svh]">
       <Hook resumeFarmId={resume?.farmId ?? null} />

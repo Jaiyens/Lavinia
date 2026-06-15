@@ -15,10 +15,17 @@ import {
   getBayouCustomer,
   getBayouCustomerRaw,
 } from "@/lib/bayou/client";
+import {
+  createUtilityApiForm,
+  getUtilityApiAuthorizations,
+  getUtilityApiMetersRaw,
+  readyCountsFromRaw,
+  utilityApiConfigured,
+} from "@/lib/utilityapi/client";
 import { classifyMeter, meterSignature } from "@/lib/energy";
 import type { IntervalReading } from "@/lib/energy/types";
-import { importBayou, importGreenButton } from "@/lib/greenbutton/import";
-import { normalizeBayou } from "@/lib/normalize";
+import { importBayou, importGreenButton, importUtilityApi } from "@/lib/greenbutton/import";
+import { countUtilityApiMeters, normalizeBayou, normalizeUtilityApi } from "@/lib/normalize";
 import type { NormalizedMeter } from "@/lib/normalize";
 import type { PowerSource, PumpKind } from "@/lib/recommendations/types";
 import {
@@ -31,7 +38,9 @@ import { geocodeAddress } from "./geocode";
 import {
   fetchBayou,
   fetchGreenButton,
+  fetchUtilityApi,
   loadSampleBayou,
+  loadSampleUtilityApi,
   type SampleFeed,
 } from "./source";
 
@@ -603,10 +612,23 @@ export type BayouReadiness = {
   bills: BayouBillCounts | null;
 };
 
+/** Provider-neutral readiness (UtilityAPI and Bayou report the same shape). */
+export type Readiness = BayouReadiness;
+
 /** A numeric externalRef is a live Bayou customer id; sentinels like "BAYOU-271489"
  * or "PGE-SMD-SAMPLE" mean the sample feed. */
 function liveCustomerId(externalRef: string | null): string | null {
   return externalRef && /^\d+$/.test(externalRef) ? externalRef : null;
+}
+
+/** Sample/sentinel externalRefs (not a live provider id): these mean the fixtures. */
+const SAMPLE_REFS = new Set(["PGE-SMD-SAMPLE", "PGE-GREENBUTTON", "PGE-SPREADSHEET"]);
+
+/** A live UtilityAPI authorization-form uid, or null for the sample sentinels. The form
+ * uid is stored as Connection.externalRef by startUtilityApiConnection. */
+function liveFormUid(externalRef: string | null): string | null {
+  if (!externalRef || SAMPLE_REFS.has(externalRef)) return null;
+  return externalRef;
 }
 
 async function pgeConnection(prisma: PrismaClient, farmId: string) {
@@ -835,6 +857,288 @@ export async function resumableBayouFarm(
   }
 }
 
+// --- the live grower flow through UtilityAPI ------------------------------------
+// UtilityAPI replaced Bayou as the live connect: one authorization form returns many
+// authorizations (one per PG&E account), so a multi-account operation connects in one
+// pass. The lifecycle mirrors Bayou's (start -> poll readiness -> reveal counts ->
+// finish import) and reuses every non-provider helper (createFarmFromConnection,
+// classifyFarmPumps, summarize, countMeters, the RevealCounts/Readiness shapes).
+
+export type StartUtilityApiResult = {
+  farmId: string;
+  /** Authorization-form uid (also stored as Connection.externalRef). */
+  formUid: string;
+  /** Hosted authorization page the grower opens to pick accounts (no JS embed). */
+  formUrl: string;
+};
+
+/**
+ * Start a live PG&E connection through UtilityAPI: create an authorization form, a farm
+ * with a pending PG&E connection whose externalRef is the form uid, and return the
+ * hosted form url the client opens. The grower signs in to PG&E and selects accounts on
+ * UtilityAPI's page; credentials never touch Terra. Requires UTILITYAPI_TOKEN.
+ */
+export async function startUtilityApiConnection(
+  prisma: PrismaClient,
+  opts: { name?: string; email?: string | null } = {},
+): Promise<StartUtilityApiResult> {
+  if (!utilityApiConfigured()) {
+    throw new Error(
+      "UtilityAPI is not configured. Set UTILITYAPI_TOKEN to connect a live account.",
+    );
+  }
+  const form = await createUtilityApiForm({ email: opts.email });
+  const { farmId } = await createFarmFromConnection(prisma, {
+    name: opts.name,
+    externalRef: form.uid,
+  });
+  return { farmId, formUid: form.uid, formUrl: form.url };
+}
+
+/** Where a farm's UtilityAPI pull stands. Returns the same shape as bayouReadiness, so
+ * the poller is provider-agnostic. */
+export async function utilityApiReadiness(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<Readiness> {
+  const conn = await pgeConnection(prisma, farmId);
+  const formUid = liveFormUid(conn?.externalRef ?? null);
+  if (!formUid || !utilityApiConfigured()) {
+    return {
+      sample: true,
+      hasCredentials: true,
+      billsReady: true,
+      intervalsReady: true,
+      ready: true,
+      bills: null,
+    };
+  }
+  const auths = await getUtilityApiAuthorizations(formUid);
+  if (auths.length === 0) {
+    return {
+      sample: false,
+      hasCredentials: false,
+      billsReady: false,
+      intervalsReady: false,
+      ready: false,
+      bills: null,
+    };
+  }
+  const raw = await getUtilityApiMetersRaw(auths.map((a) => a.uid));
+  const { total, ready } = readyCountsFromRaw(raw);
+  const dataReady = total > 0 && ready === total;
+  return {
+    sample: false,
+    hasCredentials: true,
+    billsReady: dataReady,
+    intervalsReady: dataReady,
+    ready: dataReady,
+    bills: total > 0 ? { total, usable: ready, unparsed: total - ready } : null,
+  };
+}
+
+/**
+ * Live counts for the onboarding reveal off UtilityAPI. Sample/unconfigured farms count
+ * off the committed multi-account fixture and report ready immediately. A live form
+ * reports its authorizations: once any land, accounts + meters come from the native
+ * /meters body (which arrives before the Green Button exports), then the meter-collection
+ * progress folds in as collections finish. Same shape as bayouReveal.
+ */
+export async function utilityApiReveal(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<RevealCounts> {
+  const conn = await pgeConnection(prisma, farmId);
+  const formUid = liveFormUid(conn?.externalRef ?? null);
+  if (!formUid || !utilityApiConfigured()) {
+    const { accounts, electricMeters, gasMeters } = countUtilityApiMeters(
+      loadSampleUtilityApi().meters,
+    );
+    return {
+      dataKind: "sample",
+      hasCredentials: true,
+      accounts,
+      electricMeters,
+      gasMeters,
+      billsReady: true,
+      intervalsReady: true,
+      bills: null,
+      ready: true,
+    };
+  }
+
+  const auths = await getUtilityApiAuthorizations(formUid);
+  if (auths.length === 0) {
+    return {
+      dataKind: "real",
+      hasCredentials: false,
+      accounts: 0,
+      electricMeters: 0,
+      gasMeters: 0,
+      billsReady: false,
+      intervalsReady: false,
+      bills: null,
+      ready: false,
+    };
+  }
+  const raw = await getUtilityApiMetersRaw(auths.map((a) => a.uid));
+  const { accounts, electricMeters, gasMeters } = countUtilityApiMeters(raw);
+  const { total, ready } = readyCountsFromRaw(raw);
+  const dataReady = total > 0 && ready === total;
+  return {
+    dataKind: "real",
+    hasCredentials: true,
+    accounts,
+    electricMeters,
+    gasMeters,
+    billsReady: dataReady,
+    intervalsReady: dataReady,
+    bills: total > 0 ? { total, usable: ready, unparsed: total - ready } : null,
+    ready: dataReady,
+  };
+}
+
+/**
+ * Finish a UtilityAPI connection: pull it live (or the sample), import (electric ->
+ * pumps across all shared accounts, gas carried but not persisted), classify, and flip
+ * the connection active with provenance "smd" (a real signed authorization). Returns the
+ * ConnectResult, or null when the data is not ready yet. `force` imports whatever has
+ * collected so far. Idempotent: an already-active connection just returns its summary.
+ */
+export async function finishUtilityApiConnection(
+  prisma: PrismaClient,
+  farmId: string,
+  opts: { force?: boolean } = {},
+): Promise<ConnectResult | null> {
+  const conn = await pgeConnection(prisma, farmId);
+  if (!conn) throw new Error(`no PG&E connection for farm ${farmId}`);
+  if (conn.status === "active") return summarize(prisma, farmId);
+
+  const formUid = liveFormUid(conn.externalRef);
+  const live = Boolean(formUid && utilityApiConfigured());
+  let authUids: string[] = [];
+  if (live && formUid) {
+    const auths = await getUtilityApiAuthorizations(formUid);
+    authUids = auths.map((a) => a.uid);
+    if (!opts.force) {
+      const raw = await getUtilityApiMetersRaw(authUids);
+      const { total, ready } = readyCountsFromRaw(raw);
+      if (!(total > 0 && ready === total)) return null;
+    }
+  }
+
+  const pull = await fetchUtilityApi(live ? { authUids } : {});
+  await importUtilityApi(prisma, { pull, farmId });
+  await classifyFarmPumps(prisma, farmId);
+  await prisma.connection.updateMany({
+    where: { farmId, type: PGE_SMD },
+    data: { status: "active", source: "smd", authorizedAt: new Date() },
+  });
+  return summarize(prisma, farmId);
+}
+
+/**
+ * The most recent in-progress live UtilityAPI connection, so a grower who navigated away
+ * from the reveal can resume. "In progress" means a pending PG&E connection to a live
+ * form (non-sentinel externalRef) that has at least one authorization. Returns null when
+ * there is none. If UtilityAPI is unreachable, it still allows resuming.
+ */
+export async function resumableUtilityApiFarm(
+  prisma: PrismaClient,
+): Promise<{ farmId: string } | null> {
+  const conn = await prisma.connection.findFirst({
+    where: { type: PGE_SMD, status: "pending" },
+    orderBy: { createdAt: "desc" },
+    select: { farmId: true, externalRef: true },
+  });
+  const formUid = conn ? liveFormUid(conn.externalRef) : null;
+  if (!conn || !formUid || !utilityApiConfigured()) return null;
+  try {
+    const auths = await getUtilityApiAuthorizations(formUid);
+    return auths.length > 0 ? { farmId: conn.farmId } : null;
+  } catch {
+    return { farmId: conn.farmId };
+  }
+}
+
+// --- provider dispatch (UtilityAPI by default; Bayou behind PGE_PROVIDER) --------
+// The active live path is chosen at runtime so Bayou can stay as a fallback for one
+// release. The action layer and UI call only these provider-neutral functions; the
+// Bayou implementations above are deleted once UtilityAPI is validated on a real
+// multi-account authorization.
+
+export type PgeProvider = "utilityapi" | "bayou";
+
+/** The live-connect provider. UtilityAPI unless PGE_PROVIDER explicitly selects Bayou. */
+export function pgeProvider(): PgeProvider {
+  return process.env.PGE_PROVIDER === "bayou" ? "bayou" : "utilityapi";
+}
+
+/** What the connect screen needs: open redirectUrl (the hosted authorization page) and
+ * begin polling, unless the session was already authorized (Bayou-only reuse). */
+export type StartPgeResult = {
+  farmId: string;
+  redirectUrl: string;
+  alreadyAuthenticated: boolean;
+};
+
+/** Start a live PG&E connection with the configured provider. */
+export async function startPgeConnection(
+  prisma: PrismaClient,
+  opts: { name?: string; email?: string | null; forceNew?: boolean } = {},
+): Promise<StartPgeResult> {
+  if (pgeProvider() === "bayou") {
+    const r = await startBayouConnection(prisma, opts);
+    return {
+      farmId: r.farmId,
+      redirectUrl: r.onboardingLink,
+      alreadyAuthenticated: r.alreadyAuthenticated,
+    };
+  }
+  const r = await startUtilityApiConnection(prisma, opts);
+  return { farmId: r.farmId, redirectUrl: r.formUrl, alreadyAuthenticated: false };
+}
+
+/** Poll readiness with the configured provider. */
+export async function pgeReadiness(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<Readiness> {
+  return pgeProvider() === "bayou"
+    ? bayouReadiness(prisma, farmId)
+    : utilityApiReadiness(prisma, farmId);
+}
+
+/** Live reveal counts with the configured provider. */
+export async function pgeReveal(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<RevealCounts> {
+  return pgeProvider() === "bayou"
+    ? bayouReveal(prisma, farmId)
+    : utilityApiReveal(prisma, farmId);
+}
+
+/** Finish the connection with the configured provider. */
+export async function finishPgeConnection(
+  prisma: PrismaClient,
+  farmId: string,
+  opts: { force?: boolean } = {},
+): Promise<ConnectResult | null> {
+  return pgeProvider() === "bayou"
+    ? finishBayouConnection(prisma, farmId, opts)
+    : finishUtilityApiConnection(prisma, farmId, opts);
+}
+
+/** The most recent resumable in-progress connection with the configured provider. */
+export async function resumablePgeFarm(
+  prisma: PrismaClient,
+): Promise<{ farmId: string } | null> {
+  return pgeProvider() === "bayou"
+    ? resumableBayouFarm(prisma)
+    : resumableUtilityApiFarm(prisma);
+}
+
 /**
  * Count the gas meters in a farm's pull. Gas is carried by the normalizer but not
  * persisted (the engine is electric-only), so the "set aside" note on the results
@@ -846,11 +1150,24 @@ export async function farmGasMeterCount(
   farmId: string,
 ): Promise<number> {
   const conn = await pgeConnection(prisma, farmId);
-  const id = liveCustomerId(conn?.externalRef ?? null);
   try {
+    if (pgeProvider() === "bayou") {
+      const id = liveCustomerId(conn?.externalRef ?? null);
+      const pull =
+        id && bayouConfigured() ? await fetchBayou({ customerId: id }) : loadSampleBayou();
+      return normalizeBayou(pull).filter((m) => m.fuel === "gas").length;
+    }
+    const formUid = liveFormUid(conn?.externalRef ?? null);
+    let authUids: string[] = [];
+    if (formUid && utilityApiConfigured()) {
+      const auths = await getUtilityApiAuthorizations(formUid);
+      authUids = auths.map((a) => a.uid);
+    }
     const pull =
-      id && bayouConfigured() ? await fetchBayou({ customerId: id }) : loadSampleBayou();
-    return normalizeBayou(pull).filter((m) => m.fuel === "gas").length;
+      authUids.length > 0 && utilityApiConfigured()
+        ? await fetchUtilityApi({ authUids })
+        : loadSampleUtilityApi();
+    return normalizeUtilityApi(pull).filter((m) => m.fuel === "gas").length;
   } catch {
     return 0;
   }

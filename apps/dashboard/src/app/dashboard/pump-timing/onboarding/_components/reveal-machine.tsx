@@ -2,17 +2,17 @@
 
 // The reveal flow's engine: a three-phase state machine (reveal -> finding -> save)
 // under one AnimatePresence, so the screens cross-fade in place without a remount or a
-// server round-trip. It polls bayouRevealAction for the live counts that drive the
+// server round-trip. It polls connectionRevealAction for the live counts that drive the
 // reveal; once the data is ready it calls finishRevealAction (import + engines + top
 // finding) and cross-fades to the finding, then the finding's CTA advances to save.
-// Leaving the page is safe: Bayou keeps pulling, and returning re-enters at reveal (or
-// jumps straight to finding if the import already happened).
+// Leaving the page is safe: the provider keeps pulling, and returning re-enters at reveal
+// (or jumps straight to finding if the import already happened).
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { en } from "@/copy/en";
 import type { RevealCounts } from "@/lib/onboarding/farm";
-import { bayouRevealAction, finishRevealAction, type RevealFinish } from "../actions";
+import { connectionRevealAction, finishRevealAction, type RevealFinish } from "../actions";
 import { RevealStage } from "./reveal-stage";
 import { FindingStage } from "./finding-stage";
 import { SaveStage } from "./save-stage";
@@ -45,7 +45,7 @@ export function RevealMachine({ farmId }: { farmId: string }) {
     async function tick() {
       if (!active) return;
       try {
-        const c = await bayouRevealAction(farmId);
+        const c = await connectionRevealAction(farmId);
         if (!active) return;
         setCounts(c);
         setSlow(Date.now() - startedAt.current > SLOW_AFTER_MS);

@@ -1,18 +1,18 @@
 "use client";
 
 // Screen 1, the hook. One serif headline, one button, one quiet line. The button IS
-// the PG&E connect trigger (the headless useBayouConnect hook), so connecting is the
+// the PG&E connect trigger (the headless useUtilityApiConnect hook), so connecting is the
 // farmer's only required action. A resume link appears only when there is a connection
 // in progress to pick back up.
 
 import Link from "next/link";
 import { en } from "@/copy/en";
-import { useBayouConnect } from "./bayou-connect";
+import { useUtilityApiConnect } from "./utilityapi-connect";
 
 export function Hook({ resumeFarmId }: { resumeFarmId: string | null }) {
   const r = en.onboarding.reveal;
-  const { phase, error, start, modal } = useBayouConnect();
-  const busy = phase === "starting" || phase === "form" || phase === "hosted";
+  const { phase, error, start, modal } = useUtilityApiConnect();
+  const busy = phase === "starting" || phase === "hosted";
 
   return (
     <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-xl flex-col items-center justify-center px-6 text-center">

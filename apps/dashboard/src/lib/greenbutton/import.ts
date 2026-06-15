@@ -10,8 +10,10 @@ import { maxDemandInWindow } from "@/lib/energy";
 import {
   normalizeBayou,
   normalizeEspi,
+  normalizeUtilityApi,
   type BayouResponses,
   type NormalizedMeter,
+  type UtilityApiResponses,
 } from "@/lib/normalize";
 
 export type ImportResult = {
@@ -216,5 +218,27 @@ export async function importBayou(
     meters: normalizeBayou(pull),
     farmId,
     source: "bayou",
+  });
+}
+
+export type ImportUtilityApiOptions = {
+  pull: UtilityApiResponses;
+  farmId: string;
+};
+
+/**
+ * Normalize a UtilityAPI pull (native /meters JSON + Green Button XML per meter) and
+ * land it. The hybrid normalizer fills the account number + serial the standard ESPI
+ * feed drops, so importMeters resolves one Account per distinct PG&E account number,
+ * the multi-account path (Batth: ~57 accounts) Bayou could not enumerate.
+ */
+export async function importUtilityApi(
+  prisma: PrismaClient,
+  { pull, farmId }: ImportUtilityApiOptions,
+): Promise<ImportResult> {
+  return importMeters(prisma, {
+    meters: normalizeUtilityApi(pull),
+    farmId,
+    source: "utilityapi",
   });
 }

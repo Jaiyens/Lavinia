@@ -3,3 +3,8 @@
 export * from "./types";
 export { normalizeEspi } from "./espi";
 export { normalizeBayou, type BayouResponses } from "./bayou";
+export {
+  normalizeUtilityApi,
+  countUtilityApiMeters,
+  type UtilityApiResponses,
+} from "./utilityapi";

@@ -4,7 +4,8 @@
       "Bash(claude --version)",
       "WebSearch",
       "Bash(npm run *)",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "WebFetch(domain:utilityapi.com)"
     ]
   }
 }

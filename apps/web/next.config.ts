@@ -1,18 +1,8 @@
 import type { NextConfig } from "next";
 
-// Next.js Multi-Zones: the marketing site (this app) is the primary zone serving
-// tryterra.ai, and it rewrites /dashboard/* to the dashboard zone (apps/dashboard).
-// In dev that's the local dashboard on :3001; in prod set DASHBOARD_URL to the
-// dashboard's Vercel deployment URL (e.g. https://lavinia-dashboard.vercel.app).
-const DASHBOARD_URL = process.env.DASHBOARD_URL ?? "http://localhost:3001";
-
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      { source: "/dashboard", destination: `${DASHBOARD_URL}/dashboard` },
-      { source: "/dashboard/:path*", destination: `${DASHBOARD_URL}/dashboard/:path*` },
-    ];
-  },
-};
+// The marketing site is a standalone app on the apex domain (tryterra.ai). The farmer
+// dashboard lives on its own subdomain (app.tryterra.ai) as a separate Vercel project, so
+// there is no cross-zone rewrite here — the "Farmer Login" button links straight to it.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

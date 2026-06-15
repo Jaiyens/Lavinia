@@ -5,7 +5,6 @@ import { AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { en } from "@/copy/en";
-import { withBasePath } from "@/lib/base-path";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { AlmondAvatar } from "./almond-avatar";
@@ -28,7 +27,7 @@ export function AlmondLauncher({
 }) {
   const [open, setOpen] = useState(false);
   // One transport instance for the component's life (not a new one per render).
-  const [transport] = useState(() => new DefaultChatTransport({ api: withBasePath("/api/almond/chat") }));
+  const [transport] = useState(() => new DefaultChatTransport({ api: "/api/almond/chat" }));
   const { messages, sendMessage, status, regenerate } = useChat({ transport });
 
   return (

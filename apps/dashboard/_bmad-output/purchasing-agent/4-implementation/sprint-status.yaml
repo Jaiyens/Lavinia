@@ -1,0 +1,132 @@
+# =============================================================================
+# Terra Purchasing Agent (Tool 2) - Sprint Plan
+# =============================================================================
+#
+# This file tracks every epic and story from
+#   _bmad-output/purchasing-agent/2-planning/epics.md
+# against the file-system tracking system. Statuses move left to right:
+#   backlog -> ready-for-dev -> in-progress -> review -> done
+#
+# -----------------------------------------------------------------------------
+# PROPOSED SPRINT SLICING
+# -----------------------------------------------------------------------------
+# Sprint 1  Data foundation. The whole tool sits on this.
+#   1-1 stand up the agent on the shared data model
+#   1-2 ingest an Invoice (vision and parse)
+#   1-3 attribute each line to Ranch, Entity, Account
+#   2-1 route low-confidence lines to the internal Review queue
+#   2-2 resolve a Review queue item and feed it back
+#
+# Sprint 2  Legibility engine and the honest band.
+#   4-1 normalize every line to a per-unit, same-Active-Ingredient basis
+#   4-2 compute and display the single-grower Market Band
+#   4-3 surface the Generic Equivalent
+#   4-4 Price Band Chart (trends, behind a tap)
+#
+# Sprint 3  Findings into display-only Recommendations, then close the loop.
+#   5-1 flag Overpayment against the band
+#   5-2 audit Rebate / Program Pricing for under-credited Rebates
+#   5-3 model Prepay timing
+#   5-4 surface every finding in the Findings rail
+#   5-5 close the loop with predicted versus actual
+#
+# Sprint 4  Cross-entity spend control and the advisor.
+#   6-1 the filterable, exportable Spend Table
+#   6-2 Forecast and Committed spend against a per-Entity Spend Budget
+#   7-1 grant and revoke PCA read-only visibility
+#   7-2 PCA confirm or dispute a flagged line
+#
+# Sprint 5 (blocked, do not schedule until the blocker clears)  Forecast the season.
+#   3-1 forecast a per-product Bill of Materials from the Crop Plan
+#   3-2 the Buy Window Calendar home view
+#
+# -----------------------------------------------------------------------------
+# DEPENDENCY ORDER
+# -----------------------------------------------------------------------------
+# Epic 1 is the data foundation and comes first. Epic 2 (the Review queue) is
+# the honesty backbone every downstream number depends on, so it lands right
+# after Epic 1 and before any band, audit, or Recommendation. Epic 4 builds on
+# Epics 1 and 2. Epic 5 builds on Epics 1, 2, and 4. Epic 6 builds on the
+# attributed spend from Epic 1 (and the forecast from Epic 3 for the budget
+# view, which degrades gracefully until Epic 3 ships). Epic 7 depends only on
+# the views and findings from Epics 4, 5, and 6.
+#
+# -----------------------------------------------------------------------------
+# BLOCKER: Epic 3 (Forecast the season from the Crop Plan)
+# -----------------------------------------------------------------------------
+# Epic 3 is BLOCKED until the architecture section 4.6 decision is taken. The
+# energy schema has no Crop Plan model, so "reused from Tool 1" does not hold
+# and forecast-bom.ts has nothing to consume. Settle section 4.6 (the Crop Plan
+# is a net-new model, not a reused energy entity) before scheduling 3-1 and 3-2.
+# Until then Epic 3 stays in backlog and is sequenced last. Epic 6's
+# spend-versus-budget view depends on the Epic 3 forecast for Forecast spend, so
+# it ships against Committed spend first and gains Forecast spend once Epic 3
+# lands.
+# =============================================================================
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:    backlog | in-progress | done
+# Story Status:   backlog | ready-for-dev | in-progress | review | done
+# Retrospective:  optional | done
+
+generated: 2026-06-14
+last_updated: 2026-06-14
+project: Terra
+project_key: TPA
+tracking_system: file-system
+story_location: "_bmad-output/purchasing-agent/4-implementation"
+
+development_status:
+  epic-1: in-progress
+  1-1-stand-up-the-purchasing-agent-on-the-shared-data-model: ready-for-dev
+  1-2-ingest-an-invoice-by-photo-pdf-or-email-forward-and-extract-its-lines: ready-for-dev
+  1-3-attribute-each-extracted-line-to-a-ranch-entity-and-account: ready-for-dev
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-route-a-low-confidence-invoice-line-to-the-internal-review-queue-and-hold-it-out-of-the-numbers: backlog
+  2-2-resolve-a-review-queue-item-and-feed-the-resolved-value-back-into-the-pipeline: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-forecast-a-per-product-bill-of-materials-from-the-crop-plan: backlog
+  3-2-present-forecast-buying-windows-and-prepay-closes-on-the-buy-window-calendar: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-normalize-every-line-to-a-per-unit-same-active-ingredient-basis: backlog
+  4-2-compute-and-display-the-single-grower-market-band-per-active-ingredient: backlog
+  4-3-surface-the-generic-equivalent-where-one-exists: backlog
+  4-4-show-per-unit-price-history-and-the-market-band-on-the-price-band-chart: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-flag-overpayment-against-the-market-band-as-a-recommendation: backlog
+  5-2-audit-invoices-against-rebate-program-pricing-and-flag-under-credited-rebates: backlog
+  5-3-model-prepay-timing-against-the-working-capital-window: backlog
+  5-4-surface-every-finding-as-a-display-only-recommendation-in-the-findings-rail: backlog
+  5-5-close-the-loop-with-predicted-versus-actual-after-the-invoice-posts: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-show-all-input-spend-in-the-filterable-exportable-spend-table: backlog
+  6-2-track-forecast-spend-and-committed-spend-against-a-per-entity-spend-budget: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-grant-and-revoke-a-pca-read-only-entity-scoped-advisor-visibility: backlog
+  7-2-let-a-pca-confirm-or-dispute-a-flagged-line: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8 is POST-MVP. None of this ships in v1. Capability placeholders only,
+  # no v1 FRs deferred here. Kept visible so the destination is not mistaken for
+  # v1 scope.
+  epic-8: backlog
+  8-1-live-cross-supplier-scouting: backlog
+  8-2-agentic-negotiation-and-rfq-reverse-auction: backlog
+  8-3-auto-po-and-delivery-tracking: backlog
+  8-4-attached-crop-cycle-financing: backlog
+  8-5-true-delegated-auto-buy: backlog
+  8-6-cross-grower-price-pooling-and-public-benchmark: backlog
+  epic-8-retrospective: optional
