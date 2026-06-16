@@ -5,9 +5,33 @@
 
 export const nav = [
   { label: "The Eyes", href: "#camera" },
+  { label: "White Paper", href: "/whitepaper" },
   { label: "About Us", href: "#about" },
   { label: "Inquire", href: "#inquire" },
 ] as const;
+
+export const caseStudy = {
+  kicker: "Case Study 01 · PG&E Demand Charges",
+  title: "Farmers already have the data. Terra turns it into decisions before they cost money.",
+  steps: [
+    {
+      title: "Reads what you already have",
+      body: "It pulls in the bills, logs, and spreadsheets a farm already produces.",
+    },
+    {
+      title: "Finds the costly mistakes",
+      body: "It catches expensive errors hiding in plain sight, like a single mistimed pump that triggers a full monthly demand charge.",
+    },
+    {
+      title: "Acts before the bill hits",
+      body: "It surfaces the move in time to avoid the cost, not after.",
+    },
+  ],
+  mistimed: { value: "$3,000+", label: "Full monthly charge for minutes of use" },
+  withTerra: { value: "~$200", label: "Pay for actual usage, not the penalty" },
+  footnote:
+    "One mistimed pump triggers a full month's charge. Terra flags the billing cycle so you avoid it.",
+} as const;
 
 export const founders = [
   {
@@ -65,29 +89,6 @@ export const eyes = {
   ],
 } as const;
 
-export const caseStudy = {
-  kicker: "Case Study 01 · PG&E Demand Charges",
-  title: "Farmers already have the data. Terra turns it into decisions before they cost money.",
-  steps: [
-    {
-      title: "Reads what you already have",
-      body: "It pulls in the bills, logs, and spreadsheets a farm already produces.",
-    },
-    {
-      title: "Finds the costly mistakes",
-      body: "It catches expensive errors hiding in plain sight, like a single mistimed pump that triggers a full monthly demand charge.",
-    },
-    {
-      title: "Acts before the bill hits",
-      body: "It surfaces the move in time to avoid the cost, not after.",
-    },
-  ],
-  mistimed: { value: "$3,000+", label: "Full monthly charge for minutes of use" },
-  withTerra: { value: "~$200", label: "Pay for actual usage, not the penalty" },
-  footnote:
-    "One mistimed pump triggers a full month's charge. Terra flags the billing cycle so you avoid it.",
-} as const;
-
 export const problems = [
   {
     title: "Disconnected",
@@ -96,6 +97,10 @@ export const problems = [
   {
     title: "Seen, never captured",
     body: "Every tractor pass sees the whole farm. Almost none of it gets captured. By the time a problem is obvious, the money is already gone.",
+  },
+  {
+    title: "Regulated at every turn",
+    body: "Groundwater, pesticides, nitrogen, labor, food safety. Each answers to a different agency on a different calendar, and every report is rebuilt by hand from paper records weeks after the work happened.",
   },
 ] as const;
 
@@ -108,4 +113,19 @@ export const stakes = [
     value: "$10B",
     body: "a year in environmental and health damage from pesticide use across the U.S., from contaminated groundwater to public-health costs.",
   },
+  {
+    value: "5+",
+    body: "agencies regulate a single California farm. The ag commissioner, the water board, the groundwater agency, Cal/OSHA, and the FDA each run their own reports, deadlines, and fines.",
+  },
 ] as const;
+
+export const detectPrevent = {
+  detect: {
+    title: "It detects",
+    body: "The Eyes watch every acre and the Brain reads every bill, log, and meter. Pest pressure, water stress, a pump running in the wrong window. Caught the day it happens, with a record to prove it.",
+  },
+  prevent: {
+    title: "It prevents",
+    body: "The same system acts before the cost lands. It surfaces the report before the deadline, flags the application that would break a rule, and times the pump so the penalty rate never applies.",
+  },
+} as const;

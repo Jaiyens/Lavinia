@@ -65,12 +65,15 @@ export function GlassButton({
     ry.set(0);
   }
 
-  const text = textClass ?? (tone === "light" ? "text-white" : "text-ink");
+  // white label only on the dark tone; light tone reads as deep navy on the
+  // bluish-white glass so it stays legible without a dark scrim
+  const lightText = tone === "dark";
+  const text = textClass ?? (tone === "dark" ? "text-white" : tone === "light" ? "text-[#0b2545]" : "text-ink");
   const tint =
     tone === "dark"
       ? "from-ink/85 to-ink/70"
       : tone === "light"
-        ? "from-white/15 to-white/5"
+        ? "from-[#cfe4ff]/85 to-white/45"
         : "from-accent-400/45 to-accent-700/35";
 
   const cls = `glass-liquid glass-rim press group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-6 py-3 text-sm font-medium ${text} disabled:opacity-60 ${className}`;
@@ -102,7 +105,11 @@ export function GlassButton({
           style={{ background: sheen }}
         />
       )}
-      <span className="relative z-10 inline-flex items-center gap-2 sm:[text-shadow:0_1px_3px_rgba(9,9,11,0.45)]">
+      <span
+        className={`relative z-10 inline-flex items-center gap-2 ${
+          lightText ? "[text-shadow:0_1px_3px_rgba(9,9,11,0.5)]" : ""
+        }`}
+      >
         {children}
       </span>
     </>
