@@ -1,9 +1,17 @@
-# Terra: Project Context (Tool 1, single repo)
+# Terra dashboard: Project Context (Tool 1, `apps/dashboard`)
 
 ## What we're building
-Terra is an operating system for California farmers. This repo is **Tool 1: the PG&E energy tool**. It makes a grower's PG&E account legible (all meters, rates, billing cycles, solar) and surfaces the money hiding in it. The headline value is rate optimization and billing clarity, not telling farmers when to run pumps.
+Terra is an operating system for California farmers. This is **Tool 1: the PG&E energy tool** (the `apps/dashboard` workspace of the Lavinia monorepo). It makes a grower's PG&E account legible (all meters, rates, billing cycles, solar) and surfaces the money hiding in it. The headline value is rate optimization and billing clarity, not telling farmers when to run pumps.
 
-This stays a single Next.js app for now. We move to a monorepo when Tool 2 starts, so keep code cleanly separated (pure logic in /lib, a clear data model, a UI layer) so that future move is mechanical.
+## Monorepo, deploy & operational state (current as of 2026-06-16)
+This app lives in the **Lavinia monorepo** (`/Users/panda/Lavinia`, github `Jaiyens/Lavinia`):
+- `apps/dashboard` = this app (app.tryterra.ai). `apps/web` = the marketing site (subtree of the co-founder's `KamiRida/terra-website`; tryterra.ai deploys from HIS Vercel, not this repo). `packages/*` = shared code.
+- **The standalone `Terra` repo is RETIRED.** Develop directly here; there is no sync step. Do not push the old Terra repo (its dead `terra` Vercel project auto-deploys and confuses things).
+- **Deploy:** push `Lavinia` `main` -> the `lavinia` Vercel project builds `apps/dashboard` -> **app.tryterra.ai**. CI (`.github/workflows/ci.yml`) runs typecheck + lint + build on every push/PR.
+- **Run locally:** `npm install` at the monorepo root, then `npm run dev` (both apps) or `npm run dev:dashboard` (this app on **port 3001**). Copy `.env.example` -> `.env.local`.
+- **Database:** Postgres (Neon in prod/dev; local Postgres for tests). NOT SQLite anymore.
+- **Auth:** passwordless - Google SSO + emailed magic link. Sign-in is required **each browser session** (the session cookie is cleared on browser close + a 4h JWT cap; see `src/lib/auth.config.ts`). No email allowlist yet (gate is route-based).
+- **Live PG&E connect is REAL:** the onboarding "Connect PG&E" opens a UtilityAPI hosted authorization (`UTILITYAPI_TOKEN`, set on the lavinia Vercel project). See the onboarding note in Layout below.
 
 ## Who uses it
 The farm owner / decision-maker. Plain-spoken, low software and AI literacy, skeptical, "learns line by line in Excel." Two real growers independently demanded the same thing: an insanely simple home screen, depth only one tap away. Treat that as law. Talk in their language (blocks, sets, hours, acres, pumps, ranches), never kW or "15-minute interval" jargon on the surface.
@@ -27,8 +35,8 @@ Build for this scale. Batth runs ~183 meters across ~57 PG&E account numbers and
 6. Precision / deficit irrigation (future tool). Modest and seasonal for almonds.
 Do NOT lead with coincident-peak staggering. It only helps operations with slack in their schedule, not peak-season almonds running flat-out off-peak. Keep any staggering code but demote it.
 
-## Structure (single repo)
-Next.js (App Router) + TypeScript (strict) + Tailwind + Prisma + SQLite (swappable to Postgres).
+## Structure
+Next.js (App Router) + TypeScript (strict) + Tailwind + Prisma + Postgres (Neon).
 - /lib/energy: pure, unit-tested calculation functions (rate comparison, retrospective, solar checks, cycle timing, reconciliation). No UI/DB coupling. This must be provably correct.
 - /lib/pge: Green Button/ESPI parser, the meter-read schedule table, rate logic.
 - /fixtures: sample Green Button XML, the 2026 meter-read schedule table, and the Batth-shaped seed. App runs with zero external calls.
@@ -72,27 +80,25 @@ Taste bar: modern, animated, alive (Magic UI showcase, Linear, Vercel), tuned to
 - Commit fixtures so the app runs with zero external calls.
 - Never put a grower's utility credentials in the repo, in client code, or anywhere the agent can read. Use exports/fixtures for dev; real auth replaces credentials in prod.
 - Plan before large changes; ask before deviating from this model.
-- Keep boundaries clean (logic vs UI vs data) so the eventual monorepo move is just moving files.
+- Keep boundaries clean (pure logic in `/lib` vs UI vs data) so shared logic can move into `packages/*` cleanly.
 
 ## Commands
-- `npm run dev` - start the app (Turbopack) at http://localhost:3000
-- `npm run build` / `npm start` - production build / serve
+Run these from the **monorepo root** (turbo fans them across apps), or scope to this app
+with `-w @lavinia/dashboard`. Turbo: `npm run dev | build | lint | typecheck | test`.
+- `npm run dev:dashboard` - start this app (Turbopack) at **http://localhost:3001**
+- `npm run build` - production build (both apps)
 - `npm run lint` - ESLint (flat config; enforces no `any`)
-- `npm test` / `npm run test:watch` - Vitest (pure-function + db integration tests)
-- `npm run test:e2e` - Playwright browser e2e (`next build` then `e2e/*.spec.ts`); runs the
-  real app against a throwaway `prisma/e2e.db` via `next start` so it never touches `dev.db`
-- `npm run db:generate` - regenerate the Prisma client after editing the schema
-- `npm run db:migrate -- --name <name>` - create + apply a dev migration (auto-seeds)
-- `npm run db:seed` - run `prisma/seed.ts`
-- `npm run db:reset` - drop, re-migrate, and re-seed the dev db
-- `npm run db:studio` - open Prisma Studio
+- `npm test` - Vitest (pure-function + db integration tests; the `*.db.test.ts` ones need a
+  local Postgres - CI runs typecheck+lint+build, not the db tests)
+- `npm run test:e2e -w @lavinia/dashboard` - Playwright e2e (`next build` then `e2e/*.spec.ts`)
+  against a throwaway local Postgres via `next start`, so it never touches your dev db
+- `npm run db:generate -w @lavinia/dashboard` - regenerate the Prisma client after a schema edit
+- `npm run db:migrate -w @lavinia/dashboard -- --name <name>` - create + apply a dev migration
+- `npm run db:seed -w @lavinia/dashboard` / `db:reset` / `db:studio`
 
-Stack notes: Prisma is pinned to v6 (the classic `url = env(...)` SQLite flow; v7 now
-requires driver adapters + a `prisma.config.ts`, which we'll adopt when we move to
-Postgres). The dev db is `prisma/dev.db`, set by `DATABASE_URL` in `.env`. The shared
-schema is `prisma/schema.prisma`; union fields are `String` (SQLite has no enums),
-mirrored by TS types in `src/lib/recommendations/types.ts`. `action`/`result` on
-`Recommendation` are `Json`.
+Stack notes: Prisma v6 on **Postgres** (Neon). `DATABASE_URL` (pooled) + `DATABASE_URL_UNPOOLED`
+in `.env.local`. The schema is `prisma/schema.prisma`; union fields are `String` (mirrored by
+TS types in `src/lib/recommendations/types.ts`); `action`/`result` on `Recommendation` are `Json`.
 
 Server-runtime code that reads committed fixtures (e.g. `src/lib/onboarding/source.ts`,
 `vision.ts`) resolves them from `process.cwd()`, NOT `new URL(..., import.meta.url)`: the
@@ -107,5 +113,12 @@ runtime are shipped on Vercel via `outputFileTracingIncludes` in `next.config.ts
 - `src/lib/onboarding/` - onboarding DB edge + stubbed external boundaries (zero external calls; each leaves a marked TODO for the real wiring): `farm.ts` (create the farm, classify imported meters, persist the confirm step; takes a PrismaClient like the importer), `source.ts` (Green Button pull stand-in -> committed sample feed), `vision.ts` (bill-photo read -> committed sample), `geocode.ts` (address -> deterministic pin)
 - `src/lib/recommendations/` - Recommendation grammar types
 - `src/lib/db.ts` - Prisma client singleton
+- `src/lib/auth.ts` + `src/lib/auth.config.ts` - Auth.js v5 (Google + magic link; session policy)
 - `src/copy/` - user-facing strings (localization-ready)
-- `src/app/dashboard/pump-timing/` - Tool 1 screens: the tool index + `onboarding/` (connect -> auto-classify -> confirm -> done; server actions in `actions.ts`, client UI in `_components/`)
+- `src/app/(app)/` - **the LIVE app**: auth-gated shell + `(dashboard)/` (home/energy/account) and
+  `onboarding/` (identify -> connect -> connecting -> confirm). The source picker (`_components/source-picker.tsx`)
+  offers real PG&E (UtilityAPI hosted auth via `pge-card.tsx` -> `connecting/` poller), one-click bill/CSV/
+  Green Button uploads (`upload-card.tsx`), and "load sample data". Server actions in `onboarding/actions.ts`.
+- `src/app/dashboard/pump-timing/` - **DEAD legacy tree** (the pre-rebuild onboarding/dashboard). Kept only
+  so its e2e stays green; do NOT build on it. The live home is `(app)/(dashboard)`.
+- `src/app/(auth)/login/` - the sign-in page (Google + magic link + a "see the demo" -> `/tour` button)
