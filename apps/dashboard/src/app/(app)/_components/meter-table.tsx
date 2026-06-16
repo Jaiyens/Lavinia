@@ -165,7 +165,7 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
           <button
             type="button"
             onClick={clearAll}
-            className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+            className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
           >
             {en.shell.filter.clear}
           </button>
@@ -200,7 +200,7 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
           type="button"
           onClick={exportCsv}
           aria-label={t.exportAria}
-          className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+          className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
         >
           {t.export}
         </button>
@@ -231,12 +231,12 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
             type="button"
             onClick={() => setSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
             aria-label={t.toggleDirection}
-            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant"
+            className="press flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low"
           >
             {sort.dir === "asc" ? <ArrowUp size={18} aria-hidden /> : <ArrowDown size={18} aria-hidden />}
           </button>
         </div>
-        <ul className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
+        <ul className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-e1">
           {rows.map((row) => (
             <li key={row.meter.id} className="border-t border-outline-variant first:border-t-0">
               <button
@@ -249,8 +249,8 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
                 }
                 aria-current={row.meter.id === meterId ? "true" : undefined}
                 className={cn(
-                  "flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-container-low",
-                  row.meter.id === meterId && "bg-surface-container-high",
+                  "flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
+                  row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
                 )}
               >
                 <span className="min-w-0">
@@ -276,7 +276,7 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
       </div>
 
       {/* Desktop: the dense, sortable table. */}
-      <div className="hidden overflow-x-auto rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest md:block">
+      <div className="hidden overflow-x-auto rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-e1 md:block">
         <table className="w-full border-collapse">
           <thead>
             <tr>
@@ -324,8 +324,8 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
                 // so color is never the only signal.
                 aria-current={row.meter.id === meterId ? "true" : undefined}
                 className={cn(
-                  "cursor-pointer border-t border-outline-variant transition-colors hover:bg-surface-container-low",
-                  row.meter.id === meterId && "bg-surface-container-high",
+                  "cursor-pointer border-t border-outline-variant transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
+                  row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
                 )}
               >
                 <td className="px-3 py-2.5">

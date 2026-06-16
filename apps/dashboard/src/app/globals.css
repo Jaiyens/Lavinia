@@ -96,6 +96,27 @@
   --findings-rail: 320px;
   --radius-control: 0.375rem; /* default: buttons, inputs, kpi cards, table */
   --radius-lg: 0.75rem; /* larger objects: drawer, bottom sheet, map, modal */
+
+  /* ----------------------------------------------------------------------
+     Elevation + motion scale (DESIGN.md 2026-06-15 "restrained polish").
+     Five warm-tinted elevation steps and the house motion grammar. Cards now
+     REST at e1 and lift to e2 on hover (the depth the old flat UI was missing);
+     e3 floats the drawer / sheet / tooltip; e4 tops the stack. Durations and
+     easing drive every transition so spec and code cannot drift. All neutralized
+     by the prefers-reduced-motion block at the bottom of this file. */
+  --shadow-e1: 0 1px 2px rgba(20, 25, 15, 0.05), 0 1px 1px rgba(20, 25, 15, 0.04);
+  --shadow-e2: 0 6px 16px rgba(20, 25, 15, 0.07), 0 2px 4px rgba(20, 25, 15, 0.05);
+  --shadow-e3: 0 12px 32px rgba(20, 25, 15, 0.1);
+  --shadow-e4: 0 24px 56px rgba(20, 25, 15, 0.16);
+
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1); /* the house curve, ease-out expo */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --dur-instant: 120ms; /* toggles, taps */
+  --dur-fast: 180ms; /* hover, color, elevation */
+  --dur-base: 240ms; /* standard transitions, lens swap */
+  --dur-slow: 420ms; /* drawer / sheet entrance, view reveal */
+  --dur-data: 900ms; /* number count-up, chart bars grow */
+  --stagger: 60ms;
 }
 
 @theme inline {
@@ -174,6 +195,10 @@
   --shadow-soft: var(--shadow-soft);
   --shadow-card: var(--shadow-card);
   --shadow-elevated: var(--shadow-elevated);
+  --shadow-e1: var(--shadow-e1);
+  --shadow-e2: var(--shadow-e2);
+  --shadow-e3: var(--shadow-e3);
+  --shadow-e4: var(--shadow-e4);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-inter);
@@ -476,6 +501,75 @@ html {
   animation: terra-pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
 }
 
+/* Interactive surface lift (DESIGN.md Elevation + Motion). A card or row rests at
+   e1 and raises to e2 with a 1px lift on hover, then presses in on :active. Feedback
+   motion only: short, functional, the house curve. Hover-lift is gated to real hover
+   pointers so a farmer's phone never gets a stuck raised state; the press still fires
+   on tap. Reduced-motion neutralizes both transitions and transforms below. */
+.lift {
+  transition:
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-e2);
+  }
+}
+.lift:active {
+  transform: scale(0.985);
+}
+
+/* Tactile press for controls: a small physical push on tap. */
+.press {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* Loading placeholder shimmer (DESIGN.md `skeleton`): a slow warm sweep across a
+   tonal block that matches the final element's shape. Never a spinner. */
+@keyframes terra-skeleton {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
+}
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-container) 0%,
+    var(--surface-container-high) 50%,
+    var(--surface-container) 100%
+  );
+  background-size: 200% 100%;
+  animation: terra-skeleton 1.6s ease-in-out infinite;
+}
+
+/* Chart columns grow from the baseline on first paint (DESIGN.md data motion). Each
+   column scales up from its own bottom edge (transform-box: fill-box pins the origin to
+   the bar, not the SVG root); the per-bar stagger is set inline. The data IS the motion,
+   so this earns the long data duration. Neutralized by the reduced-motion block. */
+@keyframes terra-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.chart-bar-grow {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: terra-bar-grow var(--dur-data) var(--ease-standard) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -488,9 +582,17 @@ html {
   .rise,
   .reveal,
   .pulse-once,
-  .drawer-in {
+  .drawer-in,
+  .skeleton,
+  .chart-bar-grow {
     animation: none !important;
     animation-delay: 0ms !important;
+  }
+  /* Depth still communicates "touchable"; the movement does not. */
+  .lift:hover,
+  .lift:active,
+  .press:active {
+    transform: none !important;
   }
   html {
     scroll-behavior: auto;

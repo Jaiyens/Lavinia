@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasRealSource, summarizeFarmSources } from "@/lib/onboarding/sources";
+import { OnboardingShell } from "../_components/chrome";
 import { SourcePicker } from "../_components/source-picker";
 
 // Story 5.2 - step 2, the source picker. Reads the in-progress farm, summarizes what is
@@ -40,11 +41,13 @@ export default async function OnboardingConnectPage({
   const summary = await summarizeFarmSources(prisma, farmId);
   const total = summary.metersWithUsage + summary.metersWithBilling + summary.inventoryOnlyMeters;
   return (
-    <SourcePicker
-      farmId={farmId}
-      total={total}
-      hasInventory={summary.inventoryOnlyMeters > 0}
-      canContinue={hasRealSource(summary)}
-    />
+    <OnboardingShell step={2} wide>
+      <SourcePicker
+        farmId={farmId}
+        total={total}
+        hasInventory={summary.inventoryOnlyMeters > 0}
+        canContinue={hasRealSource(summary)}
+      />
+    </OnboardingShell>
   );
 }

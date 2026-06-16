@@ -9,9 +9,13 @@ import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  type RevealCounts,
   createFarmFromConnection,
+  importUtilityApiIntoFarm,
   parseConfirmationPayload,
+  pgeReveal,
   saveConfirmation,
+  startUtilityApiForFarm,
 } from "@/lib/onboarding/farm";
 import {
   addGreenButtonFiles,
@@ -66,9 +70,67 @@ async function ownsFarm(farmId: string, userId: string): Promise<boolean> {
 
 export type ConnectState = { error?: string };
 
-/** Connect PG&E authorization: pull the (sample) Green Button feed into the farm. The
- *  real-source path that unlocks confirm. */
-export async function connectPgeAction(formData: FormData): Promise<void> {
+// --- live PG&E connect (UtilityAPI hosted authorization) ------------------------
+// The grower clicks "Connect PG&E", we create a UtilityAPI authorization form and hand
+// back its hosted url; the client opens it in a new tab (the grower signs in to PG&E and
+// picks accounts there, credentials never touch Terra) and moves to the connecting screen,
+// which polls until the meters and bills land, then imports them into this farm.
+
+export type StartPgeState =
+  | { ok: true; formUrl: string; farmId: string }
+  | { ok: false; error: string };
+
+/** Begin a live PG&E connection on the in-progress farm: create the hosted authorization
+ *  form and return its url for the client to open. Returns the real reason on failure (e.g.
+ *  a missing token) so the picker can surface it instead of a generic message. */
+export async function startPgeConnectAction(farmId: string): Promise<StartPgeState> {
+  const userId = await sessionUserId();
+  if (!userId || !(await ownsFarm(farmId, userId))) {
+    return { ok: false, error: "Your session expired. Sign in again to connect." };
+  }
+  try {
+    const { formUrl } = await startUtilityApiForFarm(prisma, farmId);
+    return { ok: true, formUrl, farmId };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "We could not start the PG&E connection.",
+    };
+  }
+}
+
+/** Poll how the live PG&E pull is progressing for the connecting screen (read-only). */
+export async function pgeRevealAction(farmId: string): Promise<RevealCounts | null> {
+  const userId = await sessionUserId();
+  if (!userId || !(await ownsFarm(farmId, userId))) return null;
+  try {
+    return await pgeReveal(prisma, farmId);
+  } catch {
+    return null;
+  }
+}
+
+/** Import whatever the live PG&E pull has so far into the in-progress farm (the connection
+ *  stays pending until the confirm step). Returns true once meters landed, false while the
+ *  pull is still collecting. `force` imports a partial pull so a slow account does not
+ *  strand the grower on the connecting screen. */
+export async function finishPgeConnectAction(
+  farmId: string,
+  opts?: { force?: boolean },
+): Promise<boolean> {
+  const userId = await sessionUserId();
+  if (!userId || !(await ownsFarm(farmId, userId))) return false;
+  const result = await importUtilityApiIntoFarm(
+    prisma,
+    farmId,
+    opts?.force ? { force: true } : {},
+  );
+  return result !== null;
+}
+
+/** Explore with sample data: pull the committed Green Button sample into the farm so a
+ *  grower without PG&E credentials handy can still walk the whole flow end to end. */
+export async function connectSampleAction(formData: FormData): Promise<void> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
   if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
@@ -132,20 +194,27 @@ export async function uploadSpreadsheetAction(
  *  without one (dev/CI), fall back to reading only the printed identity so the flow still
  *  walks offline with zero external calls. Either way the grower never types the
  *  address/city/zip/phone printed on the bill (AC3). */
-export async function uploadBillAction(formData: FormData): Promise<void> {
+export async function uploadBillAction(
+  _prev: ConnectState,
+  formData: FormData,
+): Promise<ConnectState> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
   if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
   // Require an actual file: without this guard a click with no file selected (or a
-  // double-click) would re-run the import on nothing. Bounce back when nothing was attached.
+  // double-click) would re-run the import on nothing.
   const file = formData
     .getAll("bill")
     .find((f): f is File => f instanceof File && f.size > 0);
-  if (!file) redirect(`${CONNECT}?farm=${farmId}`);
+  if (!file) return { error: "Choose a bill photo or PDF first." };
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // The onboarding edge owns the source boundary: real extraction when a Gateway key is
-  // present, identity-only fallback otherwise. The screen never touches the extract layer.
-  await importBillUpload(prisma, farmId, bytes);
+  try {
+    // The onboarding edge owns the source boundary: real extraction when a Gateway key is
+    // present, identity-only fallback otherwise. The screen never touches the extract layer.
+    await importBillUpload(prisma, farmId, bytes);
+  } catch {
+    return { error: "We could not read that bill. Try a clearer photo, or a PDF." };
+  }
   redirect(`${CONNECT}?farm=${farmId}`);
 }
 

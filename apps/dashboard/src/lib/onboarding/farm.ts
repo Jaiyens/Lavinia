@@ -1038,6 +1038,82 @@ export async function finishUtilityApiConnection(
 }
 
 /**
+ * Start a live PG&E (UtilityAPI) authorization for an EXISTING farm. The connect-a-source
+ * onboarding creates the farm up front (at "identify"), so unlike startUtilityApiConnection
+ * this does NOT create a farm: it creates the hosted authorization form and points the
+ * farm's pending PG&E connection at it (externalRef = form uid). Returns the hosted url the
+ * grower opens to sign in to PG&E and pick accounts; credentials never touch Terra.
+ * Requires UTILITYAPI_TOKEN.
+ */
+export async function startUtilityApiForFarm(
+  prisma: PrismaClient,
+  farmId: string,
+  opts: { email?: string | null } = {},
+): Promise<{ formUid: string; formUrl: string }> {
+  if (!utilityApiConfigured()) {
+    throw new Error(
+      "UtilityAPI is not configured. Set UTILITYAPI_TOKEN to connect a live account.",
+    );
+  }
+  const form = await createUtilityApiForm({ email: opts.email });
+  const conn = await pgeConnection(prisma, farmId);
+  if (conn) {
+    // Re-point the existing pending connection at the new form so the poll finds its
+    // authorizations. A fresh form each start lets a grower connect a different account.
+    await prisma.connection.update({
+      where: { id: conn.id },
+      data: { externalRef: form.uid, status: "pending" },
+    });
+  } else {
+    await prisma.connection.create({
+      data: { farmId, type: PGE_SMD, status: "pending", source: null, externalRef: form.uid },
+    });
+  }
+  return { formUid: form.uid, formUrl: form.url };
+}
+
+/**
+ * Import a live UtilityAPI pull into an EXISTING farm WITHOUT finalizing the connection.
+ * The connect-a-source contract is that sources accumulate and the connection flips to
+ * "active" only at the confirm step, so this mirrors finishUtilityApiConnection's import
+ * (pull -> importUtilityApi -> classify) but leaves status "pending" and records the SMD
+ * provenance. Returns the meter count, or null when the live data is not ready yet (and not
+ * forced), so the connecting screen keeps polling. Idempotent on re-run.
+ */
+export async function importUtilityApiIntoFarm(
+  prisma: PrismaClient,
+  farmId: string,
+  opts: { force?: boolean } = {},
+): Promise<{ pumps: number } | null> {
+  const conn = await pgeConnection(prisma, farmId);
+  if (!conn) throw new Error(`no PG&E connection for farm ${farmId}`);
+  const formUid = liveFormUid(conn.externalRef);
+  const live = Boolean(formUid && utilityApiConfigured());
+  let authUids: string[] = [];
+  if (live && formUid) {
+    const auths = await getUtilityApiAuthorizations(formUid);
+    authUids = auths.map((a) => a.uid);
+    if (authUids.length === 0) return null; // grower has not finished the hosted form yet
+    if (!opts.force) {
+      const raw = await getUtilityApiMetersRaw(authUids);
+      const { total, ready } = readyCountsFromRaw(raw);
+      if (!(total > 0 && ready === total)) return null;
+    }
+  }
+  const pull = await fetchUtilityApi(live ? { authUids } : {});
+  await importUtilityApi(prisma, { pull, farmId });
+  await classifyFarmPumps(prisma, farmId);
+  // A real signed Share-My-Data authorization (C4 provenance). Status stays pending: the
+  // farmer finalizes the connection at the confirm step (saveConfirmation).
+  await prisma.connection.updateMany({
+    where: { farmId, type: PGE_SMD },
+    data: { source: "smd", authorizedAt: new Date() },
+  });
+  const summary = await summarize(prisma, farmId);
+  return { pumps: summary.pumps };
+}
+
+/**
  * The most recent in-progress live UtilityAPI connection, so a grower who navigated away
  * from the reveal can resume. "In progress" means a pending PG&E connection to a live
  * form (non-sentinel externalRef) that has at least one authorization. Returns null when
@@ -1550,6 +1626,35 @@ export async function currentFarm(prisma: PrismaClient, userId?: string | null) 
     orderBy: { createdAt: "desc" },
     include: FARM_INCLUDE,
   });
+}
+
+/**
+ * The signed-in operator's most recent IN-PROGRESS onboarding farm, if any. This is the
+ * exact complement of `currentFarm`: a farm they own (non-demo) that has a PG&E connection
+ * (every onboarding farm gets one, pending, at identify) but none yet finalized to active.
+ * Such a farm sits between the identify step and the confirm-step finalize. The connect
+ * entry resumes this farm instead of creating a fresh one, so an interrupted onboarding does
+ * not pile up duplicate farms. Owner-scoped: never another operator's farm. Returns null for
+ * a signed-out caller or an operator whose only farms are already finalized.
+ */
+export async function resumableOnboardingFarm(
+  prisma: PrismaClient,
+  userId?: string | null,
+): Promise<{ farmId: string } | null> {
+  if (!userId) return null;
+  const farm = await prisma.farm.findFirst({
+    where: {
+      userId,
+      isDemo: false,
+      // Created at identify (the onboarding farm always gets a pending PG&E connection)...
+      connections: { some: { type: PGE_SMD } },
+      // ...but not yet finalized: no active PG&E connection (the complement of currentFarm).
+      NOT: { connections: { some: { type: PGE_SMD, status: "active" } } },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  return farm ? { farmId: farm.id } : null;
 }
 
 /** Where the dashboard sources a farm and whether that data is the grower's own. */

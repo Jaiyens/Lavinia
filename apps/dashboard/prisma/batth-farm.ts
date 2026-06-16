@@ -134,8 +134,23 @@ type GenCycle = {
   demandChargeUsd: number | null;
   totalBillUsd: number;
   totalKwh: number;
+  // Per-bucket TOU energy (kWh) for the cycle. Both generators already compute this from the
+  // priced usage; carrying it lets persistence emit the canonical TOU BillingLineItems the
+  // rebuilt Chart lens reads. A flat / non-TOU meter (B-1) carries all zeros.
+  energyKwh: { peak: number; partial_peak: number; off_peak: number };
 };
 type GenInterval = { start: Date; durationSec: number; kWh: number };
+
+// One canonical BillingLineItem to persist (integer cents; mirrors the extractor's shape).
+type SeedLineItem = {
+  billingPeriodId: string;
+  kind: string;
+  label: string;
+  amountCents: number;
+  quantity: number | null;
+  unit: string | null;
+  rate: number | null;
+};
 
 // The 12 demo cycles ending the month before `asOf` (so it reads as "last year").
 function demoCycles(asOf: Date, months: number): { year: number; month1: number }[] {
@@ -239,6 +254,11 @@ function generateMetered(
       demandChargeUsd: demand,
       totalBillUsd: total,
       totalKwh,
+      energyKwh: {
+        peak: usage.energyKwh.peak,
+        partial_peak: usage.energyKwh.partial_peak,
+        off_peak: usage.energyKwh.off_peak,
+      },
     });
   }
   return { bills, intervals };
@@ -267,6 +287,9 @@ function generateSummaryBills(
         demandChargeUsd: null,
         totalBillUsd: total,
         totalKwh: round2(900 * (0.5 + 0.3 * sizeFactor)),
+        // B-1 is a flat non-TOU commercial load: no TOU split, so it bills as a single energy
+        // line and is intentionally not drawn on the TOU chart (counted as "without TOU").
+        energyKwh: { peak: 0, partial_peak: 0, off_peak: 0 },
       };
     });
   }
@@ -313,6 +336,11 @@ function generateSummaryBills(
       demandChargeUsd: demand,
       totalBillUsd: total,
       totalKwh,
+      energyKwh: {
+        peak: usage.energyKwh.peak,
+        partial_peak: usage.energyKwh.partial_peak,
+        off_peak: usage.energyKwh.off_peak,
+      },
     };
   });
 }
@@ -501,6 +529,10 @@ export async function seedBatthFarm(prisma: PrismaClient) {
         isSolar: solarKw != null, // keep the day-one flag consistent with the flat solar fields
         nemType,
         trueUpMonth,
+        // Every seeded meter's 12 cycles are derived (reproduction error 0), so the demo reads
+        // as a fully reconciled account. The dashboard reads coverageState DIRECTLY off the pump
+        // (not from bill rows), so it must be set here for the canonical billing below to surface.
+        coverageState: "reconciled",
         farmId: farm.id,
         accountId: accountIds[accountIdx],
         blocks: { connect: [{ id: blockIdBySlug.get(blockSlug)! }] },
@@ -519,6 +551,11 @@ export async function seedBatthFarm(prisma: PrismaClient) {
       pumpId,
       start: b.start,
       close: b.close,
+      // The posted cycle close mirrors the source period end for the synthetic demo (the
+      // Calendar lens reads it). printedTotalCents is the integer-cents canonical total the
+      // table and KPI strip read; the per-bucket BillingLineItems below reconcile to it.
+      cycleClose: b.close,
+      printedTotalCents: Math.round(b.totalBillUsd * 100),
       tariff: b.tariff,
       demandChargeUsd: b.demandChargeUsd,
       peakKw: b.peakKw,
@@ -528,6 +565,28 @@ export async function seedBatthFarm(prisma: PrismaClient) {
       source: "green_button",
     })),
   });
+
+  // Attach the canonical TOU + demand BillingLineItems so the Chart lens (which reads only
+  // tou_energy lines), the table, and the KPI strip light up. createMany cannot return ids, so
+  // re-read the just-written periods by their (pumpId, start) unique key and bulk-insert the
+  // lines keyed to them. Each cycle's lines sum EXACTLY to printedTotalCents, so the demo
+  // reconciles like a real extracted account. Chunked to stay clear of Postgres parameter caps.
+  const pumpIds = [...new Set(allBills.map(({ pumpId }) => pumpId))];
+  const periodRows = await prisma.billingPeriod.findMany({
+    where: { pumpId: { in: pumpIds } },
+    select: { id: true, pumpId: true, start: true },
+  });
+  const periodIdByKey = new Map(
+    periodRows.map((r) => [`${r.pumpId}|${r.start.toISOString()}`, r.id]),
+  );
+  const lineItems = allBills.flatMap(({ pumpId, b }) => {
+    const id = periodIdByKey.get(`${pumpId}|${b.start.toISOString()}`);
+    return id ? buildBillLineItems(id, b) : [];
+  });
+  for (let i = 0; i < lineItems.length; i += 2000) {
+    await prisma.billingLineItem.createMany({ data: lineItems.slice(i, i + 2000) });
+  }
+
   await prisma.usageInterval.createMany({
     data: allIntervals.map(({ pumpId, iv }) => ({
       pumpId,
@@ -550,4 +609,71 @@ export async function seedBatthFarm(prisma: PrismaClient) {
 
 function round5(n: number): number {
   return Math.round(n * 100000) / 100000;
+}
+
+// Split one derived cycle into the canonical BillingLineItems the rebuilt dashboard reads:
+// per-bucket TOU energy lines (so the Chart lens can stack peak / part-peak / off-peak), plus a
+// demand line. The energy remainder (printedTotal - demand) is distributed across the present TOU
+// buckets, weighted so peak dollars run proportionally larger than peak kWh (the real TOU story,
+// a representative-demo modeling choice, not a precision claim), then largest-remainder rounded so
+// the cents sum EXACTLY back to printedTotalCents. A flat meter (no TOU shape, e.g. the B-1 office
+// load) gets a single non-TOU energy line and is simply not charted.
+function buildBillLineItems(billingPeriodId: string, b: GenCycle): SeedLineItem[] {
+  const printedTotalCents = Math.round(b.totalBillUsd * 100);
+  const demandCents = b.demandChargeUsd != null ? Math.round(b.demandChargeUsd * 100) : 0;
+  const energyCents = Math.max(0, printedTotalCents - demandCents);
+  const items: SeedLineItem[] = [];
+
+  // Labels match the chart's classifyTou() matcher ("Peak", "Part-Peak", "Off-Peak").
+  const buckets = [
+    { label: "Peak", kwh: b.energyKwh.peak, weight: 2.0 },
+    { label: "Part-Peak", kwh: b.energyKwh.partial_peak, weight: 1.3 },
+    { label: "Off-Peak", kwh: b.energyKwh.off_peak, weight: 1.0 },
+  ].filter((x) => x.kwh > 0);
+  const weighted = buckets.reduce((acc, x) => acc + x.kwh * x.weight, 0);
+
+  if (energyCents > 0 && weighted > 0) {
+    let assigned = 0;
+    buckets.forEach((x, i) => {
+      const isLast = i === buckets.length - 1;
+      const cents = isLast
+        ? energyCents - assigned
+        : Math.round((energyCents * (x.kwh * x.weight)) / weighted);
+      if (!isLast) assigned += cents;
+      items.push({
+        billingPeriodId,
+        kind: "tou_energy",
+        label: x.label,
+        amountCents: cents,
+        quantity: round5(x.kwh),
+        unit: "kWh",
+        rate: round5(cents / 100 / x.kwh),
+      });
+    });
+  } else if (energyCents > 0) {
+    // Flat / non-TOU energy (the B-1 office load): one line, reconciles, never charted.
+    items.push({
+      billingPeriodId,
+      kind: "other",
+      label: "Energy",
+      amountCents: energyCents,
+      quantity: b.totalKwh > 0 ? round5(b.totalKwh) : null,
+      unit: "kWh",
+      rate: null,
+    });
+  }
+
+  if (demandCents > 0) {
+    items.push({
+      billingPeriodId,
+      kind: "demand",
+      label: "Demand",
+      amountCents: demandCents,
+      quantity: b.peakKw > 0 ? round5(b.peakKw) : null,
+      unit: "kW",
+      rate: null,
+    });
+  }
+
+  return items;
 }

@@ -9,6 +9,7 @@ import {
   type ConfirmData,
   ConfirmClient,
 } from "@/app/dashboard/pump-timing/onboarding/_components/confirm-client";
+import { OnboardingShell } from "../_components/chrome";
 import { saveConfirmationAction } from "../actions";
 
 // Story 5.2 - step 3, confirm. Reuses the shared confirm machinery (farmForConfirm +
@@ -91,15 +92,15 @@ export default async function OnboardingConfirmPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12">
+    <OnboardingShell step={3} wide>
       <div className="mb-8 flex flex-col gap-2">
-        <span className="type-label-caps text-on-surface-variant">{en.connect.picker.eyebrow}</span>
-        <h1 className="type-title text-on-surface">{en.onboarding.confirm.title}</h1>
+        <span className="type-label-caps text-on-surface-variant">{en.onboarding.confirm.eyebrow}</span>
+        <h1 className="type-display-lg">{en.onboarding.confirm.title}</h1>
         <p className="type-body-md text-on-surface-variant">
           {en.onboarding.confirm.intro(data.pumps.length)}
         </p>
       </div>
       <ConfirmClient data={data} saveAction={saveConfirmationAction} />
-    </main>
+    </OnboardingShell>
   );
 }

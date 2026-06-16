@@ -7,15 +7,28 @@ import {
   useSpring,
   useReducedMotion,
 } from "motion/react";
+import { formatUsdWhole } from "@/lib/format/money";
 
 // A count-up number (Magic UI vocabulary). Springs from 0 to `value` once it scrolls into
-// view, then formats each frame via `format` (so money/units stay branded + tabular).
+// view, then formats each frame for display (so money/units stay branded + tabular).
 // Honors prefers-reduced-motion: it renders the final value directly, with no animation.
+
+// `format` is a SERIALIZABLE token, not a function: this is a Client Component, and a
+// Server Component (e.g. HomeOverview) renders it, so a function prop would throw
+// "Functions cannot be passed directly to Client Components". The formatter is resolved
+// here on the client from the token instead.
+export type NumberFormat = "number" | "usdWhole";
+
+const FORMATTERS: Record<NumberFormat, (n: number) => string> = {
+  number: (n) => String(Math.round(n)),
+  // value is integer US cents (AR-6); formatUsdWhole renders whole dollars.
+  usdWhole: (n) => formatUsdWhole(Math.round(n)),
+};
 
 export interface NumberTickerProps {
   value: number;
-  /** Format the in-flight number for display (e.g. whole dollars, "183"). Default: rounded. */
-  format?: (n: number) => string;
+  /** How to format the in-flight number for display. Default: rounded integer. */
+  format?: NumberFormat;
   /** Spring settle time feel. */
   duration?: number;
   className?: string;
@@ -23,10 +36,11 @@ export interface NumberTickerProps {
 
 export function NumberTicker({
   value,
-  format = (n) => String(Math.round(n)),
+  format: formatKey = "number",
   duration = 1.2,
   className,
 }: NumberTickerProps) {
+  const format = FORMATTERS[formatKey];
   const reduce = useReducedMotion();
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "0px" });

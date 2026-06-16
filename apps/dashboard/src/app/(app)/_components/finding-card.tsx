@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { SeverityBadge } from "@/components/ui";
+import { SeverityBadge, cardClass } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFinding, type FindingResponse } from "../actions";
@@ -64,10 +64,15 @@ export function FindingCard({
   return (
     <article
       aria-busy={isPending}
-      className={cn(
-        "rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4",
-        finding.severity === "act" && "border-l-2 border-l-alert",
-      )}
+      className={cardClass({
+        className: cn(
+          "p-4 transition-opacity",
+          finding.severity === "act" && "border-l-2 border-l-alert",
+          // While the response is in flight the card recedes; the revalidated shell then
+          // re-renders without it. A visible "saving" beat, not a silent disappear.
+          isPending && "opacity-70",
+        ),
+      })}
     >
       <div className="flex items-center justify-between gap-3">
         <SeverityBadge severity={finding.severity} />
@@ -111,7 +116,7 @@ export function FindingCard({
             type="button"
             disabled={isPending}
             onClick={() => respond("done")}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-control)] border border-outline-variant px-3 type-body-md text-on-surface transition-colors hover:bg-surface-container-low disabled:opacity-60"
+            className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] bg-primary px-3 type-body-md font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isPending && pendingResponse === "done" ? t.saving : t.respondDone}
           </button>
@@ -119,7 +124,7 @@ export function FindingCard({
             type="button"
             disabled={isPending}
             onClick={() => respond("dismissed")}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-control)] border border-outline-variant px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-60"
+            className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-60"
           >
             {isPending && pendingResponse === "dismissed" ? t.saving : t.respondDismiss}
           </button>

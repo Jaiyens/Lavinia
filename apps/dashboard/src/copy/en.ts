@@ -121,27 +121,61 @@ export const en = {
     },
     picker: {
       eyebrow: "Connect a source",
+      stepLabel: "Step 2 of 3",
       title: "Connect the farm's power data",
       intro:
-        "Connect at least one source. The PG&E pull brings in every meter and bill; you can also upload bills or a meter list.",
+        "Pick one. Connecting PG&E brings in every meter, rate, and bill at once. No PG&E login handy? Upload a bill or a meter list instead.",
       pgeTitle: "Connect PG&E",
-      pgeBody: "Pull every meter and bill straight from PG&E.",
+      pgeBody:
+        "Sign in to PG&E once and Terra pulls every meter, rate, and bill on the account.",
       pgeCta: "Connect PG&E",
-      billsTitle: "Upload bills",
+      pgeStarting: "Opening PG&E sign in...",
+      pgeRecommended: "Fastest",
+      pgeSecure:
+        "Your login goes straight to PG&E through our secure utility connection. Terra never sees your password.",
+      billsTitle: "Upload a bill",
       billsBody:
-        "We read the account, rate, and cycle off each bill. You never type what is printed on them.",
-      billsCta: "Upload a bill",
-      sheetTitle: "Upload meter list",
-      sheetBody: "Have a master spreadsheet of meters? Add it to fill in the inventory.",
-      sheetCta: "Upload a CSV",
-      greenButtonCta: "Upload PG&E export",
+        "We read the account, rate, and billing cycle right off it. You never type what is printed on the bill.",
+      billsCta: "Choose a bill",
+      billsHint: "A clear photo or PDF of a recent PG&E bill.",
+      greenButtonTitle: "Upload a PG&E data export",
+      greenButtonBody:
+        "Already downloaded your usage from PG&E? Drop the Green Button file here. One export can carry every account.",
+      greenButtonCta: "Choose export files",
+      greenButtonHint: "PG&E Green Button files, saved as XML. Add several if you have them.",
+      sheetTitle: "Upload a meter list",
+      sheetBody:
+        "Have a master spreadsheet of meters? Add it to fill in the inventory. It needs a bill or PG&E to show costs.",
+      sheetCta: "Choose a CSV",
+      sheetHint: "A spreadsheet of your meters, saved as CSV.",
+      moreWays: "More ways to connect",
+      chosen: (name: string) => `Selected: ${name}`,
+      uploading: "Reading your file...",
+      sampleCta: "Just exploring? Load sample data",
       statusNone: "No data yet. Connect a source to continue.",
       statusInventory: (n: number) =>
         `${n} ${n === 1 ? "meter" : "meters"} on the list. Connect PG&E or a bill to see costs.`,
       statusReady: (n: number) => `${n} ${n === 1 ? "meter" : "meters"} connected.`,
       addMore: "You can add more accounts before you continue.",
       continue: "Continue to review",
+      differentFarm: "Not this farm? Start a different one",
       error: "That did not work. Try again.",
+    },
+    // The connecting screen: the grower has opened PG&E's hosted sign-in in another tab; we
+    // poll until their accounts, meters, and bills land, then move on to review.
+    connecting: {
+      eyebrow: "Connecting to PG&E",
+      title: "Finishing your PG&E connection",
+      waiting:
+        "Sign in to PG&E in the tab we just opened and choose the accounts to share. Keep this tab open. We will pull your meters and bills the moment you finish.",
+      working: "Pulling your meters and bills from PG&E. This can take a minute.",
+      accounts: (n: number) => `${n} ${n === 1 ? "account" : "accounts"}`,
+      meters: (n: number) => `${n} ${n === 1 ? "meter" : "meters"}`,
+      ready: "Your data is in. Taking you to review.",
+      continueReady: "Continue with what is ready",
+      reopen: "Reopen the PG&E sign in",
+      trouble: "Having trouble? Go back and try another way",
+      finishing: "Bringing in your meters...",
     },
   },
   // "Tour a sample" (Epic 5, Story 5.3): the public, badged representative dashboard a
@@ -419,9 +453,10 @@ export const en = {
           ? "1 meter has no time-of-use detail on its bill"
           : `${n} meters have no time-of-use detail on their bills`,
       emptyView: "No time-of-use detail in this view",
-      // The total is TOU energy dollars (the chart's unit), not the full bill - say so.
-      barAria: (name: string, total: string): string =>
-        `Open meter ${name}, ${total} in time-of-use energy this cycle`,
+      // One bar per billing cycle now (summed across meters). The total is TOU energy dollars
+      // (the chart's unit), not the full bill - say so, with how many meters rolled up.
+      barAria: (label: string, total: string, meterCount: number): string =>
+        `${label}, ${total} in time-of-use energy across ${meterCount} ${meterCount === 1 ? "meter" : "meters"}`,
       legendLabel: "Time-of-use periods",
     },
     // The Map lens (Story 2.9): pins from inventory, the shared drawer on tap, and an
@@ -998,6 +1033,7 @@ export const en = {
     },
 
     confirm: {
+      eyebrow: "Review",
       title: "Does this look right?",
       intro: (count: number): string =>
         count === 1

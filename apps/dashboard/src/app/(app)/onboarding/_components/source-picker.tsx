@@ -1,23 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { Button } from "@/components/ui";
+import { useState } from "react";
 import { en } from "@/copy/en";
+import { cn } from "@/lib/cn";
 import {
-  type ConnectState,
-  connectPgeAction,
+  connectSampleAction,
   uploadBillAction,
   uploadGreenButtonAction,
   uploadSpreadsheetAction,
 } from "../actions";
+import { PgeCard } from "./pge-card";
+import { UploadCard } from "./upload-card";
 
 const t = en.connect.picker;
 
-// Story 5.2 - the source picker. Three sources (Connect PG&E, Upload bills, Upload meter
-// list). "Continue to review" stays disabled until a real source (PG&E usage or a bill) is
-// present (AC2). PG&E is one option among equals, not a forced first step; the LOA ("never
-// upload a bill again") is a calm upsell on the PG&E card, not the entry gate (AC5).
+// The source picker. PG&E is the primary, recommended source (a real hosted authorization
+// pull). Uploading a bill is the equal alternative for a grower without a PG&E login handy;
+// the bulk paths (Green Button export, meter list) sit under a quiet "more ways" expander so
+// the screen stays calm. "Continue to review" stays disabled until a real source lands.
 export function SourcePicker({
   farmId,
   total,
@@ -29,6 +30,7 @@ export function SourcePicker({
   hasInventory: boolean;
   canContinue: boolean;
 }) {
+  const [showMore, setShowMore] = useState(false);
   const status = canContinue
     ? t.statusReady(total)
     : hasInventory
@@ -36,121 +38,151 @@ export function SourcePicker({
       : t.statusNone;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center gap-8 px-5 py-12">
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-2">
         <span className="type-label-caps text-on-surface-variant">{t.eyebrow}</span>
-        <h1 className="type-title text-on-surface">{t.title}</h1>
+        <h1 className="type-display-lg">{t.title}</h1>
         <p className="type-body-md text-on-surface-variant">{t.intro}</p>
       </div>
 
       <div className="flex flex-col gap-4">
         <PgeCard farmId={farmId} />
-        <BillCard farmId={farmId} />
-        <SpreadsheetCard farmId={farmId} />
+
+        <div className="flex items-center gap-3 py-1">
+          <span className="h-px flex-1 bg-outline-variant" />
+          <span className="type-caption text-on-surface-variant">or</span>
+          <span className="h-px flex-1 bg-outline-variant" />
+        </div>
+
+        <UploadCard
+          farmId={farmId}
+          title={t.billsTitle}
+          body={t.billsBody}
+          hint={t.billsHint}
+          accept="image/*,application/pdf"
+          name="bill"
+          cta={t.billsCta}
+          action={uploadBillAction}
+          icon={<BillIcon />}
+        />
+
+        {showMore ? (
+          <>
+            <UploadCard
+              farmId={farmId}
+              title={t.greenButtonTitle}
+              body={t.greenButtonBody}
+              hint={t.greenButtonHint}
+              accept=".xml,text/xml,application/xml"
+              name="files"
+              cta={t.greenButtonCta}
+              action={uploadGreenButtonAction}
+              icon={<FileIcon />}
+              multiple
+            />
+            <UploadCard
+              farmId={farmId}
+              title={t.sheetTitle}
+              body={t.sheetBody}
+              hint={t.sheetHint}
+              accept=".csv,text/csv"
+              name="sheet"
+              cta={t.sheetCta}
+              action={uploadSpreadsheetAction}
+              icon={<SheetIcon />}
+            />
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowMore(true)}
+            className="press inline-flex items-center justify-center gap-1.5 self-center rounded-full px-4 py-2 type-caption font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
+          >
+            {t.moreWays} <ChevronIcon />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 border-t border-outline-variant pt-6">
-        <p className="type-body-md text-on-surface-variant">{status}</p>
-        {canContinue ? <p className="type-body-sm text-on-surface-variant">{t.addMore}</p> : null}
+        <p
+          className={cn(
+            "type-body-md",
+            canContinue ? "font-semibold text-primary" : "text-on-surface-variant",
+          )}
+        >
+          {status}
+        </p>
         {canContinue ? (
-          <Link href={`/onboarding/confirm?farm=${farmId}`}>
-            <Button variant="primary" className="w-full">
-              {t.continue}
-            </Button>
+          <Link
+            href={`/onboarding/confirm?farm=${farmId}`}
+            className="press inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          >
+            {t.continue}
           </Link>
         ) : (
-          <Button variant="primary" className="w-full" disabled>
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center rounded-[var(--radius-control)] bg-primary/40 px-6 font-semibold text-on-primary"
+          >
             {t.continue}
-          </Button>
+          </button>
         )}
-      </div>
-    </main>
-  );
-}
 
-function Card({
-  title,
-  body,
-  note,
-  children,
-}: {
-  title: string;
-  body: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-control)] border border-outline-variant p-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="type-body-md font-semibold text-on-surface">{title}</h2>
-        <p className="type-body-sm text-on-surface-variant">{body}</p>
-        {note ? <p className="type-body-sm text-on-surface-variant/80">{note}</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          {/* Quiet demo path so a grower with nothing handy can still walk the flow. */}
+          <form action={connectSampleAction}>
+            <input type="hidden" name="farmId" value={farmId} />
+            <button
+              type="submit"
+              className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+            >
+              {t.sampleCta}
+            </button>
+          </form>
+          <Link
+            href="/onboarding?new=1"
+            className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+          >
+            {t.differentFarm}
+          </Link>
+        </div>
       </div>
-      {children}
     </div>
   );
 }
 
-function FieldError({ state }: { state: ConnectState }) {
-  if (!state.error) return null;
-  return <p className="type-body-sm text-alert">{state.error}</p>;
-}
-
-// Connect PG&E: a one-click authorization pull (the sample feed in v1) AND, as a variant,
-// uploading a Green Button export. Both land real usage. PG&E is one option among equals,
-// not a forced first step; the LOA "never upload a bill again" upsell is deliberately NOT
-// placed here at the entry gate (AC5: it is an upgrade offered after value, a later
-// post-confirm/settings surface). TODO(5.3+): add that post-value upsell.
-function PgeCard({ farmId }: { farmId: string }) {
-  const [state, action] = useActionState<ConnectState, FormData>(uploadGreenButtonAction, {});
+function BillIcon() {
   return (
-    <Card title={t.pgeTitle} body={t.pgeBody}>
-      <form action={connectPgeAction}>
-        <input type="hidden" name="farmId" value={farmId} />
-        <Button type="submit" variant="primary">
-          {t.pgeCta}
-        </Button>
-      </form>
-      <form action={action} className="flex flex-col gap-2">
-        <input type="hidden" name="farmId" value={farmId} />
-        <input type="file" name="files" accept=".xml" multiple className="text-sm" />
-        <Button type="submit" variant="secondary">
-          {t.greenButtonCta}
-        </Button>
-        <FieldError state={state} />
-      </form>
-    </Card>
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 2h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+      <path d="M14 2v6h6M9 13h6M9 17h6" />
+    </svg>
   );
 }
 
-// Upload bills: identity read off the bill, so printed fields are never re-typed (AC3).
-function BillCard({ farmId }: { farmId: string }) {
+function FileIcon() {
   return (
-    <Card title={t.billsTitle} body={t.billsBody}>
-      <form action={uploadBillAction} className="flex flex-col gap-2">
-        <input type="hidden" name="farmId" value={farmId} />
-        <input type="file" name="bill" accept="image/*,application/pdf" className="text-sm" />
-        <Button type="submit" variant="secondary">
-          {t.billsCta}
-        </Button>
-      </form>
-    </Card>
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
   );
 }
 
-// Upload meter list: inventory; not a real source on its own (does not unlock confirm).
-function SpreadsheetCard({ farmId }: { farmId: string }) {
-  const [state, action] = useActionState<ConnectState, FormData>(uploadSpreadsheetAction, {});
+function SheetIcon() {
   return (
-    <Card title={t.sheetTitle} body={t.sheetBody}>
-      <form action={action} className="flex flex-col gap-2">
-        <input type="hidden" name="farmId" value={farmId} />
-        <input type="file" name="sheet" accept=".csv,text/csv" className="text-sm" />
-        <Button type="submit" variant="secondary">
-          {t.sheetCta}
-        </Button>
-        <FieldError state={state} />
-      </form>
-    </Card>
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }

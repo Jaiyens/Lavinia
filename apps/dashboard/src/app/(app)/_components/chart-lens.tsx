@@ -33,10 +33,6 @@ const PRIOR_FILL = "var(--surface-container-high)";
 const MARGIN = { top: 8, right: 8, bottom: 28, left: 64 };
 const HEIGHT = 320;
 
-function barKey(bar: ChartBar): string {
-  return `${bar.meterId}|${bar.close}`;
-}
-
 /** Stack a bar's segments bottom-up into rect geometry. */
 function stackRects(bar: ChartBar, y: (cents: number) => number) {
   let cum = 0;
@@ -51,11 +47,13 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
   const [entity, setEntity] = useQueryState("entity");
   const [ranch, setRanch] = useQueryState("ranch");
   const [rate, setRate] = useQueryState("rate");
-  const [, setMeter] = useQueryState("meter");
   const [yoy, setYoy] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  // The column under the pointer / keyboard focus brightens while the rest dim a touch,
+  // so the eye lands on the bar being read (the native <title> carries its name + dollars).
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const { bars, metersWithoutTou } = useMemo(
     () => toChartBars(filterMeters(meters, { entity, ranch, rate })),
@@ -103,7 +101,7 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
     return (
       <div
         id="energy-lens"
-        className="flex min-h-[16rem] scroll-mt-6 flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8"
+        className="flex min-h-[16rem] scroll-mt-6 flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8 shadow-e1"
       >
         <p className="type-body-md text-on-surface-variant">
           {meters.length === 0 ? en.shell.table.emptyFarm : t.emptyView}
@@ -130,8 +128,8 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
   }, 0);
 
   const x = scaleBand<string>({
-    // Index-suffixed keys: two periods sharing a close instant still get distinct bands.
-    domain: shown.map((bar, i) => `${barKey(bar)}|${i}`),
+    // One band per cycle; the month key is already unique across the shown bars.
+    domain: shown.map((bar) => bar.key),
     range: [0, innerW],
     padding: 0.3,
   });
@@ -145,8 +143,6 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
   // Dedupe by formatted label so whole-dollar ticks never repeat at small magnitudes.
   const ticks = [...new Map(y.ticks(4).map((tk) => [formatUsdWhole(tk), tk])).values()];
   const bw = x.bandwidth();
-
-  const open = (id: string) => void setMeter(id);
 
   return (
     <section id="energy-lens" aria-label={t.caption} className="scroll-mt-6">
@@ -199,7 +195,7 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
 
       <div
         ref={wrapRef}
-        className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4"
+        className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4 shadow-e1"
       >
         {/* contentRect already excludes the wrapper padding, so the svg takes the full
             measured width. No role="img": the bars inside are interactive buttons and an
@@ -225,14 +221,23 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
               ))}
 
               {shown.map((bar, i) => {
-                const key = `${barKey(bar)}|${i}`;
-                const bx = x(key);
+                const bx = x(bar.key);
                 if (bx === undefined) return null;
                 const prior = comparing ? priorByBar.get(bar) : undefined;
                 const curW = prior !== undefined ? bw / 2 : bw;
-                const label = t.barAria(bar.meterName, formatUsd(bar.totalCents));
+                const label = t.barAria(bar.label, formatUsd(bar.totalCents), bar.meterCount);
                 return (
-                  <g key={key}>
+                  <g
+                    key={bar.key}
+                    className="chart-bar-grow"
+                    style={{
+                      // Small staggered start so the columns rise in a wave, capped so a
+                      // long history never drags the reveal out.
+                      animationDelay: `${Math.min(i * 30, 400)}ms`,
+                      opacity: hovered !== null && hovered !== bar.key ? 0.45 : 1,
+                      transition: "opacity var(--dur-fast) var(--ease-standard)",
+                    }}
+                  >
                     {/* Prior-year total, muted, beside the current stack (compare mode). */}
                     {prior !== undefined && (
                       <rect
@@ -255,8 +260,8 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
                         fill={BUCKET_FILL[r.bucket]}
                       />
                     ))}
-                    {/* A $0 TOU cycle is honest data (an idle pump): a baseline tick keeps
-                        the bar discoverable instead of an invisible click target. */}
+                    {/* A $0 TOU cycle is honest data (idle pumps): a baseline tick keeps the
+                        cycle visible instead of vanishing. */}
                     {bar.totalCents === 0 && (
                       <rect
                         x={prior !== undefined ? bx + bw / 2 : bx}
@@ -266,30 +271,41 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
                         fill="var(--outline)"
                       />
                     )}
-                    {/* Full-column hit + focus target: the whole band opens the drawer.
-                        Native <title> gives sighted users the name + dollars on hover. */}
+                    {/* Full-column hover target: informational, not a drawer door. The chart is
+                        the trend; per-meter detail lives in the table and drawer. role=img +
+                        <title> give the cycle readout to assistive tech and a hover tooltip. */}
                     <rect
                       x={bx}
                       y={0}
                       width={bw}
                       height={innerH}
                       fill="transparent"
-                      className="chart-bar-hit"
-                      role="button"
-                      tabIndex={0}
+                      role="img"
                       aria-label={label}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => open(bar.meterId)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          open(bar.meterId);
-                        }
-                      }}
+                      onMouseEnter={() => setHovered(bar.key)}
+                      onMouseLeave={() => setHovered(null)}
                     >
                       <title>{label}</title>
                     </rect>
                   </g>
+                );
+              })}
+
+              {/* X axis: the cycle month under each bar (the full "Mon Year" is in the tooltip). */}
+              {shown.map((bar) => {
+                const bx = x(bar.key);
+                if (bx === undefined) return null;
+                return (
+                  <text
+                    key={bar.key}
+                    x={bx + bw / 2}
+                    y={innerH + 18}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fill="var(--on-surface-variant)"
+                  >
+                    {bar.label.split(" ")[0]}
+                  </text>
                 );
               })}
 

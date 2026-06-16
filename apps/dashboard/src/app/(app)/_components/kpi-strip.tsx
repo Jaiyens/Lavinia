@@ -4,6 +4,7 @@ import { type ReactNode, useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { cardClass } from "@/components/ui";
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
@@ -60,7 +61,11 @@ function Card({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="flex min-h-[6rem] flex-col rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest p-4 text-left transition-colors hover:bg-surface-container-low focus-visible:outline-none"
+      className={cardClass({
+        interactive: true,
+        radius: "control",
+        className: "flex min-h-[6rem] flex-col p-4 text-left",
+      })}
     >
       <span className="type-label-caps text-on-surface-variant">{label}</span>
       {children}

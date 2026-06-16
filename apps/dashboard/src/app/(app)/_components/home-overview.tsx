@@ -4,6 +4,7 @@ import { sessionUserId } from "@/lib/auth";
 import { en } from "@/copy/en";
 import { formatUsdWhole } from "@/lib/format/money";
 import { cn } from "@/lib/cn";
+import { cardClass } from "@/components/ui";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -90,7 +91,7 @@ export async function HomeOverview() {
             {savingsCents > 0 ? (
               <NumberTicker
                 value={savingsCents}
-                format={(n) => formatUsdWhole(n)}
+                format="usdWhole"
                 className="type-display-lg tnum text-money-positive"
               />
             ) : (
@@ -106,7 +107,11 @@ export async function HomeOverview() {
           {/* The live Energy agent: the hero card, with the brand BorderBeam. */}
           <Link
             href="/energy"
-            className="group relative flex flex-col overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className={cardClass({
+              interactive: true,
+              radius: "2xl",
+              className: "group relative flex flex-col overflow-hidden p-6",
+            })}
           >
             <BorderBeam size={120} duration={8} colorFrom={GREEN} colorTo={GOLD} />
             <div className="flex items-center gap-3">
@@ -168,7 +173,10 @@ export async function HomeOverview() {
                 <li key={f.id}>
                   <Link
                     href={f.meterId ? `/energy?meter=${f.meterId}` : "/energy"}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest px-5 py-4 transition-colors hover:bg-surface-container-low"
+                    className={cardClass({
+                      interactive: true,
+                      className: "flex items-center justify-between gap-4 px-5 py-4",
+                    })}
                   >
                     <div className="min-w-0">
                       <p className="truncate type-body-md text-on-surface">{f.situation}</p>
@@ -196,7 +204,7 @@ export async function HomeOverview() {
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-outline-variant bg-surface-container-lowest p-5">
+    <div className={cardClass({ radius: "2xl", className: "flex flex-col p-5" })}>
       <span className="type-label-caps text-on-surface-variant">{label}</span>
       <span className="mt-2">{children}</span>
     </div>

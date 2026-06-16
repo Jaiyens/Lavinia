@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CoverageState } from "@/lib/recommendations/types";
 import type { MeterView, MeterPeriodView, MeterLineItemView } from "./load";
-import { classifyTou, toChartBars, yoyPairs, BUCKET_ORDER } from "./chart";
+import { classifyTou, toChartBars, yoyPairs, BUCKET_ORDER, type ChartBar } from "./chart";
 
 function li(over: Partial<MeterLineItemView> & { kind: MeterLineItemView["kind"] }): MeterLineItemView {
   return { label: null, amountCents: 0, quantity: null, unit: null, rate: null, ...over };
@@ -48,6 +48,7 @@ function meter(over: Partial<MeterView> & { id: string; coverageState: CoverageS
   };
 }
 
+const FEB = "2026-02-10T00:00:00.000Z";
 const MAR = "2026-03-12T00:00:00.000Z";
 
 describe("classifyTou", () => {
@@ -65,8 +66,28 @@ describe("classifyTou", () => {
   });
 });
 
-describe("toChartBars", () => {
-  it("bars reconciled meter-periods only and gates the unreconciled out", () => {
+describe("toChartBars (per-cycle aggregate)", () => {
+  it("aggregates one bar per cycle month, summing TOU dollars across meters", () => {
+    const { bars } = toChartBars([
+      meter({
+        id: "a",
+        coverageState: "reconciled",
+        periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 100 })])],
+      }),
+      meter({
+        id: "b",
+        coverageState: "reconciled",
+        periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 250 })])],
+      }),
+    ]);
+    expect(bars).toHaveLength(1);
+    expect(bars[0]?.key).toBe("2026-03");
+    expect(bars[0]?.label).toBe("Mar 2026");
+    expect(bars[0]?.totalCents).toBe(350);
+    expect(bars[0]?.meterCount).toBe(2);
+  });
+
+  it("gates unreconciled meters out of the aggregate", () => {
     const { bars } = toChartBars([
       meter({
         id: "ok",
@@ -79,10 +100,12 @@ describe("toChartBars", () => {
         periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 999 })])],
       }),
     ]);
-    expect(bars.map((b) => b.meterId)).toEqual(["ok"]);
+    expect(bars).toHaveLength(1);
+    expect(bars[0]?.totalCents).toBe(100);
+    expect(bars[0]?.meterCount).toBe(1);
   });
 
-  it("stacks segments by bucket in fixed order, summing same-bucket lines, TOU lines only", () => {
+  it("stacks summed segments by bucket in fixed order, summing same-bucket lines, TOU lines only", () => {
     const { bars } = toChartBars([
       meter({
         id: "m",
@@ -107,13 +130,13 @@ describe("toChartBars", () => {
     expect(bars[0]?.totalCents).toBe(950);
   });
 
-  it("a two-tier meter has no part_peak segment; a three-tier meter does (AC2)", () => {
+  it("each cycle's buckets reflect only that month's meters (two-tier vs three-tier, AC2)", () => {
     const { bars } = toChartBars([
       meter({
         id: "two",
         coverageState: "reconciled",
         periods: [
-          period(MAR, [
+          period(FEB, [
             li({ kind: "tou_energy", label: "Peak", amountCents: 1 }),
             li({ kind: "tou_energy", label: "Off-Peak", amountCents: 2 }),
           ]),
@@ -131,13 +154,13 @@ describe("toChartBars", () => {
         ],
       }),
     ]);
-    const two = bars.find((b) => b.meterId === "two");
-    const three = bars.find((b) => b.meterId === "three");
-    expect(two?.segments.some((s) => s.bucket === "part_peak")).toBe(false);
-    expect(three?.segments.some((s) => s.bucket === "part_peak")).toBe(true);
+    const feb = bars.find((b) => b.key === "2026-02");
+    const mar = bars.find((b) => b.key === "2026-03");
+    expect(feb?.segments.some((s) => s.bucket === "part_peak")).toBe(false);
+    expect(mar?.segments.some((s) => s.bucket === "part_peak")).toBe(true);
   });
 
-  it("counts reconciled meters without TOU detail instead of rendering zero bars", () => {
+  it("counts reconciled meters without TOU detail instead of charting them", () => {
     const { bars, metersWithoutTou } = toChartBars([
       meter({
         id: "flat",
@@ -151,30 +174,31 @@ describe("toChartBars", () => {
         periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 1 })])],
       }),
     ]);
-    expect(bars.map((b) => b.meterId)).toEqual(["tou"]);
+    expect(bars).toHaveLength(1);
+    expect(bars[0]?.totalCents).toBe(1);
     expect(metersWithoutTou).toBe(1); // flat counted; nobill is a coverage matter, not a TOU one
   });
 
-  it("orders by close ascending, then TOU total descending, then name", () => {
-    const feb = "2026-02-10T00:00:00.000Z";
+  it("orders bars chronologically by cycle month and sums each month across meters", () => {
     const { bars } = toChartBars([
       meter({
-        id: "small-mar",
+        id: "mar-small",
         coverageState: "reconciled",
         periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 10 })])],
       }),
       meter({
-        id: "big-mar",
+        id: "mar-big",
         coverageState: "reconciled",
         periods: [period(MAR, [li({ kind: "tou_energy", label: "Peak", amountCents: 999 })])],
       }),
       meter({
         id: "feb",
         coverageState: "reconciled",
-        periods: [period(feb, [li({ kind: "tou_energy", label: "Peak", amountCents: 1 })])],
+        periods: [period(FEB, [li({ kind: "tou_energy", label: "Peak", amountCents: 1 })])],
       }),
     ]);
-    expect(bars.map((b) => b.meterId)).toEqual(["feb", "big-mar", "small-mar"]);
+    expect(bars.map((b) => b.key)).toEqual(["2026-02", "2026-03"]);
+    expect(bars.find((b) => b.key === "2026-03")?.totalCents).toBe(1009);
   });
 
   it("BUCKET_ORDER puts cheap hours at the base and peak on top", () => {
@@ -183,50 +207,33 @@ describe("toChartBars", () => {
   });
 });
 
-describe("yoyPairs", () => {
-  const bar = (meterId: string, close: string, cents: number) => ({
-    meterId,
-    meterName: meterId,
+describe("yoyPairs (per-cycle)", () => {
+  const bar = (key: string, close: string, cents: number): ChartBar => ({
+    key,
+    label: key,
     close,
     segments: [{ bucket: "peak" as const, cents }],
     totalCents: cents,
+    meterCount: 1,
   });
 
-  it("pairs the same meter's same UTC month one year apart; unpaired bars stay unpaired", () => {
+  it("pairs a cycle with the same calendar month one year earlier; others stay unpaired", () => {
     const pairs = yoyPairs([
-      bar("a", "2025-03-12T00:00:00.000Z", 100),
-      bar("a", "2026-03-10T00:00:00.000Z", 150),
-      bar("b", "2026-03-12T00:00:00.000Z", 50), // no prior year
-      bar("a", "2026-04-11T00:00:00.000Z", 70), // different month, no prior
+      bar("2025-03", "2025-03-12T00:00:00.000Z", 100),
+      bar("2026-03", "2026-03-10T00:00:00.000Z", 150),
+      bar("2026-04", "2026-04-11T00:00:00.000Z", 70), // different month, no prior
     ]);
     expect(pairs).toHaveLength(1);
     expect(pairs[0]?.current.totalCents).toBe(150);
     expect(pairs[0]?.prior.totalCents).toBe(100);
   });
 
-  it("returns empty on a single-cycle account (the honest disabled toggle)", () => {
-    expect(yoyPairs([bar("a", MAR, 1), bar("b", MAR, 2)])).toEqual([]);
-  });
-
-  it("pairs rebills one-to-one in close order, never double-counting a prior", () => {
-    const pairs = yoyPairs([
-      bar("a", "2025-03-01T00:00:00.000Z", 10),
-      bar("a", "2025-03-30T00:00:00.000Z", 20),
-      bar("a", "2026-03-02T00:00:00.000Z", 11),
-      bar("a", "2026-03-29T00:00:00.000Z", 21),
-    ]);
-    expect(pairs.map((p) => [p.current.totalCents, p.prior.totalCents])).toEqual([
-      [11, 10],
-      [21, 20],
-    ]);
-
-    // One current, two priors: only one pair; one prior stays unused.
-    const lopsided = yoyPairs([
-      bar("a", "2025-03-01T00:00:00.000Z", 10),
-      bar("a", "2025-03-30T00:00:00.000Z", 20),
-      bar("a", "2026-03-02T00:00:00.000Z", 11),
-    ]);
-    expect(lopsided).toHaveLength(1);
-    expect(lopsided[0]?.prior.totalCents).toBe(10);
+  it("returns empty on a single-year account (the honest disabled toggle)", () => {
+    expect(
+      yoyPairs([
+        bar("2026-02", "2026-02-10T00:00:00.000Z", 1),
+        bar("2026-03", "2026-03-12T00:00:00.000Z", 2),
+      ]),
+    ).toEqual([]);
   });
 });
