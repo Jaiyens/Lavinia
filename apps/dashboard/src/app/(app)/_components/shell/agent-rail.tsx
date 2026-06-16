@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, UserRound } from "lucide-react";
+import { LogIn, LogOut, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
 import { signOutAction } from "../../actions";
-import { AGENTS, isAgentActive } from "./agents";
+import { AGENTS, agentHref, isAgentActive } from "./agents";
 
 // Desktop left rail (240px). Lists agents; the active live agent is primary, future agents are
-// dimmed + non-interactive with a "coming" tag. Mobile uses AgentTabBar instead.
-export function AgentRail() {
+// dimmed + non-interactive with a "coming" tag. Mobile uses AgentTabBar instead. `demo` (the
+// public Tour) points the nav at the /tour routes and swaps the account/sign-out footer for a
+// single "Sign in" CTA, since a prospect on the tour has no session.
+export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
   const pathname = usePathname();
   return (
     <aside
@@ -39,11 +41,12 @@ export function AgentRail() {
               </span>
             );
           }
-          const active = isAgentActive(agent, pathname);
+          const active = isAgentActive(agent, pathname, demo);
+          const href = agentHref(agent, demo) ?? agent.href;
           return (
             <Link
               key={agent.key}
-              href={agent.href}
+              href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
@@ -58,31 +61,43 @@ export function AgentRail() {
           );
         })}
       </nav>
-      {/* Account + sign out. Unobtrusive rail footer; account is a real destination, sign
-          out posts to the server action. */}
+      {/* Footer. Signed-in: account + sign out. The public Tour has no session, so it shows a
+          single "Sign in" CTA that leads into the real onboarding instead. */}
       <div className="mt-auto flex flex-col gap-1 pt-4">
-        <Link
-          href="/account"
-          aria-current={pathname === "/account" ? "page" : undefined}
-          className={cn(
-            "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
-            pathname === "/account"
-              ? "bg-primary-container font-semibold text-on-primary-container"
-              : "text-on-surface hover:bg-surface-container-low",
-          )}
-        >
-          <UserRound size={18} aria-hidden />
-          <span>{en.account.navLabel}</span>
-        </Link>
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
+        {demo ? (
+          <Link
+            href="/login"
+            className="flex h-11 items-center gap-3 rounded-[var(--radius-control)] bg-primary-container px-3 type-body-md font-semibold text-on-primary-container transition-colors hover:opacity-90"
           >
-            <LogOut size={18} aria-hidden />
-            <span>{en.auth.signOut}</span>
-          </button>
-        </form>
+            <LogIn size={18} aria-hidden />
+            <span>{en.tour.connectCta}</span>
+          </Link>
+        ) : (
+          <>
+            <Link
+              href="/account"
+              aria-current={pathname === "/account" ? "page" : undefined}
+              className={cn(
+                "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+                pathname === "/account"
+                  ? "bg-primary-container font-semibold text-on-primary-container"
+                  : "text-on-surface hover:bg-surface-container-low",
+              )}
+            >
+              <UserRound size={18} aria-hidden />
+              <span>{en.account.navLabel}</span>
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
+              >
+                <LogOut size={18} aria-hidden />
+                <span>{en.auth.signOut}</span>
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </aside>
   );

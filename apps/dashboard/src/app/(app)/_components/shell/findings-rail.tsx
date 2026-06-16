@@ -6,7 +6,15 @@ import { FindingCard } from "../finding-card";
 // pending findings as cards (Story 3.1) - secondary to the data hero, calm by default,
 // never a to-do list. No findings -> the calm empty state, never an apology and never
 // a fabricated count. Mobile uses FindingsSheet instead.
-export function FindingsRail({ findings }: { findings: FindingView[] }) {
+export function FindingsRail({
+  findings,
+  readOnly = false,
+}: {
+  findings: FindingView[];
+  // The public Tour has no session, so the one-tap responses would fail auth: readOnly hides
+  // them (FindingCard) and a prospect just reads the money story.
+  readOnly?: boolean;
+}) {
   return (
     <aside
       aria-label={en.shell.findingsLabel}
@@ -19,7 +27,7 @@ export function FindingsRail({ findings }: { findings: FindingView[] }) {
         <ul className="mt-4 flex flex-col gap-3">
           {findings.map((finding) => (
             <li key={finding.id}>
-              <FindingCard finding={finding} />
+              <FindingCard finding={finding} readOnly={readOnly} />
             </li>
           ))}
         </ul>

@@ -21,11 +21,13 @@ import { Reveal } from "./shell/reveal";
 const GREEN = "#2fa84f";
 const GOLD = "#f2c14e";
 
-export async function HomeOverview() {
-  const userId = await sessionUserId();
+export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } = {}) {
+  // demoOnly (the public Tour) pins to the demo farm and skips the session read entirely, so
+  // the Home overview renders for an unauthenticated visitor exactly like EnergyDashboard.
+  const userId = demoOnly ? null : await sessionUserId();
   // The (dashboard) layout already gated null -> /onboarding, so a farm is present here.
   // resolveFarm is request-cached, so this shares the layout's resolution (no extra query).
-  const resolved = await resolveFarm(userId, false);
+  const resolved = await resolveFarm(userId, demoOnly);
   if (!resolved) {
     return (
       <div className="mx-auto max-w-md py-24 text-center">
@@ -50,6 +52,9 @@ export async function HomeOverview() {
   const savingsDollars = findings.reduce((acc, f) => acc + (f.impactUsd ?? 0), 0);
   const savingsCents = Math.round(savingsDollars * 100);
   const topFindings = findings.slice(0, 3);
+  // In the public Tour the Energy agent lives under /tour/energy, not /energy, so the
+  // "open Energy" affordances navigate within the tour shell rather than bouncing to login.
+  const energyHref = demoOnly ? "/tour/energy" : "/energy";
 
   return (
     <div className="relative py-6 lg:py-10">
@@ -106,7 +111,7 @@ export async function HomeOverview() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* The live Energy agent: the hero card, with the brand BorderBeam. */}
           <Link
-            href="/energy"
+            href={energyHref}
             className={cardClass({
               interactive: true,
               radius: "2xl",
@@ -156,7 +161,7 @@ export async function HomeOverview() {
             <h2 className="type-label-caps text-on-surface-variant">{en.home.attentionHeading}</h2>
             {attentionCount > 0 && (
               <Link
-                href="/energy"
+                href={energyHref}
                 className="type-body-sm font-semibold text-primary hover:underline"
               >
                 {en.home.attentionViewAll}
@@ -172,7 +177,7 @@ export async function HomeOverview() {
               {topFindings.map((f) => (
                 <li key={f.id}>
                   <Link
-                    href={f.meterId ? `/energy?meter=${f.meterId}` : "/energy"}
+                    href={f.meterId ? `${energyHref}?meter=${f.meterId}` : energyHref}
                     className={cardClass({
                       interactive: true,
                       className: "flex items-center justify-between gap-4 px-5 py-4",

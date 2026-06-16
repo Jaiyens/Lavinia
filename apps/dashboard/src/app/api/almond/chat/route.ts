@@ -1,26 +1,30 @@
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
-import { dashboardFarm } from "@/lib/onboarding/farm";
+import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
 
 /**
- * Almond's chat endpoint (Story 6.1). Auth-gated and owner-scoped: the farm is resolved ONCE
- * here from the session via `dashboardFarm`, and the tools are built closed over that farmId,
- * so the model can never read another grower's data — no farmId ever comes from the client.
- * The model boundary is injected (`defaultAlmondResponder`): the offline stub in dev/CI (zero
- * external calls), the live Gateway only when a key is present. Read-only; nothing here mutates.
+ * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
+ * session via `dashboardFarm`, or the badged demo for the public Tour), and the tools are built
+ * closed over that farmId, so the model can never read another grower's data — no farmId ever
+ * comes from the client. The model boundary is injected (`defaultAlmondResponder`): the offline
+ * stub in dev/CI (zero external calls), the live Gateway only when a key is present. Read-only;
+ * nothing here mutates.
+ *
+ * COST/ABUSE NOTE: the Tour fallback makes this a PUBLIC, unauthenticated AI endpoint scoped to
+ * the demo farm. It only ever reads demo data (no grower data can leak), but with a live Gateway
+ * key each request costs money, so a scripted caller could run up spend. Add rate-limiting / bot
+ * protection (e.g. Vercel BotID or a per-IP limit) before exposing the Tour widely.
  */
 export const runtime = "nodejs";
 
 export async function POST(req: Request): Promise<Response> {
   const userId = await sessionUserId();
-  if (!userId) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  const resolved = await dashboardFarm(prisma, userId);
+  // Signed-in: their own farm. Public Tour (no session): the demo farm, read-only — Almond is
+  // part of the full tour now, never a leak (demoFarm is isDemo-only, never real data).
+  const resolved = userId ? await dashboardFarm(prisma, userId) : await demoFarm(prisma);
   if (!resolved) {
     return Response.json({ error: "no farm" }, { status: 400 });
   }

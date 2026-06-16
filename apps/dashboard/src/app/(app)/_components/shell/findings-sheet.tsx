@@ -12,7 +12,14 @@ import { FindingCard } from "../finding-card";
 // stake ("3 findings · ~$34k up"), tapping open to the rail's cards (Story 3.1).
 // Sits above the agent tab bar (h-16). The summary is honest: a zero count reads the
 // calm empty line, and the dollar segment only appears when a finding carries a number.
-export function FindingsSheet({ findings }: { findings: FindingView[] }) {
+export function FindingsSheet({
+  findings,
+  readOnly = false,
+}: {
+  findings: FindingView[];
+  // The public Tour is read-only (no session): hide the one-tap responses on each card.
+  readOnly?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   // Gate the segment on rounded CENTS so a sub-cent positive sum cannot render "~$0 up".
   const atRiskCents = centsFromDollars(findingsAtRiskUsd(findings));
@@ -48,7 +55,7 @@ export function FindingsSheet({ findings }: { findings: FindingView[] }) {
               <ul className="flex flex-col gap-3">
                 {findings.map((finding) => (
                   <li key={finding.id}>
-                    <FindingCard finding={finding} />
+                    <FindingCard finding={finding} readOnly={readOnly} />
                   </li>
                 ))}
               </ul>

@@ -23,11 +23,26 @@ export const AGENTS: readonly AgentItem[] = [
   { key: "labor", label: en.shell.agents.labor, href: null, icon: Users, live: false },
 ] as const;
 
-/** Active when the live agent's route matches the current path. Home owns exactly "/"; other
-    agents match their route or a subroute, on a path boundary so "/energyXYZ" never lights
-    "/energy". */
-export function isAgentActive(item: AgentItem, pathname: string): boolean {
-  if (!item.live || item.href === null) return false;
-  if (item.href === "/") return pathname === "/";
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+// The public Tour renders the SAME shell as the signed-in app, but its routes live under
+// /tour (Home == /tour, Energy == /tour/energy) so an unauthenticated visitor navigates the
+// demo without bouncing to login. agentHref maps an agent's canonical route to its tour route.
+const TOUR_HREF: Partial<Record<AgentKey, string>> = {
+  home: "/tour",
+  energy: "/tour/energy",
+};
+
+/** The destination for an agent, under the tour shell (demo) or the real app. */
+export function agentHref(item: AgentItem, demo = false): string | null {
+  if (!item.live || item.href === null) return null;
+  return demo ? (TOUR_HREF[item.key] ?? item.href) : item.href;
+}
+
+/** Active when the live agent's route matches the current path. Home owns exactly its root
+    ("/" or "/tour"); other agents match their route or a subroute, on a path boundary so
+    "/energyXYZ" never lights "/energy". */
+export function isAgentActive(item: AgentItem, pathname: string, demo = false): boolean {
+  const href = agentHref(item, demo);
+  if (href === null) return false;
+  if (href === "/" || href === "/tour") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

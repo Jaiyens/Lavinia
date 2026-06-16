@@ -48,8 +48,10 @@ const sessionCookieName = `${useSecureCookies ? "__Secure-" : ""}authjs.session-
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
   // The public "Tour a sample" dashboard (Story 5.3): zero commitment, no sign-in. It is
-  // pinned to the demo farm, so no real grower data is ever exposed.
-  if (pathname === "/tour") return true;
+  // pinned to the demo farm, so no real grower data is ever exposed. The tour is the FULL
+  // shell now (Home + Energy + findings + Almond), so its subroutes (/tour/energy) are
+  // public too.
+  if (pathname === "/tour" || pathname.startsWith("/tour/")) return true;
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return true;
   return false;
