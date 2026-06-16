@@ -46,7 +46,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Append the adapter-backed email provider to the edge-safe providers from authConfig.
   providers: [...authConfig.providers, magicLinkProvider],
   adapter: terraPrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  // JWT sessions, capped at 4 hours. Paired with the browser-session cookie in
+  // auth.config.ts this gives the "log in every time" policy: a fresh browser open always
+  // re-authenticates (cookie cleared on close), and even a tab left open all day expires
+  // after 4h. Short on purpose - this is the grower's private PG&E data.
+  session: { strategy: "jwt", maxAge: 4 * 60 * 60 },
 });
 
 /**

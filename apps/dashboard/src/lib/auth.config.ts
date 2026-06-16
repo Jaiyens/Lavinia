@@ -20,6 +20,21 @@ import Google from "next-auth/providers/google";
 const googleProvider: Provider[] =
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET ? [Google] : [];
 
+// "Log in every time" (PG&E-style, because this is the grower's private utility data).
+// We make the session-token cookie a BROWSER-SESSION cookie (see `cookies` below): it
+// carries no maxAge, so the browser drops it on close and the next fresh open requires a
+// new sign-in. A short JWT maxAge (lib/auth.ts) caps a long-lived open tab too.
+//
+// The `__Secure-` name prefix and the `secure` flag are MANDATORY on https and FORBIDDEN
+// on http (the browser silently rejects a secure cookie over http, which would break local
+// dev and the `next start` e2e). So both are gated on the same check: are we actually on
+// Vercel (always https) or pointed at an https AUTH_URL. NODE_ENV is deliberately NOT used
+// here - `next start` runs as production over http in the e2e and must stay on plain cookies.
+const useSecureCookies =
+  Boolean(process.env.VERCEL) ||
+  (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").startsWith("https://");
+const sessionCookieName = `${useSecureCookies ? "__Secure-" : ""}authjs.session-token`;
+
 /**
  * The public surface. Everything NOT public requires a session. Route groups ((app),
  * (auth)) are invisible in the URL, so we gate by an allowlist of real paths, not by an
@@ -48,6 +63,21 @@ export const authConfig: NextAuthConfig = {
   // Only adapter-free providers here (edge-safe). The email magic-link provider is added
   // in lib/auth.ts, where the Prisma adapter it requires is available.
   providers: [...googleProvider],
+  // Browser-session sign-in (see useSecureCookies note above): no maxAge on the cookie, so
+  // it is cleared when the browser closes and the grower signs in again on the next visit.
+  // Defined in this SHARED config so the edge middleware and the node handlers read/write
+  // the exact same cookie name (a mismatch would lock everyone out).
+  cookies: {
+    sessionToken: {
+      name: sessionCookieName,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+  },
   pages: {
     signIn: "/login",
     // After requesting a magic link, return to the login page in its "check your email"
