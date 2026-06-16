@@ -128,14 +128,22 @@ export async function finishPgeConnectAction(
   return result !== null;
 }
 
-/** Explore with sample data: pull the committed Green Button sample into the farm so a
- *  grower without PG&E credentials handy can still walk the whole flow end to end. */
+/** Explore with sample data: pull the committed Green Button sample into the farm AND
+ *  finalize it in one click (activate the connection + run the engines so findings show),
+ *  then land on the dashboard. Without the finalize the click just re-rendered the connect
+ *  screen and looked like nothing happened, which is exactly the "sample does not work"
+ *  report. This is the no-PG&E-handy path: see the real dashboard immediately. */
 export async function connectSampleAction(formData: FormData): Promise<void> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
   if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
   await addPgeFeed(prisma, farmId);
-  redirect(`${CONNECT}?farm=${farmId}`);
+  await prisma.connection.updateMany({
+    where: { farmId, type: "pge_smd" },
+    data: { status: "active", authorizedAt: new Date() },
+  });
+  await runEngines(prisma, farmId);
+  redirect("/");
 }
 
 /** Upload one or more Green Button (.xml) exports into the farm. */
