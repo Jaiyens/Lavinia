@@ -4,6 +4,9 @@
   "private": true,
   "description": "Terra monorepo: marketing site (apps/web) + the PG&E farmer dashboard (apps/dashboard)",
   "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
