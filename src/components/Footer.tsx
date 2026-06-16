@@ -7,15 +7,16 @@ const columns = [
   {
     heading: "Product",
     links: [
-      { label: "The Eyes", href: "#camera" },
-      { label: "Case Study", href: "#casestudy" },
+      { label: "The Eyes", href: "/#camera" },
+      { label: "Detect & Prevent", href: "/#detect" },
+      { label: "White Paper", href: "/whitepaper" },
     ],
   },
   {
     heading: "Company",
     links: [
-      { label: "About Us", href: "#about" },
-      { label: "Inquire", href: "#inquire" },
+      { label: "About Us", href: "/#about" },
+      { label: "Inquire", href: "/#inquire" },
     ],
   },
   {

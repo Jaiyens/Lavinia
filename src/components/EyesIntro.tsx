@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   motion,
   useScroll,
   useTransform,
   useMotionTemplate,
+  useMotionValueEvent,
   useReducedMotion,
   type MotionValue,
 } from "motion/react";
@@ -22,8 +23,11 @@ const GRAY_AURORA = ["#9ca3af", "#e5e7eb", "#6b7280", "#d1d5db"];
 // phase windows as fractions of the section's scroll progress
 const S1_IN: [number, number] = [0.0, 0.13];
 const S1_OUT: [number, number] = [0.28, 0.42];
+// line 2 never fades out (see `noOut` below) — it holds full opacity and
+// physically scrolls up and off as the camera section rises in behind it,
+// so there's no black gap before "the eyes". S2_OUT is unused for line 2.
 const S2_IN: [number, number] = [0.52, 0.7];
-const S2_OUT: [number, number] = [0.8, 0.93];
+const S2_OUT: [number, number] = [0.9, 1.0];
 
 type Win = [number, number, number, number];
 
@@ -43,12 +47,10 @@ export function EyesIntro() {
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
-  // background fades gray → black as the first line clears
-  const bg = useTransform(
-    scrollYProgress,
-    [0, 0.34, 0.5, 1],
-    ["#e5e7eb", "#e5e7eb", "#0a0a0a", "#0a0a0a"],
-  );
+  // background flips gray → black on its own once the first line has cleared,
+  // instead of being scrubbed through with the scroll position
+  const [dark, setDark] = useState(false);
+  useMotionValueEvent(scrollYProgress, "change", (v) => setDark(v >= 0.42));
 
   const w1 = windows(S1_IN, S1_OUT, S1.length);
   const w2 = windows(S2_IN, S2_OUT, S2.length);
@@ -57,12 +59,13 @@ export function EyesIntro() {
     "flex max-w-4xl flex-wrap justify-center text-center text-3xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl";
 
   return (
-    <section ref={ref} className="relative h-[400vh] sm:h-[900vh]">
+    <section ref={ref} className="relative h-[250vh] sm:h-[320vh]">
       {/* sentinel: header runs white while the background is black */}
       <div id="eyes-dark" className="pointer-events-none absolute inset-x-0 bottom-0 top-[46%]" />
 
       <motion.div
-        style={{ backgroundColor: bg }}
+        animate={{ backgroundColor: dark ? "#0a0a0a" : "#e5e7eb" }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
         className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden"
       >
         {/* line 1 */}
@@ -86,6 +89,7 @@ export function EyesIntro() {
                 win={w2[i]}
                 colors={i >= 3 ? TERRA_GREEN : GRAY_AURORA}
                 reduce={!!reduce}
+                noOut
               >
                 {word}
               </StoryWord>
@@ -102,17 +106,29 @@ function StoryWord({
   win,
   colors,
   reduce,
+  noOut = false,
   children,
 }: {
   progress: MotionValue<number>;
   win: Win;
   colors: string[];
   reduce: boolean;
+  noOut?: boolean;
   children: string;
 }) {
   const [a, b, c, d] = win;
-  const opacity = useTransform(progress, [a, b, c, d], [0, 1, 1, 0]);
-  const blurPx = useTransform(progress, [a, b, c, d], [14, 0, 0, 14]);
+  // noOut words only fade in and hold (no fade-out keyframes), so they stay
+  // visible past the end of the section as it scrolls away
+  const opacity = useTransform(
+    progress,
+    noOut ? [a, b] : [a, b, c, d],
+    noOut ? [0, 1] : [0, 1, 1, 0],
+  );
+  const blurPx = useTransform(
+    progress,
+    noOut ? [a, b] : [a, b, c, d],
+    noOut ? [14, 0] : [14, 0, 0, 14],
+  );
   const filter = useMotionTemplate`blur(${blurPx}px)`;
   return (
     <motion.span

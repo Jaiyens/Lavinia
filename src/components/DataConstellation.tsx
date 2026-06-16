@@ -55,7 +55,7 @@ export function DataConstellation() {
         </motion.p>
 
         <motion.div variants={item} className="mt-10">
-          <GlassButton href="#inquire" tone="light" scrim className="px-9 py-4 text-base">
+          <GlassButton href="#inquire" tone="light" className="px-9 py-4 text-base">
             Inquire
             <ArrowRight size={17} />
           </GlassButton>

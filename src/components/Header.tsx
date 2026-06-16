@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { TerraMark } from "./TerraMark";
@@ -9,6 +10,9 @@ import { nav } from "@/lib/site";
 export function Header() {
   const [overDark, setOverDark] = useState(false);
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  // section anchors only exist on the home page; route there first elsewhere
+  const fix = (href: string) => (href.startsWith("#") && pathname !== "/" ? `/${href}` : href);
 
   // white text only while the header overlaps a dark section (the camera);
   // dark text everywhere else (white hero + light sections)
@@ -42,7 +46,7 @@ export function Header() {
       <div className="bg-transparent">
         <nav className="container-x flex h-16 items-center justify-between gap-6">
           <div className="flex items-center gap-7">
-            <a href="#top" aria-label="Terra home" className="press flex shrink-0 items-center gap-2">
+            <a href={fix("#top")} aria-label="Terra home" className="press flex shrink-0 items-center gap-2">
               <TerraMark className={`h-6 w-6 ${onLight ? "text-accent-500" : "text-white"}`} />
               <span className={`text-xl font-semibold tracking-tight ${onLight ? "text-ink" : "text-white"}`}>
                 Terra
@@ -52,7 +56,7 @@ export function Header() {
               {nav.map((item) => (
                 <a
                   key={item.href}
-                  href={item.href}
+                  href={fix(item.href)}
                   className={`text-sm font-medium transition-colors ${
                     onLight ? "text-ink-mute hover:text-ink" : "text-white/85 hover:text-white"
                   }`}
@@ -91,7 +95,7 @@ export function Header() {
               {nav.map((item) => (
                 <a
                   key={item.href}
-                  href={item.href}
+                  href={fix(item.href)}
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-3 py-3 text-base font-medium text-ink-soft hover:bg-white/60 hover:text-ink"
                 >
@@ -99,7 +103,7 @@ export function Header() {
                 </a>
               ))}
               <a
-                href="#inquire"
+                href={fix("#inquire")}
                 onClick={() => setOpen(false)}
                 className="press mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-ink shadow-[0_8px_20px_-8px_rgba(9,40,60,0.35)] ring-1 ring-black/10"
               >
