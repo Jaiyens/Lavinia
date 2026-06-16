@@ -108,10 +108,14 @@ export default async function LoginPage({
       </div>
 
       {/* Story 5.3: a prospect can see the badged representative dashboard with zero
-          commitment, no sign-in. */}
-      <div className="flex justify-center border-t border-outline-variant pt-6">
-        <Link href="/tour" className="type-body-md text-on-surface-variant underline-offset-4 hover:underline">
-          {en.tour.link}
+          commitment, no sign-in. Promoted to a full-width button so there is an obvious
+          no-sign-in way to look around (the underlined link read as an afterthought). */}
+      <div className="flex flex-col gap-2 border-t border-outline-variant pt-6">
+        <p className="type-caption text-center text-on-surface-variant">{t.tourPrompt}</p>
+        <Link href="/tour" className="w-full">
+          <Button type="button" variant="secondary" className="w-full">
+            {en.tour.link} <span aria-hidden>&rarr;</span>
+          </Button>
         </Link>
       </div>
     </div>

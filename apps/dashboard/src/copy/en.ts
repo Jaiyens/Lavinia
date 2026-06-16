@@ -94,6 +94,7 @@ export const en = {
     linkSent: "Check your email for a sign-in link.",
     error: "That did not work. Try again.",
     signOut: "Sign out",
+    tourPrompt: "Just want to look around first?",
     // The magic-link email itself (Story 5.1, real sender). Plain operator English.
     email: {
       subject: "Your Terra sign-in link",
