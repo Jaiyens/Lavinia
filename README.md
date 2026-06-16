@@ -10,8 +10,8 @@ apps/
                Imported via git subtree from github.com/KamiRida/terra-website
                (the co-founder's repo).
   dashboard/   Tool 1: the PG&E farmer dashboard (app.tryterra.ai). Next 16 + Prisma
-               + Postgres. The product. Mirrored from the standalone Terra repo
-               (github.com/Jaiyens/Terra) — see "Syncing the dashboard" below.
+               + Postgres. The product. Developed directly here — this is the source
+               of truth (the old standalone Terra repo is retired).
 packages/      Shared code (ui, config, types) — added as we extract common pieces.
 ```
 
@@ -62,26 +62,16 @@ no product UI, no data, no demo:
 
 Set `ACCESS_ALLOWLIST` in the dashboard's Vercel project env (and your local `.env.local`).
 
-## Syncing the dashboard (from Terra)
+## Working on the dashboard
 
-The dashboard is developed in the standalone **Terra** repo (the source of truth). Do **not**
-edit `apps/dashboard` directly — changes there are overwritten by the next sync. To pull the
-latest dashboard into the monorepo:
+The dashboard is developed **directly in `apps/dashboard`** — it is the source of truth.
+(There used to be a standalone `Terra` repo mirrored in via a sync script; that repo is
+retired and the script is gone. Edit `apps/dashboard` like any other workspace.)
 
-```bash
-scripts/sync-dashboard.sh                 # dry run — shows what would change
-scripts/sync-dashboard.sh --apply         # write it (assumes ../Terra)
-scripts/sync-dashboard.sh --apply /path/to/Terra
-```
-
-It mirrors Terra's app code (`src/`, `prisma/`, `fixtures/`, `public/`, config) into
-`apps/dashboard`, **preserving** the Lavinia-specific files (`package.json`,
-`next.config.ts`, `.env*`). If Terra adds a new dependency it prints a drift warning — add
-that one line to `apps/dashboard/package.json` by hand. After syncing:
+Before pushing, from the repo root:
 
 ```bash
-npm install
-npm run typecheck && npm run build && npm run test
+npm run typecheck && npm run build && npm run test   # turbo, must be green
 ```
 
 ## Keeping the marketing site in sync with the co-founder's repo
@@ -99,5 +89,4 @@ Each app is its own Vercel project. Pushing `main` deploys:
 - `apps/dashboard` → **app.tryterra.ai**
 - `apps/web` → **tryterra.ai**
 
-For the dashboard, sync from Terra first (above), confirm `typecheck`/`build`/`test` are
-green, then commit and push.
+For the dashboard, confirm `typecheck`/`build`/`test` are green, then commit and push.

@@ -5,6 +5,10 @@
       "WebSearch",
       "Bash(npm run *)",
       "Bash(npx tsx *)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx shadcn add:*)",
+      "WebFetch(domain:magicui.design)",
+      "WebFetch(domain:ui.aceternity.com)",
       "WebFetch(domain:utilityapi.com)"
     ]
   }
