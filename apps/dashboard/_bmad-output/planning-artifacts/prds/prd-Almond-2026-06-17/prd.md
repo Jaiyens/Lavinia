@@ -1,5 +1,5 @@
 ---
-title: "Almond — Terra's Generative Operator (the wedge)"
+title: "Almond — Terra's Generative Operator"
 status: draft
 created: 2026-06-17
 updated: 2026-06-17
@@ -7,23 +7,27 @@ updated: 2026-06-17
 
 # PRD: Almond — Terra's Generative Operator
 
-*Almond as a main wedge: the in-app assistant that stops only answering and starts doing — opening the farm for you and building what you ask for.*
+*Almond as an AI power-up to the dashboard today, a wedge as growers grow AI-native: the in-app assistant that stops only answering and starts doing, opening the farm for you and building what you ask for.*
 
 ## 0. Document Purpose
 
-This PRD repositions **Almond** from a secondary, read-only chat assistant (shipped in Epic 6) into a **main wedge** for Terra Tool 1. It defines what Almond becomes: a **generative operator** that drives the dashboard on the grower's behalf (opening pages, drawers, filters, the map) and runs **skills** that produce the artifacts growers actually want — spreadsheets and PDF reports — all grounded in the grower's real farm data and all read-only with respect to that data.
+This PRD repositions **Almond** from a secondary, read-only chat assistant (shipped in Epic 6) into a **generative operator** — an AI power-up layered on the dashboard. It defines what Almond becomes: a **generative operator** that drives the dashboard on the grower's behalf (opening pages, drawers, filters, the map) and runs **skills** that produce the artifacts growers actually want — spreadsheets and PDF reports — all grounded in the grower's real farm data and all read-only with respect to that data.
 
 It is scoped to a v1 build. Technical mechanism, library choices, and rejected alternatives live in `addendum.md`. The capability-level decisions and their audit trail live in `.decision-log.md`. This PRD assumes the Tool 1 energy dashboard PRD (`prd-Terra-2026-06-07`) as its foundation and does not restate it.
 
 ## 1. Vision
 
-Terra's dashboard makes a farm's PG&E account legible — every meter, rate, billing cycle, and finding in one clear place. But the grower we build for is plain-spoken, skeptical, low on software and AI literacy, and "learns line by line in Excel." That grower will not climb a 183-meter UI to get the value. **Almond is how they get it without climbing.** They ask in plain operator English, and Almond does the work: it opens the exact meter, filters the table to the mis-rated rates, builds the spreadsheet, drafts the PDF for the lender. The dashboard is the truth; Almond is the hands.
+Terra's dashboard makes a farm's PG&E account legible — every meter, rate, and billing cycle in one clear place, with the bill-due calendar (the one feature growers explicitly asked for) as the home screen. **Today, the dashboard is what growers want and need.** The grower we build for is plain-spoken, skeptical, low on software and AI literacy, and "learns line by line in Excel." They are not yet AI-native; they will not arrive asking an assistant to do things for them. They want to *see their data, upfront.*
 
-That is the wedge. A dashboard is something a grower has to learn. **An operator that builds what you ask for is something a grower wants on day one** — and the artifact it produces (a clean spreadsheet, a shareable PDF of the savings found) is the proof of value the grower carries out of the product and shows to their partners, their lender, their CPA. Legibility earns trust; the operator earns the habit.
+So Almond is **not the wedge today — it is an addition.** It is the in-app operator that, for the grower who is ready, stops only answering and starts doing: it opens the exact meter, filters the table to the mis-rated rates, builds the spreadsheet, drafts the PDF for the lender. The dashboard is the truth; Almond is the hands. Most growers will lean on the dashboard and ignore the assistant at first. That is expected and fine.
 
-**[ASSUMPTION] Wedge thesis (confirm):** the dashboard is the moat, but Almond-the-operator is the wedge — the lowest-friction path to first value for a low-software grower, and the generator of shareable artifacts that pull Terra into the grower's outside relationships. Correct this if the wedge you have in mind is different.
+**Where Almond goes.** As growers grow more AI-native and discover what an assistant can do for them, Almond becomes a very big wedge — the lowest-friction path to value and the generator of shareable artifacts (a clean spreadsheet, a lender-ready PDF) that pull Terra into the grower's outside relationships. We build that capability now so it is ready when the growers are, not because it carries adoption on day one.
 
-### 1.1 From answerer to operator (what changes)
+### 1.1 Strategic context — the real wedge (out of scope here)
+
+Terra's actual wedge and moat is **connecting physical farm data (captured with cameras) to numerical data (PG&E billing, meters, rates).** Physical-to-numerical fusion is the thing no incumbent has. This PRD does not build that; it builds Almond inside the dashboard. The framing is here only so this document is honest about Almond's role: a forward-built addition with large latent wedge potential, not the company's wedge. When the camera/physical-data initiative lands, Almond is the natural surface to make that fused data legible and actionable — one more reason to build the operator now.
+
+### 1.2 From answerer to operator (what changes)
 
 Almond today (Epic 6): a farm-scoped, read-only, tool-calling chat in a Notion-style launcher/panel. Six grounded read tools (overview, meters, meter detail, findings, rates, reconciliation). It explains; it never acts. The model boundary is injected (offline stub by default, Vercel AI Gateway when keyed), so dev/CI make zero external calls.
 
@@ -98,7 +102,7 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 ### 5.3 Export skills — spreadsheet and PDF
 
 - **FR10.** **Spreadsheet skill.** Almond generates a CSV and an Excel (`.xlsx`) of what the grower asked for, **reusing the existing export logic** (`src/lib/dashboard/csv.ts` `metersCsv` and the meter-table CSV export) rather than building a parallel exporter; the `.xlsx` path extends, it does not replace.
-- **FR11.** Spreadsheet content is **request-driven.** "Export my AG-4 meters", "the demand-charge findings as a spreadsheet", "this meter's last twelve bills" — Almond shapes the rows and columns from the request, grounded in real data, Excel-brained: tabular money, whole dollars, plain operator headers (pumps, meters, rates, bills), no kW/interval jargon.
+- **FR11.** Spreadsheet content is **request-driven.** "Export my AG-4 meters", "the demand-charge findings as a spreadsheet", "this meter's last twelve bills" — Almond shapes the rows and columns from the request, grounded in real data, Excel-brained: tabular money, whole dollars, plain operator headers (pumps, meters, rates, bills), no kW/interval jargon. **v1 leads with the data growers already trust** — the meter table and the bill-due schedule; exporting findings/recommendations is secondary and deferred pending farmer validation (see §5.6's data-first instinct and Open Q4).
 - **FR12.** **PDF report skill.** Almond generates a clean PDF whose **content is whatever the grower asks for** (one meter, the mis-rated set, the whole farm, the savings found) — composed from grounded data, with sensible structure and defaults rather than one rigid template. The PDF is branded in the warm agricultural palette, written in plain operator English, money tabular and whole-dollar, and never leads with a lone screaming hero number (the hero-not-money-loudest law holds).
 - **FR13.** Artifact generation is correct and legible at Batth scale (183 meters): a full meter spreadsheet is complete (no silent row caps — if anything is bounded, the artifact says what was left out), and a whole-farm PDF stays readable and printable.
 
@@ -115,10 +119,10 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 - **FR19.** Every generated artifact carries an **honest coverage / as-of footer.** If the farm's billing data is partial, the export says so (reusing the reconciliation/coverage honesty), so a PDF a grower shares with a lender never overclaims completeness.
 - **FR20.** Almond's **voice and persona are unchanged** across all new surfaces (action chips, previews, generated copy): the almond character, plain operator English, no exclamation marks, no kW/tariff jargon on the surface, and **no em dashes in any user-facing generated copy** (the project copy law).
 
-### 5.6 Surfacing the wedge
+### 5.6 Surfacing Almond (gently)
 
-- **FR21.** **[ASSUMPTION]** Because Almond is now the wedge, it is given **elevated prominence** as the way to get value without climbing the UI: a persistent, obvious entry in the OS-shell rail; a first-run nudge in onboarding ("ask Almond to show you your most expensive meter"); and the existing grounded starters extended to include **action and export** prompts ("export my meters", "make a PDF of my mis-rated pumps", "open my biggest opportunity").
-- **FR22.** **[ASSUMPTION]** The starter suggestions and empty state **teach the new powers** — they make a grower discover that Almond can now *do* (navigate, build a spreadsheet, draft a PDF), not just answer, so the capability isn't hidden behind knowing to ask.
+- **FR21.** Almond is given a clear, discoverable entry as a way to get value without climbing the UI: a persistent entry in the OS-shell rail, a first-run nudge in onboarding ("ask Almond to show you your most expensive meter"), and the existing grounded starters extended to include **action and export** prompts ("export my meters", "make a PDF of my mis-rated pumps", "open my biggest opportunity").
+- **FR22.** Surfacing is **gentle and progressive, never overbearing.** The grower we serve is non-AI-native and is easily confused or put off by a pushy assistant on first use. Almond stays out of the way of the dashboard (which is what the grower came for), reveals its powers progressively as the grower engages, and never blocks, interrupts, or nags. The first run must read as calm and optional, not as "go talk to the AI." UX friendliness for a non-AI-native operator is a hard requirement here, not a polish item.
 
 ## 6. Non-Goals (Explicit, v1)
 
@@ -128,6 +132,7 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 - **Scheduled or background "custom agents"** (Notion 3.3 style). Almond is on-demand and grower-directed in v1.
 - **A chat-first / dashboard-optional front door.** v1 is dashboard-first; Almond drives the dashboard, it does not replace it.
 - **Multi-farm operation.** Almond is scoped to the one resolved farm, as today.
+- **Physical (camera) data capture and physical↔numerical fusion.** Terra's real wedge (§1.1) is a separate initiative; this PRD builds only Almond inside the dashboard.
 
 ## 7. MVP Scope
 
@@ -149,7 +154,8 @@ The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away w
 - **Security & isolation.** Farm-scoping is structural (no farmId from the model/client); the Reports area and stored files are farm-private with non-guessable, scoped/expiring access; no grower credentials ever touch the artifact path.
 - **Grounding integrity.** Fabrication rate is effectively zero — artifacts and answers are tool-sourced; absence is stated, never filled with a guess.
 - **Determinism & testability.** The model boundary stays injected (offline stub default, Vercel AI Gateway when keyed); dev/CI make zero external calls. Export shaping is pure and unit-tested; generated artifact bytes are verified by tests; navigation actions are deterministic.
-- **Performance.** **[ASSUMPTION]** Navigation feels instant (no full reload). A meter-table spreadsheet generates in a few seconds; a whole-farm PDF in roughly ten seconds or less. Generation is serverless-safe (pure-JS libraries, no headless Chromium — see addendum). *(Confirm targets.)*
+- **Performance (direction approved; numbers to set).** Navigation feels instant (no full reload). A meter-table spreadsheet generates in a few seconds; a whole-farm PDF in roughly ten seconds or less. Generation is serverless-safe (pure-JS libraries, no headless Chromium — see addendum). Speed is a felt requirement: a slow operator will not be trusted by a skeptical grower.
+- **Stays native to a constantly changing dashboard.** The dashboard evolves all the time; Almond's navigation must not drift out of sync with it. Navigation is defined against the single canonical surface contract — the closed URL-state key set (`lens | entity | ranch | rate | meter`) and the lens registry — as one source of truth, so a dashboard change updates Almond's reach in one place rather than scattering hardcoded routes. Almond must never offer to open a surface that no longer exists.
 - **Mobile-first.** Download, the Reports area, and generated PDFs all work and read well on a phone; PDFs are printable.
 - **Accessibility & motion.** Action chips, previews, and the Reports area are keyboard-navigable with adequate tap targets; streamed actions/answers announce via a live region; Magic UI effects degrade gracefully under `prefers-reduced-motion`.
 - **Honest limits.** No silent truncation: if any artifact bounds its content (row caps, page limits), it states what was left out.
@@ -157,7 +163,7 @@ The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away w
 
 ## 9. Success Metrics
 
-- **Activation (the wedge metric):** % of growers who complete at least one Almond-driven *action* (a navigation or an export) in their first session. **[ASSUMPTION]** target to set.
+- **Activation:** % of growers who complete at least one Almond-driven *action* (a navigation or an export) in their first session. Direction approved; numeric target to set. Note: because Almond is an addition (not the day-one draw), expect this modest early and climbing as growers grow AI-native — track the *trend*, not just the level.
 - **Value-via-Almond:** share of sessions where the grower reaches value through Almond rather than manual UI navigation; count of artifacts generated per active grower.
 - **Shareable proof:** count of PDFs/spreadsheets saved or downloaded — the artifact is the thing that leaves the product and pulls Terra into outside relationships.
 - **Retention proxy:** growers who generate an artifact return at a higher rate than those who don't.
@@ -171,17 +177,16 @@ The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away w
 
 ## 10. Open Questions
 
-1. Reports-area persistence and storage choice (Vercel Blob assumed) — confirm at the architecture handoff.
-2. Do saved Reports expire / have a retention or quota policy at Batth scale?
-3. Exact prominence treatment for FR21 (rail entry, onboarding nudge wording) — confirm with design.
-4. Success-metric and latency targets (FR/NFR `[ASSUMPTION]`s) — set with the team.
-5. Should the spreadsheet skill also export findings and billing breakdowns in v1, or meters only first? (FR11 implies broader; confirm the v1 cut.)
+1. **Retention / quota** for saved Reports at Batth scale. *(Storage decided: report files in Vercel Blob, private; DB stays Neon — see addendum.)*
+2. **Exact gentle-surfacing treatment** for FR21–FR22 (rail entry, onboarding nudge wording) — design with the non-AI-native first-use constraint front of mind.
+3. **Numeric targets** for the activation metric and generation latency — direction approved; set the actual numbers with the team.
+4. **Farmer validation (the big one).** The whole Almond-as-addition thesis, the gentle surfacing, and the export cut should be put in front of a real grower before heavy build — only a farmer knows what a farmer wants. Validate specifically that the data-first instinct (show the data, not findings/recs first; Almond stays out of the way) is right.
 
 ## 11. Assumptions Index
 
-- **[A1]** Wedge thesis as stated in §1.1 (operator is the wedge, dashboard is the moat).
+- **[A1]** *Resolved with user 2026-06-17:* Almond is an **addition** today, a large **latent** wedge as growers grow AI-native; Terra's real wedge is physical↔numerical (camera) data fusion, out of scope here (§1, §1.1).
 - **[A2]** FR13: pure-JS server-side generation, no headless Chromium (addendum).
-- **[A3]** FR21–FR22: elevated surfacing via rail prominence, onboarding nudge, action-flavored starters.
-- **[A4]** NFR performance/latency targets in §8.
-- **[A5]** Success-metric targets in §9.
-- **[A6]** Reports stored via blob storage with scoped, expiring URLs (addendum).
+- **[A3]** *Confirmed:* FR21 elevated entry, FR22 gentle/progressive surfacing — must not overbear a non-AI-native grower.
+- **[A4]** *Confirmed direction:* NFR performance is a felt requirement; numeric targets to set (§8, §10).
+- **[A5]** *Confirmed direction:* success metrics in §9; numeric target to set, track the trend.
+- **[A6]** *Decided:* DB stays Neon Postgres; report files in Vercel Blob (private, scoped/expiring URLs). Supabase migration rejected (addendum).
