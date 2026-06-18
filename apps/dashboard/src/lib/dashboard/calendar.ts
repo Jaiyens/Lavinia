@@ -17,7 +17,10 @@
 // Pacific-localized bucket first - the same convention note as kpi.ts monthKey
 // (recorded in deferred-work from 2-3).
 
-import { isKnownSerial, type MeterReadSchedule } from "@/lib/pge/schedule";
+import { isKnownSerial, nextCycleClose, type MeterReadSchedule } from "@/lib/pge/schedule";
+import { billingCycleFor, daysToClose } from "@/lib/energy/billing";
+import { maxDemandInWindow } from "@/lib/energy/demand";
+import type { IntervalReading } from "@/lib/energy/types";
 import type { MeterView } from "./load";
 
 export type CalendarChipKind = "actual" | "scheduled";
@@ -178,4 +181,242 @@ export function calendarMonth(
   }
 
   return { year, month, leadingBlanks, days, actualCount, scheduledCount };
+}
+
+// ---------------------------------------------------------------------------
+// Billing-cycle surface selectors (2026-06-17): the Home "next close" line, the
+// Calendar KPI strip, and the open-cycle standing sheet. All pure (callers pass
+// todayIso + the loaded schedule + any readings); colocated tests in
+// calendar.test.ts. Forecast vs posted are never conflated (AR-14): these read
+// only SCHEDULED closes (the forecast side) and posted peaks (the retrospective
+// side), and never invent a date or a dollar.
+// ---------------------------------------------------------------------------
+
+/** Normalize a stored serial for schedule lookup; null when blank/absent. */
+function serialKey(serialCode: string | null): string | null {
+  if (serialCode === null) return null;
+  const k = serialCode.trim().toUpperCase();
+  return k === "" ? null : k;
+}
+
+/** Median of a numeric list, or null when empty. */
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[mid] ?? null;
+  const lo = sorted[mid - 1];
+  const hi = sorted[mid];
+  return lo !== undefined && hi !== undefined ? (lo + hi) / 2 : null;
+}
+
+/**
+ * PLACEHOLDER threshold, pending ratification on real Batth data (per the UX
+ * spine's "running hot" rule). The margin a meter's most recent posted demand
+ * peak must clear over the median of its prior posted peaks to read as "running
+ * hot."
+ */
+export const RUNNING_HOT_MARGIN = 0.25; // +25% over the trailing median
+
+/**
+ * Whether a meter is "running hot." Defined (spine 2026-06-17) as peak-to-date
+ * materially above the meter's trailing-cycle median, by a tested pure function,
+ * and SUPPRESSED when fewer than 3 prior cycles exist (no history => no guess).
+ * Until interval readings are wired, the most recent POSTED peak stands in for the
+ * open cycle's peak-to-date; this is the placeholder the threshold rides on.
+ */
+export function runningHot(meter: MeterView): boolean {
+  const peaks: number[] = [];
+  for (const p of [...meter.periods].sort((a, b) => a.start.localeCompare(b.start))) {
+    if (p.peakKw !== null && p.peakKw > 0) peaks.push(p.peakKw);
+  }
+  if (peaks.length < 4) return false; // need the latest peak + >= 3 prior cycles
+  const latest = peaks[peaks.length - 1];
+  const med = median(peaks.slice(0, -1));
+  if (latest === undefined || med === null || med <= 0) return false;
+  return latest > med * (1 + RUNNING_HOT_MARGIN);
+}
+
+export type NextClose = {
+  meterId: string;
+  meterName: string;
+  ranchName: string | null;
+  /** The next SCHEDULED (forecast) close on or after today; ISO date. */
+  closeIso: string;
+  /** Whole days from today to that close (0 on the day, never negative here). */
+  daysAway: number;
+};
+
+export type NextClosesModel = {
+  /** The soonest upcoming forecast close across resolvable meters; null when none. */
+  soonest: NextClose | null;
+  closingThisWeek: number;
+  closingThisMonth: number;
+  /** Meters running hot right now (drives the Home watch clause + KPI). */
+  hotCount: number;
+  /** Meters with no resolvable serial; surfaced honestly, never silently dropped. */
+  unforecastable: number;
+};
+
+const WEEK_DAYS = 7;
+
+/**
+ * The Home "next close" inputs: the soonest upcoming forecast close, how many
+ * close this week / this calendar month, the running-hot count, and how many
+ * meters we cannot forecast (honesty over false completeness).
+ */
+export function nextCloses(
+  meters: MeterView[],
+  schedule: MeterReadSchedule,
+  todayIso: string,
+): NextClosesModel {
+  const today = todayIso.slice(0, 10);
+  const monthPrefix = today.slice(0, 7);
+  const upcoming: NextClose[] = [];
+  let unforecastable = 0;
+  let hotCount = 0;
+
+  for (const meter of meters) {
+    if (runningHot(meter)) hotCount += 1;
+    const key = serialKey(meter.serialCode);
+    if (key === null || !isKnownSerial(meter.serialCode, schedule)) {
+      unforecastable += 1;
+      continue;
+    }
+    const close = nextCycleClose(key, today, schedule);
+    if (close === null) continue; // schedule horizon exhausted; no fabricated date
+    upcoming.push({
+      meterId: meter.id,
+      meterName: meter.name,
+      ranchName: meter.ranchName,
+      closeIso: close,
+      daysAway: daysToClose(close, today),
+    });
+  }
+
+  upcoming.sort((a, b) =>
+    a.closeIso !== b.closeIso
+      ? a.closeIso.localeCompare(b.closeIso)
+      : a.meterName.localeCompare(b.meterName),
+  );
+
+  return {
+    soonest: upcoming[0] ?? null,
+    closingThisWeek: upcoming.filter((c) => c.daysAway >= 0 && c.daysAway <= WEEK_DAYS).length,
+    closingThisMonth: upcoming.filter((c) => c.closeIso.slice(0, 7) === monthPrefix).length,
+    hotCount,
+    unforecastable,
+  };
+}
+
+export type UpcomingClose = {
+  /** The scheduled (forecast) billing-close date; ISO date. */
+  closeIso: string;
+  /** How many meters close on that date. */
+  meterCount: number;
+  /** Distinct ranch names closing that date (sorted), for context; may be empty. */
+  ranchNames: string[];
+};
+
+/**
+ * Upcoming billing CLOSES across the farm, grouped by date, soonest first - the
+ * front-page "when does my PG&E billing close" answer. Each meter contributes its
+ * next scheduled close (from its serial via the read schedule); meters with no
+ * resolvable serial are skipped (never a fabricated date). Capped at `limit` dates.
+ */
+export function upcomingCloses(
+  meters: MeterView[],
+  schedule: MeterReadSchedule,
+  todayIso: string,
+  limit = 6,
+): UpcomingClose[] {
+  const today = todayIso.slice(0, 10);
+  const byDate = new Map<string, { count: number; ranches: Set<string> }>();
+  for (const meter of meters) {
+    const key = serialKey(meter.serialCode);
+    if (key === null || !isKnownSerial(meter.serialCode, schedule)) continue;
+    const close = nextCycleClose(key, today, schedule);
+    if (close === null) continue;
+    const cur = byDate.get(close) ?? { count: 0, ranches: new Set<string>() };
+    cur.count += 1;
+    if (meter.ranchName !== null && meter.ranchName !== "") cur.ranches.add(meter.ranchName);
+    byDate.set(close, cur);
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([closeIso, v]) => ({
+      closeIso,
+      meterCount: v.count,
+      ranchNames: [...v.ranches].sort((a, b) => a.localeCompare(b)),
+    }));
+}
+
+export type OpenCycleStanding = {
+  /** This open cycle's forecast close; ISO date. */
+  closeIso: string;
+  daysAway: number;
+  /** ISO timestamp of the highest pull so far this cycle; null with no reads. */
+  peakAtIso: string | null;
+  /** Date of the latest read we actually hold (<= today); null with no reads. */
+  asOfIso: string | null;
+  /** The latest read is more than STALE_DAYS old; say so rather than imply freshness. */
+  asOfStale: boolean;
+  /** Safe to show the steer: read <= 1 day old AND the cycle is still open. */
+  steerOk: boolean;
+};
+
+const STALE_DAYS = 2;
+
+/**
+ * Where an open cycle stands, honestly day-lagged. Retrospective only: the peak
+ * "so far" comes from the reads we hold, the "as of" date is the latest read
+ * (computed, never the literal "yesterday"), and the steer is gated to fresh data
+ * on a still-open cycle so we never give live "run/don't run now" advice (planner,
+ * not live meter). Returns null when the meter has no resolvable cycle window; the
+ * standing fields degrade to null when we hold no reads for the window.
+ */
+export function openCycleStanding(
+  meter: MeterView,
+  readings: readonly IntervalReading[],
+  schedule: MeterReadSchedule,
+  todayIso: string,
+): OpenCycleStanding | null {
+  const key = serialKey(meter.serialCode);
+  if (key === null) return null;
+  const dates = schedule.cycles[key];
+  if (dates === undefined) return null;
+  const today = todayIso.slice(0, 10);
+  const cycle = billingCycleFor(dates, today);
+  if (cycle === null) return null;
+
+  const closeIso = cycle.close;
+  const daysAway = daysToClose(closeIso, today);
+
+  // Peak-to-date over [cycle.start 00:00Z, end of today]; half-open end covers
+  // every 15-minute interval that STARTS today.
+  const windowStart = `${cycle.start}T00:00:00.000Z`;
+  const windowEnd = `${today}T23:59:59.999Z`;
+  const peak = maxDemandInWindow(readings, windowStart, windowEnd);
+  if (peak === null) {
+    return { closeIso, daysAway, peakAtIso: null, asOfIso: null, asOfStale: false, steerOk: false };
+  }
+
+  // "as of" = the latest read we actually hold within the window (computed).
+  let latestStart: string | null = null;
+  for (const r of readings) {
+    if (r.start >= windowStart && r.start <= windowEnd && (latestStart === null || r.start > latestStart)) {
+      latestStart = r.start;
+    }
+  }
+  const asOfIso = latestStart === null ? null : latestStart.slice(0, 10);
+  const staleDays = asOfIso === null ? 0 : daysToClose(today, asOfIso); // today - asOf
+  return {
+    closeIso,
+    daysAway,
+    peakAtIso: peak.at,
+    asOfIso,
+    asOfStale: staleDays > STALE_DAYS,
+    steerOk: asOfIso !== null && staleDays <= 1 && daysAway > 0,
+  };
 }

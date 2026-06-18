@@ -247,7 +247,7 @@ export function MeterMap({
         style: buildStyle(basemapRef.current, paper),
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
-        attributionControl: { compact: true },
+        attributionControl: false,
         dragRotate: false,
         pitchWithRotate: false,
       });

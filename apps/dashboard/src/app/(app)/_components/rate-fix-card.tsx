@@ -6,9 +6,8 @@ import { ArrowRight, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { cardClass } from "@/components/ui";
-import { NumberTicker } from "@/components/ui/number-ticker";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { centsFromDollars } from "@/lib/format/money";
+import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFinding, type FindingResponse } from "../actions";
 
@@ -97,14 +96,16 @@ export function RateFixCard({
           <p className="type-body-md mt-1 text-on-surface">{t.plainLead}</p>
 
           {cents !== null && cents > 0 && (
-            <div className="mt-4 flex items-baseline gap-2">
-              <NumberTicker
-                value={cents}
-                format="usdWhole"
-                className="type-money-hero tnum text-money-positive"
-              />
-              <span className="type-title text-on-surface-variant">{t.perYear}</span>
-            </div>
+            <>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="type-money-hero tnum text-money-positive">
+                  {formatUsdWhole(cents)}
+                </span>
+                <span className="type-title text-on-surface-variant">{t.perYear}</span>
+              </div>
+              {/* Honesty hedge: the number is an estimate from the grower's own bills, not a promise. */}
+              <p className="type-caption mt-1 text-on-surface-variant">{t.estimateNote}</p>
+            </>
           )}
 
           {/* The rate codes demoted to small, secondary verification detail (AG-B -> AG-C). */}

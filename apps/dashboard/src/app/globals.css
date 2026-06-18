@@ -99,7 +99,7 @@
   --shadow-elevated: 0 10px 30px rgba(20, 24, 40, 0.08);
 
   /* Layout rails + radius (DESIGN.md spacing/rounded). */
-  --agent-rail: 240px;
+  --agent-rail: 184px;
   --findings-rail: 320px;
   --radius-control: 0.625rem; /* default: buttons, inputs, kpi cards, table (rounder reskin) */
   --radius-lg: 1.25rem; /* larger objects: cards, drawer, bottom sheet, map, modal */

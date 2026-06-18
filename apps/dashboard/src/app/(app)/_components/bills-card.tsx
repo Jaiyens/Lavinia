@@ -24,6 +24,23 @@ export function BillsCard({ scan, energyHref }: { scan: BillsScan; energyHref: s
   const amount = formatUsdWhole(scan.totalCents);
   const overdue = scan.state === "overdue";
 
+  // Group the bills by due DATE (a real farm has many accounts closing on the same cycle, so
+  // the raw list would repeat a date). One row per date: total owed + how many bills land then.
+  const byDate = new Map<string, { cents: number; count: number; overdue: boolean }>();
+  for (const b of scan.upcoming) {
+    const cur = byDate.get(b.dueIso);
+    if (cur) {
+      cur.cents += b.cents;
+      cur.count += 1;
+      cur.overdue = cur.overdue || b.overdue;
+    } else {
+      byDate.set(b.dueIso, { cents: b.cents, count: 1, overdue: b.overdue });
+    }
+  }
+  const dateRows = [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(0, 6);
+
   return (
     <section
       className={cardClass({
@@ -86,6 +103,42 @@ export function BillsCard({ scan, energyHref }: { scan: BillsScan; energyHref: s
             <p className="type-body-sm mt-2 font-medium text-alert">{t.disconnectionRisk}</p>
           )}
         </>
+      )}
+
+      {/* The dates list: WHEN each PG&E bill is due and how much. The thing growers ask to see
+          first; soonest at top, overdue rows in clay (paired with an "overdue" word, not color
+          alone). Due dates are derived from the cycle close (~21 days), not OCR. */}
+      {dateRows.length > 0 ? (
+        <div className="mt-4 border-t border-outline-variant pt-3">
+          <p className="type-label-caps text-on-surface-variant">{t.upcomingHeading}</p>
+          <ul className="mt-1 flex flex-col">
+            {dateRows.map(([dueIso, row]) => (
+              <li
+                key={dueIso}
+                className="flex items-baseline justify-between gap-3 border-t border-outline-variant py-2 first:border-t-0"
+              >
+                <span
+                  className={cn("type-body-md", row.overdue ? "text-alert" : "text-on-surface")}
+                >
+                  {fmtDate(dueIso)}
+                  {row.count > 1 && (
+                    <span className="type-caption ml-2 text-on-surface-variant">
+                      {t.dueCount(row.count)}
+                    </span>
+                  )}
+                  {row.overdue && (
+                    <span className="type-caption ml-2 text-alert">{t.overdueTag}</span>
+                  )}
+                </span>
+                <span className="type-body-md tnum text-on-surface">
+                  {formatUsdWhole(row.cents)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="type-body-md mt-4 text-on-surface-variant">{t.noDates}</p>
       )}
 
       <Link

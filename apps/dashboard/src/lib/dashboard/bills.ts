@@ -18,6 +18,9 @@ const DAY_MS = 86_400_000;
 
 export type BillsState = "overdue" | "due" | "current";
 
+/** One upcoming bill's due date + amount, for the dates list growers ask for first. */
+export type UpcomingBill = { dueIso: string; cents: number; overdue: boolean };
+
 export type BillsScan = {
   state: BillsState;
   /** Amount in the leading bucket: this-week total, overdue total, or the next single bill. */
@@ -26,6 +29,8 @@ export type BillsScan = {
   count: number;
   /** Soonest due date in the bucket (ISO YYYY-MM-DD), or null when nothing is on file. */
   soonestDueIso: string | null;
+  /** Every bill's due date + amount, soonest first - the scannable "when is my PG&E due" list. */
+  upcoming: UpcomingBill[];
 };
 
 type Bill = { dueMs: number; cents: number };
@@ -54,7 +59,7 @@ export function scanBills(meters: readonly MeterView[], todayIso: string): Bills
     cents: b.cents,
   }));
   if (bills.length === 0) {
-    return { state: "current", totalCents: 0, count: 0, soonestDueIso: null };
+    return { state: "current", totalCents: 0, count: 0, soonestDueIso: null, upcoming: [] };
   }
 
   const dues = bills.map((b) => b.dueMs);
@@ -64,6 +69,11 @@ export function scanBills(meters: readonly MeterView[], todayIso: string): Bills
   // Historical-demo anchor (see file note): only shifts the as-of point when the whole dataset is
   // already past; production data is current and uses the real today.
   const asOf = realToday > maxDue ? minDue : realToday;
+
+  // The full dates list (soonest first), shared by every state so the card can always show WHEN.
+  const upcoming: UpcomingBill[] = bills
+    .map((b) => ({ dueIso: iso(b.dueMs), cents: b.cents, overdue: b.dueMs < asOf }))
+    .sort((a, b) => a.dueIso.localeCompare(b.dueIso));
 
   const sum = (arr: Bill[]) => arr.reduce((s, b) => s + b.cents, 0);
   const soonest = (arr: Bill[]) => iso(Math.min(...arr.map((b) => b.dueMs)));
@@ -75,6 +85,7 @@ export function scanBills(meters: readonly MeterView[], todayIso: string): Bills
       totalCents: sum(overdue),
       count: overdue.length,
       soonestDueIso: soonest(overdue),
+      upcoming,
     };
   }
 
@@ -85,18 +96,22 @@ export function scanBills(meters: readonly MeterView[], todayIso: string): Bills
       totalCents: sum(dueThisWeek),
       count: dueThisWeek.length,
       soonestDueIso: soonest(dueThisWeek),
+      upcoming,
     };
   }
 
   // All current: surface the next single upcoming bill (soonest future due).
-  const upcoming = bills.filter((b) => b.dueMs > asOf + WEEK_DAYS * DAY_MS);
-  if (upcoming.length === 0) return { state: "current", totalCents: 0, count: 0, soonestDueIso: null };
-  const nextDue = Math.min(...upcoming.map((b) => b.dueMs));
-  const next = upcoming.find((b) => b.dueMs === nextDue);
+  const future = bills.filter((b) => b.dueMs > asOf + WEEK_DAYS * DAY_MS);
+  if (future.length === 0) {
+    return { state: "current", totalCents: 0, count: 0, soonestDueIso: null, upcoming };
+  }
+  const nextDue = Math.min(...future.map((b) => b.dueMs));
+  const next = future.find((b) => b.dueMs === nextDue);
   return {
     state: "current",
     totalCents: next ? next.cents : 0,
-    count: upcoming.length,
+    count: future.length,
     soonestDueIso: iso(nextDue),
+    upcoming,
   };
 }

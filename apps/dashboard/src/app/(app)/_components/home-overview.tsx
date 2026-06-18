@@ -1,28 +1,31 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Sprout, Sun } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { sessionUserId } from "@/lib/auth";
-import { en, num } from "@/copy/en";
+import { en } from "@/copy/en";
 import { formatUsdWhole } from "@/lib/format/money";
 import { cardClass } from "@/components/ui";
-import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
-import { scanRefunds } from "@/lib/dashboard/refunds";
+import { upcomingCloses } from "@/lib/dashboard/calendar";
+import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
+import { closeDateShort } from "@/lib/format/date";
 import { scanBills } from "@/lib/dashboard/bills";
-import { getFarmWeather } from "@/lib/weather/forecast";
-import type { MeterView } from "@/lib/dashboard/load";
+import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
-import { Reveal } from "./shell/reveal";
+import { CalendarLens } from "./calendar-lens";
+import { DashboardTile } from "./dashboard-tile";
+import { ExpandablePanel } from "./expandable-panel";
+import { type BentoItem } from "./bento-grid";
+import { HomeBoard } from "./home-board";
+import { BillingClosesCard } from "./billing-closes-card";
+import { RateFixCard } from "./rate-fix-card";
+import { BillsCard } from "./bills-card";
 import { HomeMap } from "./home-map";
 import { SpendHero } from "./spend-hero";
-import { WeatherCard } from "./home-weather";
-import { RateFixCard } from "./rate-fix-card";
-import { RefundCard } from "./refund-card";
-import { BillsCard } from "./bills-card";
 
-// HOME: the farm at a glance (the Carson/Maya/Sally relay). The conversion hero leads - the Rate
-// Fix card: one named pump, one dollar, "nothing changes." Then the money-found band, the spend
-// area-chart, and the live meter map. A right rail carries context: farm profile, the remaining
-// findings, spend-by-entity bars, solar, weather. Terra's warm palette and elements throughout.
+// HOME: a no-scroll BENTO of rich, Apple-widget-style panels - each shows its real data at a glance
+// (no click required). The satellite map, the spend graph, and the "what needs a look" list are live
+// inline; the calendar is one widget among many; the small money panels show the key number and
+// enlarge on tap for the full detail. Everything visible on one screen.
 
 const LA_TZ = "America/Los_Angeles";
 
@@ -39,44 +42,23 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   }
 
   const { farm } = resolved;
-  const [meters, findings] = await Promise.all([
-    resolveMeters(farm.id),
-    resolveFindings(farm.id),
-  ]);
-  const weather = await getFarmWeather(meters);
+  const [meters, findings] = await Promise.all([resolveMeters(farm.id), resolveFindings(farm.id)]);
 
-  const meterCount = meters.length;
-  const accountCount = new Set(
-    meters.map((m) => m.accountNumber).filter((n): n is string => n !== null),
-  ).size;
-  const entityCount = new Set(
-    meters.map((m) => m.entityName).filter((n): n is string => n !== null),
-  ).size;
-  const savingsDollars = findings.reduce((acc, f) => acc + (f.impactUsd ?? 0), 0);
-  const savingsCents = Math.round(savingsDollars * 100);
-
-  // The Rate Fix hero shows the single rate-optimization finding (the wedge); the prioritized list
-  // shows the rest. If there is no rate finding, the hero renders "every pump on its best rate".
+  const savingsCents = Math.round(findings.reduce((acc, f) => acc + (f.impactUsd ?? 0), 0) * 100);
   const rateFinding = findings.find((f) => f.tool === "rate-optimization") ?? null;
   const listFindings = rateFinding ? findings.filter((f) => f.id !== rateFinding.id) : findings;
-  // Opportunities = the dollar-bearing findings that sum to the total (so the count and the total
-  // reconcile). The refund below is kept entirely separate (money owed back, not forward savings).
   const opportunityCount = findings.filter((f) => (f.impactUsd ?? 0) > 0).length;
-  const refund = scanRefunds(meters);
-  // Bills surface (top card): upcoming PG&E due dates/amounts from the connected account, by the
-  // farm's Pacific calendar date. Always shown - three states (overdue / due this week / current).
+
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: LA_TZ }).format(new Date());
   const bills = scanBills(meters, todayIso);
-
+  const schedule = loadMeterReadSchedule();
+  const nextClose = upcomingCloses(meters, schedule, todayIso)[0] ?? null;
   const { spend } = computeKpiStrip(meters);
   const series = spendByMonth(meters);
-  const entitySpend = spendByEntityTop(meters);
 
   const now = new Date();
   const laHour = Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: LA_TZ, hour: "numeric", hourCycle: "h23" }).format(
-      now,
-    ),
+    new Intl.DateTimeFormat("en-US", { timeZone: LA_TZ, hour: "numeric", hourCycle: "h23" }).format(now),
   );
   const greetingWord =
     laHour < 12
@@ -97,163 +79,185 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
 
   const energyHref = demoOnly ? "/tour/energy" : "/energy";
 
-  return (
-    <div className="px-5 py-6 lg:px-12 lg:py-10">
-      <Reveal>
-        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="type-display-lg text-on-surface">{greeting}</h1>
-            <p className="type-body-md mt-1 text-on-surface-variant">{en.home.greetingSub}</p>
-          </div>
-          <div
-            className={cardClass({ className: "flex items-center gap-2.5 px-4 py-2.5" })}
-            aria-hidden
-          >
-            <CalendarDays size={18} className="text-on-surface-variant" />
-            <span className="type-body-sm tnum text-on-surface">{dateStr}</span>
-          </div>
-        </header>
-      </Reveal>
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
-          {/* 1+2. Bills due (time-sensitive money) and the refund hook, side by side on one row -
-              they stack on phones, sit shoulder to shoulder at equal height from sm up. Bills is
-              always shown (3 states); when there is no refund it fills the row on its own. */}
-          <Reveal>
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-stretch">
-              <div className="flex min-w-0 flex-1 [&>section]:w-full">
-                <BillsCard scan={bills} energyHref={energyHref} />
-              </div>
-              {refund && (
-                <div className="flex min-w-0 flex-1 [&>section]:w-full">
-                  <RefundCard scan={refund} energyHref={energyHref} />
-                </div>
-              )}
+  // The bento widgets, in default order. The BentoGrid lets the grower drag them into any order
+  // (saved per browser); spans/sizes are fixed here so the one-screen layout always holds.
+  const bentoItems: BentoItem[] = [
+    {
+      id: "calendar",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-4",
+      node: (
+        <ExpandablePanel
+          label={en.shell.calendar.heading}
+          className="h-full overflow-auto"
+          modal={<CalendarLens meters={meters} schedule={schedule} todayIso={todayIso} />}
+        >
+          <CalendarLens meters={meters} schedule={schedule} todayIso={todayIso} />
+        </ExpandablePanel>
+      ),
+    },
+    {
+      id: "map",
+      className: "min-h-0 lg:col-span-2 lg:row-span-2",
+      node: (
+        <ExpandablePanel
+          label={en.shell.map.caption}
+          className="h-full"
+          modal={
+            <div className="h-[72vh]">
+              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-full" />
             </div>
-          </Reveal>
-
-          {/* 2. Total found across the operation, with the count (a partial list reads as partial). */}
-          <Reveal>
-            <MoneyFoundBand
-              savingsCents={savingsCents}
-              opportunityCount={opportunityCount}
-              energyHref={energyHref}
-            />
-          </Reveal>
-
-          {/* 3. The biggest single fix (the hero). */}
-          <Reveal>
-            <RateFixCard finding={rateFinding} energyHref={energyHref} readOnly={demoOnly} />
-          </Reveal>
-
-          {/* 4. The prioritized list, each row a plain one-line story with a type tag. */}
-          <Reveal>
-            <FindingsCard findings={listFindings} energyHref={energyHref} />
-          </Reveal>
-
-          {/* 5. The spend trend, with the fixed (non-alarming) framing. */}
-          <Reveal>
+          }
+        >
+          <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-3" })}>
+            <h2 className="type-label-caps mb-2 px-1 text-on-surface-variant">{en.shell.map.caption}</h2>
+            <div className="min-h-0 flex-1 overflow-hidden rounded-[var(--radius-control)]">
+              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-[260px] lg:h-full" />
+            </div>
+          </section>
+        </ExpandablePanel>
+      ),
+    },
+    {
+      id: "spend",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
+      node: (
+        <ExpandablePanel
+          label={en.home.spendHero.title}
+          className="h-full overflow-auto"
+          modal={
             <SpendHero
               series={series}
               latestCents={spend.cents}
               foundToCutCents={savingsCents}
               coverageLoaded={spend.coverage.loaded}
             />
-          </Reveal>
+          }
+        >
+          <SpendHero
+            series={series}
+            latestCents={spend.cents}
+            foundToCutCents={savingsCents}
+            coverageLoaded={spend.coverage.loaded}
+          />
+        </ExpandablePanel>
+      ),
+    },
+    {
+      id: "findings",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
+      node: (
+        <ExpandablePanel
+          label={en.home.findingsTitle}
+          className="h-full"
+          modal={
+            <div className="h-[70vh]">
+              <FindingsCard findings={listFindings} energyHref={energyHref} />
+            </div>
+          }
+        >
+          <FindingsCard findings={listFindings} energyHref={energyHref} />
+        </ExpandablePanel>
+      ),
+    },
+    {
+      id: "closes",
+      className: "lg:col-span-1 lg:row-span-1",
+      node: (
+        <DashboardTile
+          className="h-full w-full"
+          label={en.shell.calendar.cycle.closesEyebrow}
+          detail={<BillingClosesCard closes={upcomingCloses(meters, schedule, todayIso)} energyHref={energyHref} />}
+        >
+          {nextClose ? (
+            <>
+              <p className="type-headline text-on-surface">{closeDateShort(nextClose.closeIso)}</p>
+              <p className="type-body-sm mt-1 text-on-surface-variant">
+                {en.shell.calendar.cycle.closesMeters(nextClose.meterCount)}
+              </p>
+            </>
+          ) : (
+            <p className="type-body-md text-on-surface-variant">{en.shell.calendar.cycle.closesNone}</p>
+          )}
+        </DashboardTile>
+      ),
+    },
+    {
+      id: "fix",
+      className: "lg:col-span-1 lg:row-span-1",
+      node: (
+        <DashboardTile
+          className="h-full w-full"
+          label={en.home.rateFix.biggestEyebrow}
+          detail={<RateFixCard finding={rateFinding} energyHref={energyHref} readOnly={demoOnly} />}
+        >
+          {rateFinding ? (
+            <>
+              {rateFinding.impactUsd != null && rateFinding.impactUsd > 0 && (
+                <p className="type-headline tnum text-money-positive">
+                  ~{formatUsdWhole(Math.round(rateFinding.impactUsd * 100))}
+                </p>
+              )}
+              <p className="truncate type-body-md mt-1 text-on-surface-variant">
+                {rateFinding.meterName ?? "A pump"}
+              </p>
+            </>
+          ) : (
+            <p className="type-body-md text-on-surface-variant">{en.home.rateFix.emptyTitle}</p>
+          )}
+        </DashboardTile>
+      ),
+    },
+    {
+      id: "bills",
+      className: "lg:col-span-1 lg:row-span-1",
+      node: (
+        <DashboardTile
+          className="h-full w-full"
+          label={en.home.bills.eyebrow}
+          detail={<BillsCard scan={bills} energyHref={energyHref} />}
+        >
+          {bills.soonestDueIso ? (
+            <>
+              <p className="type-headline text-on-surface">{closeDateShort(bills.soonestDueIso)}</p>
+              <p className="type-body-sm tnum mt-1 text-on-surface-variant">{formatUsdWhole(bills.totalCents)}</p>
+            </>
+          ) : (
+            <p className="type-body-md text-on-surface-variant">{en.home.bills.noneCurrent}</p>
+          )}
+        </DashboardTile>
+      ),
+    },
+    {
+      id: "savings",
+      className: "lg:col-span-1 lg:row-span-1",
+      node: (
+        <DashboardTile
+          className="h-full w-full"
+          label={en.home.savingsCard.eyebrow}
+          detail={
+            <div className="flex flex-col gap-4">
+              <MoneyFoundBand savingsCents={savingsCents} opportunityCount={opportunityCount} energyHref={energyHref} />
+              <FindingsCard findings={listFindings} energyHref={energyHref} />
+            </div>
+          }
+        >
+          <p className="type-headline tnum text-on-surface">{formatUsdWhole(savingsCents)}</p>
+          <p className="type-body-sm mt-1 text-on-surface-variant">{en.home.savingsCard.count(opportunityCount)}</p>
+        </DashboardTile>
+      ),
+    },
+  ];
 
-          {/* 6. The farm on the map. */}
-          <Reveal>
-            <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
-              <h2 className="type-label-caps mb-3 text-on-surface-variant">{en.shell.map.caption}</h2>
-              <HomeMap meters={meters} energyHref={energyHref} />
-            </section>
-          </Reveal>
-
-          {/* 7. The trust line: the meter count, demoted from a headline to a quiet reassurance. */}
-          <p className="type-body-sm text-center text-on-surface-variant">
-            {en.home.trustLine(meterCount)}
-          </p>
-        </div>
-
-        {/* Right rail: secondary context - farm profile, spend-by-entity bars, solar, weather. */}
-        <Reveal>
-          <aside className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0 lg:sticky lg:top-6">
-            <ProfileCard
-              farmName={farm.name}
-              ownerFirst={ownerFirst}
-              meterCount={meterCount}
-              accountCount={accountCount}
-              entityCount={entityCount}
-            />
-            <SpendByEntityCard rows={entitySpend} />
-            <SolarCard meters={meters} />
-            <WeatherCard weather={weather} />
-          </aside>
-        </Reveal>
-      </div>
+  return (
+    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-7.5rem)] lg:overflow-hidden lg:p-4">
+      {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
+          the viewport (minus the tour banner) so the whole farm stays on one screen. */}
+      <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
     </div>
   );
 }
 
-// Top entities by latest reconciled bill (for the right-rail progress bars).
-function spendByEntityTop(meters: MeterView[]): { name: string; cents: number }[] {
-  const byEntity = new Map<string, number>();
-  for (const m of meters) {
-    if (m.coverageState !== "reconciled" || m.entityName === null) continue;
-    const latest = m.periods[m.periods.length - 1];
-    if (latest?.printedTotalCents != null) {
-      byEntity.set(m.entityName, (byEntity.get(m.entityName) ?? 0) + latest.printedTotalCents);
-    }
-  }
-  return [...byEntity.entries()]
-    .map(([name, cents]) => ({ name, cents }))
-    .sort((a, b) => b.cents - a.cents)
-    .slice(0, 5);
-}
-
-// The farm profile card (reference's profile card): a leaf badge, the farm + owner, and chips.
-function ProfileCard({
-  farmName,
-  ownerFirst,
-  meterCount,
-  accountCount,
-  entityCount,
-}: {
-  farmName: string;
-  ownerFirst: string | null;
-  meterCount: number;
-  accountCount: number;
-  entityCount: number;
-}) {
-  return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col items-center p-6 text-center" })}>
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-        <Sprout size={26} aria-hidden />
-      </span>
-      <p className="type-title mt-3 text-on-surface">{farmName}</p>
-      <p className="type-caption text-on-surface-variant">{ownerFirst ?? en.home.profile.ownerRole}</p>
-      <div className="mt-4 flex w-full items-stretch gap-2">
-        <Chip value={meterCount} label={en.home.profile.meters} />
-        <Chip value={accountCount} label={en.home.profile.accounts} />
-        <Chip value={entityCount} label={en.home.profile.entities} />
-      </div>
-    </section>
-  );
-}
-
-function Chip({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center rounded-xl border border-outline-variant bg-surface-container-low px-1 py-2">
-      <span className="type-body-md tnum font-semibold text-on-surface">{value}</span>
-      <span className="type-caption text-on-surface-variant">{label}</span>
-    </div>
-  );
-}
-
-// The money-found band: the top-level total across the whole operation, with the opportunity count
-// so a partial list reads as partial. The biggest single item (the hero) sits just below it; the
-// total always equals the hero plus the list. Refunds are NEVER summed in here. Honest empty.
+// The money-found band: the top-level total across the whole operation, with the opportunity count.
 function MoneyFoundBand({
   savingsCents,
   opportunityCount,
@@ -302,16 +306,15 @@ function TypeTag({ tool }: { tool: string }) {
   );
 }
 
-// The prioritized "what needs a look" list: each row a plain one-line story (no mid-word truncation)
-// with a type tag (Rate fix / Spike / Solar / Bill check) and its dollar amount.
+// The prioritized "what needs a look" list: each row a plain one-line story with a type tag.
 function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energyHref: string }) {
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
-      <h2 className="type-label-caps mb-3 text-on-surface-variant">{en.home.findingsTitle}</h2>
+    <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-5" })}>
+      <h2 className="type-label-caps mb-3 shrink-0 text-on-surface-variant">{en.home.findingsTitle}</h2>
       {findings.length === 0 ? (
         <p className="type-body-md text-on-surface-variant">{en.home.findingsEmpty}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
           {findings.map((f) => (
             <li key={f.id}>
               <Link
@@ -322,12 +325,9 @@ function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energ
                   <div className="mb-1 flex items-center gap-2">
                     <TypeTag tool={f.tool} />
                     {f.meterName && (
-                      <span className="truncate type-caption text-on-surface-variant">
-                        {f.meterName}
-                      </span>
+                      <span className="truncate type-caption text-on-surface-variant">{f.meterName}</span>
                     )}
                   </div>
-                  {/* The full plain-language story; wraps to two lines, never truncated mid-word. */}
                   <p className="type-body-md text-on-surface">{f.situation}</p>
                 </div>
                 {f.impactUsd != null && f.impactUsd > 0 && (
@@ -339,86 +339,6 @@ function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energ
             </li>
           ))}
         </ul>
-      )}
-    </section>
-  );
-}
-
-// Spend by entity as labeled progress bars (reference's "Developed areas").
-function SpendByEntityCard({ rows }: { rows: { name: string; cents: number }[] }) {
-  const max = rows.reduce((m, r) => Math.max(m, r.cents), 0);
-  return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
-      <h2 className="type-label-caps text-on-surface-variant">{en.home.byEntity.title}</h2>
-      {rows.length === 0 ? (
-        <p className="type-body-md mt-4 text-on-surface-variant">{en.home.byEntity.empty}</p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {rows.map((r) => (
-            <li key={r.name} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate type-body-sm text-on-surface">{r.name}</span>
-                <span className="shrink-0 type-caption tnum text-on-surface-variant">
-                  {formatUsdWhole(r.cents)}
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${max > 0 ? Math.max((r.cents / max) * 100, 4) : 0}%` }}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-// The solar / NEM snapshot card: solar meter count, installed nameplate, and the nearest true-up.
-function SolarCard({ meters }: { meters: MeterView[] }) {
-  const solar = meters.filter((m) => m.isSolar);
-  const kwTotal = solar.reduce((acc, m) => acc + (m.solarKw ?? 0), 0);
-  const trueUpMonths = solar
-    .map((m) => m.trueUpMonth)
-    .filter((n): n is number => n !== null && n >= 1 && n <= 12);
-
-  let nextTrueUp: string | null = null;
-  if (trueUpMonths.length > 0) {
-    const laMonth = Number(
-      new Intl.DateTimeFormat("en-US", { timeZone: LA_TZ, month: "numeric" }).format(new Date()),
-    );
-    const soonest = [...trueUpMonths].sort(
-      (a, b) => ((a - laMonth + 12) % 12) - ((b - laMonth + 12) % 12),
-    )[0];
-    if (soonest !== undefined) {
-      nextTrueUp = new Intl.DateTimeFormat("en-US", { month: "long" }).format(
-        new Date(2000, soonest - 1, 1),
-      );
-    }
-  }
-
-  return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
-      <div className="flex items-center gap-2">
-        <Sun size={18} className="text-gold" aria-hidden />
-        <h2 className="type-label-caps text-on-surface-variant">{en.home.solarTitle}</h2>
-      </div>
-      {solar.length === 0 ? (
-        <p className="type-body-md mt-4 text-on-surface-variant">{en.home.solarNone}</p>
-      ) : (
-        <div className="mt-3 flex flex-col gap-1">
-          <p className="type-headline tnum text-on-surface">{en.home.solarMeters(solar.length)}</p>
-          {kwTotal > 0 && (
-            <p className="type-body-md text-on-surface-variant">
-              {en.home.solarNameplate(num(kwTotal))}
-            </p>
-          )}
-          {nextTrueUp && (
-            <p className="type-body-md text-on-surface-variant">{en.home.solarTrueUp(nextTrueUp)}</p>
-          )}
-        </div>
       )}
     </section>
   );

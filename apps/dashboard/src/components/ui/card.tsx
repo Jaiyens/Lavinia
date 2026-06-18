@@ -26,7 +26,7 @@ export function cardClass({
         : "rounded-[var(--radius-lg)]";
 
   return cn(
-    "border border-outline-variant bg-surface-container-lowest shadow-e1",
+    "bg-surface-container-lowest shadow-e2",
     radiusClass,
     interactive &&
       "lift cursor-pointer hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",

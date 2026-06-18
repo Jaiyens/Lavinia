@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { CoverageState } from "@/lib/recommendations/types";
 import type { MeterReadSchedule } from "@/lib/pge/schedule";
+import type { IntervalReading } from "@/lib/energy/types";
 import type { MeterView, MeterPeriodView } from "./load";
-import { anyResolvableSerial, calendarBounds, calendarMonth, defaultCalendarMonth } from "./calendar";
+import {
+  anyResolvableSerial,
+  calendarBounds,
+  calendarMonth,
+  defaultCalendarMonth,
+  nextCloses,
+  openCycleStanding,
+  runningHot,
+  upcomingCloses,
+} from "./calendar";
 
 const SCHEDULE: MeterReadSchedule = {
   year: 2026,
@@ -189,5 +199,130 @@ describe("anyResolvableSerial", () => {
     expect(anyResolvableSerial([meter("P1")], SCHEDULE)).toBe(false);
     expect(anyResolvableSerial([meter("P1", { serialCode: "14A" })], SCHEDULE)).toBe(false);
     expect(anyResolvableSerial([meter("P1", { serialCode: " q " })], SCHEDULE)).toBe(true);
+  });
+});
+
+// --- Billing-cycle surface selectors (2026-06-17) -------------------------
+
+function peakPeriod(start: string, peakKw: number): MeterPeriodView {
+  return { start, close: start, printedTotalCents: null, demandCents: null, peakKw, tariff: null, lineItems: [] };
+}
+function reading(start: string, kWh: number): IntervalReading {
+  return { start, durationSec: 900, kWh };
+}
+
+describe("runningHot", () => {
+  it("true when the latest posted peak clears the trailing median by the margin", () => {
+    const m = meter("P1", {
+      periods: [
+        peakPeriod("2026-01-01T00:00:00.000Z", 100),
+        peakPeriod("2026-02-01T00:00:00.000Z", 100),
+        peakPeriod("2026-03-01T00:00:00.000Z", 100),
+        peakPeriod("2026-04-01T00:00:00.000Z", 200), // 200 > 100 * 1.25
+      ],
+    });
+    expect(runningHot(m)).toBe(true);
+  });
+
+  it("suppressed with fewer than 3 prior cycles (never a guess)", () => {
+    const m = meter("P1", {
+      periods: [
+        peakPeriod("2026-01-01T00:00:00.000Z", 100),
+        peakPeriod("2026-02-01T00:00:00.000Z", 100),
+        peakPeriod("2026-03-01T00:00:00.000Z", 500), // huge, but only 2 prior
+      ],
+    });
+    expect(runningHot(m)).toBe(false);
+  });
+
+  it("false when the latest peak is within the margin", () => {
+    const m = meter("P1", {
+      periods: [
+        peakPeriod("2026-01-01T00:00:00.000Z", 100),
+        peakPeriod("2026-02-01T00:00:00.000Z", 100),
+        peakPeriod("2026-03-01T00:00:00.000Z", 100),
+        peakPeriod("2026-04-01T00:00:00.000Z", 110), // 110 < 100 * 1.25
+      ],
+    });
+    expect(runningHot(m)).toBe(false);
+  });
+});
+
+describe("nextCloses", () => {
+  it("picks the soonest forecast close and counts week/month, hot, unforecastable", () => {
+    const meters = [
+      meter("mQ", { serialCode: "Q" }), // next close 2026-03-12
+      meter("mB", { serialCode: "B" }), // next close 2026-03-25
+      meter("mNone"), // no serial -> unforecastable
+      meter("mBad", { serialCode: "14A" }), // outage block -> unforecastable
+    ];
+    const r = nextCloses(meters, SCHEDULE, "2026-03-08");
+    expect(r.soonest?.meterId).toBe("mQ");
+    expect(r.soonest?.closeIso).toBe("2026-03-12");
+    expect(r.closingThisWeek).toBe(1); // only Q is within 7 days
+    expect(r.closingThisMonth).toBe(2); // Q + B both close in March
+    expect(r.unforecastable).toBe(2);
+    expect(r.hotCount).toBe(0);
+  });
+
+  it("soonest is null when nothing resolves", () => {
+    const r = nextCloses([meter("m1"), meter("m2", { serialCode: "14A" })], SCHEDULE, "2026-03-08");
+    expect(r.soonest).toBeNull();
+    expect(r.unforecastable).toBe(2);
+  });
+});
+
+describe("upcomingCloses", () => {
+  it("groups meters by their next billing-close date, soonest first, with ranch context", () => {
+    const rows = upcomingCloses(
+      [
+        meter("m1", { serialCode: "Q", ranchName: "North" }), // closes 2026-03-12
+        meter("m2", { serialCode: "Q", ranchName: "South" }), // closes 2026-03-12
+        meter("m3", { serialCode: "B", ranchName: "North" }), // closes 2026-03-25
+        meter("m4", { ranchName: "West" }), // no serial -> skipped
+      ],
+      SCHEDULE,
+      "2026-03-08",
+    );
+    expect(rows).toEqual([
+      { closeIso: "2026-03-12", meterCount: 2, ranchNames: ["North", "South"] },
+      { closeIso: "2026-03-25", meterCount: 1, ranchNames: ["North"] },
+    ]);
+  });
+
+  it("is empty when nothing resolves", () => {
+    expect(upcomingCloses([meter("m1"), meter("m2", { serialCode: "14A" })], SCHEDULE, "2026-03-08")).toEqual([]);
+  });
+});
+
+describe("openCycleStanding", () => {
+  it("reports peak-so-far, a computed as-of date, and gates the steer to fresh data", () => {
+    const m = meter("mQ", { serialCode: "Q" });
+    const s = openCycleStanding(m, [reading("2026-02-18T20:00:00.000Z", 30)], SCHEDULE, "2026-02-19");
+    expect(s?.closeIso).toBe("2026-03-12");
+    expect(s?.peakAtIso).toBe("2026-02-18T20:00:00.000Z");
+    expect(s?.asOfIso).toBe("2026-02-18");
+    expect(s?.asOfStale).toBe(false);
+    expect(s?.steerOk).toBe(true); // read is 1 day old, cycle still open
+  });
+
+  it("flags staleness and drops the steer when the latest read is old", () => {
+    const m = meter("mQ", { serialCode: "Q" });
+    const s = openCycleStanding(m, [reading("2026-02-12T20:00:00.000Z", 30)], SCHEDULE, "2026-02-20");
+    expect(s?.asOfStale).toBe(true);
+    expect(s?.steerOk).toBe(false);
+  });
+
+  it("degrades to close-only when we hold no reads (no fabricated peak)", () => {
+    const m = meter("mQ", { serialCode: "Q" });
+    const s = openCycleStanding(m, [], SCHEDULE, "2026-02-20");
+    expect(s?.closeIso).toBe("2026-03-12");
+    expect(s?.peakAtIso).toBeNull();
+    expect(s?.asOfIso).toBeNull();
+    expect(s?.steerOk).toBe(false);
+  });
+
+  it("returns null when the meter has no resolvable cycle window", () => {
+    expect(openCycleStanding(meter("m1"), [], SCHEDULE, "2026-02-20")).toBeNull();
   });
 });

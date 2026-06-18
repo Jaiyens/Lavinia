@@ -199,6 +199,9 @@ export const en = {
     greetingAfternoon: "Good afternoon",
     greetingEvening: "Good evening",
     greetingSub: "Your meters at a glance.",
+    // The lock toggle (top right) that turns drag-to-rearrange on/off, so a tile is never moved by
+    // accident. Locked by default; the lock icon shows the state.
+    editLayout: "Edit tabs",
     // The summary card row across the top of Home (mirrors the mockup's stat cards).
     kpi: {
       meters: "Meters",
@@ -234,8 +237,8 @@ export const en = {
     // The money-found band: the top-level total across the whole operation, with the count so a
     // partial list reads as partial. Kept separate from the refund (forward savings, not money owed).
     savingsCard: {
-      eyebrow: "Savings found",
-      across: "found across your operation",
+      eyebrow: "Possible savings",
+      across: "we estimate across your operation",
       count: (n: number): string => `${n} ${n === 1 ? "opportunity" : "opportunities"} found`,
       cta: "See what needs a look",
       zero: "We will flag savings here as we find them.",
@@ -244,6 +247,12 @@ export const en = {
     // connected account (no OCR, no "confirm" hedge). Three states by urgency.
     bills: {
       eyebrow: "Bills due",
+      // The dates list: the thing growers ask for first - WHEN each PG&E bill is due, and how much.
+      upcomingHeading: "When your bills are due",
+      overdueTag: "overdue",
+      dueCount: (n: number): string => `${n} bills`,
+      noDates: "No bill dates on file yet. Connect PG&E or add a bill to see them.",
+      dueRow: (date: string, amount: string): string => `${date} - ${amount}`,
       dueThisWeek: (amount: string, n: number): string =>
         `${amount} due across ${n} ${n === 1 ? "bill" : "bills"} this week`,
       overdue: (amount: string, n: number): string =>
@@ -281,10 +290,13 @@ export const en = {
     rateFix: {
       eyebrow: "Rate fix",
       // The hero is explicitly the biggest single item within the total found.
-      biggestEyebrow: "Your biggest one",
+      biggestEyebrow: "Biggest savings opportunity",
       // Lead with plain meaning; the rate codes are demoted to supporting detail on the card.
       plainLead: "You are on the wrong PG&E rate plan for how this pump actually runs.",
-      perYear: "saved per year",
+      // The number is an ESTIMATE of what switching this pump's rate could be worth, read from the
+      // grower's own bills - never a promise. Say so plainly (it is tentative until confirmed).
+      perYear: "a year if you switch",
+      estimateNote: "An estimate from your own bills, not a promise. We check it with you before anything changes.",
       trace: "See how we got this",
       done: "Mark as done",
       notNow: "Not now",
@@ -432,6 +444,49 @@ export const en = {
         kind === "actual"
           ? `${name}, billed close. Open its detail`
           : `${name}, scheduled read, may shift. Open its detail`,
+      // Billing-cycle surface (2026-06-17): the Home next-close line, the Calendar
+      // KPI strip, and the open-cycle standing sheet. Plain dates, no kW, no dollars
+      // here; "expected" and "as of" carry the forecast/lag honesty in words.
+      cycle: {
+        nextCloseLine: (ranch: string, date: string, others: number): string =>
+          others <= 0
+            ? `Next bill close: ${ranch}, ${date}.`
+            : others === 1
+              ? `Next bill close: ${ranch}, ${date}. 1 more closes this week.`
+              : `Next bill close: ${ranch}, ${date}. ${others} more close this week.`,
+        // The watch clause, appended only when a meter is running hot. Typography
+        // and clay carry it; never red, never a dollar.
+        hotClause: "One meter is pulling harder than usual this cycle.",
+        unforecastable: (n: number): string =>
+          n === 1 ? "plus 1 meter we cannot forecast yet" : `plus ${n} meters we cannot forecast yet`,
+        emptyLine: (ranch: string, date: string): string =>
+          `No bills close in the next 10 days. Next is ${ranch}, ${date}.`,
+        none: "No upcoming closes on file yet.",
+        cta: "Open the calendar",
+        kpiClosingWeek: "Closing this week",
+        kpiClosingMonth: "Closing this month",
+        kpiHot: "Running hot",
+        // Forecast/lag honesty, in words (style is never the only signal).
+        expected: "expected",
+        standingTitle: (meter: string, date: string): string => `${meter}, closes ${date}`,
+        standingPeak: (date: string): string => `Highest pull so far this cycle was ${date}.`,
+        asOf: (date: string): string => `as of ${date}`,
+        asOfStale: (date: string): string => `as of ${date}, our last read for this meter`,
+        steer: (date: string): string =>
+          `This cycle's peak is not locked until it closes ${date}, so easing off before then still helps.`,
+        noReads:
+          "We do not have this cycle's reads yet. We will show where it stands once they land.",
+        trace: "See how we got this",
+        // The front-page billing-close surface: when each meter's PG&E billing closes (the date the
+        // serial sets), soonest first. The thing a grower asks to see first.
+        closesEyebrow: "When your billing closes",
+        closesNextLabel: "Next billing close",
+        closesMeters: (n: number): string =>
+          `${n} ${n === 1 ? "meter closes" : "meters close"} this day`,
+        closesRowMeters: (n: number): string => `${n} ${n === 1 ? "meter" : "meters"}`,
+        closesCta: "See the full calendar",
+        closesNone: "Add each meter's serial from the bill to see when its billing closes.",
+      },
     },
     // Findings rail (Story 3.1): the calm secondary feed beside the data hero.
     findingsLabel: "Findings",
@@ -525,7 +580,7 @@ export const en = {
         `${loaded} of ${total} meters loaded`,
       demandLabel: "Demand charges",
       noDemand: "No demand charges this cycle",
-      moverLabel: "Biggest mover",
+      moverLabel: "Biggest cost change vs last cycle",
       vsLast: "vs last cycle",
       // Screen-reader labels for the tappable cards (the tap scrolls/opens the driver).
       spendAria: "Show the meter table",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, UserRound } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
@@ -18,7 +18,7 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
   return (
     <aside
       aria-label={en.shell.agentsLabel}
-      className="sticky top-0 hidden h-dvh w-agent-rail shrink-0 flex-col overflow-y-auto border-r border-outline-variant bg-paper px-3 py-5 lg:flex"
+      className="sticky top-0 hidden h-dvh w-40 shrink-0 flex-col overflow-y-auto border-r border-outline-variant bg-paper px-2.5 py-5 lg:flex"
     >
       <div className="px-3 pb-6">
         <Wordmark className="text-on-surface" />
@@ -67,15 +67,7 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
       {/* Footer. Signed-in: account + sign out. The public Tour has no session, so it shows a
           single "Sign in" CTA that leads into the real onboarding instead. */}
       <div className="mt-auto flex flex-col gap-1 pt-4">
-        {demo ? (
-          <Link
-            href="/login"
-            className="flex h-11 items-center gap-3 rounded-[var(--radius-control)] bg-primary-container px-3 type-body-md font-semibold text-on-primary-container transition-colors hover:opacity-90"
-          >
-            <LogIn size={18} aria-hidden />
-            <span>{en.tour.connectCta}</span>
-          </Link>
-        ) : (
+        {demo ? null : (
           <>
             <Link
               href="/account"

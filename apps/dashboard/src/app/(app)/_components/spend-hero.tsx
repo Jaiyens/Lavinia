@@ -39,13 +39,28 @@ export function SpendHero({
   const sliced = months === null ? series : series.slice(-months);
   const points = sliced.map((p) => ({ value: p.cents, label: shortMonth(p.month) }));
 
+  // Cursor crosshair: as you drag along the chart the nearest month is "active", and the big
+  // figure + the bubble + a dot on the curve all track it. Resting (no hover) shows the latest.
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const activeIdx = hoverIdx !== null && hoverIdx >= 0 && hoverIdx < points.length ? hoverIdx : null;
+  const activePoint = activeIdx !== null ? points[activeIdx] : undefined;
+  const displayCents = activePoint ? activePoint.value : latestCents;
+  const displayLabel = activePoint?.label ?? points[points.length - 1]?.label ?? "";
+  // Geometry mirrored from AreaChart so the dot lands on the curve.
+  const CH = 240;
+  const vMax = Math.max(...points.map((p) => p.value), 1);
+  const vMin = Math.min(...points.map((p) => p.value), 0);
+  const vSpan = vMax - vMin || 1;
+  const xPct = (i: number) => (points.length > 1 ? (i / (points.length - 1)) * 100 : 50);
+  const dotY = (v: number) => 12 + (CH - 16) * (1 - (v - vMin) / vSpan);
+
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
+    <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-6" })}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="type-label-caps text-on-surface-variant">{t.title}</h2>
           {hasData ? (
-            <p className="type-money-hero mt-1 tnum text-on-surface">{formatUsdWhole(latestCents)}</p>
+            <p className="type-money-hero mt-1 tnum text-on-surface">{formatUsdWhole(displayCents)}</p>
           ) : (
             <p className="type-headline mt-2 text-on-surface-variant">{t.empty}</p>
           )}
@@ -92,17 +107,42 @@ export function SpendHero({
       </div>
 
       {hasData && (
-        <div className="relative mt-4">
-          {/* A small bubble pinned over the latest reading (echoes the reference's chart tooltip). */}
+        <div
+          className="relative mt-4 min-h-0 flex-1 cursor-crosshair"
+          onMouseMove={(e) => {
+            if (points.length < 2) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const i = Math.round(((e.clientX - rect.left) / rect.width) * (points.length - 1));
+            setHoverIdx(Math.max(0, Math.min(points.length - 1, i)));
+          }}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* The value bubble follows the cursor (or rests over the latest reading). */}
           {points.length > 0 && (
-            <div className="pointer-events-none absolute right-2 top-0 z-10 rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 shadow-[var(--shadow-elevated)]">
-              <span className="type-caption text-on-surface-variant">
-                {points[points.length - 1]!.label}{" "}
-              </span>
+            <div
+              className="pointer-events-none absolute top-0 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 shadow-[var(--shadow-elevated)]"
+              style={{ left: `${Math.min(92, Math.max(8, activeIdx !== null ? xPct(activeIdx) : 100))}%` }}
+            >
+              <span className="type-caption text-on-surface-variant">{displayLabel} </span>
               <span className="type-caption tnum font-semibold text-on-surface">
-                {formatUsdWhole(latestCents)}
+                {formatUsdWhole(displayCents)}
               </span>
             </div>
+          )}
+          {/* Crosshair line + a dot riding the curve at the hovered month. */}
+          {activeIdx !== null && activePoint && points.length > 1 && (
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute bottom-0 top-7 z-10 w-px bg-primary/40"
+                style={{ left: `${xPct(activeIdx)}%` }}
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-surface-container-lowest"
+                style={{ left: `${xPct(activeIdx)}%`, top: `${dotY(activePoint.value)}px` }}
+              />
+            </>
           )}
           <AreaChart points={points} ariaLabel={t.title} height={240} />
         </div>
