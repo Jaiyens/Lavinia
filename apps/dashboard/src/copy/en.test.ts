@@ -114,3 +114,28 @@ describe("action-chip navigation copy (the FR-2 / FR-20 voice law)", () => {
     expect(sample).not.toContain("!");
   });
 });
+
+// Copy-law pins for Almond's empty-chat starter prompts (Story 10.1, FR21 / FR20 / UX-DR6). The
+// starters now advertise Almond's action/export powers; every prompt stays plain operator English —
+// name the thing, no kW/tariff/interval jargon, no exclamation marks, no em dashes.
+describe("almond starter copy (the FR-21 / FR-20 voice law)", () => {
+  const s = en.shell.almond.starters;
+  const all = Object.values(s).join(" ");
+
+  it("phrases the new action and export starters in plain words", () => {
+    expect(s.openBiggestOpportunity).toBe("Open my biggest opportunity");
+    expect(s.exportMeters).toBe("Export my meters as a spreadsheet");
+    expect(s.misRatedPdf).toBe("Make a PDF of my mis-rated pumps");
+  });
+
+  it("uses no kW/tariff/interval jargon", () => {
+    expect(all).not.toMatch(/\bkW\b/i);
+    expect(all).not.toMatch(/tariff/i);
+    expect(all).not.toMatch(/interval/i);
+  });
+
+  it("uses plain operator voice: no em dashes, no exclamation marks", () => {
+    expect(all).not.toContain("—");
+    expect(all).not.toContain("!");
+  });
+});

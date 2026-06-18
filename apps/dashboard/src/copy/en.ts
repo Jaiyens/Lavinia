@@ -341,14 +341,26 @@ export const en = {
       retry: "Try again",
       // Accessible label for the live conversation region.
       conversationLabel: "Conversation with Almond",
-      // Starter questions shown on the empty chat, drawn from the farm so the grower is
-      // never staring at a blank box. `biggestOpportunity` only shows when there are findings.
+      // Starter prompts shown on the empty chat, drawn from the farm so the grower is never staring
+      // at a blank box. Two kinds (Story 10.1): READ questions (always safe) and ACTION/EXPORT prompts
+      // that advertise Almond's new powers (Epics 7-9). The finding-pointing prompts
+      // (`openBiggestOpportunity`, `misRatedPdf`) only show when the farm has a finding; the export
+      // prompts (`exportMeters`, `misRatedPdf`) are owner-only because they drive the export/PDF skills
+      // the public Tour cannot use. Selection lives in src/lib/almond/starters.ts.
       startersLabel: "Try asking",
       starters: {
+        // Read questions (answered by the read tools; shown to every actor). `biggestOpportunity` is
+        // the read phrasing; the empty-chat selection prefers the `openBiggestOpportunity` action when
+        // there is a finding, but the read phrasing is kept for reuse.
         biggestOpportunity: "What is my biggest opportunity to save money?",
         costliestMeters: "Which meters cost me the most?",
         wrongRate: "Are any of my meters on the wrong rate?",
         dataCompleteness: "How complete is my billing data?",
+        // Action prompt (drives the navigate skill; read-safe, shown to every actor).
+        openBiggestOpportunity: "Open my biggest opportunity",
+        // Export prompts (drive the owner-only export/PDF skills; never shown on the public Tour).
+        exportMeters: "Export my meters as a spreadsheet",
+        misRatedPdf: "Make a PDF of my mis-rated pumps",
       },
       // Compact chips shown when Almond consults the farm data to answer.
       lookedAt: {

@@ -48,7 +48,10 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
       {resolved && (
         <AlmondLauncher
           farmName={resolved.farm.name}
-          starters={almondStarters({ findingCount: findings.length })}
+          // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
+          // starters are withheld: `canExport: false`. Mirrors the chat route withholding those skills
+          // from the public actor (dataKind "representative" here, never "real").
+          starters={almondStarters({ findingCount: findings.length, canExport: false })}
         />
       )}
     </NuqsAdapter>

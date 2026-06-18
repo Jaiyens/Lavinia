@@ -87,7 +87,7 @@
 # Retrospective:  optional | done
 
 generated: 2026-06-17
-last_updated: 2026-06-18T18:00:00-0700
+last_updated: 2026-06-18T19:00:00-0700
 project: Terra
 project_key: ALM
 tracking_system: file-system
@@ -127,7 +127,7 @@ development_status:
 
   # Epic 10: Surfacing Almond, gently (discoverability without overbearing)
   epic-10: in-progress
-  10-1-action-and-export-flavored-starters: ready-for-dev
+  10-1-action-and-export-flavored-starters: review
   10-2-rail-entry-and-the-calm-first-run-nudge: backlog
   10-3-abuse-and-cost-protection-on-the-generative-endpoint: backlog
   epic-10-retrospective: optional

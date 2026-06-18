@@ -42,7 +42,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <AgentTabBar />
       <AlmondLauncher
         farmName={resolved.farm.name}
-        starters={almondStarters({ findingCount: findings.length })}
+        starters={almondStarters({
+          findingCount: findings.length,
+          // Owner-only export/PDF starters: gate on the SAME signal the chat route uses for
+          // `authedOwner` (dataKind "real" = a connected owner; the badged demo fallback is not).
+          canExport: resolved.dataKind === "real",
+        })}
       />
     </NuqsAdapter>
   );
