@@ -359,6 +359,27 @@ export const en = {
       },
       // Accessible label prefix for an action chip (the chip re-applies the same view).
       navigatedAria: (label: string): string => `${label}. Tap to return to this view.`,
+      // Spreadsheet export (Epic 8). The meter-table workbook carries EVERY meter on the farm,
+      // never a sample. Plain operator words only, no kW/interval jargon, no exclamation marks,
+      // no em dashes. The footer states coverage so a withheld figure reads as a coverage label,
+      // never a fabricated number.
+      export: {
+        // The single worksheet's tab name.
+        sheetName: "Meters",
+        // Title row written above the table.
+        title: (farmName: string): string => `${farmName} meters`,
+        // Footer line stating what the spreadsheet covers and what was left out (no silent
+        // truncation). Every meter is included; unreconciled meters show their coverage label
+        // in the money cells rather than a number.
+        coverageFooter: (total: number, reconciled: number): string =>
+          reconciled === total
+            ? `All ${total} meters included. Every meter has loaded billing.`
+            : `All ${total} meters included. ${reconciled} have loaded billing; the rest show their coverage state in place of a dollar figure.`,
+        // Footer line carrying the freshest billed cycle the farm has on file, or its honest
+        // absence (never a fabricated date).
+        asOf: (date: string): string => `Figures as of the bill closing ${date}.`,
+        asOfNone: "No bills have posted yet, so no dollar figures are shown.",
+      },
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).
     findings: {

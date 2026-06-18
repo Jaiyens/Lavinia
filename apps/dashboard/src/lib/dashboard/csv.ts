@@ -24,20 +24,20 @@ function moneyCell(row: MeterRow, cents: number | null, kind: "cost" | "demand")
   return formatUsd(cents);
 }
 
-export function metersCsv(rows: readonly MeterRow[]): string {
+/** The nine table headers, in order. Exported so the XLSX export (Story 8.2) writes the SAME
+    operator headers as this CSV - one header definition, never a parallel spreadsheet format. */
+export function metersHeader(): string[] {
   const c = t.columns;
-  const header = [
-    c.name,
-    c.ranch,
-    c.entity,
-    c.rate,
-    c.legacy,
-    c.cost,
-    c.demand,
-    c.status,
-    c.coverage,
-  ];
-  const lines = [header, ...rows.map((row) => [
+  return [c.name, c.ranch, c.entity, c.rate, c.legacy, c.cost, c.demand, c.status, c.coverage];
+}
+
+/** The nine cell STRINGS for one meter row, in header order, carrying the exact cell semantics
+    this CSV exports: a reconciled meter's real figures; the coverage LABEL (never a number) for an
+    unreconciled meter's money cells; "None" for a reconciled meter with no demand charge; an empty
+    string for a null inventory field. Exported so the XLSX export reuses these identical cells -
+    the money/coverage rule lives here once, not duplicated per format. */
+export function meterCells(row: MeterRow): string[] {
+  return [
     row.name,
     row.ranch ?? "",
     row.entity ?? "",
@@ -47,7 +47,11 @@ export function metersCsv(rows: readonly MeterRow[]): string {
     moneyCell(row, row.demandCents, "demand"),
     row.status ?? "",
     t.coverage[row.coverageState],
-  ])];
+  ];
+}
+
+export function metersCsv(rows: readonly MeterRow[]): string {
+  const lines = [metersHeader(), ...rows.map(meterCells)];
   // BOM so Excel reads UTF-8 (the \uFEFF escape, never a raw invisible char a formatter
   // could silently strip); CRLF row endings per RFC 4180.
   return "\uFEFF" + lines.map((line) => line.map(escapeField).join(",")).join("\r\n") + "\r\n";
