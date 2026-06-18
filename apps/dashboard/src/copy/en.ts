@@ -484,6 +484,89 @@ export const en = {
           empty: "No meters match that, so there is nothing to export.",
         },
       },
+      // The PDF report Almond makes (Epic 9). A clean, trustworthy document built from a bounded set
+      // of section templates (summary, meter table, mis-rated set, savings, single meter, coverage
+      // footer), each rendering ONLY grounded data. Plain operator words only, no kW/interval jargon,
+      // no exclamation marks, no em dashes. Every number is authored deterministically; a missing
+      // value shows a coverage label, never a fabricated or zero figure.
+      report: {
+        // Farm-summary section: the farm at a glance, a few measured stats, never a screaming hero.
+        summary: {
+          eyebrow: "Farm summary",
+          // Section heading names the farm; the farm name is the grounded data, not a claim.
+          heading: (farmName: string): string => `${farmName}`,
+          // Stat tile labels.
+          metersLabel: "Meters on file",
+          loadedLabel: "Meters with loaded billing",
+          spendLabel: "Loaded spend this cycle",
+          // The loaded-spend value shows the coverage label when no meter is reconciled, never $0.
+          spendNotLoaded: "No bills loaded yet",
+          // The completeness line, stated plainly as a whole-percent. An empty farm is its own line.
+          completeness: (total: number, reconciled: number, percent: number): string => {
+            if (total === 0) return "No meters on file yet.";
+            if (reconciled === total) {
+              return `Every meter has loaded billing, so this is 100% complete.`;
+            }
+            return `${reconciled} of ${total} meters carry loaded billing, so this is ${percent}% complete.`;
+          },
+        },
+        // Meter-table section: every meter listed, in the SAME operator headers/cells as the
+        // spreadsheet export, so a withheld figure reads as its coverage label, never a number.
+        meterTable: {
+          eyebrow: "Meters",
+          heading: "Every meter on the farm",
+        },
+        // Mis-rated section: meters that look billed on the wrong rate. A focused set, never a claim
+        // of savings here (the savings section owns the dollars). Empty case is honest.
+        misRated: {
+          eyebrow: "Rate review",
+          heading: "Meters that may be on the wrong rate",
+          // Column headers for the focused set.
+          columns: {
+            meter: "Meter",
+            ranch: "Ranch",
+            currentRate: "Current rate",
+            suggestedRate: "Suggested rate",
+          },
+          // Honest empty: nothing flagged, so the section states that plainly rather than an empty
+          // table. Never implies a problem that the data does not show.
+          empty: "No meters look mis-rated in the data on file.",
+        },
+        // Savings section: the dollars a rate change would have saved, summed and per meter. Every
+        // figure comes from the grounded savings data; the total is a measured value, not a hero.
+        savings: {
+          eyebrow: "Savings found",
+          heading: "Estimated savings from rate changes",
+          // The summed total label (the value renders through formatUsd).
+          totalLabel: "Total estimated yearly savings",
+          // Per-meter columns.
+          columns: {
+            meter: "Meter",
+            from: "Billed on",
+            to: "Better rate",
+            savings: "Estimated yearly savings",
+          },
+          // The PG&E one-change-a-year caveat, restated honestly. No exclamation, no em dash.
+          note: "Estimated from PG&E's published rates over the bills on file. PG&E allows one rate change per 12 months.",
+          // Honest empty: no savings found, stated plainly.
+          empty: "No rate savings found in the data on file.",
+        },
+        // Single-meter section: one meter's detail, for a report scoped to a single pump. Every field
+        // is grounded; a field not on file shows the coverage label, never a fabricated value.
+        singleMeter: {
+          eyebrow: "Meter detail",
+          heading: (name: string): string => `${name}`,
+          // Field labels.
+          ranchLabel: "Ranch",
+          entityLabel: "Billed to",
+          rateLabel: "Rate",
+          statusLabel: "Pump health",
+          costLabel: "This cycle",
+          demandLabel: "Demand charge",
+          // Shown for a field with no value on file (never an invented value).
+          notOnFile: "Not on file",
+        },
+      },
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).
     findings: {
