@@ -4,7 +4,7 @@ baseline_commit: aa592fdfdd2179f60bfa6692c42d4cf8e86bc523
 
 # Story 7.4: The server→client navigation bridge
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -77,48 +77,48 @@ client state-sync the whole feature introduces. The action chip that links back 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Server: emit the transient `data-navigate` part (the stub path first — it is the AC4
+- [x] **Task 1 — Server: emit the transient `data-navigate` part (the stub path first — it is the AC4
       surface and the CI/offline default)** (AC: 1, 4, 6)
-  - [ ] In `src/lib/almond/responder.ts`, teach the **stub** to route a navigation turn. Add `"navigate"`
+  - [x] In `src/lib/almond/responder.ts`, teach the **stub** to route a navigation turn. Add `"navigate"`
         to `classifyIntent` (or a dedicated detector) for open/show/filter/lens language (`open|show|see|
         go to|filter|switch to|map|table|chart|calendar|pump|meter`), **ordered first** so a clear
         navigation request is not swallowed by the existing topic intents. Keep the existing intents and
         their grounded answers intact.
-  - [ ] When the turn is a navigation turn, resolve it **offline** with the shipped pure path: load the
+  - [x] When the turn is a navigation turn, resolve it **offline** with the shipped pure path: load the
         farm's meters via `loadMetersForFarm(deps.prisma, deps.farmId)` and call `resolveNavigate(meters,
         input)` (or call `navigateSkill(deps, input)` — same result). Derive the stub's `input` from the
         user's text deterministically (a small parse: the trailing noun after "open/show" → `{ open:
         "meter", query }`; a lens word → `{ lens }`; a rate/entity/ranch token → the matching filter key).
         Keep it simple and deterministic — the stub is a fixture, not the model.
-  - [ ] In `createStubResponder`'s `createUIMessageStream({ execute: ({ writer }) => {...} })`, on a
+  - [x] In `createStubResponder`'s `createUIMessageStream({ execute: ({ writer }) => {...} })`, on a
         `{ kind: "navigate", action }` result, after (or before) the text parts, write:
         `writer.write({ type: "data-navigate", id: "almond-nav-0", data: action, transient: true });`
         (id is for the chip's stable key / belt-and-suspenders dedupe; `transient: true` keeps it out of
         message history — see the transport decision). On `clarify` / `none` / `unknown-surface`, write
         **no** part — only the existing text answer (which the model/stub narrates). Reuse the existing
         `text-start`/`text-delta`/`text-end` plumbing for the accompanying sentence.
-  - [ ] Keep the stub fully offline and deterministic: zero external calls, same `data-navigate` `data`
+  - [x] Keep the stub fully offline and deterministic: zero external calls, same `data-navigate` `data`
         for the same input. A navigation turn must still stream a short grounded text part too (so an
         assistant bubble renders), but the **part** is the AC4 assertion target.
-- [ ] **Task 2 — Server: emit the same part on the live (Gateway) model path** (AC: 1, 5, 6)
-  - [ ] In `createModelResponder(model)`, wrap the `streamText` call in `createUIMessageStream({ execute:
+- [x] **Task 2 — Server: emit the same part on the live (Gateway) model path** (AC: 1, 5, 6)
+  - [x] In `createModelResponder(model)`, wrap the `streamText` call in `createUIMessageStream({ execute:
         ({ writer }) => {...} })` and `writer.merge(result.toUIMessageStream())` (replacing the bare
         `result.toUIMessageStreamResponse()`), then return `createUIMessageStreamResponse({ stream })`.
         Verify the exact method names against the installed `ai@6.0.205` types (`writer.merge`,
         `result.toUIMessageStream`).
-  - [ ] Detect a clean `navigate` tool result during the run (via `streamText`'s `onStepFinish` /
+  - [x] Detect a clean `navigate` tool result during the run (via `streamText`'s `onStepFinish` /
         `onFinish` — inspect the step's tool results for `toolName === "navigate"` and `result.kind ===
         "navigate"`), and on a clean resolve `writer.write({ type: "data-navigate", id, data:
         result.action, transient: true })`. Do **not** change `navigateSkill` / `navigate.ts` — the
         executor still just returns the typed result; the responder lifts the action onto the stream
         (the 7.3 boundary: skill returns, server transports). Watch part ordering relative to the merged
         text stream.
-  - [ ] (Alternative the dev agent may choose if `onStepFinish` tool-result access is awkward in the
+  - [x] (Alternative the dev agent may choose if `onStepFinish` tool-result access is awkward in the
         installed SDK: hand the `navigate` tool's `execute` the writer via a closure and write the part
         there — the SDK supports writing data parts from a tool's execute. Document whichever is used and
         keep the part shape identical to the stub's.)
-- [ ] **Task 3 — Client: the `useAlmondNavigation()` hook (the five canonical setters)** (AC: 2, 6)
-  - [ ] New file `src/app/(app)/_components/almond/use-almond-navigation.ts` (`"use client"`). Hold the
+- [x] **Task 3 — Client: the `useAlmondNavigation()` hook (the five canonical setters)** (AC: 2, 6)
+  - [x] New file `src/app/(app)/_components/almond/use-almond-navigation.ts` (`"use client"`). Hold the
         five `useQueryState` setters keyed from the registry, mirroring the dashboard call-sites EXACTLY:
         - `lens`: `useQueryState(SURFACE.lens, lensQueryOptions())` (matches `lens-toggle.tsx:15`).
         - `entity`/`ranch`/`rate`: `useQueryState(SURFACE.entity)` etc. — **bare** (raw nullable strings,
@@ -126,52 +126,52 @@ client state-sync the whole feature introduces. The action chip that links back 
         - `meter`: `useQueryState(SURFACE.meter)` — bare (matches `meter-drawer.tsx:120`).
         Import `SURFACE` and `lensQueryOptions` from `@/lib/dashboard/surface`. Do **not** invent new
         parsers or keys (ADR-A03).
-  - [ ] Return a stable `apply(action: NavigateAction)` callback (`useCallback`) that, for each present
+  - [x] Return a stable `apply(action: NavigateAction)` callback (`useCallback`) that, for each present
         key, calls its setter: `if (action.lens !== undefined) void setLens(action.lens)`; same for
         `entity`/`ranch`/`rate`/`meter` with `!== undefined` (so `null` clears, a value sets, absence
         leaves untouched). Import the `NavigateAction` type from `@/lib/almond/skills/navigate`.
-  - [ ] The hook does **not** read the stream itself — it only exposes `apply`. The launcher (Task 4)
+  - [x] The hook does **not** read the stream itself — it only exposes `apply`. The launcher (Task 4)
         wires the transport delivery to `apply`. (This keeps the hook reusable by 7.5's chip "link back",
         which calls the same `apply` to re-navigate.)
-- [ ] **Task 4 — Client: wire delivery in `AlmondLauncher` (apply exactly once)** (AC: 2, 3)
-  - [ ] In `src/app/(app)/_components/almond/almond-launcher.tsx`, call `const nav =
+- [x] **Task 4 — Client: wire delivery in `AlmondLauncher` (apply exactly once)** (AC: 2, 3)
+  - [x] In `src/app/(app)/_components/almond/almond-launcher.tsx`, call `const nav =
         useAlmondNavigation();` and pass `onData` to `useChat`: `useChat({ transport, onData: (part) => {
         if (part.type === "data-navigate") { /* dedupe by part.id via a useRef<Set<string>> */
         nav.apply(part.data); } } })`. `onData` fires once per received part and is never replayed on
         re-render or reload, so AC3 holds; the id `Set` guard is belt-and-suspenders.
-  - [ ] Type the chat with a typed `UIMessage` so `onData`'s `part.data` is `NavigateAction` (define a
+  - [x] Type the chat with a typed `UIMessage` so `onData`'s `part.data` is `NavigateAction` (define a
         local `AlmondUIMessage = UIMessage<never, { navigate: NavigateAction }>` data-types map, or
         narrow `part.data` defensively). Confirm `@ai-sdk/react@3.0.207` exposes `onData` on `useChat`
         (it does — `ChatInit.onData`).
-  - [ ] Do **not** add a chip, an action list, an announce region, or any other UI in 7.4 — those are
+  - [x] Do **not** add a chip, an action list, an announce region, or any other UI in 7.4 — those are
         Story 7.5. 7.4's only client behavior is: a `data-navigate` part arrives → the dashboard moves.
-  - [ ] `almond-messages.tsx` likely needs **no change** under the transient transport (the part is not
+  - [x] `almond-messages.tsx` likely needs **no change** under the transient transport (the part is not
         in `message.parts`). If the non-transient fallback is taken instead, the read site moves to a
         `message.parts` iteration with explicit dedupe — see the transport decision. Document which path
         shipped.
-- [ ] **Task 5 — Tests (the AC4 deterministic evidence + the apply contract + the regression net)**
+- [x] **Task 5 — Tests (the AC4 deterministic evidence + the apply contract + the regression net)**
       (AC: 1, 2, 3, 4)
-  - [ ] **Server (primary AC4 evidence, offline/deterministic):** extend the stub-responder block in
+  - [x] **Server (primary AC4 evidence, offline/deterministic):** extend the stub-responder block in
         `src/lib/almond/tools.db.test.ts` (or a new `responder.db.test.ts`) — drive
         `createStubResponder().toResponse({ uiMessages: [ask("open <a real seeded meter name>")], ... })`,
         read `await res.text()`, and assert the streamed body contains a `"data-navigate"` part whose
         `data` carries the resolved `{ meter: <that meter's id> }`. Add a negative case: an ambiguous /
         no-match / lens-typo turn streams **no** `data-navigate` part (only text). This mirrors the
         existing assertion style (body `toContain("text-start")`) and needs a seeded farm → `.db.test.ts`.
-  - [ ] **Client (the apply contract):** a focused test of `useAlmondNavigation().apply()` proving each
+  - [x] **Client (the apply contract):** a focused test of `useAlmondNavigation().apply()` proving each
         present key drives its `useQueryState` setter and the URL/state changes (and `null` clears). If a
         hook test is impractical in the node/vitest env (nuqs needs the adapter + a URL context), assert
         `apply`'s setter dispatch via a thin seam or cover it in the e2e — document the choice. (Vitest is
         node-env, not jsdom — see Testing requirements; prefer a pure assertion of the action→setter
         mapping over a DOM render.)
-  - [ ] **e2e / the "URL changed" assertion (AC4):** see Testing requirements for the project's
+  - [x] **e2e / the "URL changed" assertion (AC4):** see Testing requirements for the project's
         deliberate convention (the interactive launcher flow is covered at the `.db.test.ts` layer, not
         Playwright, because it needs an authed session + seeded farm). Either (a) keep the deterministic
         server-part test + the client apply test as the AC4 evidence (recommended, matches convention),
         or (b) extend the e2e harness to mint a session and assert the URL changed after a stubbed
         navigation turn (a real lift — flag it, do not silently skip). Whichever, the existing e2e
         baseline must stay transparent (see baseline note).
-  - [ ] **Gate before claiming done:** `npm run typecheck && npm run lint && npm test` (root or `-w
+  - [x] **Gate before claiming done:** `npm run typecheck && npm run lint && npm test` (root or `-w
         @lavinia/dashboard`), then `npm run build`, then `npm run test:e2e -w @lavinia/dashboard`. The
         e2e suite has a documented environmental red baseline (3 pass / 5 fail at 7.1–7.3) — a failure is
         a 7.4 regression only if it differs from that baseline AND touches Almond's runtime.
@@ -527,16 +527,97 @@ the `useReducedMotion()` / `aria-live="polite"` patterns already in `almond-pane
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
+- `npm run typecheck -w @lavinia/dashboard` -> clean (the live-path `onStepFinish` narrows tool
+  results with an `isNavigateResult` guard so `tr.output` is typed without `any`; the typed
+  `AlmondUIMessage` makes `onData`'s `part.data` a `NavigateAction`).
+- `npm run lint -w @lavinia/dashboard` -> clean (no `any`, no unused vars; `noUncheckedIndexedAccess`
+  guards on the stub's regex captures — `opened[1]` / `rate[1]` checked before use).
+- `npx vitest run src/lib/almond/responder.test.ts "src/app/(app)/_components/almond/use-almond-navigation.test.ts"`
+  -> 2 files, 11 passed (the pure stub parser + the pure `applyNavigateAction` action->setter mapping;
+  importing the `"use client"` hook in node-env vitest works — only the pure fn is exercised).
+- `npx vitest run src/lib/almond "src/app/(app)/_components/almond"` -> 7 files, 61 passed (incl. the
+  two new db cases: the stub emits a `data-navigate` part carrying the resolved meter id on a
+  navigation turn, and emits NO part for a data question).
+- `npm test` (full unit + db) -> 85 files, 652 tests passed (was 83/639 at 7.3; +2 files
+  `responder.test.ts` + `use-almond-navigation.test.ts`, +13 tests). No regressions.
+- `npm run build -w @lavinia/dashboard` -> success.
+- `npm run test:e2e -w @lavinia/dashboard` -> 3 passed / 5 failed, all 5 PRE-EXISTING and matching the
+  documented 7.1–7.3 baseline (4 `net::ERR_CONNECTION_REFUSED` from the sandbox's unstable `next start`
+  on :3210; `almond.spec.ts:14` is the static `Expected 401, Received 400` — the route returns 400 for
+  empty messages before any 7.4 code runs). 7.4 changes no route/auth behavior, so e2e is transparent.
+
 ### Completion Notes List
 
+- **Transport decision: shipped Design A (transient part + `useChat({ onData })`).** Confirmed against
+  the installed `ai@6.0.205` API: `writer.write({ type: "data-navigate", data, id?, transient? })` and
+  `useChat`'s `onData` (`ChatInit.onData`, `@ai-sdk/react@3.0.207`). A transient part is delivered once
+  via `onData` and is NOT persisted to `message.parts`, so AC3 ("applied exactly once; a re-render
+  never re-navigates") is **structural** — no manual dedupe `Set` is needed, and a constant part id is
+  safe (it would only matter for non-transient reconciliation). I dropped the belt-and-suspenders
+  applied-id guard described in the draft because, with a single constant id, it would have wrongly
+  suppressed a second navigation in the same conversation; the onData transport already guarantees
+  once-only delivery. `almond-messages.tsx` is therefore **unchanged** (the part is not in
+  `message.parts`); the read site is the launcher's `onData`. This is the one documented variance from
+  the epics build note ("almond-messages reads data-navigate") and is the correct resolution of the
+  planning-doc transient-vs-message.parts contradiction.
+- **Task 1 — stub (the offline AC4 surface).** `responder.ts`: added `isNavigationTurn` (verb/lens-word
+  detector, exported + unit-tested), `deriveNavigateInput` (deterministic text->`NavigateInput` parser:
+  lens word wins, else open/show verb opens the named meter, else a rate token filters; exported +
+  unit-tested), and `navigationStubText` (a short grounded acknowledgment). `createStubResponder` now
+  routes a navigation turn through the SAME shipped `navigateSkill` offline and, on `{ kind: "navigate" }`,
+  writes the transient `data-navigate` part alongside the text; any other turn keeps the existing
+  grounded `composeStubAnswer` answer untouched (its two existing tests stay green). The stub answers
+  are kept inline matching the file's established style; the grower-facing chip copy (in `/copy/en.ts`)
+  is Story 7.5.
+- **Task 2 — live model path.** `createModelResponder` now wraps `streamText` in `createUIMessageStream`,
+  merges the model stream (`writer.merge(result.toUIMessageStream())`), and writes the SAME
+  `data-navigate` part via a shared `writeNavigatePart` helper when `onStepFinish` reports a clean
+  `navigate` tool result (`toolName === "navigate"`, `output.kind === "navigate"`). `navigate.ts` and
+  `navigateSkill` are untouched (the 7.3 boundary holds: skill returns, responder transports). The model
+  loop itself is covered by the offline stub convention (consistent with 7.1–7.3, which add no
+  mock-model test); the live path shares the tested part-emission helper and is type-verified.
+- **Task 3/4 — client.** New pure-logic + hook file `use-almond-navigation.ts`: `applyNavigateAction`
+  (pure action->setter mapping, `!== undefined` so a `null` clears and an absent key is untouched) and
+  `useAlmondNavigation()` (holds the five `useQueryState` setters keyed from `surface.ts`, mirroring the
+  dashboard call-sites exactly — only `lens` parsed/defaulted via `lensQueryOptions()`, the four filters
+  bare). `almond-launcher.tsx` types the chat as `AlmondUIMessage = UIMessage<unknown, { navigate:
+  NavigateAction }>` and wires `onData` -> `nav.apply(part.data)`. No chip / announce / action list
+  (all Story 7.5).
+- **Scope held / contract intact:** read-only on data (URL state only, FR6); `farmId` only from `deps`
+  (FR7); `navigate` still in the public-safe set for both actors (the factory key-set tests pass
+  unchanged, ADR-A08); no new dependency, no env var, no Prisma/schema change, no new query-param name
+  (every key is a canonical `surface.ts` key, ADR-A03). The `/api/almond/chat` route is unchanged.
+- **AC4 "URL changed" assertion — followed the recommended path (project convention).** The
+  deterministic AC4 evidence is the server-side db test (stub emits the `data-navigate` part with the
+  resolved meter id) plus the pure `applyNavigateAction` action->setter test. The full in-browser "URL
+  changed" Playwright assertion was NOT added: per `e2e/almond.spec.ts`'s documented convention the
+  interactive launcher flow is covered at the `.db.test.ts` layer (it needs an authed session + seeded
+  farm the project deliberately does not mint in Playwright). Flagged for the reviewer / Jaiyen as the
+  one open call (see Story Dev Notes "AC4 ... e2e convention").
+
 ### File List
+
+- `src/lib/almond/responder.ts` (modified) — navigation bridge: shared `writeNavigatePart` (transient
+  `data-navigate`) + `isNavigateResult` guard; `createModelResponder` wraps `streamText` in
+  `createUIMessageStream` + `writer.merge` and writes the part on a clean `navigate` result via
+  `onStepFinish`; stub helpers `isNavigationTurn` / `deriveNavigateInput` / `navigationStubText`;
+  `createStubResponder` routes a navigation turn through `navigateSkill` offline and emits the part.
+- `src/lib/almond/responder.test.ts` (new) — pure tests for `isNavigationTurn` + `deriveNavigateInput`.
+- `src/app/(app)/_components/almond/use-almond-navigation.ts` (new) — pure `applyNavigateAction` +
+  the `useAlmondNavigation()` hook (the five canonical `useQueryState` setters keyed from `surface.ts`).
+- `src/app/(app)/_components/almond/use-almond-navigation.test.ts` (new) — pure action->setter tests.
+- `src/app/(app)/_components/almond/almond-launcher.tsx` (modified) — typed `AlmondUIMessage`; wires
+  `useChat({ onData })` -> `useAlmondNavigation().apply` (apply each `data-navigate` part once).
+- `src/lib/almond/tools.db.test.ts` (modified) — two new stub cases: emits a `data-navigate` part with
+  the resolved meter id on a navigation turn; emits no part for a data question.
 
 ## Change Log
 
 | Date | Change |
 |------|--------|
 | 2026-06-18 | Story 7.4 drafted (Create Story workflow): scope = the server→client navigation BRIDGE. Server writes a typed transient `data-navigate` part onto the existing UI-message stream on a clean `NavigateAction` — in both the offline stub responder (AC4/CI surface) and the live Gateway model path (AC5) — via the same `createUIMessageStream` writer (no second channel, AR17/ADR-A02). New client hook `src/app/(app)/_components/almond/use-almond-navigation.ts` holds the five canonical `useQueryState` setters (keyed from `surface.ts`, replicating the dashboard call-sites exactly) and exposes `apply(action)`; `almond-launcher.tsx` delivers each part to `apply` exactly once via `useChat({ onData })`. Resolved the planning-doc contradiction (transient vs message.parts/dedupe-by-id) against the installed `ai@6.0.205` API: RECOMMEND Design A (transient part + `onData`, exactly-once by construction); documented Design B (non-transient + `message.parts` + dedupe-by-id `Set`) as the fallback. No new dep, no env var, no Prisma/schema change; `navigate.ts`/`navigateSkill`/`route.ts`/`surface.ts` untouched. Chips/link-back/announce are 7.5. Status -> ready-for-dev. |
+| 2026-06-18 | Story 7.4 implemented (Dev Story workflow): shipped **Design A** (transient `data-navigate` part + `useChat({ onData })`). `responder.ts` — shared `writeNavigatePart` (transient) + `isNavigateResult`; stub routes a navigation turn through the shipped `navigateSkill` offline (`isNavigationTurn`/`deriveNavigateInput`/`navigationStubText`) and emits the part; `createModelResponder` wraps `streamText` in `createUIMessageStream` + `writer.merge(result.toUIMessageStream())` and writes the same part on a clean `navigate` result via `onStepFinish`. New `use-almond-navigation.ts` (pure `applyNavigateAction` + the five-setter hook); `almond-launcher.tsx` wires `onData` -> `apply`. Dropped the applied-id dedupe guard — onData delivers transient parts once and is never replayed, so AC3 is structural (a constant-id guard would have suppressed a 2nd navigation). `almond-messages.tsx` unchanged (transient parts aren't in `message.parts`). +2 test files (`responder.test.ts`, `use-almond-navigation.test.ts`) + 2 db cases. typecheck + lint + 652 unit/db tests + build green; e2e 3/5 red proven pre-existing/environmental, identical to the 7.1–7.3 baseline. AC4 in-browser URL assertion deferred to the documented `.db.test.ts`-layer convention (flagged). Status -> review. |

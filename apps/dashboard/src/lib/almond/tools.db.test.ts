@@ -188,4 +188,49 @@ describe("the offline stub responder", () => {
     expect(body).toContain("text-start");
     expect(body).toContain("text-delta");
   });
+
+  it("emits a transient data-navigate part on a navigation turn, carrying the resolved meter id (Story 7.4, AC4)", async () => {
+    // The stub drives the SAME shipped `navigate` skill offline, then the bridge writes the
+    // transient `data-navigate` part onto the stream — proving navigation end-to-end with zero
+    // external calls. The part carries the resolved meter ID (not the raw query), the value the
+    // `meter` URL key holds, so the client drawer opens on the right pump.
+    const name =
+      farmAPumpNames.find((n) => !/\b(chart|table|map|calendar|open|show|see|view|filter)\b/i.test(n)) ??
+      farmAPumpNames[0];
+    expect(name).toBeTruthy();
+    const askNav = (text: string): UIMessage => ({
+      id: "u-nav",
+      role: "user",
+      parts: [{ type: "text", text }],
+    });
+    const res = await createStubResponder().toResponse({
+      uiMessages: [askNav(`open ${name}`)],
+      system: "ignored by the stub",
+      deps: depsA,
+      actor: { authedOwner: false },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("data-navigate");
+    const hit = await meterDetail(depsA, name as string);
+    expect(hit.found).toBe(true);
+    if (hit.found) expect(body).toContain(hit.meter.id);
+  });
+
+  it("writes NO data-navigate part for a data question (only the grounded text answer)", async () => {
+    const ask = (text: string): UIMessage => ({
+      id: "u-q",
+      role: "user",
+      parts: [{ type: "text", text }],
+    });
+    const res = await createStubResponder().toResponse({
+      uiMessages: [ask("how complete is my billing data")],
+      system: "ignored by the stub",
+      deps: depsA,
+      actor: { authedOwner: false },
+    });
+    const body = await res.text();
+    expect(body).toContain("text-delta");
+    expect(body).not.toContain("data-navigate");
+  });
 });

@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { en } from "@/copy/en";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { BorderBeam } from "@/components/ui/border-beam";
+import type { NavigateAction } from "@/lib/almond/skills/navigate";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondPanel } from "./almond-panel";
+import { useAlmondNavigation } from "./use-almond-navigation";
+
+/** Almond's chat carries one custom stream part: the transient `data-navigate` action (Story 7.4). */
+type AlmondUIMessage = UIMessage<unknown, { navigate: NavigateAction }>;
 
 const t = en.shell.almond;
 
@@ -28,7 +33,18 @@ export function AlmondLauncher({
   const [open, setOpen] = useState(false);
   // One transport instance for the component's life (not a new one per render).
   const [transport] = useState(() => new DefaultChatTransport({ api: "/api/almond/chat" }));
-  const { messages, sendMessage, status, regenerate } = useChat({ transport });
+  // The navigation bridge: when the server streams a `data-navigate` part, apply it through the
+  // canonical nuqs setters so the dashboard moves exactly as a manual click would (Story 7.4).
+  const nav = useAlmondNavigation();
+  const { messages, sendMessage, status, regenerate } = useChat<AlmondUIMessage>({
+    transport,
+    // `onData` fires once per received data part and is never replayed on a re-render or a reload
+    // (transient parts are not persisted to history), so each navigation is applied exactly once
+    // without any manual dedupe — the AC3 "applied exactly once" guarantee is structural here.
+    onData: (part) => {
+      if (part.type === "data-navigate") nav.apply(part.data);
+    },
+  });
 
   return (
     <>

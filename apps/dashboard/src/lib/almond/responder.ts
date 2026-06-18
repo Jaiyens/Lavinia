@@ -6,11 +6,13 @@ import {
   streamText,
   type LanguageModel,
   type UIMessage,
+  type UIMessageStreamWriter,
 } from "ai";
 import { createGatewayModel, hasGatewayKey } from "@/lib/ai/gateway";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
+import { LENS_KEYS } from "@/lib/dashboard/surface";
 import {
   rateSchedulesByFrequency,
   summarizeFarmOverview,
@@ -19,7 +21,8 @@ import {
   summarizeReconciliation,
   UNKNOWN_RATE,
 } from "./shape";
-import { buildAlmondSkills, type AlmondActor, type AlmondToolDeps } from "./tools";
+import type { NavigateAction, NavigateInput, NavigateResult } from "./skills/navigate";
+import { buildAlmondSkills, navigateSkill, type AlmondActor, type AlmondToolDeps } from "./tools";
 
 /**
  * The injected model boundary for Almond, mirroring `src/lib/extract/reader.ts`:
@@ -46,19 +49,62 @@ export interface AlmondResponder {
   toResponse(req: AlmondRequest): Response | Promise<Response>;
 }
 
+// --- The server->client navigation bridge (Story 7.4) -------------------------------------------
+//
+// On a clean `navigate` resolve, the SERVER writes a typed, TRANSIENT `data-navigate` part onto the
+// existing UI-message stream (ADR-A02, AR17) — one stream, no second channel. `transient: true`
+// keeps it OUT of message history: the client receives it once via `useChat`'s `onData` callback
+// (never replayed on a re-render or a reload), which is what makes "applied exactly once" (AC3)
+// structural rather than a fragile dedupe. The SAME helper serves the stub and the live model path,
+// so the emitted part shape is identical on both (AC5). The pure `navigate` skill (Story 7.3) still
+// just RETURNS the action; the responder lifts it onto the stream (the 7.3/7.4 boundary).
+
+/** The data-part type the client bridge (`useAlmondNavigation`) listens for. */
+const NAVIGATE_PART_TYPE = "data-navigate" as const;
+/** A stable part id (navigation is non-reconciling; the id gives 7.5's chip a key). */
+const NAVIGATE_PART_ID = "almond-nav";
+
+function writeNavigatePart(writer: UIMessageStreamWriter, action: NavigateAction): void {
+  writer.write({ type: NAVIGATE_PART_TYPE, id: NAVIGATE_PART_ID, data: action, transient: true });
+}
+
+/** Narrow an unknown tool output (the live path inspects `onStepFinish` tool results). */
+function isNavigateResult(output: unknown): output is NavigateResult {
+  return typeof output === "object" && output !== null && "kind" in output;
+}
+
 /** Stream Almond's answer through a real LanguageModel with the farm-scoped tools. Works with
- *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same. */
+ *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same.
+ *  Wrapped in `createUIMessageStream` so a clean `navigate` tool result is lifted onto the stream as
+ *  a transient `data-navigate` part (AC5), riding the same stream as the model's text/tool parts. */
 export function createModelResponder(model: LanguageModel): AlmondResponder {
   return {
     async toResponse({ uiMessages, system, deps, actor }) {
-      const result = streamText({
-        model,
-        system,
-        messages: await convertToModelMessages(uiMessages),
-        tools: buildAlmondSkills(deps, actor),
-        stopWhen: stepCountIs(6),
+      const messages = await convertToModelMessages(uiMessages);
+      const stream = createUIMessageStream({
+        execute: ({ writer }) => {
+          const result = streamText({
+            model,
+            system,
+            messages,
+            tools: buildAlmondSkills(deps, actor),
+            stopWhen: stepCountIs(6),
+            onStepFinish: ({ toolResults }) => {
+              for (const tr of toolResults) {
+                if (
+                  tr.toolName === "navigate" &&
+                  isNavigateResult(tr.output) &&
+                  tr.output.kind === "navigate"
+                ) {
+                  writeNavigatePart(writer, tr.output.action);
+                }
+              }
+            },
+          });
+          writer.merge(result.toUIMessageStream());
+        },
       });
-      return result.toUIMessageStreamResponse();
+      return createUIMessageStreamResponse({ stream });
     },
   };
 }
@@ -167,11 +213,61 @@ export async function composeStubAnswer(
   return lines.join(" ");
 }
 
+// --- Offline navigation routing for the stub (Story 7.4) ----------------------------------------
+//
+// The live model produces the structured `navigate` input; the stub parses the user's text just
+// enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
+// (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
+
+const NAV_VERB = /\b(open|show|see|view|go to|switch to|filter)\b/;
+
+/** Whether the latest user turn is a request to drive the screen (vs. a data question). */
+export function isNavigationTurn(text: string): boolean {
+  if (NAV_VERB.test(text)) return true;
+  return LENS_KEYS.some((k) => new RegExp(`\\b${k}\\b`).test(text));
+}
+
+/** Parse a deterministic `NavigateInput` from the (lower-cased) user text. A lens word wins; else an
+ *  open/show verb opens the named meter; else a rate token filters; else nothing actionable. */
+export function deriveNavigateInput(text: string): NavigateInput {
+  const lens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
+  if (lens) return { lens };
+  const opened = text.match(/\b(?:open|show|see|view|go to)\b\s+(?:me\s+|the\s+)*(.+)$/);
+  if (opened && opened[1]) return { open: "meter", query: opened[1].trim() };
+  const rate = text.match(/\b(?:rate\s+|on\s+)?(ag-?\w+)/);
+  if (rate && rate[1]) return { rate: rate[1] };
+  return {};
+}
+
+/** A short, grounded acknowledgment the stub streams alongside (navigate) or instead of the part. */
+function navigationStubText(result: NavigateResult): string {
+  switch (result.kind) {
+    case "navigate":
+      return "Opening that now.";
+    case "clarify":
+      return `I found more than one match: ${result.candidates.join(", ")}. Which one do you mean?`;
+    case "none":
+      return "I could not find that on your farm.";
+    case "unknown-surface":
+      return `I cannot open ${result.requested}; that view does not exist.`;
+  }
+}
+
 /** The offline, deterministic responder. Default when no Gateway key is present. */
 export function createStubResponder(): AlmondResponder {
   return {
     async toResponse({ uiMessages, deps }) {
-      const answer = await composeStubAnswer(deps, uiMessages);
+      // A navigation turn drives the screen via the shipped skill (offline); any other turn gets the
+      // existing grounded data answer. Both stream text; only a clean navigate writes the part.
+      const text = lastUserText(uiMessages);
+      let navigation: NavigateResult | null = null;
+      let answer: string;
+      if (isNavigationTurn(text)) {
+        navigation = await navigateSkill(deps, deriveNavigateInput(text));
+        answer = navigationStubText(navigation);
+      } else {
+        answer = await composeStubAnswer(deps, uiMessages);
+      }
       const stream = createUIMessageStream({
         execute: ({ writer }) => {
           const id = "almond-stub-0";
@@ -180,6 +276,9 @@ export function createStubResponder(): AlmondResponder {
             writer.write({ type: "text-delta", id, delta });
           }
           writer.write({ type: "text-end", id });
+          if (navigation?.kind === "navigate") {
+            writeNavigatePart(writer, navigation.action);
+          }
         },
       });
       return createUIMessageStreamResponse({ stream });
