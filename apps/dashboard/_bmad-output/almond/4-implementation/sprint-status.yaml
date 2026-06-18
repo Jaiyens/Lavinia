@@ -87,7 +87,7 @@
 # Retrospective:  optional | done
 
 generated: 2026-06-17
-last_updated: 2026-06-18T16:30:00-0700
+last_updated: 2026-06-18T18:00:00-0700
 project: Terra
 project_key: ALM
 tracking_system: file-system
@@ -104,26 +104,30 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Almond hands you a spreadsheet (the first artifact and its memory)
-  epic-8: backlog
-  8-1-the-uncapped-farm-scoped-full-data-export-loader: backlog
-  8-2-spreadsheet-builders-csv-reuse-adapter-and-the-xlsx-path: backlog
-  8-3-the-bill-due-schedule-exporter-scheduled-never-shown-as-billed: backlog
-  8-4-the-shared-coverage-as-of-footer-composer: backlog
-  8-5-the-exportspreadsheet-skill-with-preview-and-immediate-download: backlog
-  8-6-reports-persistence-generatedreport-private-blob-and-the-owner-scoped-download-route: backlog
-  8-7-the-reports-area: backlog
+  # Built + merged to main on the epic-8-9-overnight branch (commits 79f3dee..ea04e07,
+  # merge e54c0ae); status reconciled to done on 2026-06-18 (code shipped ahead of tracker).
+  epic-8: done
+  8-1-the-uncapped-farm-scoped-full-data-export-loader: done
+  8-2-spreadsheet-builders-csv-reuse-adapter-and-the-xlsx-path: done
+  8-3-the-bill-due-schedule-exporter-scheduled-never-shown-as-billed: done
+  8-4-the-shared-coverage-as-of-footer-composer: done
+  8-5-the-exportspreadsheet-skill-with-preview-and-immediate-download: done
+  8-6-reports-persistence-generatedreport-private-blob-and-the-owner-scoped-download-route: done
+  8-7-the-reports-area: done
   epic-8-retrospective: optional
 
   # Epic 9: Almond builds the lender-ready PDF (the shareable proof)
-  epic-9: backlog
-  9-1-the-tested-pdf-section-template-library: backlog
-  9-2-the-pdf-composer-generative-selection-over-the-full-data-path: backlog
-  9-3-the-generatereport-skill-with-preview-save-and-download: backlog
+  # Built + merged to main on the epic-8-9-overnight branch (commits 0ad42bd..f283f7f,
+  # merge e54c0ae); status reconciled to done on 2026-06-18 (code shipped ahead of tracker).
+  epic-9: done
+  9-1-the-tested-pdf-section-template-library: done
+  9-2-the-pdf-composer-generative-selection-over-the-full-data-path: done
+  9-3-the-generatereport-skill-with-preview-save-and-download: done
   epic-9-retrospective: optional
 
   # Epic 10: Surfacing Almond, gently (discoverability without overbearing)
-  epic-10: backlog
-  10-1-action-and-export-flavored-starters: backlog
+  epic-10: in-progress
+  10-1-action-and-export-flavored-starters: ready-for-dev
   10-2-rail-entry-and-the-calm-first-run-nudge: backlog
   10-3-abuse-and-cost-protection-on-the-generative-endpoint: backlog
   epic-10-retrospective: optional
