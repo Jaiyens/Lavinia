@@ -4,7 +4,7 @@ baseline_commit: 92a48c6e8fe9e060a4a2d71548dc54bdb973a02d
 
 # Story 7.1: Canonical surface registry and nuqs call-site refactor
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -105,7 +105,7 @@ Blind Hunter: 0 correctness issues. Edge Case Hunter: 0 unhandled edge cases (ve
 internals + green build/typecheck/lint/tests). Acceptance Auditor: ACCEPT — all 6 ACs SATISFIED, all
 project-context rules honored.
 
-- [ ] [Review][Decision] AC3 guarantee is call-site-discipline-dependent, not absolute — `nuqs` typing does not enforce it. `useQueryState(key: string)` accepts any string, so the "Almond can never offer a dead surface / the dashboard never desyncs" guarantee (NFR5) holds only because every call-site reaches its key via `SURFACE.<key>` property access. A future bare `useQueryState("entity")` would compile and silently reopen the gap. AC3 is met as written (a stale `SURFACE.<removed>` access is a compile error), so this is a non-blocking optional hardening: add a registry-bound typed wrapper (e.g. `useSurfaceState(key: SurfaceKey, …)`) and/or an ESLint rule forbidding raw `useQueryState` with a canonical-key literal. Source: Acceptance Auditor.
+- [x] [Review][Decision] AC3 guarantee is call-site-discipline-dependent, not absolute — `nuqs` typing does not enforce it. `useQueryState(key: string)` accepts any string, so the "Almond can never offer a dead surface / the dashboard never desyncs" guarantee (NFR5) holds only because every call-site reaches its key via `SURFACE.<key>` property access. A future bare `useQueryState("entity")` would compile and silently reopen the gap. AC3 is met as written (a stale `SURFACE.<removed>` access is a compile error), so this is a non-blocking optional hardening: add a registry-bound typed wrapper (e.g. `useSurfaceState(key: SurfaceKey, …)`) and/or an ESLint rule forbidding raw `useQueryState` with a canonical-key literal. Source: Acceptance Auditor. **Resolved 2026-06-18: dismissed — ship as-is.** AC3 is met as written; call-site discipline + the grep check suffice for v1, and Story 7.3's `navigate` skill validates requests against `SURFACE_KEYS`. A wrapper/lint rule can be reconsidered if 7.3/7.4 add more registry consumers.
 
 Dismissed as noise: (1) "`surface.test.ts` cannot assert the *absence* of a parser on the filter keys" — inherent (no parser object exists to inspect); the absence is structurally guaranteed by the AC6 call-site shape, and the auditor confirmed the test is not false or circular. (2) "the e2e identical-on-baseline claim was not independently re-run by the auditor" — already verified in-session with command output (baseline 92a48c6 produced the same 5 failures / 3 passes), and the Edge Case Hunter independently confirmed build/typecheck/lint/tests green.
 
