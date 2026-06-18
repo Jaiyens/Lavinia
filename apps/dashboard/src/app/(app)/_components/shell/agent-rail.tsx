@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, UserRound } from "lucide-react";
+import { FileText, LogIn, LogOut, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
@@ -74,6 +74,19 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
           </Link>
         ) : (
           <>
+            <Link
+              href="/reports"
+              aria-current={pathname === "/reports" ? "page" : undefined}
+              className={cn(
+                "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+                pathname === "/reports"
+                  ? "bg-primary-container font-semibold text-on-primary-container"
+                  : "text-on-surface hover:bg-surface-container-low",
+              )}
+            >
+              <FileText size={18} aria-hidden />
+              <span>{en.reports.navLabel}</span>
+            </Link>
             <Link
               href="/account"
               aria-current={pathname === "/account" ? "page" : undefined}

@@ -227,6 +227,28 @@ export const en = {
     connectMore: "Connect another account",
     signOut: "Sign out",
   },
+  // The Reports area (Story 8.7): a place in the grower's account that lists every spreadsheet
+  // Almond has made them, newest first, each re-downloadable through the owner-scoped route. Plain
+  // operator English, the grower's words. No kW/interval jargon, no em dashes, no exclamation marks.
+  reports: {
+    // Left-rail / nav label and the page chrome.
+    navLabel: "Reports",
+    eyebrow: "Reports",
+    title: "Reports Almond made",
+    // One-line lede under the title, stating what this area is.
+    lede: "Every spreadsheet Almond has made you, newest first. Open any one to download it again.",
+    // Per-row labels. The kind label itself comes from the export skill's plain-name map.
+    madeOnLabel: "Made",
+    requestLabel: "You asked",
+    // Download control on each row (the owner-scoped re-download).
+    download: "Download",
+    downloadAria: (title: string): string => `Download ${title}`,
+    // Calm empty state, in Almond's voice, inviting the first artifact. No exclamation, no em dash.
+    empty: {
+      title: "No reports yet",
+      body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
+    },
+  },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).
   ui: {

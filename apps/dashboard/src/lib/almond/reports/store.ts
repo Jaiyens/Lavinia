@@ -118,3 +118,31 @@ export async function loadReportForFarm(
   });
   return row;
 }
+
+/** One row of the Reports history list (Story 8.7), already farm-scoped at the query. The bytes are
+ *  NEVER read here (the byte stream is the download route's job); this carries only what the list
+ *  renders: which report, what shape it is, when it was made, and the request that produced it. */
+export type ReportListRow = {
+  id: string;
+  kind: string;
+  title: string;
+  requestText: string;
+  createdAt: Date;
+};
+
+/**
+ * List a farm's generated reports, newest first (Story 8.7, the Reports area). FARM-SCOPED: the
+ * caller resolves its OWN farm and passes that id, so a report belonging to another farm is never
+ * returned (and never linked) — the same isolation gate as `loadReportForFarm`, applied to the list.
+ * Read-only; selects only the columns the list shows (never `blobPathname`, never the bytes).
+ */
+export async function listReportsForFarm(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<ReportListRow[]> {
+  return prisma.generatedReport.findMany({
+    where: { farmId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, kind: true, title: true, requestText: true, createdAt: true },
+  });
+}
