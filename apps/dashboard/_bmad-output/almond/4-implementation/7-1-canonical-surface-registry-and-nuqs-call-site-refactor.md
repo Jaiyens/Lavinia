@@ -98,6 +98,17 @@ skill — and Story 7.4 — the server -> client navigation bridge.)
         all existing tests pass unchanged (AC 4). The `noUncheckedIndexedAccess` + no-`any` rules are hard
         errors — type the registry accessors precisely.
 
+### Review Findings
+
+Adversarial code review (2026-06-17, 3 layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor).
+Blind Hunter: 0 correctness issues. Edge Case Hunter: 0 unhandled edge cases (verified vs nuqs 2.8.9
+internals + green build/typecheck/lint/tests). Acceptance Auditor: ACCEPT — all 6 ACs SATISFIED, all
+project-context rules honored.
+
+- [ ] [Review][Decision] AC3 guarantee is call-site-discipline-dependent, not absolute — `nuqs` typing does not enforce it. `useQueryState(key: string)` accepts any string, so the "Almond can never offer a dead surface / the dashboard never desyncs" guarantee (NFR5) holds only because every call-site reaches its key via `SURFACE.<key>` property access. A future bare `useQueryState("entity")` would compile and silently reopen the gap. AC3 is met as written (a stale `SURFACE.<removed>` access is a compile error), so this is a non-blocking optional hardening: add a registry-bound typed wrapper (e.g. `useSurfaceState(key: SurfaceKey, …)`) and/or an ESLint rule forbidding raw `useQueryState` with a canonical-key literal. Source: Acceptance Auditor.
+
+Dismissed as noise: (1) "`surface.test.ts` cannot assert the *absence* of a parser on the filter keys" — inherent (no parser object exists to inspect); the absence is structurally guaranteed by the AC6 call-site shape, and the auditor confirmed the test is not false or circular. (2) "the e2e identical-on-baseline claim was not independently re-run by the auditor" — already verified in-session with command output (baseline 92a48c6 produced the same 5 failures / 3 passes), and the Edge Case Hunter independently confirmed build/typecheck/lint/tests green.
+
 ## Dev Notes
 
 ### What this story is (and is not)
