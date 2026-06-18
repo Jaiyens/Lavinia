@@ -167,7 +167,9 @@ Almond is the conversational operator: the grower asks in plain English and Almo
 - **Artifacts and Reports.** A finished file appears inline as a download card (name, kind, an honest coverage/as-of note) and is saved to a Reports section in the Account page — re-downloadable, farm-scoped, private. Saved reports are immutable snapshots.
 - **Voice.** Plain operator English in the panel and in generated copy: "Opened Pump 21 for you." / "I'll build a PDF of your 14 mis-rated meters." / "I don't have that yet." Never "executing navigation action," never a fabricated number, no exclamation marks, no em dashes.
 
-→ See `DESIGN.md.Components` for the launcher, panel, action chip, artifact card, reports list, and coachmark visuals.
+- **Almond has a face, used sparingly.** The almond mascot carries the state in small expressions — resting (Icon), on the launcher, listening (a thin open ring), thinking (three ascending gold dots), done (a sparkle), first-login (a soft halo with the coachmark). It is the one place the product shows character; it stays calm and honors reduced-motion. Canonical art: `imports/almond-mascot.svg`.
+
+→ See `DESIGN.md.Components` for the launcher, panel, action chip, artifact card, reports list, coachmark, and the almond-mascot states.
 
 ## Map & Geometry (invented — product-specific)
 

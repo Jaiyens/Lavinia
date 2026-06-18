@@ -142,6 +142,7 @@ components:
   - artifact-card
   - reports-list
   - coachmark
+  - almond-mascot
 ---
 
 ## Brand & Style
@@ -240,12 +241,20 @@ Per-component visual specs. The five the slice rebuilds first — **card, kpi-ca
 - **severity-badge** — `info` / `watch` / `act`. `act` = `alert` fill/accent; `watch` = charcoal weight + label, no fill; `info` = muted. No fourth state, no extra hue.
 - **bottom-sheet** — mobile findings collapse: a peeking summary ("3 findings · ~$78k ↑") at `e3` that expands to the rail's content; drag/tap to expand at `{motion.duration-slow}`.
 - **skeleton** *(new)* — loading placeholder that matches the final element's shape and rhythm (card outline, table rows, chart baseline). A slow shimmer in `surface-container` → `surface-container-high`. Replaces every spinner; the layout never jumps when data lands.
-- **almond-launcher** *(new)* — the operator copilot's resting state: a calm corner affordance (FAB-scale) in `surface-container-lowest` with a hairline `outline-variant` and the Almond mark, resting `{elevation.e1-resting}`, hover → `e2` + `{elevation.hover-lift}`, `:active` → `{elevation.press}`. Never pulses, never badges, never auto-opens. On first visit only, a one-time `coachmark` points to it.
+- **almond-launcher** *(new)* — the operator copilot's resting state: a circular FAB-scale button in **brand dark-green `#1F3D2B`** holding the **`almond-mascot`** ("On the button" state — its sprout lightened to `#4E9A63` for contrast on the dark fill), resting `{elevation.e1-resting}`, hover → `e2` + `{elevation.hover-lift}`, `:active` → `{elevation.press}`. Never pulses, never badges, never auto-opens. On first visit only, the one-time `coachmark` points to it.
 - **almond-panel** *(new)* — the conversation surface, opened from the launcher at `{elevation.e3-overlay}`; desktop = floating panel, mobile = full-height sheet (same grammar as `meter-drawer`). Slides in at `{motion.duration-slow}`, closes to the screen it came from. Streams answers into an `aria-live` region. Holds the composer, conversation, `action-chip`s, skill previews, and `artifact-card`s.
 - **action-chip** *(new)* — a compact `rounded.DEFAULT` chip in the panel recording a navigation Almond performed ("Opened Pump 21"); `surface-container-low`, `label`/`caption` type, a small lead icon, hover lift, `:active` press; tapping re-applies that view. Reads as a record of what happened, not a destructive control.
 - **artifact-card** *(new)* — a `card` in the panel for a finished file: a kind glyph (sheet / PDF), the file name, an honest coverage/as-of line in `caption`, and a primary **Download**. Any money inside is `num-tabular`, never a hero number. A saved copy appears in `reports-list`.
 - **reports-list** *(new)* — in the Account page: a list of `card` rows, one per saved artifact (kind glyph, name, the request that made it, date, re-download). Empty state is calm ("Nothing saved yet"), not an apology. Farm-scoped; private.
-- **coachmark** *(new)* — a single, dismissible one-time pointer to the launcher on first visit, in plain operator English ("Ask Almond to show your most expensive meter"). Appears once, never returns; honors reduced-motion (no float). This is the whole of Almond's nudging — there is no second prompt, no badge, no recurring tip.
+- **coachmark** *(new)* — a single, dismissible one-time pointer to the launcher on first visit, in plain operator English ("Ask Almond to show your most expensive meter"), paired with the mascot's **First-login** halo state. Appears once, never returns; honors reduced-motion (no float). This is the whole of Almond's nudging — there is no second prompt, no badge, no recurring tip.
+- **almond-mascot** *(new, identity)* — the Almond character and the source of its warmth: a warm almond nut (`#D9A36A` body, `#EFCB97` highlight, `#BE8049` shade, `#A8703A` seam) with a dark-green sprout (`#1F3D2B`/`#274E37`), charcoal eyes (`#3A2A1C`), and soft clay cheeks (`#E0875A`). It carries Almond's whole emotional range through small expression changes — the one place this product is allowed character. Gold `#C98A2B` is the only accent it adds (thinking dots, the done sparkle), consistent with the palette's golds. Canonical states (art: `imports/almond-mascot.svg`):
+  - **Icon** — resting mascot; the agent's mark (rail entry, panel header).
+  - **On the button** — mascot on the dark-green launcher FAB (sprout lightened to `#4E9A63` for contrast).
+  - **Listening** — mascot inside a thin open ring; panel open, ready for input.
+  - **Thinking** — eyes up + three ascending gold dots; the streaming / working state.
+  - **Done** — closed-eye smile + a single gold sparkle; an action or artifact completed.
+  - **First login** — mascot in a soft concentric halo; pairs with the one-time `coachmark`, then never returns.
+  These expressions are the entirety of Almond's animation budget — calm, brief, motivated, reduced-motion-safe (the static expression still reads). No bounce, no idle loop, no perpetual motion.
 
 ## Do's and Don'ts
 
