@@ -29,20 +29,24 @@ const PUBLIC_SKILLS = [
   "navigate",
 ].sort();
 
-// The owner-only addition (Story 8.5): exportSpreadsheet WRITES a file, so it is handed only to an
-// authenticated owner. It is added to the public set by capability, never to the Tour.
-const OWNER_SKILLS = [...PUBLIC_SKILLS, "exportSpreadsheet"].sort();
+// The owner-only skills: each WRITES a file, so it is handed only to an authenticated owner, never
+// to the public Tour (capability-by-omission). exportSpreadsheet was added in Story 8.5;
+// generateReport in Story 9.3. Keep this list in sync with ownerOnlySkills() in tools.ts.
+const OWNER_ONLY_SKILLS = ["exportSpreadsheet", "generateReport"];
+const OWNER_SKILLS = [...PUBLIC_SKILLS, ...OWNER_ONLY_SKILLS].sort();
 
 describe("buildAlmondSkills capability gating", () => {
-  it("hands an authenticated owner the read tools, navigate, AND exportSpreadsheet", () => {
+  it("hands an authenticated owner the read tools, navigate, AND the owner-only write skills", () => {
     const skills = buildAlmondSkills(deps, { authedOwner: true, userId: "user_1" });
     expect(Object.keys(skills).sort()).toEqual(OWNER_SKILLS);
   });
 
-  it("withholds exportSpreadsheet from the public Tour actor (capability-by-omission)", () => {
+  it("withholds every owner-only write skill from the public Tour actor (capability-by-omission)", () => {
     const skills = buildAlmondSkills(deps, { authedOwner: false, userId: null });
     expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
-    // The owner-only write skill is simply not present for the public actor.
-    expect(Object.keys(skills)).not.toContain("exportSpreadsheet");
+    // No owner-only write skill is present for the public actor.
+    for (const skill of OWNER_ONLY_SKILLS) {
+      expect(Object.keys(skills)).not.toContain(skill);
+    }
   });
 });
