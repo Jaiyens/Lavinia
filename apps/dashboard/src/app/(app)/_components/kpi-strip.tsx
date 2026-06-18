@@ -10,6 +10,7 @@ import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { filterMeters } from "@/lib/dashboard/table";
 import type { MeterView } from "@/lib/dashboard/load";
+import { SURFACE } from "@/lib/dashboard/surface";
 import { Sparkline } from "./sparkline";
 
 type Tone = "favorable" | "adverse" | "neutral";
@@ -84,10 +85,10 @@ function scrollToLens(): void {
 // Every figure is reconciled-only and tabular.
 // Tapping a card drives the lens to its story (spend/demand scroll; the mover opens its meter).
 export function KpiStrip({ meters }: { meters: MeterView[] }) {
-  const [entity] = useQueryState("entity");
-  const [ranch] = useQueryState("ranch");
-  const [rate] = useQueryState("rate");
-  const [, setMeter] = useQueryState("meter");
+  const [entity] = useQueryState(SURFACE.entity);
+  const [ranch] = useQueryState(SURFACE.ranch);
+  const [rate] = useQueryState(SURFACE.rate);
+  const [, setMeter] = useQueryState(SURFACE.meter);
 
   const { spend, demand, biggestMover } = useMemo(
     () => computeKpiStrip(filterMeters(meters, { entity, ranch, rate })),

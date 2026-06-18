@@ -15,6 +15,7 @@ import {
   defaultCalendarMonth,
   type CalendarDay,
 } from "@/lib/dashboard/calendar";
+import { SURFACE } from "@/lib/dashboard/surface";
 
 // The Calendar lens (Story 3.5, FR-16): each meter's billing-cycle close on a
 // small month grid - the timing hook, one lens face among four, never the home
@@ -41,10 +42,10 @@ export function CalendarLens({
   schedule: MeterReadSchedule;
   todayIso: string;
 }) {
-  const [entity] = useQueryState("entity");
-  const [ranch] = useQueryState("ranch");
-  const [rate] = useQueryState("rate");
-  const [, setMeter] = useQueryState("meter");
+  const [entity] = useQueryState(SURFACE.entity);
+  const [ranch] = useQueryState(SURFACE.ranch);
+  const [rate] = useQueryState(SURFACE.rate);
+  const [, setMeter] = useQueryState(SURFACE.meter);
 
   const visible = useMemo(
     () => filterMeters(meters, { entity, ranch, rate }),

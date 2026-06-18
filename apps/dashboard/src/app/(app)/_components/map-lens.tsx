@@ -10,6 +10,7 @@ import type { MeterView } from "@/lib/dashboard/load";
 import { filterMeters } from "@/lib/dashboard/table";
 import { toMapPins, type MapPin } from "@/lib/dashboard/map";
 // (MapPin also types the latest-pins ref the async init effect reads.)
+import { SURFACE } from "@/lib/dashboard/surface";
 import { isActiveFilterValue } from "./filter-bar";
 
 // The Map lens (Story 2.9, FR-12): read-only MapLibre over the canonical inventory. Pins are
@@ -98,10 +99,10 @@ function refit(map: MapLibreMap, pins: readonly MapPin[]): void {
 }
 
 export function MapLens({ meters }: { meters: MeterView[] }) {
-  const [entity, setEntity] = useQueryState("entity");
-  const [ranch, setRanch] = useQueryState("ranch");
-  const [rate, setRate] = useQueryState("rate");
-  const [meterId, setMeter] = useQueryState("meter");
+  const [entity, setEntity] = useQueryState(SURFACE.entity);
+  const [ranch, setRanch] = useQueryState(SURFACE.ranch);
+  const [rate, setRate] = useQueryState(SURFACE.rate);
+  const [meterId, setMeter] = useQueryState(SURFACE.meter);
 
   const { pins, unlocated } = useMemo(
     () => toMapPins(filterMeters(meters, { entity, ranch, rate })),

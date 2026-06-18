@@ -7,6 +7,7 @@ import { en } from "@/copy/en";
 import { SeverityBadge, cardClass } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import type { FindingView } from "@/lib/dashboard/findings";
+import { SURFACE } from "@/lib/dashboard/surface";
 import { resolveFinding, type FindingResponse } from "../actions";
 
 // The finding card (Story 3.1, FR-13 / UX-DR14): the recommendation grammar rendered
@@ -31,7 +32,7 @@ export function FindingCard({
   // money story, they do not act.
   readOnly?: boolean;
 }) {
-  const [, setMeter] = useQueryState("meter");
+  const [, setMeter] = useQueryState(SURFACE.meter);
   const [isPending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
   // Which response is in flight, so only the tapped button reads "Saving".

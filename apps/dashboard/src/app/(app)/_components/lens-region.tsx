@@ -2,7 +2,7 @@
 
 import { useQueryState } from "nuqs";
 import { en } from "@/copy/en";
-import { defaultLens, parseLens } from "@/lib/dashboard/lens";
+import { SURFACE, lensQueryOptions, parseLens } from "@/lib/dashboard/surface";
 import type { MeterView } from "@/lib/dashboard/load";
 import type { MeterReadSchedule } from "@/lib/pge/schedule";
 import { MeterTable } from "./meter-table";
@@ -24,10 +24,7 @@ export function LensRegion({
   schedule: MeterReadSchedule;
   todayIso: string;
 }) {
-  const [raw] = useQueryState("lens", {
-    defaultValue: defaultLens(),
-    clearOnDefault: true,
-  });
+  const [raw] = useQueryState(SURFACE.lens, lensQueryOptions());
   const active = parseLens(raw);
 
   if (active === "chart") {

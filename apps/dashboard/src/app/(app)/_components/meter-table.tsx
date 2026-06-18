@@ -16,6 +16,7 @@ import {
   type SortDir,
 } from "@/lib/dashboard/table";
 import { metersCsv } from "@/lib/dashboard/csv";
+import { SURFACE } from "@/lib/dashboard/surface";
 import { CoveragePill, coverageLabel } from "./coverage-pill";
 import { isActiveFilterValue } from "./filter-bar";
 
@@ -125,10 +126,10 @@ function renderCell(key: SortKey, row: MeterRow): ReactNode {
 }
 
 export function MeterTable({ meters }: { meters: MeterView[] }) {
-  const [entity, setEntity] = useQueryState("entity");
-  const [ranch, setRanch] = useQueryState("ranch");
-  const [rate, setRate] = useQueryState("rate");
-  const [meterId, setMeter] = useQueryState("meter");
+  const [entity, setEntity] = useQueryState(SURFACE.entity);
+  const [ranch, setRanch] = useQueryState(SURFACE.ranch);
+  const [rate, setRate] = useQueryState(SURFACE.rate);
+  const [meterId, setMeter] = useQueryState(SURFACE.meter);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "name", dir: "asc" });
 
   const rows = useMemo(() => {

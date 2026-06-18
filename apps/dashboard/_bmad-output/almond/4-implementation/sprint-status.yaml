@@ -96,7 +96,7 @@ story_location: "_bmad-output/almond/4-implementation"
 development_status:
   # Epic 7: Almond drives the screen (the navigation operator)
   epic-7: in-progress
-  7-1-canonical-surface-registry-and-nuqs-call-site-refactor: ready-for-dev
+  7-1-canonical-surface-registry-and-nuqs-call-site-refactor: review
   7-2-extend-the-tool-factory-into-the-skill-framework: backlog
   7-3-the-navigate-skill-entity-resolver-and-ambiguity-rule: backlog
   7-4-the-server-client-navigation-bridge: backlog

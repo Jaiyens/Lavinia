@@ -5,6 +5,7 @@ import { useQueryState } from "nuqs";
 import { en } from "@/copy/en";
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterOptions } from "@/lib/dashboard/filters";
+import { SURFACE } from "@/lib/dashboard/surface";
 
 // The filter controls (Story 2.6, FR-11): one labeled select per dimension that actually has
 // values on this farm (an empty dimension renders no control - never a dead dropdown), writing
@@ -61,9 +62,9 @@ export function isActiveFilterValue(v: string | null): boolean {
 }
 
 export function FilterBar({ meters }: { meters: MeterView[] }) {
-  const [entity, setEntity] = useQueryState("entity");
-  const [ranch, setRanch] = useQueryState("ranch");
-  const [rate, setRate] = useQueryState("rate");
+  const [entity, setEntity] = useQueryState(SURFACE.entity);
+  const [ranch, setRanch] = useQueryState(SURFACE.ranch);
+  const [rate, setRate] = useQueryState(SURFACE.rate);
 
   const options = useMemo(() => filterOptions(meters), [meters]);
   const hasAnyControl =

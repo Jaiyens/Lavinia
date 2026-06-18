@@ -9,6 +9,7 @@ import { formatUsd, formatUsdWhole } from "@/lib/format/money";
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterMeters } from "@/lib/dashboard/table";
 import { toChartBars, yoyPairs, type ChartBar, type TouBucket } from "@/lib/dashboard/chart";
+import { SURFACE } from "@/lib/dashboard/surface";
 import { isActiveFilterValue } from "./filter-bar";
 
 // The Chart lens (Story 2.8): the default hero face. One TOU-stacked bar per reconciled
@@ -44,9 +45,9 @@ function stackRects(bar: ChartBar, y: (cents: number) => number) {
 }
 
 export function ChartLens({ meters }: { meters: MeterView[] }) {
-  const [entity, setEntity] = useQueryState("entity");
-  const [ranch, setRanch] = useQueryState("ranch");
-  const [rate, setRate] = useQueryState("rate");
+  const [entity, setEntity] = useQueryState(SURFACE.entity);
+  const [ranch, setRanch] = useQueryState(SURFACE.ranch);
+  const [rate, setRate] = useQueryState(SURFACE.rate);
   const [yoy, setYoy] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement>(null);

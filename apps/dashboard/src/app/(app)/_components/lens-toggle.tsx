@@ -3,7 +3,7 @@
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { LENSES, defaultLens, parseLens } from "@/lib/dashboard/lens";
+import { LENSES, SURFACE, lensQueryOptions, parseLens } from "@/lib/dashboard/surface";
 
 // The lens toggle: one segmented control over one meter dataset, one lens visible at a time.
 // Reads/writes only the nuqs `lens` key, so switching a lens never drops the active filter or
@@ -12,10 +12,7 @@ import { LENSES, defaultLens, parseLens } from "@/lib/dashboard/lens";
 // non-interactive, like the future agents. Announces the active lens for screen readers; tabs
 // are >=44px tall (the accessibility tap-target floor).
 export function LensToggle() {
-  const [raw, setLens] = useQueryState("lens", {
-    defaultValue: defaultLens(),
-    clearOnDefault: true,
-  });
+  const [raw, setLens] = useQueryState(SURFACE.lens, lensQueryOptions());
   const active = parseLens(raw);
 
   return (

@@ -1,6 +1,10 @@
+---
+baseline_commit: 92a48c6e8fe9e060a4a2d71548dc54bdb973a02d
+---
+
 # Story 7.1: Canonical surface registry and nuqs call-site refactor
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -56,41 +60,41 @@ skill — and Story 7.4 — the server -> client navigation bridge.)
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Build the canonical surface registry** (AC: 1, 3, 5, 6)
-  - [ ] Create `src/lib/dashboard/surface.ts` as the single source of truth for the five canonical
+- [x] **Task 1 — Build the canonical surface registry** (AC: 1, 3, 5, 6)
+  - [x] Create `src/lib/dashboard/surface.ts` as the single source of truth for the five canonical
         URL-state keys: `lens`, `entity`, `ranch`, `rate`, `meter`.
-  - [ ] Type the key set as `as const` literals so they are a closed union (`SurfaceKey`), and expose a
+  - [x] Type the key set as `as const` literals so they are a closed union (`SurfaceKey`), and expose a
         typed accessor / option-bag-per-key so a consumer that references a removed key fails at
         type-check (AC 3). Do not export a loose `string`.
-  - [ ] Compose (do NOT re-implement) `lens.ts`: re-export / wrap `parseLens`, `defaultLens`, `LENSES`,
+  - [x] Compose (do NOT re-implement) `lens.ts`: re-export / wrap `parseLens`, `defaultLens`, `LENSES`,
         `LENS_KEYS` for the `lens` key. `lens.ts` stays the lens-value authority (AC 1).
-  - [ ] Model the `lens` entry to carry its existing nuqs options: `defaultValue: defaultLens()` +
+  - [x] Model the `lens` entry to carry its existing nuqs options: `defaultValue: defaultLens()` +
         `clearOnDefault: true` + resolution via `parseLens` (AC 5).
-  - [ ] Model the `entity | ranch | rate | meter` entries as raw nullable-string keys (no parser, no
+  - [x] Model the `entity | ranch | rate | meter` entries as raw nullable-string keys (no parser, no
         default) so behavior is identical to today (AC 6). The "parser/validator" for these four is the
         identity/pass-through of the raw `string | null`; document that explicitly in the file.
-  - [ ] File-level comment explains the one-source-of-truth intent and that adding/removing a navigable
+  - [x] File-level comment explains the one-source-of-truth intent and that adding/removing a navigable
         surface is a one-edit change here that Almond's `navigate` skill (Story 7.3) reads.
-- [ ] **Task 2 — Refactor every canonical-key call-site to read from the registry** (AC: 2)
-  - [ ] Refactor all **10** client components that inline a canonical key (verified blast radius — the
+- [x] **Task 2 — Refactor every canonical-key call-site to read from the registry** (AC: 2)
+  - [x] Refactor all **10** client components that inline a canonical key (verified blast radius — the
         architecture named 9; `map-lens.tsx` is the verified +1, see Dev Notes):
         `lens-toggle.tsx`, `lens-region.tsx`, `kpi-strip.tsx`, `chart-lens.tsx`, `calendar-lens.tsx`,
         `filter-bar.tsx`, `meter-table.tsx`, `meter-drawer.tsx`, `finding-card.tsx`, **`map-lens.tsx`**.
-  - [ ] Each `useQueryState("<key>", …)` pulls its key name (and, for `lens`, its options/parser) from
+  - [x] Each `useQueryState("<key>", …)` pulls its key name (and, for `lens`, its options/parser) from
         `surface.ts`. No literal `"lens" | "entity" | "ranch" | "rate" | "meter"` query-param string
         remains in any component.
-  - [ ] The two `lens` call-sites (`lens-toggle.tsx`, `lens-region.tsx`) keep `{ defaultValue,
+  - [x] The two `lens` call-sites (`lens-toggle.tsx`, `lens-region.tsx`) keep `{ defaultValue,
         clearOnDefault }` exactly, sourced from the registry (AC 5).
-  - [ ] The filter/meter call-sites stay raw nullable strings, only the key literal moves to the registry
+  - [x] The filter/meter call-sites stay raw nullable strings, only the key literal moves to the registry
         (AC 6).
-- [ ] **Task 3 — Prove no literal escaped and behavior is preserved** (AC: 2, 3, 4)
-  - [ ] Grep `src/` for the five key literals used as a nuqs param; confirm the only occurrences are in
+- [x] **Task 3 — Prove no literal escaped and behavior is preserved** (AC: 2, 3, 4)
+  - [x] Grep `src/` for the five key literals used as a nuqs param; confirm the only occurrences are in
         `surface.ts` (and `lens.ts` internals). Both `NuqsAdapter` mount points are unchanged
         (`(dashboard)/layout.tsx`, `tour/layout.tsx`).
-  - [ ] Add `src/lib/dashboard/surface.test.ts` (model it on `lens.test.ts`): assert the registry exposes
+  - [x] Add `src/lib/dashboard/surface.test.ts` (model it on `lens.test.ts`): assert the registry exposes
         **exactly** the five keys, the `lens` parser resolves like `parseLens`, the `lens` default equals
         `defaultLens()`, and the filter/meter keys are pass-through nullable.
-  - [ ] Run `npm run typecheck && npm run lint && npm test` and `npm run test:e2e -w @lavinia/dashboard`;
+  - [x] Run `npm run typecheck && npm run lint && npm test` and `npm run test:e2e -w @lavinia/dashboard`;
         all existing tests pass unchanged (AC 4). The `noUncheckedIndexedAccess` + no-`any` rules are hard
         errors — type the registry accessors precisely.
 
@@ -279,12 +283,43 @@ local pattern to mirror for `surface.ts`).
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
+- `npm run typecheck -w @lavinia/dashboard` -> clean (no errors).
+- `npm run lint -w @lavinia/dashboard` -> clean.
+- `npx vitest run --exclude "**/*.db.test.ts"` -> 63 files, 526 tests passed (the behavior-preservation net: `lens.test.ts`, `filters.test.ts`, `table.test.ts`, `csv.test.ts`, plus the new `surface.test.ts`).
+- `npm test -w @lavinia/dashboard` (full, incl. db integration) -> 81 files, 623 tests passed.
+- `npm run build -w @lavinia/dashboard` -> success (all refactored client components compile + bundle).
+- `npm run test:e2e` -> 3 passed / 5 failed, BUT proven pre-existing/environmental: the identical run on the baseline commit (92a48c6, changes stashed) produced the exact same 5 failures / 3 passes. Causes are an unstable e2e web server in this sandbox (`net::ERR_CONNECTION_REFUSED` on `/`, `/energy`, `/onboarding`) and a pre-existing Tour-page assertion (`getByRole('link', { name: 'Connect your farm' })` resolves to 2 elements) and the almond 401 check — none touch the surface registry. No regression attributable to this story.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Built `src/lib/dashboard/surface.ts`: the single source of truth for the closed canonical key set (`lens | entity | ranch | rate | meter`). Exposes `SURFACE_KEYS` (ordered tuple), `SurfaceKey` (`as const` union), `SURFACE` (per-key literal map typed `satisfies Record<SurfaceKey, SurfaceKey>` so the map must define exactly the key set), `lensQueryOptions()` (the `lens` nuqs options factory), and re-exports the lens-VALUE surface from `lens.ts` (`LENSES`, `LENS_KEYS`, `defaultLens`, `isLensAvailable`, `parseLens`, `Lens`). It composes `lens.ts`, never replaces it; pure module, no `"use client"`, so Story 7.3's server-side `navigate` skill can import it.
+- AC3 satisfied structurally: keys are reached via `SURFACE.<key>` (literal types). Retiring a key is one edit (remove from `SURFACE_KEYS` + `SURFACE`); every stale `SURFACE.<removed>` reference then fails at type-check, never silently at runtime.
+- AC5/AC6 behavior preservation: the two `lens` call-sites keep `{ defaultValue: defaultLens(), clearOnDefault: true }` (via `lensQueryOptions()`) and resolve through `parseLens`; the four filter/meter keys stay raw nullable strings — the registry centralizes only the key literal, adds no parser/default/coercion.
+- Refactored all **10** call-sites (the architecture's 9 + the verified `map-lens.tsx`): `lens-toggle`, `lens-region`, `kpi-strip`, `filter-bar`, `meter-table`, `meter-drawer`, `chart-lens`, `calendar-lens`, `finding-card`, `map-lens`. Grep confirms zero `useQueryState("<canonical key>")` literals remain anywhere in `src/`. Both `NuqsAdapter` mount points (`(dashboard)/layout.tsx`, `tour/layout.tsx`) unchanged.
+- Note for the reviewer: `table.ts` / `meter-table.tsx` use `"ranch" | "entity" | "rate"` as table **column / sort keys** (`SortKey`) and `copy/en.ts` / `pge-connecting.tsx` use `"meter"`/`"meters"` as display plurals — these coincidental string matches are a different concept (not URL-state keys) and are correctly out of the registry's scope.
+- New `src/lib/dashboard/surface.test.ts` (modeled on `lens.test.ts`): asserts exactly the five keys, the lens parser/default/options, and the filter/meter pass-through. 5 tests, all pass.
 
 ### File List
+
+- `src/lib/dashboard/surface.ts` (new) — the canonical surface registry.
+- `src/lib/dashboard/surface.test.ts` (new) — registry unit test.
+- `src/app/(app)/_components/lens-toggle.tsx` (modified) — lens key/parser/options from registry.
+- `src/app/(app)/_components/lens-region.tsx` (modified) — lens key/parser/options from registry.
+- `src/app/(app)/_components/filter-bar.tsx` (modified) — entity/ranch/rate keys from registry.
+- `src/app/(app)/_components/kpi-strip.tsx` (modified) — entity/ranch/rate/meter keys from registry.
+- `src/app/(app)/_components/meter-table.tsx` (modified) — entity/ranch/rate/meter keys from registry.
+- `src/app/(app)/_components/meter-drawer.tsx` (modified) — meter key from registry.
+- `src/app/(app)/_components/chart-lens.tsx` (modified) — entity/ranch/rate keys from registry.
+- `src/app/(app)/_components/calendar-lens.tsx` (modified) — entity/ranch/rate/meter keys from registry.
+- `src/app/(app)/_components/finding-card.tsx` (modified) — meter key from registry.
+- `src/app/(app)/_components/map-lens.tsx` (modified) — entity/ranch/rate/meter keys from registry (the verified +1 over the architecture's list).
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-06-17 | Story 7.1 implemented: added `src/lib/dashboard/surface.ts` (canonical surface registry) + `surface.test.ts`; refactored all 10 nuqs call-sites to read keys/parser/options from the registry. Behavior-preserving (typecheck + lint + 623 unit/db tests + build green; e2e red proven identical on baseline). Status -> review. |

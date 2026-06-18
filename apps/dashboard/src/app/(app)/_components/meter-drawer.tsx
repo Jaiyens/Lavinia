@@ -11,6 +11,7 @@ import type { FindingView } from "@/lib/dashboard/findings";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import type { ResultView } from "@/lib/recommendations/result";
 import { toDrawerDetail } from "@/lib/dashboard/drawer";
+import { SURFACE } from "@/lib/dashboard/surface";
 import { CoveragePill } from "./coverage-pill";
 import { FindingCard } from "./finding-card";
 
@@ -116,7 +117,7 @@ export function MeterDrawer({
   /** The public Tour (Story 5.3) renders findings display-only (no authed response buttons). */
   readOnly?: boolean;
 }) {
-  const [meterId, setMeter] = useQueryState("meter");
+  const [meterId, setMeter] = useQueryState(SURFACE.meter);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const open = meterId !== null && meters.some((m) => m.id === meterId);
