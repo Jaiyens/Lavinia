@@ -370,11 +370,16 @@ export const en = {
         title: (farmName: string): string => `${farmName} meters`,
         // Footer line stating what the spreadsheet covers and what was left out (no silent
         // truncation). Every meter is included; unreconciled meters show their coverage label
-        // in the money cells rather than a number.
-        coverageFooter: (total: number, reconciled: number): string =>
-          reconciled === total
-            ? `All ${total} meters included. Every meter has loaded billing.`
-            : `All ${total} meters included. ${reconciled} have loaded billing; the rest show their coverage state in place of a dollar figure.`,
+        // in the money cells rather than a number. Partial billing is stated plainly as a
+        // whole-percent complete (e.g. "82% complete"), never rounded to imply more than is on
+        // file. An empty farm (no meters) is its own honest line, never a divide-by-zero percent.
+        coverageFooter: (total: number, reconciled: number, percent: number): string => {
+          if (total === 0) return "No meters on file yet, so this sheet is empty.";
+          if (reconciled === total) {
+            return `All ${total} meters included. Every meter has loaded billing, so this is 100% complete.`;
+          }
+          return `All ${total} meters included. ${reconciled} have loaded billing, so this is ${percent}% complete; the rest show their coverage state in place of a dollar figure.`;
+        },
         // Footer line carrying the freshest billed cycle the farm has on file, or its honest
         // absence (never a fabricated date).
         asOf: (date: string): string => `Figures as of the bill closing ${date}.`,

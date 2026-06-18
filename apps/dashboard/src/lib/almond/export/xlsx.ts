@@ -19,22 +19,10 @@ import ExcelJS from "exceljs";
 import { en } from "@/copy/en";
 import { metersHeader, meterCells } from "@/lib/dashboard/csv";
 import { meterRowsForExport } from "./rows";
+import { composeCoverageFooter } from "./coverage-footer";
 import type { ExportData } from "./load";
 
 const t = en.shell.almond.export;
-
-/** Format a posted-cycle close (a UTC-midnight ISO 8601 string from the loader) as a plain date,
-    in UTC so the printed day never shifts under the runner's timezone. */
-const AS_OF_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "UTC",
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
-
-function asOfLine(asOf: string | null): string {
-  return asOf === null ? t.asOfNone : t.asOf(AS_OF_FMT.format(new Date(asOf)));
-}
 
 /**
  * The shape every export hands the workbook builder. The builder is format-agnostic: it knows how
@@ -99,19 +87,20 @@ export async function buildGridWorkbook(grid: WorkbookGrid): Promise<Uint8Array>
  *
  * Layout, top to bottom: a title row (the farm name), one blank row, the nine table headers (bold),
  * then one row per meter - EVERY meter the loader returned, in name order, no silent cap. Below the
- * table, a blank row then two footer lines: the coverage statement (what is included and what shows
- * a coverage label instead of a figure) and the as-of (the freshest billed cycle, or its honest
- * absence). The footer is how the artifact states what was left out. Renders through the shared
- * buildGridWorkbook, with cells from the single CSV cell builder (coverage label for unreconciled
- * money cells; never a fabricated or zero figure).
+ * table, a blank row then the shared coverage / as-of footer (the coverage statement - what is
+ * included and what shows a coverage label instead of a figure, with the whole-percent complete -
+ * and the as-of, the freshest billed cycle or its honest absence). That footer comes from the ONE
+ * composer (./coverage-footer.ts), the same lines the Epic 9 PDF composer will print, so the two
+ * artifacts can never disagree about completeness. Renders through the shared buildGridWorkbook,
+ * with cells from the single CSV cell builder (coverage label for unreconciled money cells; never a
+ * fabricated or zero figure).
  */
 export async function buildMetersWorkbook(data: ExportData): Promise<Uint8Array> {
-  const { total, reconciled } = data.state.coverage;
   return buildGridWorkbook({
     sheetName: t.sheetName,
     title: t.title(data.farm.name),
     header: metersHeader(),
     rows: meterRowsForExport(data).map(meterCells),
-    footer: [t.coverageFooter(total, reconciled), asOfLine(data.state.asOf)],
+    footer: composeCoverageFooter(data.state),
   });
 }
