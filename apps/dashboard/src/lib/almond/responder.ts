@@ -29,17 +29,21 @@ import {
 } from "./skills/navigate";
 import { describeNavigation } from "./skills/describe-navigation";
 import {
-  runExportSpreadsheet,
   type ExportSpreadsheetInput,
   type ExportSpreadsheetResult,
 } from "./skills/export-spreadsheet";
 import {
-  runGenerateReport,
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
-import { buildAlmondSkills, type AlmondActor, type AlmondToolDeps } from "./tools";
+import {
+  buildAlmondSkills,
+  exportSpreadsheetSkill,
+  generateReportSkill,
+  type AlmondActor,
+  type AlmondToolDeps,
+} from "./tools";
 
 /**
  * The injected model boundary for Almond, mirroring `src/lib/extract/reader.ts`:
@@ -536,13 +540,17 @@ export function createStubResponder(): AlmondResponder {
       let file: StreamableFile | null = null;
       let answer: string;
       if (actor.authedOwner && isReportTurn(text)) {
-        const result = await runGenerateReport(deps, deriveReportInput(text));
+        // Through the throttled wrapper (Story 10.3), so the offline path honors the SAME per-farm
+        // generation throttle the live model path does (parity); a throttled turn returns the typed
+        // `error` outcome (the calm `busy` line) and writes no file.
+        const result = await generateReportSkill(deps, deriveReportInput(text));
         file = reportFile(result);
         // The text carries the one-line preview on success, or the typed empty/error line otherwise;
         // a download card is only written for a clean file (below), never for empty/error.
         answer = result.kind === "file" ? result.preview : result.message;
       } else if (actor.authedOwner && isExportTurn(text)) {
-        const result = await runExportSpreadsheet(deps, deriveExportInput(text));
+        // Through the throttled wrapper (Story 10.3) for the same per-farm throttle parity as above.
+        const result = await exportSpreadsheetSkill(deps, deriveExportInput(text));
         file = exportFile(result);
         // The text carries the one-line preview on success, or the typed empty/error line otherwise;
         // a download card is only written for a clean file (below), never for empty/error.

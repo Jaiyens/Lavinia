@@ -342,6 +342,10 @@ export const en = {
       streaming: "Almond is answering",
       error: "That did not work.",
       retry: "Try again",
+      // Per-farm generation throttle (Story 10.3, AR16): shown by both file skills when one farm has
+      // built too many heavy artifacts (spreadsheet / PDF) in a short window. Calm, retryable, never a
+      // hard error. Plain operator English, no exclamation mark.
+      busy: "You have made several files in a row. Give it a minute and ask again.",
       // Accessible label for the live conversation region.
       conversationLabel: "Conversation with Almond",
       // Starter prompts shown on the empty chat, drawn from the farm so the grower is never staring

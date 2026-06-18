@@ -59,3 +59,37 @@ which produces structured navigate input and is unaffected.
   entry but no nudge. Not runnable in the headless review/dev environment; the gating laws are proven by
   the pure unit tests + production build. Disclosed in the story's Dev Agent Record. [Story 10.2 Task 7]
   (Acceptance Auditor)
+
+## Deferred from: dev of 10-3-abuse-and-cost-protection-on-the-generative-endpoint (2026-06-18)
+
+- **Pre-existing Story 9.3 db-test failures (NOT introduced by 10.3)** — `generate-report.db.test.ts`
+  tests 1 & 2 fail on HEAD (485b250) independent of this story (verified by stashing all 10.3 edits and
+  re-running). These are the "epic 8/9 db tests written-not-run" items. (1) Test 1 asserts the streamed
+  body contains the contiguous string "one or two page summary", but the stub streams text in 24-char
+  `text-delta` chunks, so that phrase is fragmented across chunk boundaries in the serialized stream — a
+  stale assumption about non-chunked streaming (the sibling export test passes only because its asserted
+  substring fits one chunk). Fix: assert against the decoded/joined deltas, not the raw SSE body. (2) Test
+  2 asserts a `GeneratedReport` row is persisted on an owner report turn, but `storeReport` does not
+  persist in that test's setup (the persist is best-effort and silently caught), so the count stays +0.
+  Both belong to Story 9.3, not 10.3; left unfixed to respect story scope.
+  [src/lib/almond/skills/generate-report.db.test.ts] (dev-story, Med)
+- **Manual in-app verification of the abuse/cost guards** — hammer `/api/almond/chat` from one IP to
+  observe a real `429` + `Retry-After` (and confirm a normal grower never trips it), and drive an authed
+  owner past the per-farm generation throttle to see the calm `busy` line with no file/Blob/row written.
+  Not runnable in the headless dev environment; the logic is proven by the pure `rate-limit.test.ts` + the
+  production build. Disclosed in the story's Dev Agent Record. Also: enable **Vercel BotID** in the Vercel
+  dashboard as the durable cross-instance layer before widening the public Tour (the in-app limiter is
+  per-instance). [Story 10.3 Task 6; src/lib/almond/rate-limit.ts, src/app/api/almond/chat/route.ts]
+  (dev-story)
+
+## Deferred from: code review of 10-3-abuse-and-cost-protection-on-the-generative-endpoint (2026-06-18)
+
+- **Per-farm generation throttle counts `empty`/`error` attempts against the budget** — a clean owner who
+  mis-filters (a filter matching no meters → `empty`) or hits a transient render `error` still consumes a
+  slot in the 10/min per-farm budget, even though no Blob object or `GeneratedReport` row was written.
+  Deferred as a **design tradeoff, not a defect**: counting every *attempt* is the deliberate cost bound
+  (each attempt still does a `loadExportData` read and, for a report, a partial render before failing); a
+  commit-on-success scheme would let a script spam error-inducing heavy renders for free, weakening the
+  abuse protection. If real owners report nuisance lockouts, revisit with a peek-then-commit limiter API
+  that only charges the budget on a produced file while still gating entry on remaining budget.
+  [src/lib/almond/tools.ts exportSpreadsheetSkill/generateReportSkill] (Edge Case Hunter, Med)
