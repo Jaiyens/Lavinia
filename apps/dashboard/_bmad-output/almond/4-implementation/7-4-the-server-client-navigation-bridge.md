@@ -4,7 +4,7 @@ baseline_commit: aa592fdfdd2179f60bfa6692c42d4cf8e86bc523
 
 # Story 7.4: The server→client navigation bridge
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -175,6 +175,34 @@ client state-sync the whole feature introduces. The action chip that links back 
         @lavinia/dashboard`), then `npm run build`, then `npm run test:e2e -w @lavinia/dashboard`. The
         e2e suite has a documented environmental red baseline (3 pass / 5 fail at 7.1–7.3) — a failure is
         a 7.4 regression only if it differs from that baseline AND touches Almond's runtime.
+
+## Review Findings
+
+Adversarial code review (2026-06-18, 3 isolated subagent layers — Blind Hunter, Edge Case Hunter,
+Acceptance Auditor — over `git diff aa592fd -- src/`). **Acceptance Auditor: ACCEPT-WITH-NITS — all 6
+ACs SATISFIED with code+test evidence; scope discipline verified TRUE (no DO-NOT-TOUCH file touched,
+no new dep/env/schema/query-param, `navigate.ts`/`navigateSkill`/`route.ts`/`surface.ts`/
+`almond-messages.tsx` untouched, Design A shipped as decided).** Triage: 0 decision-needed, 2 patch,
+5 defer, 2 dismissed. All findings are in the offline **stub** parser (dev/test/demo path); the live
+model produces structured input and is unaffected.
+
+### Patch (unresolved)
+
+- [x] [Review][Patch] Stub free-text filter path is broken-by-construction — `deriveNavigateInput` rate branch [src/lib/almond/responder.ts]. The stub lower-cases all user text (`lastUserText`), but the dashboard's `filterMeters` matches rate/entity/ranch case-sensitively and exact (`field.trim() === want`, src/lib/dashboard/table.ts:86), so a stub-derived `{ rate: "ag-4" }` never matches stored `"AG-4"` and silently empties the table while the stub says "Opening that now." The `(ag-?\w+)` regex also lacks a leading word boundary ("agave" -> `rate: "agave"`). Fix: drop the free-text rate derivation (and the standalone `switch to` / `filter` nav verbs); reliable offline filtering is not a stub capability given lowercasing. Edge Case Hunter (High + Low).
+- [x] [Review][Patch] Navigation-looking data questions dead-end instead of getting the grounded answer [src/lib/almond/responder.ts]. `isNavigationTurn` matches a verb anywhere (e.g. "show me the data", "show my savings"), routing to navigation where the meter query resolves to `none` and the stub answers "I could not find that on your farm" — stealing a question `composeStubAnswer` would answer well. The detector also accepts verbs (`switch to` / `filter`) the parser cannot act on, yielding an empty input. Fix: when the stub's navigation resolves to `none` (or yields no actionable input), fall through to `composeStubAnswer`. Blind Hunter + Edge Case Hunter (Med).
+
+### Deferred (acknowledged, not a 7.4 blocker)
+
+- [x] [Review][Defer] A lens word hijacks a compound meter-open request ("show me the table for pump 3" -> lens only) [src/lib/almond/responder.ts] — by-design stub simplification; compound requests are the live model's job. Edge Case Hunter (Med).
+- [x] [Review][Defer] Greedy `(.+)$` capture swallows trailing qualifiers into the meter query [src/lib/almond/responder.ts] — by-design stub simplification. Edge Case Hunter (Low).
+- [x] [Review][Defer] Constant `data-navigate` part id ("almond-nav") collides as a chip key across multiple navigations [src/lib/almond/responder.ts] — harmless for 7.4 (transient delivery is once-per-stream regardless of id); Story 7.5's action chip needs a stable/unique key, so address it there. Edge Case Hunter (Low).
+- [x] [Review][Defer] Navigate can open a meter filtered out of the current view; the drawer open-gate (`meters.some`, meter-drawer.tsx:123) then no-ops [src/app/(app)/_components/almond/use-almond-navigation.ts] — pre-existing drawer behavior; whether opening a pump should clear conflicting filters is a 7.5 UX decision. Edge Case Hunter (Low).
+- [x] [Review][Defer] AC3 (exactly-once) and AC5 (live-path emission) are proven structurally / by typecheck, not by an executable test [src/lib/almond/responder.ts, almond-launcher.tsx] — accepted per the project's documented testing convention (node-env vitest, no Playwright session); a mock-LanguageModel test would close the AC5 runtime gap. Acceptance Auditor (nit).
+
+### Dismissed (verified non-issues)
+
+- Stub parser "case-sensitivity" concern (Blind Hunter) — FALSE POSITIVE: `lastUserText` lower-cases the text before parsing (responder.ts:88-91), so the precondition the Blind Hunter (correctly, lacking project access) hedged on is established.
+- `regenerate()` re-applies navigation (Edge Case Hunter) — by-design and idempotent: re-applying URL state is harmless, and the "exactly once" guarantee concerns re-render/reload, which holds.
 
 ## Dev Notes
 
@@ -620,4 +648,5 @@ claude-opus-4-8[1m] (Opus 4.8, 1M context)
 | Date | Change |
 |------|--------|
 | 2026-06-18 | Story 7.4 drafted (Create Story workflow): scope = the server→client navigation BRIDGE. Server writes a typed transient `data-navigate` part onto the existing UI-message stream on a clean `NavigateAction` — in both the offline stub responder (AC4/CI surface) and the live Gateway model path (AC5) — via the same `createUIMessageStream` writer (no second channel, AR17/ADR-A02). New client hook `src/app/(app)/_components/almond/use-almond-navigation.ts` holds the five canonical `useQueryState` setters (keyed from `surface.ts`, replicating the dashboard call-sites exactly) and exposes `apply(action)`; `almond-launcher.tsx` delivers each part to `apply` exactly once via `useChat({ onData })`. Resolved the planning-doc contradiction (transient vs message.parts/dedupe-by-id) against the installed `ai@6.0.205` API: RECOMMEND Design A (transient part + `onData`, exactly-once by construction); documented Design B (non-transient + `message.parts` + dedupe-by-id `Set`) as the fallback. No new dep, no env var, no Prisma/schema change; `navigate.ts`/`navigateSkill`/`route.ts`/`surface.ts` untouched. Chips/link-back/announce are 7.5. Status -> ready-for-dev. |
+| 2026-06-18 | Code review (3-layer adversarial): **ACCEPT-WITH-NITS -> 2 patches applied, 5 deferred, 2 dismissed**. Acceptance Auditor: all 6 ACs satisfied + scope discipline verified true. Both patches were in the offline STUB parser (production uses the live model, unaffected): (1) dropped the free-text rate/filter derivation — the stub lower-cases text but `filterMeters` is a case-sensitive exact match (table.ts:86), so a stub filter silently emptied the table; also removed the unanchored `(ag-?\w+)` regex and the unparseable `switch to`/`filter` nav verbs; (2) the stub now falls through to the grounded `composeStubAnswer` when a navigation-looking turn resolves to `none` (e.g. "show me the data"), instead of dead-ending on "I could not find that." Updated `responder.test.ts` (parser) + added a db fall-through case to `tools.db.test.ts`. Re-gated: typecheck + lint + 652 unit/db tests + build green. Deferred (logged to deferred-work.md): lens-precedence on compound requests, greedy capture, the constant part id (-> 7.5 chip key), the open-a-filtered-out-meter drawer no-op (-> 7.5 UX), and a mock-model test for AC5/AC3 (per the node-env/no-Playwright convention). Status -> done. |
 | 2026-06-18 | Story 7.4 implemented (Dev Story workflow): shipped **Design A** (transient `data-navigate` part + `useChat({ onData })`). `responder.ts` — shared `writeNavigatePart` (transient) + `isNavigateResult`; stub routes a navigation turn through the shipped `navigateSkill` offline (`isNavigationTurn`/`deriveNavigateInput`/`navigationStubText`) and emits the part; `createModelResponder` wraps `streamText` in `createUIMessageStream` + `writer.merge(result.toUIMessageStream())` and writes the same part on a clean `navigate` result via `onStepFinish`. New `use-almond-navigation.ts` (pure `applyNavigateAction` + the five-setter hook); `almond-launcher.tsx` wires `onData` -> `apply`. Dropped the applied-id dedupe guard — onData delivers transient parts once and is never replayed, so AC3 is structural (a constant-id guard would have suppressed a 2nd navigation). `almond-messages.tsx` unchanged (transient parts aren't in `message.parts`). +2 test files (`responder.test.ts`, `use-almond-navigation.test.ts`) + 2 db cases. typecheck + lint + 652 unit/db tests + build green; e2e 3/5 red proven pre-existing/environmental, identical to the 7.1–7.3 baseline. AC4 in-browser URL assertion deferred to the documented `.db.test.ts`-layer convention (flagged). Status -> review. |

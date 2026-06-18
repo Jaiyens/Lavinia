@@ -87,7 +87,7 @@
 # Retrospective:  optional | done
 
 generated: 2026-06-17
-last_updated: 2026-06-18T13:30:00-0700
+last_updated: 2026-06-18T14:30:00-0700
 project: Terra
 project_key: ALM
 tracking_system: file-system
@@ -99,7 +99,7 @@ development_status:
   7-1-canonical-surface-registry-and-nuqs-call-site-refactor: done
   7-2-extend-the-tool-factory-into-the-skill-framework: done
   7-3-the-navigate-skill-entity-resolver-and-ambiguity-rule: done
-  7-4-the-server-client-navigation-bridge: review
+  7-4-the-server-client-navigation-bridge: done
   7-5-action-chips-and-the-never-hijack-guarantee: backlog
   epic-7-retrospective: optional
 

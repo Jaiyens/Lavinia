@@ -219,23 +219,25 @@ export async function composeStubAnswer(
 // enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
 // (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
 
-const NAV_VERB = /\b(open|show|see|view|go to|switch to|filter)\b/;
+const NAV_VERB = /\b(open|show|see|view|go to)\b/;
 
-/** Whether the latest user turn is a request to drive the screen (vs. a data question). */
+/** Whether the latest user turn is a request to drive the screen (vs. a data question). A lens word
+ *  ("map"/"table"/...) also counts, so "switch to the map" is caught without `switch` being a verb. */
 export function isNavigationTurn(text: string): boolean {
   if (NAV_VERB.test(text)) return true;
   return LENS_KEYS.some((k) => new RegExp(`\\b${k}\\b`).test(text));
 }
 
 /** Parse a deterministic `NavigateInput` from the (lower-cased) user text. A lens word wins; else an
- *  open/show verb opens the named meter; else a rate token filters; else nothing actionable. */
+ *  open/show verb opens the named meter; else nothing actionable. Free-text entity/ranch/rate
+ *  filtering is intentionally NOT derived here: `lastUserText` lower-cases the text, but the
+ *  dashboard's `filterMeters` is a case-sensitive exact match, so a stub-derived filter would
+ *  silently match nothing. Filtering offline is left to the live model's structured input. */
 export function deriveNavigateInput(text: string): NavigateInput {
   const lens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
   if (lens) return { lens };
   const opened = text.match(/\b(?:open|show|see|view|go to)\b\s+(?:me\s+|the\s+)*(.+)$/);
   if (opened && opened[1]) return { open: "meter", query: opened[1].trim() };
-  const rate = text.match(/\b(?:rate\s+|on\s+)?(ag-?\w+)/);
-  if (rate && rate[1]) return { rate: rate[1] };
   return {};
 }
 
@@ -263,8 +265,16 @@ export function createStubResponder(): AlmondResponder {
       let navigation: NavigateResult | null = null;
       let answer: string;
       if (isNavigationTurn(text)) {
-        navigation = await navigateSkill(deps, deriveNavigateInput(text));
-        answer = navigationStubText(navigation);
+        const result = await navigateSkill(deps, deriveNavigateInput(text));
+        // A turn that looks like navigation but resolves to nothing (e.g. "show me the data", or a
+        // verb with no parseable target) is better served as a data question than a dead-end, so
+        // fall through to the grounded answer instead of "I could not find that on your farm".
+        if (result.kind === "none") {
+          answer = await composeStubAnswer(deps, uiMessages);
+        } else {
+          navigation = result;
+          answer = navigationStubText(result);
+        }
       } else {
         answer = await composeStubAnswer(deps, uiMessages);
       }

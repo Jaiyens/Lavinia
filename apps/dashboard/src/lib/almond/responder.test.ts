@@ -7,17 +7,18 @@ import { deriveNavigateInput, isNavigationTurn } from "./responder";
 // farm). Here we pin the detector and the parser.
 
 describe("isNavigationTurn", () => {
-  it("detects a request to drive the screen (verb or lens word)", () => {
+  it("detects a request to drive the screen (open verb or lens word)", () => {
     expect(isNavigationTurn("open westside pump 17")).toBe(true);
     expect(isNavigationTurn("show me the map")).toBe(true);
-    expect(isNavigationTurn("switch to the table")).toBe(true);
-    expect(isNavigationTurn("filter to ag-4")).toBe(true);
+    expect(isNavigationTurn("switch to the table")).toBe(true); // caught by the lens word "table"
   });
 
-  it("leaves a data question for the grounded answer path", () => {
+  it("leaves a data question (or a free-text filter the stub cannot do) for the grounded path", () => {
     expect(isNavigationTurn("how complete is my billing data")).toBe(false);
     expect(isNavigationTurn("which meters cost me the most")).toBe(false);
     expect(isNavigationTurn("where is the money going")).toBe(false);
+    // Free-text filtering is not a stub capability (lower-cased text vs case-sensitive exact filter).
+    expect(isNavigationTurn("filter to ag-4")).toBe(false);
   });
 });
 
@@ -38,11 +39,8 @@ describe("deriveNavigateInput", () => {
     });
   });
 
-  it("a rate token filters", () => {
-    expect(deriveNavigateInput("filter to ag-4")).toEqual({ rate: "ag-4" });
-  });
-
-  it("a non-actionable request yields nothing", () => {
+  it("a non-actionable request yields nothing (incl. free-text filters, left to the live model)", () => {
     expect(deriveNavigateInput("hello almond")).toEqual({});
+    expect(deriveNavigateInput("filter to ag-4")).toEqual({});
   });
 });

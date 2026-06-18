@@ -233,4 +233,25 @@ describe("the offline stub responder", () => {
     expect(body).toContain("text-delta");
     expect(body).not.toContain("data-navigate");
   });
+
+  it("a navigation-looking question that resolves to nothing falls through to the grounded answer, not a dead-end", async () => {
+    // "show me the data" trips isNavigationTurn (the verb "show"), but resolves to no meter -> the
+    // stub must fall through to composeStubAnswer rather than emit a part or dead-end on
+    // "I could not find that on your farm." (both of those substrings fit within one unsplit text chunk).
+    const ask = (text: string): UIMessage => ({
+      id: "u-fall",
+      role: "user",
+      parts: [{ type: "text", text }],
+    });
+    const res = await createStubResponder().toResponse({
+      uiMessages: [ask("show me the data")],
+      system: "ignored by the stub",
+      deps: depsA,
+      actor: { authedOwner: false },
+    });
+    const body = await res.text();
+    expect(body).toContain("text-delta");
+    expect(body).not.toContain("data-navigate");
+    expect(body).not.toContain("could not find");
+  });
 });
