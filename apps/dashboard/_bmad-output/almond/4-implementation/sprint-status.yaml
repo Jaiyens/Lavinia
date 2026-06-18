@@ -97,7 +97,7 @@ development_status:
   # Epic 7: Almond drives the screen (the navigation operator)
   epic-7: in-progress
   7-1-canonical-surface-registry-and-nuqs-call-site-refactor: done
-  7-2-extend-the-tool-factory-into-the-skill-framework: review
+  7-2-extend-the-tool-factory-into-the-skill-framework: done
   7-3-the-navigate-skill-entity-resolver-and-ambiguity-rule: backlog
   7-4-the-server-client-navigation-bridge: backlog
   7-5-action-chips-and-the-never-hijack-guarantee: backlog

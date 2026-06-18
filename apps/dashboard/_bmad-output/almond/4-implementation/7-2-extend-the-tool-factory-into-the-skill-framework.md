@@ -4,7 +4,7 @@ baseline_commit: 9242ce6bec228274b2b340bdf867053be8f68d6b
 
 # Story 7.2: Extend the tool factory into the skill framework
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -118,6 +118,42 @@ skill is added in this story; it reshapes the factory and threads the capability
   - [x] Gate before claiming done: `npm run typecheck && npm run lint && npm test` (from root or
         `-w @lavinia/dashboard`), then `npm run test:e2e -w @lavinia/dashboard`. `e2e/almond.spec.ts`
         runs the offline stub by default; the route change (adding `actor`) must be transparent to it.
+
+## Review Findings
+
+Adversarial code review (2026-06-18, 3 layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor;
+run as isolated subagents over `git diff 9242ce6 -- src/`). **Outcome: ACCEPT — 0 actionable findings.**
+Acceptance Auditor: all 6 ACs SATISFIED with code evidence; ADR-A01/A08 honored; project-context +
+scope discipline clean; no over-implementation (no Epic 8 / 7.3 work, no `skills/` dir, no new deps)
+and no under-implementation (the flag is provably threaded route -> responder -> factory;
+`authedOwner` correctly derived server-side from `dataKind === "real"`). Edge Case Hunter: empty —
+all six investigated concerns verified clean against the real code (notably: `currentFarm` enforces
+`isDemo:false` + `userId` + active connection, so `dataKind === "real"` provably means an authenticated
+owner and never the demo; `tool()` never dereferences `deps.prisma` at build time, so the pure test's
+stubbed Prisma is safe). Blind Hunter: no provable High-severity correctness bug.
+
+Dismissed as noise (each considered and rejected, with rationale):
+1. *"The now-required `actor` on `AlmondRequest` / the `buildAlmondTools`->`buildAlmondSkills` +
+   `AlmondTools`->`AlmondSkills` rename could break an out-of-diff caller"* (Blind Hunter, Medium ×2) —
+   the Blind Hunter could not clear these without repo access; the Edge Case Hunter and Acceptance
+   Auditor both grepped `src/` (zero remaining `buildAlmondTools`/`AlmondTools` refs; every
+   `.toResponse(`/`AlmondRequest` construction passes `actor`) and a clean `tsc --noEmit` proves no
+   broken caller. Verified clean, not a defect.
+2. *"The `actor`/`authedOwner` plumbing currently changes no runtime behavior (no-op gate) for a wider
+   blast radius"* — by design and exactly AC5 ("for this story, only the read tools are returned
+   regardless of `authedOwner`"); the seam is wired now so Epic 8 is a one-line add.
+3. *"`=== "real"` is a brittle string compare that could silently degrade"* — `dataKind` is the typed
+   union `"real" | "representative"`, so a rename of the member makes `=== "real"` a TS literal-overlap
+   error, not a silent degradation. TypeScript catches it.
+4. *"Both tests assert the identical six-key set for owner and public, so they won't catch a future
+   gating regression"* — intentional: the parity assertion locks AC5's "returned regardless" for 7.2
+   and is documented to be updated when Epic 8 adds owner-only skills.
+5. *"The `{} as unknown as PrismaClient` stub in the pure test is a latent foot-gun"* — acceptable for a
+   shape-only test; the factory never invokes an executor, and the Edge Case Hunter confirmed `tool()`
+   stores `execute` without calling it. A comment in the test already states why it is safe.
+6. *"Latent risk: when `ownerOnlySkills()` later returns real skills, a key collision with a read tool
+   would be silently overwritten"* — an Epic 8 concern about code that does not exist yet; the planned
+   owner-only keys (`exportSpreadsheet`, `generateReport`) do not collide with the six read tools.
 
 ## Dev Notes
 
@@ -393,3 +429,4 @@ claude-opus-4-8[1m] (Opus 4.8, 1M context)
 |------|--------|
 | 2026-06-18 | Story 7.2 drafted (Create Story workflow): scope = reshape `buildAlmondTools(deps)` -> `buildAlmondSkills(deps, actor)`, add the `AlmondActor` capability flag, thread it route -> responder -> factory, and wire `authedOwner = dataKind === "real"`. No new skill, dep, env var, DB change, or copy change. Status -> ready-for-dev. |
 | 2026-06-18 | Story 7.2 implemented (Dev Story workflow): factory -> skill factory with `actor` capability flag (read tools unchanged, owner-only seam empty until Epic 8), `actor` threaded route -> responder -> factory, `authedOwner` derived server-side. typecheck + lint + 625 unit/db tests + build green; e2e red proven pre-existing/environmental, identical to the 7.1 baseline. Status -> review. |
+| 2026-06-18 | Code review (3-layer adversarial): ACCEPT, 0 actionable findings (all 6 ACs satisfied, ADR-A01/A08 honored, scope clean). 6 raised items dismissed with rationale (see Review Findings). Status -> done. |
