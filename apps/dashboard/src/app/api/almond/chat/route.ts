@@ -56,7 +56,9 @@ export async function POST(req: Request): Promise<Response> {
       uiMessages,
       system: buildSystemPrompt(farmName),
       deps: { prisma, farmId: farm.id, farmName },
-      actor: { authedOwner },
+      // userId rides on the actor so an owner-only side effect (persisting an export to Reports,
+      // Story 8.6) can record who asked. Only ever the owner's own id; null for the public Tour.
+      actor: { authedOwner, userId: authedOwner ? userId : null },
     });
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a

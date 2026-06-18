@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { deriveNavigateInput, isNavigationTurn } from "./responder";
+import {
+  deriveExportInput,
+  deriveNavigateInput,
+  isExportTurn,
+  isNavigationTurn,
+} from "./responder";
 
 // Pure tests for the stub's offline navigation parsing (Story 7.4). The stub is a deterministic
 // fixture that drives the SAME shipped `navigate` skill so e2e/CI prove navigation offline; the
@@ -42,5 +47,30 @@ describe("deriveNavigateInput", () => {
   it("a non-actionable request yields nothing (incl. free-text filters, left to the live model)", () => {
     expect(deriveNavigateInput("hello almond")).toEqual({});
     expect(deriveNavigateInput("filter to ag-4")).toEqual({});
+  });
+});
+
+describe("isExportTurn", () => {
+  it("detects a request for a spreadsheet / download", () => {
+    expect(isExportTurn("export my meters")).toBe(true);
+    expect(isExportTurn("can i download a spreadsheet")).toBe(true);
+    expect(isExportTurn("give me an excel of bill due dates")).toBe(true);
+  });
+
+  it("leaves a plain data question for the grounded path", () => {
+    expect(isExportTurn("which meters cost me the most")).toBe(false);
+    expect(isExportTurn("how complete is my billing data")).toBe(false);
+  });
+});
+
+describe("deriveExportInput", () => {
+  it("picks the bill-due table when the ask is about due/closing dates", () => {
+    expect(deriveExportInput("export the bill due dates")).toEqual({ table: "billDue" });
+    expect(deriveExportInput("download closing dates")).toEqual({ table: "billDue" });
+  });
+
+  it("defaults to the meter inventory otherwise (the honest full export)", () => {
+    expect(deriveExportInput("export my meters")).toEqual({ table: "meters" });
+    expect(deriveExportInput("download a spreadsheet")).toEqual({ table: "meters" });
   });
 });

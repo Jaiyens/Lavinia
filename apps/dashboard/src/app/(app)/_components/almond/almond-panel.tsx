@@ -8,6 +8,7 @@ import { en } from "@/copy/en";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import type { AlmondNavChip } from "./almond-result";
+import type { AlmondReportCard } from "./almond-download-card";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
 import { AlmondComposer } from "./almond-composer";
@@ -21,6 +22,8 @@ type Props = {
   starters: string[];
   /** Action chips per assistant message id (Story 7.5), captured in the launcher. */
   navByMessage: Map<string, AlmondNavChip[]>;
+  /** Download cards per assistant message id (Story 8.5), captured in the launcher. */
+  reportsByMessage: Map<string, AlmondReportCard[]>;
   /** Re-apply a chip's navigation (the chip is a link back to that view). */
   onReplay: (chip: AlmondNavChip) => void;
   onSend: (text: string) => void;
@@ -34,6 +37,7 @@ export function AlmondPanel({
   status,
   starters,
   navByMessage,
+  reportsByMessage,
   onReplay,
   onSend,
   onRetry,
@@ -102,6 +106,7 @@ export function AlmondPanel({
           farmName={farmName}
           starters={starters}
           navByMessage={navByMessage}
+          reportsByMessage={reportsByMessage}
           onReplay={onReplay}
           onStarter={onSend}
           onRetry={onRetry}

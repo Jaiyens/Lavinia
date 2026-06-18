@@ -7,6 +7,7 @@ import { en } from "@/copy/en";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondToolChips, AlmondActionChips, type AlmondNavChip } from "./almond-result";
+import { AlmondDownloadCard, type AlmondReportCard } from "./almond-download-card";
 
 const t = en.shell.almond;
 
@@ -40,6 +41,8 @@ type Props = {
   starters: string[];
   /** Action chips per assistant message id (Story 7.5). */
   navByMessage: Map<string, AlmondNavChip[]>;
+  /** Download cards per assistant message id (Story 8.5). */
+  reportsByMessage: Map<string, AlmondReportCard[]>;
   /** Re-apply a chip's navigation (the chip is a link back to that view). */
   onReplay: (chip: AlmondNavChip) => void;
   onStarter: (question: string) => void;
@@ -52,6 +55,7 @@ export function AlmondMessages({
   farmName,
   starters,
   navByMessage,
+  reportsByMessage,
   onReplay,
   onStarter,
   onRetry,
@@ -112,9 +116,17 @@ export function AlmondMessages({
           );
         }
         const chips = navByMessage.get(m.id) ?? [];
+        const reports = reportsByMessage.get(m.id) ?? [];
         // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
-        // no action chip).
-        if (!text && !isLookingUp(m) && !hasToolPart(m) && chips.length === 0) return null;
+        // no action chip, no download card).
+        if (
+          !text &&
+          !isLookingUp(m) &&
+          !hasToolPart(m) &&
+          chips.length === 0 &&
+          reports.length === 0
+        )
+          return null;
         return (
           <div key={m.id} className="flex items-start gap-2">
             <AlmondAvatar size={26} className="mt-0.5" />
@@ -134,6 +146,10 @@ export function AlmondMessages({
               )}
               {/* What Almond just did on the screen, and a tap back to it (Story 7.5). */}
               <AlmondActionChips chips={chips} onReplay={onReplay} />
+              {/* Spreadsheets Almond made this turn, as download cards (Story 8.5). */}
+              {reports.map((card, i) => (
+                <AlmondDownloadCard key={`${card.fileName}-${i}`} card={card} />
+              ))}
             </div>
           </div>
         );

@@ -418,6 +418,49 @@ export const en = {
           // Footer line restating the honesty rule for any reader who skips the status column.
           note: "A scheduled date is PG&E's planned meter read and may shift. It is never a billed total.",
         },
+        // The exportSpreadsheet skill (Story 8.5): a one-line preview of the file Almond is about to
+        // make, then the file itself as a download card. Plain operator words only, no kW/interval
+        // jargon, no exclamation marks, no em dashes. Numbers and filters are stated plainly so the
+        // grower knows exactly what they are getting before they open it.
+        skill: {
+          // Plain name of each table type, used in the preview line and on the download card.
+          kind: {
+            meters: "meters",
+            billDue: "bill due dates",
+          },
+          // The one-line preview Almond states before the file lands ("a lightweight preview, NOT an
+          // approval gate"): how many meters, which table, and any filter applied. Singular/plural is
+          // handled so one meter reads naturally. The filter clause is appended only when set.
+          preview: (count: number, kind: string, filter: string | null): string => {
+            const meterWord = count === 1 ? "meter" : "meters";
+            const where = filter ? ` ${filter}` : "";
+            return `I will export your ${count} ${meterWord}${where} as a ${kind} spreadsheet.`;
+          },
+          // The filter clause woven into the preview line (e.g. "on AG-A1", "in North ranch"). Only the
+          // one filter the grower asked for is named; an unset filter contributes nothing.
+          filterClause: {
+            rate: (rate: string): string => `on ${rate}`,
+            entity: (entity: string): string => `billed to ${entity}`,
+            ranch: (ranch: string): string => `in ${ranch} ranch`,
+          },
+          // The download card the panel renders for the generated file. The title names the file; the
+          // hint restates what it covers so the card is self-explaining.
+          card: {
+            // Download button / link label.
+            download: "Download spreadsheet",
+            // Accessible label for the download control (names the file).
+            downloadAria: (fileName: string): string => `Download ${fileName}`,
+            // Shown when the file was kept in the grower's Reports (owner-only persistence, Story
+            // 8.6), so they know it is safe to fetch again later. Absent for an unsaved export.
+            savedToReports: "Saved to your Reports",
+          },
+          // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
+          // partial file). Calm operator English, offers a retry path by re-asking.
+          error: "I could not build that spreadsheet. Ask me to try it again.",
+          // Honest empty case: a filter (or an empty farm) left no meters to export, so there is no
+          // file to make. Never an empty download.
+          empty: "No meters match that, so there is nothing to export.",
+        },
       },
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).

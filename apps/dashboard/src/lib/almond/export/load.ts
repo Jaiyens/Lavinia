@@ -104,6 +104,19 @@ function latestPostedClose(meters: readonly MeterView[]): string | null {
 }
 
 /**
+ * Derive the coverage / as-of state for a set of meters. The single place a meter set becomes the
+ * footer's honesty state, so the loader and any caller that narrows the inventory (e.g. the
+ * exportSpreadsheet skill applying a filter) report coverage the SAME way - the footer always
+ * describes exactly the rows in the file, never the unfiltered farm. Pure (no Prisma, no clock).
+ */
+export function summarizeExportState(meters: readonly MeterView[]): ExportCoverageState {
+  return {
+    coverage: summarizeCoverage(meters),
+    asOf: latestPostedClose(meters),
+  };
+}
+
+/**
  * Load the FULL, farm-scoped export data: every meter on the resolved farm (no chat-tool row cap)
  * plus the coverage / as-of state for the footer. The single read path for exports.
  *
@@ -116,9 +129,6 @@ export async function loadExportData(deps: ExportLoadDeps): Promise<ExportData> 
   return {
     farm: { id: deps.farmId, name: deps.farmName },
     meters,
-    state: {
-      coverage: summarizeCoverage(meters),
-      asOf: latestPostedClose(meters),
-    },
+    state: summarizeExportState(meters),
   };
 }
