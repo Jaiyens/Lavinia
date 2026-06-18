@@ -24,6 +24,9 @@ they can be consolidated into this folder later for a fully self-contained tree.
     bridge, deterministic artifact generation, the Reports area, and surfacing).
   - [architecture-decisions.md](./3-solutioning/architecture-decisions.md) — the load-bearing ADRs
     (ADR-A01 … ADR-A08) plus what is ratified upstream from the PRD addendum.
+  - [epics.md](./3-solutioning/epics.md) — the epic and story breakdown (Epics 7-10, 18 stories;
+    `bmad-create-epics-and-stories` output, reading the architecture as its solutioning input).
+    READY for development; validated for full FR coverage and dependency-clean ordering.
 
 ## Inputs (foundation)
 
@@ -47,5 +50,8 @@ they can be consolidated into this folder later for a fully self-contained tree.
 
 ## Next BMAD step
 
-Epics + stories for Almond (the `bmad-create-epics-and-stories` skill), reading this architecture as
-its solutioning input.
+Epics + stories are **done** ([3-solutioning/epics.md](./3-solutioning/epics.md), Epics 7-10, 18
+stories, validated READY). Next: `bmad-check-implementation-readiness` (PRD + architecture + epics
+alignment), then `bmad-sprint-planning` to sequence the stories, then the
+`bmad-create-story` → `bmad-dev-story` → `bmad-code-review` cycle per story — all gated behind the
+farmer-validation product gate (PRD Open Q4 / D14).
