@@ -18,6 +18,16 @@ function escapeField(value: string): string {
   return value;
 }
 
+/** Serialize a grid of cell STRINGS as one RFC-4180 CSV document: a leading UTF-8 BOM (the
+    \uFEFF escape, never a raw invisible char a formatter could silently strip, so Excel reads
+    UTF-8), RFC-4180 field escaping, and CRLF row endings. This is the ONE CSV mechanism in the
+    app; the meter export (metersCsv) and the Almond bill-due export (Story 8.3) both render
+    through it, so the two can never drift to a second CSV format. Pure: the caller authors every
+    cell, including the header row. */
+export function gridCsv(rows: readonly (readonly string[])[]): string {
+  return "\uFEFF" + rows.map((line) => line.map(escapeField).join(",")).join("\r\n") + "\r\n";
+}
+
 function moneyCell(row: MeterRow, cents: number | null, kind: "cost" | "demand"): string {
   if (row.coverageState !== "reconciled") return t.coverage[row.coverageState];
   if (cents === null) return kind === "demand" ? t.none : "";
@@ -51,8 +61,8 @@ export function meterCells(row: MeterRow): string[] {
 }
 
 export function metersCsv(rows: readonly MeterRow[]): string {
-  const lines = [metersHeader(), ...rows.map(meterCells)];
-  // BOM so Excel reads UTF-8 (the \uFEFF escape, never a raw invisible char a formatter
-  // could silently strip); CRLF row endings per RFC 4180.
-  return "\uFEFF" + lines.map((line) => line.map(escapeField).join(",")).join("\r\n") + "\r\n";
+  // The meter-table CSV is exactly the grid CSV over the header + cell rows: one CSV mechanism
+  // (gridCsv) carries the BOM, escaping and CRLF, so this export and the bill-due export
+  // (Story 8.3) can never drift.
+  return gridCsv([metersHeader(), ...rows.map(meterCells)]);
 }

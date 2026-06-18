@@ -379,6 +379,40 @@ export const en = {
         // absence (never a fabricated date).
         asOf: (date: string): string => `Figures as of the bill closing ${date}.`,
         asOfNone: "No bills have posted yet, so no dollar figures are shown.",
+        // Bill-due schedule export (Story 8.3): each meter's billing-cycle close, marked BILLED or
+        // SCHEDULED so a planned date is never read as final (the billed-vs-scheduled law). Plain
+        // operator words only, no kW/interval jargon, no exclamation marks, no em dashes.
+        billDue: {
+          // The single worksheet's tab name.
+          sheetName: "Bill due dates",
+          // Title row written above the table.
+          title: (farmName: string): string => `${farmName} bill due dates`,
+          // The five column headers, in order.
+          columns: {
+            meter: "Meter",
+            ranch: "Ranch",
+            serial: "Serial",
+            closeDate: "Closing date",
+            status: "Status",
+          },
+          // Status cell values. A close from a posted bill is BILLED (final); a close from the
+          // read schedule is SCHEDULED and carries the "may shift" caveat so it is never read as
+          // final; a meter with neither shows a coverage label, never a fabricated date.
+          status: {
+            billed: "Billed",
+            scheduled: "Scheduled (may shift)",
+            noSerial: "No serial on file",
+            noSchedule: "No date scheduled",
+          },
+          // Empty cell when a meter has no close date to show (paired with a status above).
+          noDate: "",
+          // Footer line stating coverage: every meter is listed, and how the dates split between
+          // billed and scheduled, so nothing is silently left out.
+          coverageFooter: (total: number, billed: number, scheduled: number): string =>
+            `All ${total} meters listed. ${billed} show a billed closing date and ${scheduled} show a scheduled date that may shift; the rest have no date on file.`,
+          // Footer line restating the honesty rule for any reader who skips the status column.
+          note: "A scheduled date is PG&E's planned meter read and may shift. It is never a billed total.",
+        },
       },
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).
