@@ -19,7 +19,7 @@ import {
   summarizeReconciliation,
   UNKNOWN_RATE,
 } from "./shape";
-import { buildAlmondTools, type AlmondToolDeps } from "./tools";
+import { buildAlmondSkills, type AlmondActor, type AlmondToolDeps } from "./tools";
 
 /**
  * The injected model boundary for Almond, mirroring `src/lib/extract/reader.ts`:
@@ -36,6 +36,10 @@ export type AlmondRequest = {
   uiMessages: UIMessage[];
   system: string;
   deps: AlmondToolDeps;
+  /** The server-resolved capability of the caller; gates which skills the model is handed
+   *  (ADR-A08). The stub ignores it (read-only, grounded directly); the model path passes it
+   *  to `buildAlmondSkills`. */
+  actor: AlmondActor;
 };
 
 export interface AlmondResponder {
@@ -46,12 +50,12 @@ export interface AlmondResponder {
  *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same. */
 export function createModelResponder(model: LanguageModel): AlmondResponder {
   return {
-    async toResponse({ uiMessages, system, deps }) {
+    async toResponse({ uiMessages, system, deps, actor }) {
       const result = streamText({
         model,
         system,
         messages: await convertToModelMessages(uiMessages),
-        tools: buildAlmondTools(deps),
+        tools: buildAlmondSkills(deps, actor),
         stopWhen: stepCountIs(6),
       });
       return result.toUIMessageStreamResponse();

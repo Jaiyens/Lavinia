@@ -4,7 +4,7 @@ baseline_commit: 9242ce6bec228274b2b340bdf867053be8f68d6b
 
 # Story 7.2: Extend the tool factory into the skill framework
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -64,58 +64,58 @@ skill is added in this story; it reshapes the factory and threads the capability
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Reshape the factory: `buildAlmondTools(deps)` -> `buildAlmondSkills(deps, actor)`** (AC: 1, 2, 3, 5)
-  - [ ] In `src/lib/almond/tools.ts`, add an `AlmondActor` type: `export type AlmondActor = { authedOwner: boolean };`.
-  - [ ] Rename `buildAlmondTools` to `buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor)`.
+- [x] **Task 1 — Reshape the factory: `buildAlmondTools(deps)` -> `buildAlmondSkills(deps, actor)`** (AC: 1, 2, 3, 5)
+  - [x] In `src/lib/almond/tools.ts`, add an `AlmondActor` type: `export type AlmondActor = { authedOwner: boolean };`.
+  - [x] Rename `buildAlmondTools` to `buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor)`.
         Keep `deps`/`AlmondToolDeps` exactly as-is (`{ prisma, farmId, farmName }`); the six read
         `tool()` definitions move verbatim.
-  - [ ] Build the returned object so the **capability-by-omission seam exists**: assemble the read
+  - [x] Build the returned object so the **capability-by-omission seam exists**: assemble the read
         tools as a base object, then leave a clearly-commented extension point where owner-only skills
         will be conditionally spread in Epic 8 (e.g. `...(actor.authedOwner ? ownerSkills : {})`). In
         7.2 there are no owner-only skills yet, so the returned set is the six read tools for **both**
         `authedOwner` values. Do not add a placeholder/no-op skill; scaffold the conditional, not a
         fake capability.
-  - [ ] Rename the `AlmondTools` type export to `AlmondSkills = ReturnType<typeof buildAlmondSkills>`.
+  - [x] Rename the `AlmondTools` type export to `AlmondSkills = ReturnType<typeof buildAlmondSkills>`.
         Update the file-header comment (lines 18-27) so it documents the `actor` capability flag and
         that scope still comes only from `deps`, never the model.
-  - [ ] Confirm no read tool's Zod `inputSchema` carries a `farmId`/scope field (it does not today —
+  - [x] Confirm no read tool's Zod `inputSchema` carries a `farmId`/scope field (it does not today —
         keep it that way): `listMeters` takes `rate/entity/ranch/limit`, `getMeter` takes `query`.
         Shape only, never scope (AC2).
-- [ ] **Task 2 — Thread `actor` through the responder** (AC: 1, 4, 5)
-  - [ ] In `src/lib/almond/responder.ts`, add `actor: AlmondActor` to the `AlmondRequest` type
+- [x] **Task 2 — Thread `actor` through the responder** (AC: 1, 4, 5)
+  - [x] In `src/lib/almond/responder.ts`, add `actor: AlmondActor` to the `AlmondRequest` type
         (alongside `uiMessages`, `system`, `deps`).
-  - [ ] Update `createModelResponder().toResponse` to call `buildAlmondSkills(deps, actor)` instead of
+  - [x] Update `createModelResponder().toResponse` to call `buildAlmondSkills(deps, actor)` instead of
         `buildAlmondTools(deps)` (line ~54); update the import on line 22.
-  - [ ] The stub path (`createStubResponder`, `composeStubAnswer`) **does not change behavior**: the
+  - [x] The stub path (`createStubResponder`, `composeStubAnswer`) **does not change behavior**: the
         stub grounds directly via the loaders and never reads the tool set, so it answers every
         returned skill with zero external calls (AC4). `composeStubAnswer` keeps its current signature;
         the `actor` is accepted in `AlmondRequest` and simply ignored by the stub for this story.
-  - [ ] Leave `createGatewayResponder` / `defaultAlmondResponder` selection untouched (live only when
+  - [x] Leave `createGatewayResponder` / `defaultAlmondResponder` selection untouched (live only when
         `hasGatewayKey()`).
-- [ ] **Task 3 — Derive and pass `authedOwner` in the route** (AC: 6)
-  - [ ] In `src/app/api/almond/chat/route.ts`, after `resolved` is obtained, derive
+- [x] **Task 3 — Derive and pass `authedOwner` in the route** (AC: 6)
+  - [x] In `src/app/api/almond/chat/route.ts`, after `resolved` is obtained, derive
         `const authedOwner = resolved.dataKind === "real";` (the signed-in owner's own connected farm;
         the public Tour's `demoFarm` is always `representative` -> `false`). Add a one-line comment
         explaining the derivation and that it is server-only (never from the body).
-  - [ ] Pass `actor: { authedOwner }` into `responder.toResponse({ uiMessages, system, deps, actor })`.
-  - [ ] No other route behavior changes: the 400 (no farm) / 500 (responder failure) guards, the
+  - [x] Pass `actor: { authedOwner }` into `responder.toResponse({ uiMessages, system, deps, actor })`.
+  - [x] No other route behavior changes: the 400 (no farm) / 500 (responder failure) guards, the
         owner-scoping via `dashboardFarm`/`demoFarm`, and the `runtime = "nodejs"` stay exactly as-is.
-- [ ] **Task 4 — Update the regressed consumers and prove the contract** (AC: 1, 2, 3, 4, 5)
-  - [ ] Update `src/lib/almond/tools.db.test.ts`: the import (line 7) and the
+- [x] **Task 4 — Update the regressed consumers and prove the contract** (AC: 1, 2, 3, 4, 5)
+  - [x] Update `src/lib/almond/tools.db.test.ts`: the import (line 7) and the
         `"buildAlmondTools exposes exactly the read-only tool set"` test (lines 83-95) now call
         `buildAlmondSkills(depsA, { authedOwner: true })`. Add an assertion that
         `buildAlmondSkills(depsA, { authedOwner: false })` returns the **same** six keys (nothing is
         gated yet — locks AC5's "returned regardless" guarantee and guards against a future regression
         once owner-only skills are added).
-  - [ ] (Optional, lightweight) Add `src/lib/almond/tools.test.ts` (pure, no DB): build the factory
+  - [x] (Optional, lightweight) Add `src/lib/almond/tools.test.ts` (pure, no DB): build the factory
         with a minimal stubbed `deps` (the factory only wraps executors in `tool()`; it does not touch
         Prisma at build time) and assert the returned key set for both `authedOwner` values. This is
         the pure "capability-mechanism" test mirroring `shape.test.ts`; keep executor behavior in the
         db test.
-  - [ ] The existing cross-farm scoping tests (`tools.db.test.ts` lines 98-133) and the stub-responder
+  - [x] The existing cross-farm scoping tests (`tools.db.test.ts` lines 98-133) and the stub-responder
         tests (135-167) must pass **unchanged** — they call the standalone executors and
         `composeStubAnswer`/`createStubResponder`, none of which change semantics.
-  - [ ] Gate before claiming done: `npm run typecheck && npm run lint && npm test` (from root or
+  - [x] Gate before claiming done: `npm run typecheck && npm run lint && npm test` (from root or
         `-w @lavinia/dashboard`), then `npm run test:e2e -w @lavinia/dashboard`. `e2e/almond.spec.ts`
         runs the offline stub by default; the route change (adding `actor`) must be transparent to it.
 
@@ -359,14 +359,37 @@ boundary, the standalone-executor + `tool()`-wrapper split). The chat route
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
+
 ### Debug Log References
+
+- `npm run typecheck -w @lavinia/dashboard` -> clean (after adding `actor` to the one existing `toResponse` test call that constructs an `AlmondRequest`; see Completion Notes #5).
+- `npm run lint -w @lavinia/dashboard` -> clean (the capability seam references `actor.authedOwner`, so no unused-var error; no `any`).
+- `npx vitest run src/lib/almond` -> 4 files, 34 tests passed (the new pure `tools.test.ts` + the updated `tools.db.test.ts` + `shape.test.ts` + `starters.test.ts`).
+- `npm test -w @lavinia/dashboard` (full, incl. db integration) -> 82 files, 625 tests passed (was 81/623 at 7.1; +1 file / +2 tests = the new `tools.test.ts`). No regressions.
+- `npm run build -w @lavinia/dashboard` -> success (the route/responder/factory bundle cleanly).
+- `npm run test:e2e -w @lavinia/dashboard` -> 3 passed / 5 failed, all 5 PRE-EXISTING and matching Story 7.1's documented baseline: 4 are `net::ERR_CONNECTION_REFUSED` (the sandbox's unstable `next start`), and `almond.spec.ts:14` is a static `Expected 401, Received 400` assertion mismatch (the route returns 400 — "no farm"/"messages required" — for an unauthenticated empty-message POST; it never returned 401). My route change adds `authedOwner` strictly AFTER both 400-returning guards, so it cannot affect any status code on that path. No 7.2 regression.
 
 ### Completion Notes List
 
+- **Task 1 — factory reshaped.** `src/lib/almond/tools.ts`: `buildAlmondTools(deps)` -> `buildAlmondSkills(deps, actor)`. Added `AlmondActor = { authedOwner: boolean }`; renamed the return type `AlmondTools` -> `AlmondSkills`. The six read tools (`getFarmOverview`, `listMeters`, `getMeter`, `listFindings`, `getRatesSummary`, `getReconciliation`) are byte-for-byte unchanged, assembled into a `readTools` object and returned via the capability seam `{ ...readTools, ...(actor.authedOwner ? ownerOnlySkills() : {}) }`. `ownerOnlySkills()` returns `{}` for now (a real extension point, not a fake skill) — Epic 8 adds `exportSpreadsheet`/`generateReport` there. `AlmondToolDeps` is unchanged (scope stays in `deps`; capability is the new `actor`).
+- **Task 2 — responder threaded.** `responder.ts`: import `buildAlmondSkills` + `AlmondActor`; `AlmondRequest` gains a required `actor: AlmondActor`; `createModelResponder` calls `buildAlmondSkills(deps, actor)`. The stub path (`composeStubAnswer`/`createStubResponder`) is unchanged in behavior — it grounds directly via the loaders and ignores `actor`, so it stays offline and answers the read set with zero external calls (AC4 holds trivially; no new skill for the stub to learn in 7.2).
+- **Task 3 — route derives capability.** `src/app/api/almond/chat/route.ts`: `const authedOwner = resolved.dataKind === "real";` (signed-in owner's own farm = owner; the public Tour's demo farm = `representative` = not owner) and passes `actor: { authedOwner }` into `toResponse`. Server-only; never from the request body (AC6, ADR-A08). All other route behavior (400/500 guards, owner-scoping, `runtime = "nodejs"`) is untouched.
+- **Task 4 — tests.** Updated `tools.db.test.ts` to call `buildAlmondSkills(depsA, { authedOwner: true })` and added a parity assertion that `{ authedOwner: false }` returns the SAME six keys (locks AC5 + guards the seam against a future regression). Added pure `src/lib/almond/tools.test.ts` (no DB — the factory does not touch Prisma at build time) asserting the key set for both capability levels; it runs in the fast pure tier that does not need local Postgres. The cross-farm scoping + stub-responder blocks pass unchanged.
+- **Regression handled (not in the original blast-radius table):** making `actor` REQUIRED on `AlmondRequest` forced a one-field addition to the existing `"toResponse returns a 200 UI-message stream"` stub test (it constructed an `AlmondRequest` without `actor`). Added `actor: { authedOwner: false }` there (the stub ignores it). Required (not optional) is the correct choice: the route always supplies it and the model path needs it, so a caller that omits it is a bug worth catching at compile time.
+- **Scope confirmed minimal:** no new dependency, no env var, no Prisma/schema change, no `/copy` change, no persona/system-prompt change, no `skills/` directory yet (it arrives with 7.3's `navigate`). Grower-facing behavior is identical.
+
 ### File List
+
+- `src/lib/almond/tools.ts` (modified) — `buildAlmondTools` -> `buildAlmondSkills(deps, actor)`; new `AlmondActor` type; `AlmondTools` -> `AlmondSkills`; capability-by-omission seam (`ownerOnlySkills()` extension point).
+- `src/lib/almond/responder.ts` (modified) — `AlmondRequest` gains required `actor`; `createModelResponder` calls `buildAlmondSkills(deps, actor)`; stub path unchanged.
+- `src/app/api/almond/chat/route.ts` (modified) — derive `authedOwner = resolved.dataKind === "real"` (server-only); pass `actor` into `toResponse`.
+- `src/lib/almond/tools.db.test.ts` (modified) — rename to `buildAlmondSkills`; both-capability key-set parity assertion; `actor` added to the stub `toResponse` call.
+- `src/lib/almond/tools.test.ts` (new) — pure capability-mechanism test (no DB): both `authedOwner` levels return exactly the six read tools.
 
 ## Change Log
 
 | Date | Change |
 |------|--------|
 | 2026-06-18 | Story 7.2 drafted (Create Story workflow): scope = reshape `buildAlmondTools(deps)` -> `buildAlmondSkills(deps, actor)`, add the `AlmondActor` capability flag, thread it route -> responder -> factory, and wire `authedOwner = dataKind === "real"`. No new skill, dep, env var, DB change, or copy change. Status -> ready-for-dev. |
+| 2026-06-18 | Story 7.2 implemented (Dev Story workflow): factory -> skill factory with `actor` capability flag (read tools unchanged, owner-only seam empty until Epic 8), `actor` threaded route -> responder -> factory, `authedOwner` derived server-side. typecheck + lint + 625 unit/db tests + build green; e2e red proven pre-existing/environmental, identical to the 7.1 baseline. Status -> review. |

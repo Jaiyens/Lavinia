@@ -45,12 +45,18 @@ export async function POST(req: Request): Promise<Response> {
   const farm = resolved.farm;
   // Never present a nameless farm: fall back if the name is blank/whitespace.
   const farmName = farm.name.trim() || "your farm";
+  // Capability is a SERVER property, never from the request body (ADR-A08): an authed owner is
+  // a signed-in grower on their OWN connected farm (dataKind "real"); the public Tour resolves
+  // the badged demo farm ("representative") and is NOT an owner. The factory uses this to gate
+  // which skills the model is handed — today nothing is gated, but the flag is wired end to end.
+  const authedOwner = resolved.dataKind === "real";
   const responder = defaultAlmondResponder();
   try {
     return await responder.toResponse({
       uiMessages,
       system: buildSystemPrompt(farmName),
       deps: { prisma, farmId: farm.id, farmName },
+      actor: { authedOwner },
     });
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a

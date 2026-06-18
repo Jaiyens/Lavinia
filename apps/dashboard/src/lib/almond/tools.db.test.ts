@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedSampleFarm } from "../../../prisma/sample-farm";
 import { createTestDb, type TestDb } from "@/test/pg-harness";
 import {
-  buildAlmondTools,
+  buildAlmondSkills,
   farmOverview,
   findingList,
   meterDetail,
@@ -80,18 +80,23 @@ describe("Almond tool executors over the seeded farm", () => {
     expect(stateTotal).toBe(farmAPumpNames.length);
   });
 
-  it("buildAlmondTools exposes exactly the read-only tool set", () => {
-    const tools = buildAlmondTools(depsA);
-    expect(Object.keys(tools).sort()).toEqual(
-      [
-        "getFarmOverview",
-        "getMeter",
-        "getRatesSummary",
-        "getReconciliation",
-        "listFindings",
-        "listMeters",
-      ].sort(),
-    );
+  it("buildAlmondSkills exposes exactly the read-only tool set for both capability levels", () => {
+    const expected = [
+      "getFarmOverview",
+      "getMeter",
+      "getRatesSummary",
+      "getReconciliation",
+      "listFindings",
+      "listMeters",
+    ].sort();
+    const ownerSkills = buildAlmondSkills(depsA, { authedOwner: true });
+    expect(Object.keys(ownerSkills).sort()).toEqual(expected);
+    // Nothing is gated by capability yet (navigate is read-safe and arrives in Story 7.3; the
+    // owner-only export/report skills in Epic 8), so the public Tour actor gets the SAME six
+    // read tools. This parity guards the seam against a future regression once owner-only
+    // skills are added.
+    const publicSkills = buildAlmondSkills(depsA, { authedOwner: false });
+    expect(Object.keys(publicSkills).sort()).toEqual(expected);
   });
 });
 
@@ -159,6 +164,9 @@ describe("the offline stub responder", () => {
       uiMessages: [],
       system: "ignored by the stub",
       deps: depsA,
+      // The stub is read-only and grounds directly, so it ignores the actor; the field is
+      // required on AlmondRequest because the model path needs it (capability gate).
+      actor: { authedOwner: false },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
