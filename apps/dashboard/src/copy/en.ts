@@ -227,6 +227,28 @@ export const en = {
     connectMore: "Connect another account",
     signOut: "Sign out",
   },
+  // The Reports area (Story 8.7): a place in the grower's account that lists every spreadsheet
+  // Almond has made them, newest first, each re-downloadable through the owner-scoped route. Plain
+  // operator English, the grower's words. No kW/interval jargon, no em dashes, no exclamation marks.
+  reports: {
+    // Left-rail / nav label and the page chrome.
+    navLabel: "Reports",
+    eyebrow: "Reports",
+    title: "Reports Almond made",
+    // One-line lede under the title, stating what this area is.
+    lede: "Every spreadsheet Almond has made you, newest first. Open any one to download it again.",
+    // Per-row labels. The kind label itself comes from the export skill's plain-name map.
+    madeOnLabel: "Made",
+    requestLabel: "You asked",
+    // Download control on each row (the owner-scoped re-download).
+    download: "Download",
+    downloadAria: (title: string): string => `Download ${title}`,
+    // Calm empty state, in Almond's voice, inviting the first artifact. No exclamation, no em dash.
+    empty: {
+      title: "No reports yet",
+      body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
+    },
+  },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).
   ui: {
@@ -359,6 +381,253 @@ export const en = {
       },
       // Accessible label prefix for an action chip (the chip re-applies the same view).
       navigatedAria: (label: string): string => `${label}. Tap to return to this view.`,
+      // Spreadsheet export (Epic 8). The meter-table workbook carries EVERY meter on the farm,
+      // never a sample. Plain operator words only, no kW/interval jargon, no exclamation marks,
+      // no em dashes. The footer states coverage so a withheld figure reads as a coverage label,
+      // never a fabricated number.
+      export: {
+        // The single worksheet's tab name.
+        sheetName: "Meters",
+        // Title row written above the table.
+        title: (farmName: string): string => `${farmName} meters`,
+        // Footer line stating what the spreadsheet covers and what was left out (no silent
+        // truncation). Every meter is included; unreconciled meters show their coverage label
+        // in the money cells rather than a number. Partial billing is stated plainly as a
+        // whole-percent complete (e.g. "82% complete"), never rounded to imply more than is on
+        // file. An empty farm (no meters) is its own honest line, never a divide-by-zero percent.
+        coverageFooter: (total: number, reconciled: number, percent: number): string => {
+          if (total === 0) return "No meters on file yet, so this sheet is empty.";
+          if (reconciled === total) {
+            return `All ${total} meters included. Every meter has loaded billing, so this is 100% complete.`;
+          }
+          return `All ${total} meters included. ${reconciled} have loaded billing, so this is ${percent}% complete; the rest show their coverage state in place of a dollar figure.`;
+        },
+        // Footer line carrying the freshest billed cycle the farm has on file, or its honest
+        // absence (never a fabricated date).
+        asOf: (date: string): string => `Figures as of the bill closing ${date}.`,
+        asOfNone: "No bills have posted yet, so no dollar figures are shown.",
+        // Bill-due schedule export (Story 8.3): each meter's billing-cycle close, marked BILLED or
+        // SCHEDULED so a planned date is never read as final (the billed-vs-scheduled law). Plain
+        // operator words only, no kW/interval jargon, no exclamation marks, no em dashes.
+        billDue: {
+          // The single worksheet's tab name.
+          sheetName: "Bill due dates",
+          // Title row written above the table.
+          title: (farmName: string): string => `${farmName} bill due dates`,
+          // The five column headers, in order.
+          columns: {
+            meter: "Meter",
+            ranch: "Ranch",
+            serial: "Serial",
+            closeDate: "Closing date",
+            status: "Status",
+          },
+          // Status cell values. A close from a posted bill is BILLED (final); a close from the
+          // read schedule is SCHEDULED and carries the "may shift" caveat so it is never read as
+          // final; a meter with neither shows a coverage label, never a fabricated date.
+          status: {
+            billed: "Billed",
+            scheduled: "Scheduled (may shift)",
+            noSerial: "No serial on file",
+            noSchedule: "No date scheduled",
+          },
+          // Empty cell when a meter has no close date to show (paired with a status above).
+          noDate: "",
+          // Footer line stating coverage: every meter is listed, and how the dates split between
+          // billed and scheduled, so nothing is silently left out.
+          coverageFooter: (total: number, billed: number, scheduled: number): string =>
+            `All ${total} meters listed. ${billed} show a billed closing date and ${scheduled} show a scheduled date that may shift; the rest have no date on file.`,
+          // Footer line restating the honesty rule for any reader who skips the status column.
+          note: "A scheduled date is PG&E's planned meter read and may shift. It is never a billed total.",
+        },
+        // The exportSpreadsheet skill (Story 8.5): a one-line preview of the file Almond is about to
+        // make, then the file itself as a download card. Plain operator words only, no kW/interval
+        // jargon, no exclamation marks, no em dashes. Numbers and filters are stated plainly so the
+        // grower knows exactly what they are getting before they open it.
+        skill: {
+          // Plain name of each table type, used in the preview line and on the download card.
+          // `report` is the PDF report kind (Story 9.3); the spreadsheet kinds are the tables above.
+          kind: {
+            meters: "meters",
+            billDue: "bill due dates",
+            report: "report",
+          },
+          // The one-line preview Almond states before the file lands ("a lightweight preview, NOT an
+          // approval gate"): how many meters, which table, and any filter applied. Singular/plural is
+          // handled so one meter reads naturally. The filter clause is appended only when set.
+          preview: (count: number, kind: string, filter: string | null): string => {
+            const meterWord = count === 1 ? "meter" : "meters";
+            const where = filter ? ` ${filter}` : "";
+            return `I will export your ${count} ${meterWord}${where} as a ${kind} spreadsheet.`;
+          },
+          // The filter clause woven into the preview line (e.g. "on AG-A1", "in North ranch"). Only the
+          // one filter the grower asked for is named; an unset filter contributes nothing.
+          filterClause: {
+            rate: (rate: string): string => `on ${rate}`,
+            entity: (entity: string): string => `billed to ${entity}`,
+            ranch: (ranch: string): string => `in ${ranch} ranch`,
+          },
+          // The download card the panel renders for the generated file. The title names the file; the
+          // hint restates what it covers so the card is self-explaining.
+          card: {
+            // Download button / link label.
+            download: "Download spreadsheet",
+            // Accessible label for the download control (names the file).
+            downloadAria: (fileName: string): string => `Download ${fileName}`,
+            // Shown when the file was kept in the grower's Reports (owner-only persistence, Story
+            // 8.6), so they know it is safe to fetch again later. Absent for an unsaved export.
+            savedToReports: "Saved to your Reports",
+          },
+          // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
+          // partial file). Calm operator English, offers a retry path by re-asking.
+          error: "I could not build that spreadsheet. Ask me to try it again.",
+          // Honest empty case: a filter (or an empty farm) left no meters to export, so there is no
+          // file to make. Never an empty download.
+          empty: "No meters match that, so there is nothing to export.",
+        },
+      },
+      // The PDF report Almond makes (Epic 9). A clean, trustworthy document built from a bounded set
+      // of section templates (summary, meter table, mis-rated set, savings, single meter, coverage
+      // footer), each rendering ONLY grounded data. Plain operator words only, no kW/interval jargon,
+      // no exclamation marks, no em dashes. Every number is authored deterministically; a missing
+      // value shows a coverage label, never a fabricated or zero figure.
+      report: {
+        // The composed document itself (Story 9.2): the title block stamped at the top of every PDF
+        // and the bounds note the composer states when a section is capped, so nothing is ever
+        // silently truncated. Plain operator words only, no kW/interval jargon, no exclamation marks,
+        // no em dashes.
+        document: {
+          // The document eyebrow above the farm name, so a printed page reads as a Terra report.
+          eyebrow: "Terra report",
+          // The document title names the farm; the farm name is grounded data, never a claim.
+          title: (farmName: string): string => `${farmName}`,
+          // A single plain note stating what the PDF bounds when a section is capped, so a reader
+          // never mistakes a shortened section for the whole picture. The full data is always in the
+          // spreadsheet export, which has no cap. `shown`/`total` are deterministic counts.
+          cappedNote: (sectionName: string, shown: number, total: number): string =>
+            `${sectionName} shows the top ${shown} of ${total}. The spreadsheet export lists all ${total} with no cap.`,
+        },
+        // Farm-summary section: the farm at a glance, a few measured stats, never a screaming hero.
+        summary: {
+          eyebrow: "Farm summary",
+          // Section heading names the farm; the farm name is the grounded data, not a claim.
+          heading: (farmName: string): string => `${farmName}`,
+          // Stat tile labels.
+          metersLabel: "Meters on file",
+          loadedLabel: "Meters with loaded billing",
+          spendLabel: "Loaded spend this cycle",
+          // The loaded-spend value shows the coverage label when no meter is reconciled, never $0.
+          spendNotLoaded: "No bills loaded yet",
+          // The completeness line, stated plainly as a whole-percent. An empty farm is its own line.
+          completeness: (total: number, reconciled: number, percent: number): string => {
+            if (total === 0) return "No meters on file yet.";
+            if (reconciled === total) {
+              return `Every meter has loaded billing, so this is 100% complete.`;
+            }
+            return `${reconciled} of ${total} meters carry loaded billing, so this is ${percent}% complete.`;
+          },
+        },
+        // Meter-table section: every meter listed, in the SAME operator headers/cells as the
+        // spreadsheet export, so a withheld figure reads as its coverage label, never a number.
+        meterTable: {
+          eyebrow: "Meters",
+          heading: "Every meter on the farm",
+        },
+        // Mis-rated section: meters that look billed on the wrong rate. A focused set, never a claim
+        // of savings here (the savings section owns the dollars). Empty case is honest.
+        misRated: {
+          eyebrow: "Rate review",
+          heading: "Meters that may be on the wrong rate",
+          // Column headers for the focused set.
+          columns: {
+            meter: "Meter",
+            ranch: "Ranch",
+            currentRate: "Current rate",
+            suggestedRate: "Suggested rate",
+          },
+          // Honest empty: nothing flagged, so the section states that plainly rather than an empty
+          // table. Never implies a problem that the data does not show.
+          empty: "No meters look mis-rated in the data on file.",
+        },
+        // Savings section: the dollars a rate change would have saved, summed and per meter. Every
+        // figure comes from the grounded savings data; the total is a measured value, not a hero.
+        savings: {
+          eyebrow: "Savings found",
+          heading: "Estimated savings from rate changes",
+          // The summed total label (the value renders through formatUsd).
+          totalLabel: "Total estimated yearly savings",
+          // Per-meter columns.
+          columns: {
+            meter: "Meter",
+            from: "Billed on",
+            to: "Better rate",
+            savings: "Estimated yearly savings",
+          },
+          // The PG&E one-change-a-year caveat, restated honestly. No exclamation, no em dash.
+          note: "Estimated from PG&E's published rates over the bills on file. PG&E allows one rate change per 12 months.",
+          // Honest empty: no savings found, stated plainly.
+          empty: "No rate savings found in the data on file.",
+        },
+        // Single-meter section: one meter's detail, for a report scoped to a single pump. Every field
+        // is grounded; a field not on file shows the coverage label, never a fabricated value.
+        singleMeter: {
+          eyebrow: "Meter detail",
+          heading: (name: string): string => `${name}`,
+          // Field labels.
+          ranchLabel: "Ranch",
+          entityLabel: "Billed to",
+          rateLabel: "Rate",
+          statusLabel: "Pump health",
+          costLabel: "This cycle",
+          demandLabel: "Demand charge",
+          // Shown for a field with no value on file (never an invented value).
+          notOnFile: "Not on file",
+        },
+        // The generateReport skill (Story 9.3): a one-line statement of the PDF Almond is about to
+        // build, then the file itself as a download card (the SAME data-report card the spreadsheet
+        // uses). Plain operator words only, no kW/interval jargon, no exclamation marks, no em dashes.
+        // The shape is stated plainly so the grower knows what they are getting before it appears.
+        skill: {
+          // The default whole-document title (no single-meter scope), used in the filename slug.
+          defaultTitle: "report",
+          // Plain operator name of each section, woven into the one-line shape statement in selection
+          // order, so the grower reads exactly what the PDF will contain before it lands.
+          sectionName: {
+            summary: "your farm's totals",
+            meterTable: "every meter",
+            misRated: "the meters that may be on the wrong rate",
+            savings: "the dollars on each",
+            singleMeter: "the meter detail",
+          },
+          // The one-line shape statement Almond gives before the file appears ("a one or two page
+          // summary: ..."). Lists the chosen sections in order; never an approval gate, just a courtesy
+          // so the grower sees the shape first. A filter clause (e.g. "for AG-A1") is appended when set.
+          preview: (parts: string, filter: string | null): string => {
+            const where = filter ? ` ${filter}` : "";
+            return `I will put together a one or two page summary${where}: ${parts}.`;
+          },
+          // Fallback when the model chose no recognizable section (the skill defaults to a farm summary
+          // plus the meter table, so the PDF is never empty); states that plain default.
+          defaultParts: "your farm's totals and every meter",
+          // The filter clause woven into the shape statement (e.g. "for AG-A1", "in North ranch"). Only
+          // the one filter the grower asked for is named; an unset filter contributes nothing.
+          filterClause: {
+            rate: (rate: string): string => `for ${rate}`,
+            entity: (entity: string): string => `for ${entity}`,
+            ranch: (ranch: string): string => `for ${ranch} ranch`,
+          },
+          // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
+          // partial file). Calm operator English, offers a retry path by re-asking.
+          error: "I could not build that report. Ask me to try it again.",
+          // Honest empty case: a filter (or an empty farm) left no meters, so there is nothing to put
+          // in a report. Never an empty PDF.
+          empty: "No meters match that, so there is nothing to put in a report.",
+          // Shown when a single-meter report was asked for but the named meter was not found, so the
+          // grower can correct the name rather than receive a report about the wrong pump.
+          meterNotFound: (query: string): string =>
+            `I could not find a meter matching "${query}", so I did not build that report.`,
+        },
+      },
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).
     findings: {

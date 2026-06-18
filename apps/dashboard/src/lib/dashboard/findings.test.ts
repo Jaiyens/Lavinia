@@ -10,7 +10,7 @@ function row(overrides: Partial<FindingRow>): FindingRow {
   return {
     id: "rec-1",
     situation: "Lateral 3 Booster is billed on AG-C.",
-    action: { kind: "switch_rate", label: "Move it to AG-A", params: { pumpId: "pump-1" } },
+    action: { kind: "switch_rate", label: "Move it to AG-A", params: { pumpId: "pump-1", to: "AG-A" } },
     impactUsd: 13644.97,
     impactNote: null,
     severity: "act",
@@ -39,6 +39,29 @@ describe("toFindingViews", () => {
     expect(view?.meterId).toBe("pump-1");
     expect(view?.meterName).toBe("Lateral 3 Booster");
     expect(view?.actionLabel).toBe("Move it to AG-A");
+  });
+
+  it("surfaces the rate-switch target from action.kind/params.to (the grounded read, not the label)", () => {
+    // The production label "Move it to AG-A" never contains the word "switch"; the target must come
+    // from the machine verb + params.to, so a downstream consumer (the report) never string-matches it.
+    const [view] = toFindingViews([row({})], METERS);
+    expect(view?.rateSwitchTo).toBe("AG-A");
+    // A non-switch (fleet) action and an action with no params.to carry no target.
+    const others = toFindingViews(
+      [
+        row({
+          id: "fleet",
+          action: { kind: "review_legacy_fleet", label: "Review these rates", params: { pumpIds: ["a"] } },
+        }),
+        row({
+          id: "review",
+          action: { kind: "review_rate", label: "Review this meter's rate", params: { pumpId: "pump-2" } },
+        }),
+      ],
+      METERS,
+    );
+    expect(others.find((v) => v.id === "fleet")?.rateSwitchTo).toBeNull();
+    expect(others.find((v) => v.id === "review")?.rateSwitchTo).toBeNull();
   });
 
   it("tolerates fleet-level and malformed actions: meterId/label null, never a throw", () => {

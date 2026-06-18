@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, UserRound } from "lucide-react";
+import { FileText, LogIn, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { AGENTS, agentHref, isAgentActive } from "./agents";
@@ -48,6 +48,21 @@ export function AgentTabBar({ demo = false }: { demo?: boolean } = {}) {
           </Link>
         );
       })}
+      {/* Reports tab (signed-in only, parity with the desktop rail). The public Tour has no
+          session, so it is omitted there. */}
+      {!demo && (
+        <Link
+          href="/reports"
+          aria-current={pathname === "/reports" ? "page" : undefined}
+          className={cn(
+            "flex h-16 flex-1 flex-col items-center justify-center gap-0.5 type-label-caps transition-colors",
+            pathname === "/reports" ? "font-semibold text-primary" : "text-on-surface-variant",
+          )}
+        >
+          <FileText size={20} aria-hidden />
+          <span>{en.reports.navLabel}</span>
+        </Link>
+      )}
       {/* Last tab. Signed-in: Account. The public Tour shows "Sign in" instead, leading into
           the real onboarding. */}
       {demo ? (

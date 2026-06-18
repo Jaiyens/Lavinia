@@ -17,8 +17,8 @@ const deps: AlmondToolDeps = {
 };
 
 // The public-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,
-// so it is read-safe and handed to every actor; the owner-only export/report skills (Epic 8) are the
-// first capability the gate will withhold.
+// so it is read-safe and handed to every actor; the owner-only export skill (Story 8.5) is the first
+// capability the gate withholds from the public Tour.
 const PUBLIC_SKILLS = [
   "getFarmOverview",
   "getMeter",
@@ -29,14 +29,24 @@ const PUBLIC_SKILLS = [
   "navigate",
 ].sort();
 
+// The owner-only skills: each WRITES a file, so it is handed only to an authenticated owner, never
+// to the public Tour (capability-by-omission). exportSpreadsheet was added in Story 8.5;
+// generateReport in Story 9.3. Keep this list in sync with ownerOnlySkills() in tools.ts.
+const OWNER_ONLY_SKILLS = ["exportSpreadsheet", "generateReport"];
+const OWNER_SKILLS = [...PUBLIC_SKILLS, ...OWNER_ONLY_SKILLS].sort();
+
 describe("buildAlmondSkills capability gating", () => {
-  it("hands an authenticated owner the six read tools plus navigate (no owner-only skill exists yet)", () => {
-    const skills = buildAlmondSkills(deps, { authedOwner: true });
-    expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
+  it("hands an authenticated owner the read tools, navigate, AND the owner-only write skills", () => {
+    const skills = buildAlmondSkills(deps, { authedOwner: true, userId: "user_1" });
+    expect(Object.keys(skills).sort()).toEqual(OWNER_SKILLS);
   });
 
-  it("hands the public Tour actor the SAME set — navigate is unconditional, capability gates nothing yet", () => {
-    const skills = buildAlmondSkills(deps, { authedOwner: false });
+  it("withholds every owner-only write skill from the public Tour actor (capability-by-omission)", () => {
+    const skills = buildAlmondSkills(deps, { authedOwner: false, userId: null });
     expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
+    // No owner-only write skill is present for the public actor.
+    for (const skill of OWNER_ONLY_SKILLS) {
+      expect(Object.keys(skills)).not.toContain(skill);
+    }
   });
 });

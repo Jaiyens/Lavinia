@@ -18,26 +18,36 @@ function escapeField(value: string): string {
   return value;
 }
 
+/** Serialize a grid of cell STRINGS as one RFC-4180 CSV document: a leading UTF-8 BOM (the
+    \uFEFF escape, never a raw invisible char a formatter could silently strip, so Excel reads
+    UTF-8), RFC-4180 field escaping, and CRLF row endings. This is the ONE CSV mechanism in the
+    app; the meter export (metersCsv) and the Almond bill-due export (Story 8.3) both render
+    through it, so the two can never drift to a second CSV format. Pure: the caller authors every
+    cell, including the header row. */
+export function gridCsv(rows: readonly (readonly string[])[]): string {
+  return "\uFEFF" + rows.map((line) => line.map(escapeField).join(",")).join("\r\n") + "\r\n";
+}
+
 function moneyCell(row: MeterRow, cents: number | null, kind: "cost" | "demand"): string {
   if (row.coverageState !== "reconciled") return t.coverage[row.coverageState];
   if (cents === null) return kind === "demand" ? t.none : "";
   return formatUsd(cents);
 }
 
-export function metersCsv(rows: readonly MeterRow[]): string {
+/** The nine table headers, in order. Exported so the XLSX export (Story 8.2) writes the SAME
+    operator headers as this CSV - one header definition, never a parallel spreadsheet format. */
+export function metersHeader(): string[] {
   const c = t.columns;
-  const header = [
-    c.name,
-    c.ranch,
-    c.entity,
-    c.rate,
-    c.legacy,
-    c.cost,
-    c.demand,
-    c.status,
-    c.coverage,
-  ];
-  const lines = [header, ...rows.map((row) => [
+  return [c.name, c.ranch, c.entity, c.rate, c.legacy, c.cost, c.demand, c.status, c.coverage];
+}
+
+/** The nine cell STRINGS for one meter row, in header order, carrying the exact cell semantics
+    this CSV exports: a reconciled meter's real figures; the coverage LABEL (never a number) for an
+    unreconciled meter's money cells; "None" for a reconciled meter with no demand charge; an empty
+    string for a null inventory field. Exported so the XLSX export reuses these identical cells -
+    the money/coverage rule lives here once, not duplicated per format. */
+export function meterCells(row: MeterRow): string[] {
+  return [
     row.name,
     row.ranch ?? "",
     row.entity ?? "",
@@ -47,8 +57,12 @@ export function metersCsv(rows: readonly MeterRow[]): string {
     moneyCell(row, row.demandCents, "demand"),
     row.status ?? "",
     t.coverage[row.coverageState],
-  ])];
-  // BOM so Excel reads UTF-8 (the \uFEFF escape, never a raw invisible char a formatter
-  // could silently strip); CRLF row endings per RFC 4180.
-  return "\uFEFF" + lines.map((line) => line.map(escapeField).join(",")).join("\r\n") + "\r\n";
+  ];
+}
+
+export function metersCsv(rows: readonly MeterRow[]): string {
+  // The meter-table CSV is exactly the grid CSV over the header + cell rows: one CSV mechanism
+  // (gridCsv) carries the BOM, escaping and CRLF, so this export and the bill-due export
+  // (Story 8.3) can never drift.
+  return gridCsv([metersHeader(), ...rows.map(meterCells)]);
 }

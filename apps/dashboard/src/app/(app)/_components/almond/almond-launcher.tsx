@@ -8,17 +8,23 @@ import { en } from "@/copy/en";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { BorderBeam } from "@/components/ui/border-beam";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
+import type { AlmondReportData } from "@/lib/almond/responder";
 import type { AlmondNavChip } from "./almond-result";
+import type { AlmondReportCard } from "./almond-download-card";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondPanel } from "./almond-panel";
 import { useAlmondNavigation } from "./use-almond-navigation";
 
 /**
- * Almond's chat carries one custom stream part: the transient `data-navigate` action. As of Story
- * 7.5 it carries BOTH the `action` (applied through the bridge) and a server-composed plain-English
- * `label` for the action chip the conversation shows.
+ * Almond's chat carries two custom transient stream parts:
+ *   - `data-navigate` (Story 7.5): a navigation `action` plus a plain-English `label` for the chip.
+ *   - `data-report` (Story 8.5): a spreadsheet Almond made (base64 bytes + file name), rendered as a
+ *     download card. Transient, so the bytes are delivered once and never replayed or persisted.
  */
-type AlmondUIMessage = UIMessage<unknown, { navigate: { action: NavigateAction; label: string } }>;
+type AlmondUIMessage = UIMessage<
+  unknown,
+  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData }
+>;
 
 const t = en.shell.almond;
 
@@ -63,6 +69,10 @@ export function AlmondLauncher({
   const { apply: applyNavigation } = useAlmondNavigation();
   // Action chips, keyed by the assistant message that drove each navigation (Story 7.5).
   const [navByMessage, setNavByMessage] = useState<Map<string, AlmondNavChip[]>>(new Map());
+  // Download cards, keyed by the assistant message that produced each spreadsheet (Story 8.5). Same
+  // capture-and-attribute pattern as the nav chips: the `data-report` part is transient (never in
+  // `message.parts`), so the card is captured here and kept in launcher state, surviving open/close.
+  const [reportsByMessage, setReportsByMessage] = useState<Map<string, AlmondReportCard[]>>(new Map());
   // The latest navigation label, announced to screen readers via a polite live region (UX-DR7). The
   // `seq` forces the live region's text to differ even when the same label repeats, so a repeat
   // navigation (or a chip re-tap) is re-announced rather than silently swallowed.
@@ -70,6 +80,8 @@ export function AlmondLauncher({
   // Chips received from `onData` but not yet attributed to their assistant message; flushed by the
   // effect below. A ref (not state) because it is a hand-off buffer, not rendered directly.
   const pendingChips = useRef<AlmondNavChip[]>([]);
+  // Same hand-off buffer for download cards (attributed to their assistant turn by the effect).
+  const pendingReports = useRef<AlmondReportCard[]>([]);
   // Bumped on each navigation to trigger the flush effect (the transient part does not change
   // `messages`, so the effect needs an explicit nudge).
   const [flushTick, setFlushTick] = useState(0);
@@ -84,14 +96,22 @@ export function AlmondLauncher({
     // (transient parts are not persisted to history), so each navigation is applied exactly once
     // without any manual dedupe — the 7.4 "applied exactly once" guarantee is structural here.
     onData: (part) => {
-      if (part.type !== "data-navigate") return;
-      const { action, label } = part.data;
-      applyNavigation(action); // one-shot apply (Story 7.4)
-      // Buffer the chip and nudge the flush effect, which attributes it to the assistant turn using
-      // the freshly-rendered `messages` (not a laggy ref), so attribution is never stale or misfiled.
-      pendingChips.current.push({ action, label });
-      setFlushTick((n) => n + 1);
-      announce(label);
+      if (part.type === "data-navigate") {
+        const { action, label } = part.data;
+        applyNavigation(action); // one-shot apply (Story 7.4)
+        // Buffer the chip and nudge the flush effect, which attributes it to the assistant turn using
+        // the freshly-rendered `messages` (not a laggy ref), so attribution is never stale/misfiled.
+        pendingChips.current.push({ action, label });
+        setFlushTick((n) => n + 1);
+        announce(label);
+        return;
+      }
+      if (part.type === "data-report") {
+        // A spreadsheet Almond made: buffer the download card and nudge the flush effect to attribute
+        // it to the assistant turn. The card is delivered exactly once (the part is transient).
+        pendingReports.current.push(part.data);
+        setFlushTick((n) => n + 1);
+      }
     },
   });
 
@@ -102,8 +122,8 @@ export function AlmondLauncher({
   useEffect(() => {
     const liveIds = new Set(messages.map((m) => m.id));
     const assistantId = lastAssistantId(messages);
-    const toFlush = assistantId ? pendingChips.current : [];
-    if (toFlush.length > 0) pendingChips.current = [];
+    const chipsToFlush = assistantId ? pendingChips.current : [];
+    if (chipsToFlush.length > 0) pendingChips.current = [];
     setNavByMessage((prev) => {
       let changed = false;
       const next = new Map<string, AlmondNavChip[]>();
@@ -111,8 +131,25 @@ export function AlmondLauncher({
         if (liveIds.has(id)) next.set(id, chips);
         else changed = true; // drop chips whose message is gone
       }
-      if (toFlush.length > 0 && assistantId) {
-        next.set(assistantId, [...(next.get(assistantId) ?? []), ...toFlush]);
+      if (chipsToFlush.length > 0 && assistantId) {
+        next.set(assistantId, [...(next.get(assistantId) ?? []), ...chipsToFlush]);
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+
+    // Same attribute-and-prune pass for download cards (Story 8.5).
+    const reportsToFlush = assistantId ? pendingReports.current : [];
+    if (reportsToFlush.length > 0) pendingReports.current = [];
+    setReportsByMessage((prev) => {
+      let changed = false;
+      const next = new Map<string, AlmondReportCard[]>();
+      for (const [id, cards] of prev) {
+        if (liveIds.has(id)) next.set(id, cards);
+        else changed = true; // drop cards whose message is gone
+      }
+      if (reportsToFlush.length > 0 && assistantId) {
+        next.set(assistantId, [...(next.get(assistantId) ?? []), ...reportsToFlush]);
         changed = true;
       }
       return changed ? next : prev;
@@ -164,6 +201,7 @@ export function AlmondLauncher({
             status={status}
             starters={starters}
             navByMessage={navByMessage}
+            reportsByMessage={reportsByMessage}
             onReplay={onReplay}
             onSend={(text) => sendMessage({ text })}
             onRetry={() => regenerate()}

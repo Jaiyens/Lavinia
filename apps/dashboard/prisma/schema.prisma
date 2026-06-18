@@ -41,6 +41,7 @@ model Farm {
   people          Person[]
   connections     Connection[]
   recommendations Recommendation[]
+  generatedReports GeneratedReport[]
 
   @@index([userId])
 }
@@ -390,6 +391,63 @@ model Recommendation {
   @@index([farmId, tool])
 }
 
+// A spreadsheet Almond generated for a grower and kept privately so it can be fetched again
+// later (Story 8.6). Additive: it alters no existing model. Farm-scoped on `farmId` (the
+// multi-tenant isolation gate, exactly like every other farm-owned row), with the owner-scoped
+// download route re-checking ownership before streaming a byte. The bytes themselves live in
+// PRIVATE Vercel Blob under a non-guessable cuid key recorded in `blobPathname`; this row records
+// only WHAT the file was, WHEN it was made, and the request that produced it (never the bytes).
+//
+// `kind` is a String (SQLite/Postgres union convention used across this schema) mirrored by the
+// `GeneratedReportKind` TS literal union in src/lib/almond/reports/store.ts.
+//
+// Immutability: a stored report is never rewritten in place. A refresh is a NEW row with new bytes
+// under a new cuid key, so the history of what a grower was handed is preserved (no in-place edit).
+model GeneratedReport {
+  id String @id @default(cuid())
+
+  // The farm this report belongs to (the isolation gate). The download route resolves the caller's
+  // own farm and re-checks it matches before streaming, so one grower can never fetch another's file.
+  farmId String
+
+  // The signed-in grower who asked for it, when known. Nullable: a report can be produced in a
+  // server context that has the farm but not a user row, and the owner check is on the FARM, not
+  // this column. SetNull on user delete so a deleted account never cascades away the farm's reports.
+  createdById String?
+
+  // What the file is (the table shape). String + TS union (GeneratedReportKind), e.g. "meters".
+  kind String
+
+  // Human title for the report (the server-authored download file name's basis), e.g. "Acme meters".
+  title String
+
+  // The grower's request that produced it, captured verbatim for the Reports history.
+  requestText String
+
+  // The non-guessable cuid key the bytes live under in PRIVATE Vercel Blob (never a public URL).
+  blobPathname String
+
+  // The serialized file size in bytes (for the Reports list; the bytes themselves are in Blob).
+  byteSize Int
+
+  // The freshest billed cycle the figures reflect, as the export footer states it, or null when no
+  // bill has posted (absence is explicit, never a fabricated date).
+  coverageAsOf String?
+
+  // The shape parameters the report was built from (table, filter), as JSON, so a refresh can
+  // reproduce the SAME shape deterministically. Never carries a value or a farmId.
+  paramsJson Json
+
+  createdAt DateTime @default(now())
+
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Farm-scoped, newest-first reads (the Reports history list).
+  @@index([farmId, createdAt])
+  @@index([createdById])
+}
+
 // --- Auth.js v5 (@auth/prisma-adapter) ----------------------------------------
 // The four tables the Prisma adapter needs for sign-in (Story 5.1). One twist: the
 // adapter calls a delegate named `account` for OAuth links, but Terra ALREADY has a
@@ -407,9 +465,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts AuthAccount[]
-  sessions Session[]
-  farms    Farm[]
+  accounts         AuthAccount[]
+  sessions         Session[]
+  farms            Farm[]
+  generatedReports GeneratedReport[]
 }
 
 // OAuth account link (renamed from the adapter's default `Account` to avoid colliding
