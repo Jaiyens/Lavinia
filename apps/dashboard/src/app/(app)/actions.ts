@@ -6,11 +6,13 @@
 // Server Components; this file owns writes only.
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { dashboardFarm } from "@/lib/onboarding/farm";
 import { acceptanceResult } from "@/lib/recommendations/result";
+import { ALMOND_NUDGE_COOKIE } from "@/lib/almond/nudge";
 import { en } from "@/copy/en";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -21,6 +23,25 @@ export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string
  */
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
+}
+
+/**
+ * Mark the first-run Almond nudge as seen (Story 10.2). Sets an httpOnly cookie so the server gate
+ * (`shouldShowAlmondNudge`) hides the nudge before render on every later view — it never reappears.
+ * Re-checks `auth()` like the other shell actions (a Server Action is independently reachable). A
+ * no-op for an unauthenticated caller (the nudge is owner-only); the client also self-hides at once,
+ * so this write is fire-and-forget and never blocks the grower.
+ */
+export async function dismissAlmondNudgeAction(): Promise<void> {
+  const session = await auth();
+  if (!session?.user) return;
+  const store = await cookies();
+  store.set(ALMOND_NUDGE_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365, // one year — a one-time hint, remembered
+  });
 }
 
 /** The one-tap responses a finding card offers in v1 (records, never executes). */

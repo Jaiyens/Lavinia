@@ -8,6 +8,7 @@ import { AgentTabBar } from "@/app/(app)/_components/shell/agent-tabbar";
 import { FindingsRail } from "@/app/(app)/_components/shell/findings-rail";
 import { FindingsSheet } from "@/app/(app)/_components/shell/findings-sheet";
 import { AlmondLauncher } from "@/app/(app)/_components/almond/almond-launcher";
+import { AlmondLauncherProvider } from "@/app/(app)/_components/almond/almond-launcher-provider";
 import { almondStarters } from "@/lib/almond/starters";
 import { Button } from "@/components/ui";
 import { en } from "@/copy/en";
@@ -27,33 +28,38 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
   const findings: FindingView[] = resolved ? await resolveFindings(resolved.farm.id) : [];
   return (
     <NuqsAdapter>
-      <div className="flex min-h-dvh w-full bg-paper text-on-surface">
-        <AgentRail demo />
-        <main className="min-w-0 flex-1 px-5 pb-32 lg:px-12 lg:pb-12">
-          {/* Representative-data banner with a connect CTA, on every tour screen. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant py-4">
-            <p className="type-body-sm text-on-surface-variant">{en.tour.connectNote}</p>
-            <Link href="/login">
-              <Button size="sm" variant="primary">
-                {en.tour.connectCta}
-              </Button>
-            </Link>
-          </div>
-          {children}
-        </main>
-        <FindingsRail findings={findings} readOnly />
-      </div>
-      <FindingsSheet findings={findings} readOnly />
-      <AgentTabBar demo />
-      {resolved && (
-        <AlmondLauncher
-          farmName={resolved.farm.name}
-          // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
-          // starters are withheld: `canExport: false`. Mirrors the chat route withholding those skills
-          // from the public actor (dataKind "representative" here, never "real").
-          starters={almondStarters({ findingCount: findings.length, canExport: false })}
-        />
-      )}
+      {/* Shared Almond panel open-state so the rail entry can open the launcher on the Tour too
+          (Story 10.2). The first-run nudge is NOT mounted here: a Tour prospect is not a grower's
+          first run, and the Tour already carries its own connect CTA. */}
+      <AlmondLauncherProvider>
+        <div className="flex min-h-dvh w-full bg-paper text-on-surface">
+          <AgentRail demo />
+          <main className="min-w-0 flex-1 px-5 pb-32 lg:px-12 lg:pb-12">
+            {/* Representative-data banner with a connect CTA, on every tour screen. */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant py-4">
+              <p className="type-body-sm text-on-surface-variant">{en.tour.connectNote}</p>
+              <Link href="/login">
+                <Button size="sm" variant="primary">
+                  {en.tour.connectCta}
+                </Button>
+              </Link>
+            </div>
+            {children}
+          </main>
+          <FindingsRail findings={findings} readOnly />
+        </div>
+        <FindingsSheet findings={findings} readOnly />
+        <AgentTabBar demo />
+        {resolved && (
+          <AlmondLauncher
+            farmName={resolved.farm.name}
+            // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
+            // starters are withheld: `canExport: false`. Mirrors the chat route withholding those skills
+            // from the public actor (dataKind "representative" here, never "real").
+            starters={almondStarters({ findingCount: findings.length, canExport: false })}
+          />
+        )}
+      </AlmondLauncherProvider>
     </NuqsAdapter>
   );
 }

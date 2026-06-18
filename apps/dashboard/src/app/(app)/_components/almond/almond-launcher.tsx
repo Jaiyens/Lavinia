@@ -13,6 +13,7 @@ import type { AlmondNavChip } from "./almond-result";
 import type { AlmondReportCard } from "./almond-download-card";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondPanel } from "./almond-panel";
+import { useAlmondLauncher } from "./almond-launcher-provider";
 import { useAlmondNavigation } from "./use-almond-navigation";
 
 /**
@@ -60,7 +61,9 @@ export function AlmondLauncher({
   farmName: string;
   starters: string[];
 }) {
-  const [open, setOpen] = useState(false);
+  // Open/close is shared via context (Story 10.2) so the rail entry and the first-run nudge open the
+  // SAME panel as this FAB. Only the boolean is shared; all chat state below stays in this component.
+  const { open, setOpen } = useAlmondLauncher();
   // One transport instance for the component's life (not a new one per render).
   const [transport] = useState(() => new DefaultChatTransport({ api: "/api/almond/chat" }));
   // The navigation bridge: when the server streams a `data-navigate` part, apply it through the

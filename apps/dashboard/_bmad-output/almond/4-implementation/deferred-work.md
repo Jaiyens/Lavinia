@@ -41,3 +41,21 @@ which produces structured navigate input and is unaffected.
   navigate target; the model must `listFindings` then navigate to that meter, or answer as a read. If
   the Story 10.1 review decision keeps the starter copy, consider an Epic 7 enhancement that lets
   `navigate` open the top/named finding directly. [src/lib/almond/skills/navigate.ts] (Edge Case Hunter, Med)
+
+## Deferred from: code review of 10-2-rail-entry-and-the-calm-first-run-nudge (2026-06-18)
+
+- **Tour rail "Ask Almond" is a dead control when no demo farm exists** — on `/tour`, when
+  `demoFarm` returns null (un-seeded DB, or the badged demo farm was deleted), `AgentRail demo` still
+  renders the new "Ask Almond" button, but `AlmondLauncher` is gated behind `{resolved && ...}` in the
+  Tour layout, so the click flips the shared `open` with no launcher mounted to consume it (a silent
+  no-op). Degenerate state: the whole Tour is non-functional without a demo farm (no findings, no
+  launcher), and the pre-existing FAB launcher is likewise absent there — so the new entry is no worse
+  than the existing behavior. If the Tour is ever hardened against a missing demo farm, gate the rail
+  entry (or render a disabled state) when the launcher is not mounted.
+  [src/app/tour/layout.tsx, src/app/(app)/_components/shell/agent-rail.tsx] (Edge Case Hunter, Med)
+- **Manual in-app verification of the rail entry + nudge** — confirm on the signed-in app that the
+  desktop rail "Ask Almond" opens the panel, the first-run nudge shows on a real owner's Home with
+  working "Show me" / dismiss and does not reappear after dismissal, and that `/tour` shows the rail
+  entry but no nudge. Not runnable in the headless review/dev environment; the gating laws are proven by
+  the pure unit tests + production build. Disclosed in the story's Dev Agent Record. [Story 10.2 Task 7]
+  (Acceptance Auditor)

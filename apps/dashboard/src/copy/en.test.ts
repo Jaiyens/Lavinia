@@ -139,3 +139,29 @@ describe("almond starter copy (the FR-21 / FR-20 voice law)", () => {
     expect(all).not.toContain("!");
   });
 });
+
+// Copy-law pins for the first-run nudge + rail entry (Story 10.2, FR21 / FR22 / UX-DR5 / UX-DR4).
+// The nudge points the grower at Almond once, in calm plain operator English — no jargon, no
+// exclamation marks, no em dashes — and the rail entry is the quiet, persistent way to find Almond.
+describe("almond surfacing copy (the FR-21 / FR-22 / FR-20 voice law)", () => {
+  const a = en.shell.almond;
+  const all = [a.railLabel, a.nudge.title, a.nudge.body, a.nudge.cta, a.nudge.dismiss].join(" ");
+
+  it("phrases the rail entry and the first-run nudge in plain words", () => {
+    expect(a.railLabel).toBe("Ask Almond");
+    expect(a.nudge.title).toBe("Meet Almond");
+    expect(a.nudge.body).toBe("Ask Almond to show you your most expensive meter.");
+    expect(a.nudge.cta).toBe("Show me");
+  });
+
+  it("uses no kW/tariff/interval jargon", () => {
+    expect(all).not.toMatch(/\bkW\b/i);
+    expect(all).not.toMatch(/tariff/i);
+    expect(all).not.toMatch(/interval/i);
+  });
+
+  it("uses plain operator voice: no em dashes, no exclamation marks", () => {
+    expect(all).not.toContain("—");
+    expect(all).not.toContain("!");
+  });
+});

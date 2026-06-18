@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
 import { signOutAction } from "../../actions";
+import { AlmondAvatar } from "../almond/almond-avatar";
+import { useAlmondLauncher } from "../almond/almond-launcher-provider";
 import { AGENTS, agentHref, isAgentActive } from "./agents";
 
 // Desktop left rail (240px). Lists agents; the active live agent is primary, future agents are
@@ -15,6 +17,7 @@ import { AGENTS, agentHref, isAgentActive } from "./agents";
 // single "Sign in" CTA, since a prospect on the tour has no session.
 export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
   const pathname = usePathname();
+  const { open, openAlmond } = useAlmondLauncher();
   return (
     <aside
       aria-label={en.shell.agentsLabel}
@@ -61,6 +64,22 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
           );
         })}
       </nav>
+      {/* Ask Almond: a clear, persistent entry that opens the SAME assistant panel as the floating
+          launcher (Story 10.2, UX-DR4). Almond is a panel, not a route, so this is a <button>, not a
+          <Link>. Shown in both the signed-in and the demo (Tour) rails; the floating launcher FAB is
+          the mobile entry, so the mobile tab bar deliberately adds no Almond tab. */}
+      <button
+        type="button"
+        onClick={openAlmond}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="mt-1 flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+      >
+        <span aria-hidden className="flex shrink-0 items-center">
+          <AlmondAvatar size={18} />
+        </span>
+        <span>{en.shell.almond.railLabel}</span>
+      </button>
       {/* Footer. Signed-in: account + sign out. The public Tour has no session, so it shows a
           single "Sign in" CTA that leads into the real onboarding instead. */}
       <div className="mt-auto flex flex-col gap-1 pt-4">

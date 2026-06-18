@@ -326,6 +326,9 @@ export const en = {
       launcherLabel: "Ask Almond",
       openLabel: "Open Almond",
       closeLabel: "Close Almond",
+      // Rail entry (Story 10.2, UX-DR4): the clear, persistent way to find Almond in the OS-shell rail,
+      // alongside the floating launcher. Opens the same panel. Plain operator words, no exclamation mark.
+      railLabel: "Ask Almond",
       // Panel header.
       name: "Almond",
       tagline: "Your farm assistant",
@@ -361,6 +364,16 @@ export const en = {
         // Export prompts (drive the owner-only export/PDF skills; never shown on the public Tour).
         exportMeters: "Export my meters as a spreadsheet",
         misRatedPdf: "Make a PDF of my mis-rated pumps",
+      },
+      // First-run nudge (Story 10.2, FR21 / FR22 / UX-DR5): a calm, dismissible, once-only hint that
+      // points the grower at Almond on their first dashboard view, then is never seen again. Plain
+      // operator English, no exclamation mark, no em dash. Shown only to a real owner on Home (gated
+      // server-side); never on the public Tour. `dismiss` is the X button's accessible label.
+      nudge: {
+        title: "Meet Almond",
+        body: "Ask Almond to show you your most expensive meter.",
+        cta: "Show me",
+        dismiss: "Dismiss",
       },
       // Compact chips shown when Almond consults the farm data to answer.
       lookedAt: {
