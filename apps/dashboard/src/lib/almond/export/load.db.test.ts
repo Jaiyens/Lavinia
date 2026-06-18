@@ -40,6 +40,21 @@ beforeAll(async () => {
       farmId: big.id,
     })),
   });
+  // A live-connected meter: it HAS a billing period (a metered `close` is set) but NO posted bill
+  // (printedTotalCents stays null, exactly the Green Button upsert shape). This is the realistic
+  // failure case the posted-bill gate guards: the metered close must NEVER surface as the export's
+  // as-of, so the big farm's as-of must stay null even though this meter carries a period.
+  const liveMeter = await prisma.pump.create({
+    data: { name: "Big Pump Live", coverageState: "no_bill", farmId: big.id },
+  });
+  await prisma.billingPeriod.create({
+    data: {
+      pumpId: liveMeter.id,
+      start: new Date("2026-06-01"),
+      close: new Date("2026-06-30"), // a metered/scheduled end, NOT a billed cycle
+      printedTotalCents: null, // no scanned bill: never to be shown as "as-of"
+    },
+  });
   depsBig = { prisma, farmId: big.id, farmName: big.name };
 }, 120_000);
 
@@ -49,12 +64,16 @@ afterAll(async () => {
 
 describe("loadExportData over a real database", () => {
   it("returns EVERY meter for a farm seeded above the chat cap (the export is not a sample)", async () => {
+    // BIG_FARM_METER_COUNT bill-less pumps + the one live-connected meter that carries a period.
+    const expectedTotal = BIG_FARM_METER_COUNT + 1;
     const data = await loadExportData(depsBig);
-    expect(data.meters).toHaveLength(BIG_FARM_METER_COUNT);
+    expect(data.meters).toHaveLength(expectedTotal);
     expect(data.meters.length).toBeGreaterThan(50);
-    expect(data.state.coverage.total).toBe(BIG_FARM_METER_COUNT);
-    expect(data.state.coverage.noBill).toBe(BIG_FARM_METER_COUNT);
-    // No bills posted -> as-of is explicitly null, never a fabricated date.
+    expect(data.state.coverage.total).toBe(expectedTotal);
+    expect(data.state.coverage.noBill).toBe(expectedTotal);
+    // No POSTED bill anywhere -> as-of is explicitly null. The live meter HAS a metered period
+    // (close = 2026-06-30) with printedTotalCents null; the posted-bill gate must not surface it,
+    // so the metered close is never shown as a billed as-of date.
     expect(data.state.asOf).toBeNull();
   });
 

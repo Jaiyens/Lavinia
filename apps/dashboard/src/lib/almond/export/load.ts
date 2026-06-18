@@ -41,8 +41,10 @@ export type ExportCoverage = {
 
 /**
  * The coverage / as-of state that travels WITH the rows (consumed by the 8.4 footer).
- * `asOf` is the most recent billing-cycle close across the whole farm as an ISO 8601 string,
- * or null when no meter has a posted bill yet - absence is explicit, never a faked date.
+ * `asOf` is the most recent POSTED billing-cycle close across the whole farm as an ISO 8601 string
+ * (only periods carrying a printed total count - a metered/scheduled close on a live-connected meter
+ * with no scanned bill is never surfaced), or null when no meter has a posted bill yet - absence is
+ * explicit, never a faked date.
  */
 export type ExportCoverageState = {
   coverage: ExportCoverage;
@@ -78,15 +80,23 @@ function summarizeCoverage(meters: readonly MeterView[]): ExportCoverage {
 }
 
 /**
- * The most recent billing-cycle close across every meter, as an ISO 8601 string, or null when
- * no meter carries a posted bill. Periods are start-ascending in MeterView, but we compare close
- * dates across all meters so the as-of reflects the freshest cycle the farm has on file. Null is
- * the honest "no bill posted yet" - the footer labels it, never invents a date.
+ * The most recent POSTED billing-cycle close across every meter, as an ISO 8601 string, or null
+ * when no meter carries a posted bill. A period only counts when it is a posted bill - it carries a
+ * `printedTotalCents` (the shipped "posted" signal, mirroring coverageState === 'reconciled' as
+ * src/lib/dashboard/csv.ts gates its money cells, and result.ts treats a printed total as posted).
+ * A live-connected meter (Green Button / UtilityAPI / Bayou) with no scanned bill has periods whose
+ * `close` is set but `printedTotalCents` is null (src/lib/greenbutton/import.ts never sets it on the
+ * upsert); those are SCHEDULED/metered ends, NOT billed, so they are skipped - surfacing one as the
+ * as-of would be the "metered date shown as billed" the honesty law forbids. Periods are
+ * start-ascending in MeterView, but we compare close dates across all posted periods so the as-of
+ * reflects the freshest cycle the farm actually has BILLED. Null is the honest "no bill posted yet"
+ * - the footer labels it, never invents a date.
  */
-function latestCycleClose(meters: readonly MeterView[]): string | null {
+function latestPostedClose(meters: readonly MeterView[]): string | null {
   let latest: string | null = null;
   for (const m of meters) {
     for (const p of m.periods) {
+      if (p.printedTotalCents === null) continue; // not a posted bill: never surface as billed
       if (latest === null || p.close > latest) latest = p.close;
     }
   }
@@ -108,7 +118,7 @@ export async function loadExportData(deps: ExportLoadDeps): Promise<ExportData> 
     meters,
     state: {
       coverage: summarizeCoverage(meters),
-      asOf: latestCycleClose(meters),
+      asOf: latestPostedClose(meters),
     },
   };
 }

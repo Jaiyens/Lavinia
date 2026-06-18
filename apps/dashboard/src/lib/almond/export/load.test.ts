@@ -52,11 +52,17 @@ type PumpOverrides = {
   coverageState?: string;
   /** ISO date string for the single billing period's close; omitted = no period (no bill). */
   close?: string;
+  /**
+   * The period's printed total in cents. OMITTED defaults to a posted bill (100_00); pass an
+   * explicit `null` for the live-connected / Green Button shape (a metered close, no scanned bill).
+   * Uses a presence check, NOT `??`, so an explicit null is honored rather than coalesced away.
+   */
   printedTotalCents?: number | null;
 };
 
 function makePump(i: number, o: PumpOverrides = {}): FakePump {
   const coverageState = o.coverageState ?? "reconciled";
+  const printedTotalCents = "printedTotalCents" in o ? o.printedTotalCents ?? null : 100_00;
   const billingPeriods =
     o.close === undefined
       ? []
@@ -64,7 +70,7 @@ function makePump(i: number, o: PumpOverrides = {}): FakePump {
           {
             start: new Date(o.close),
             close: new Date(o.close),
-            printedTotalCents: o.printedTotalCents ?? 100_00,
+            printedTotalCents,
             demandChargeUsd: null,
             peakKw: null,
             tariff: "AG-A1",
@@ -165,11 +171,11 @@ describe("loadExportData (uncapped full-data export loader)", () => {
     expect(reconciled + needsReview + noBill).toBe(total);
   });
 
-  it("as-of is the most recent cycle close across the farm (ISO 8601), never a faked date", async () => {
+  it("as-of is the most recent POSTED cycle close across the farm (ISO 8601), never a faked date", async () => {
     const pumps = [
-      makePump(1, { close: "2026-01-15" }),
-      makePump(2, { close: "2026-05-20" }), // the freshest cycle
-      makePump(3, { close: "2026-03-01" }),
+      makePump(1, { close: "2026-01-15", printedTotalCents: 100_00 }),
+      makePump(2, { close: "2026-05-20", printedTotalCents: 100_00 }), // the freshest POSTED cycle
+      makePump(3, { close: "2026-03-01", printedTotalCents: 100_00 }),
     ];
     const deps: ExportLoadDeps = {
       prisma: fakePrisma({ farm_x: pumps }),
@@ -180,9 +186,49 @@ describe("loadExportData (uncapped full-data export loader)", () => {
     expect(state.asOf).toBe(new Date("2026-05-20").toISOString());
   });
 
-  it("as-of is null (absence is explicit) when no meter has a posted bill", async () => {
+  it("as-of ignores a metered close on a meter with NO posted bill, even when it is the freshest", async () => {
+    // A live-connected (Green Button / UtilityAPI / Bayou) meter: it HAS a billing period with a
+    // `close`, but no scanned bill yet, so printedTotalCents is null (the import upsert never sets
+    // it). That close is a metered/scheduled end, NOT a billed cycle, so it must never become asOf.
     const pumps = [
-      makePump(1, { coverageState: "no_bill" }),
+      makePump(1, { coverageState: "reconciled", close: "2026-02-10", printedTotalCents: 100_00 }),
+      // Freshest period overall, but NOT a posted bill (the Green Button shape): must be skipped.
+      makePump(2, { coverageState: "no_bill", close: "2026-06-30", printedTotalCents: null }),
+    ];
+    const deps: ExportLoadDeps = {
+      prisma: fakePrisma({ farm_live: pumps }),
+      farmId: "farm_live",
+      farmName: "Live Farms",
+    };
+    const { state } = await loadExportData(deps);
+    // The unposted 2026-06-30 close is ignored; asOf is the latest POSTED close, never the metered one.
+    expect(state.asOf).toBe(new Date("2026-02-10").toISOString());
+  });
+
+  it("as-of is null (absence is explicit) when a meter HAS a period but no posted bill", async () => {
+    // The realistic failure case: non-empty periods (a `close` is set) but printedTotalCents is
+    // null — exactly the Green Button shape. Absence must stay explicit: asOf null, never the
+    // metered close shown as a billed "as-of" date (the honesty law's forbidden case).
+    const pumps = [
+      makePump(1, { coverageState: "no_bill", close: "2026-04-01", printedTotalCents: null }),
+      makePump(2, { coverageState: "no_bill", close: "2026-04-15", printedTotalCents: null }),
+    ];
+    const deps: ExportLoadDeps = {
+      prisma: fakePrisma({ farm_unposted: pumps }),
+      farmId: "farm_unposted",
+      farmName: "Unposted Farms",
+    };
+    const { state, meters } = await loadExportData(deps);
+    expect(meters).toHaveLength(2); // the meters still export
+    // Each meter HAS a period (proving the gate, not an empty-periods accident), yet asOf is null.
+    expect(meters.every((m) => m.periods.length === 1)).toBe(true);
+    expect(state.asOf).toBeNull(); // no posted bill => no cycle to be "as of" — never a fabricated date
+    expect(state.coverage.reconciled).toBe(0);
+  });
+
+  it("as-of is null (absence is explicit) when no meter has any billing period at all", async () => {
+    const pumps = [
+      makePump(1, { coverageState: "no_bill" }), // close omitted => zero periods
       makePump(2, { coverageState: "no_bill" }),
     ];
     const deps: ExportLoadDeps = {
