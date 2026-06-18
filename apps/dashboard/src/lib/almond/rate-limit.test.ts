@@ -82,7 +82,16 @@ describe("checkFixedWindow (pure)", () => {
 });
 
 describe("clientIp", () => {
-  it("prefers x-real-ip (the platform-trusted client IP) over x-forwarded-for when both are present", () => {
+  it("prefers x-vercel-forwarded-for (the platform edge header) over everything else", () => {
+    const h = new Headers({
+      "x-vercel-forwarded-for": "203.0.113.50",
+      "x-real-ip": "198.51.100.9",
+      "x-forwarded-for": "1.2.3.4, 70.41.3.18",
+    });
+    expect(clientIp(h)).toBe("203.0.113.50");
+  });
+
+  it("prefers x-real-ip over the client-spoofable x-forwarded-for when no vercel header is present", () => {
     // x-forwarded-for's leftmost hop is client-spoofable; x-real-ip is Vercel-set. The trusted one wins.
     const h = new Headers({
       "x-real-ip": "198.51.100.9",
@@ -161,13 +170,19 @@ describe("singleton wrappers", () => {
 
 describe("the per-farm generation throttle wired into the skill wrappers", () => {
   beforeEach(() => resetRateLimits());
-  // The throttle short-circuits BEFORE the loader touches prisma, so a never-used prisma is safe here:
-  // if the wrapper failed to short-circuit it would deref undefined and throw, failing the test loudly.
-  const deps = {
-    prisma: undefined as unknown as PrismaClient,
-    farmId: "farm_throttle",
-    farmName: "Throttle Test Farm",
-  };
+  // A prisma that THROWS on any access, so "built nothing" is provable: if a wrapper failed to
+  // short-circuit on the throttle, `run*` would touch prisma, throw, and be caught into the generic
+  // build-error copy (NOT the busy line) — so the message assertion below is genuinely load-bearing,
+  // not merely incidental to the `kind`.
+  const prisma = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error("prisma must not be touched once the farm is throttled");
+      },
+    },
+  ) as unknown as PrismaClient;
+  const deps = { prisma, farmId: "farm_throttle", farmName: "Throttle Test Farm" };
 
   it("both file-skill wrappers return the calm busy line once the farm's shared budget is full, building nothing", async () => {
     // Spend the farm's generation budget on the same (default) clock the wrappers read.
@@ -186,15 +201,30 @@ describe("the per-farm generation throttle wired into the skill wrappers", () =>
 });
 
 describe("checkFixedWindow memory bound", () => {
-  it("hard-clears the store when a flood of distinct live keys blows past the cap (no unbounded growth)", () => {
-    // The cap is 10_000; a sweep cannot free live windows, so the safety valve must clear to bound memory.
+  it("bounds the store to the cap by evicting OLDEST keys when a flood of live keys blows past it", () => {
+    // The cap is 10_000; a sweep cannot free live windows, so the eviction valve must bound memory.
     const store: RateLimitStore = new Map();
-    const opts = { limit: 1, windowMs: 60_000 };
-    // All within one window (nowMs constant), so none are sweepable — only the hard clear can bound it.
-    for (let i = 0; i < 10_050; i++) checkFixedWindow(store, `ip-${i}`, 0, opts);
+    const opts = { limit: 5, windowMs: 60_000 };
+    // A recently-active key with accumulated count. It is inserted FIRST (so it is the oldest by
+    // insertion order) and hit a few times; the flood that follows must not let it grow unbounded, but
+    // we assert the store stays bounded rather than that any one key survives.
+    for (let i = 0; i < 10_050; i++) checkFixedWindow(store, `ip-${i}`, 0, opts); // all within one window
     expect(store.size).toBeLessThanOrEqual(10_000);
-    // The decision for the triggering request is still computed correctly despite the clear.
-    const decision = checkFixedWindow(store, "ip-after-clear", 0, opts);
+    // The decision for the triggering request is still computed correctly despite eviction.
+    const decision = checkFixedWindow(store, "ip-after-evict", 0, opts);
     expect(decision.allowed).toBe(true);
+  });
+
+  it("does not zero a live offender's counter for an UNRELATED request (no flush-everyone)", () => {
+    // Below the cap, an offender that has spent its budget stays denied across other keys' activity —
+    // the eviction valve only fires past the cap, so ordinary traffic never resets a live counter.
+    const store: RateLimitStore = new Map();
+    const opts = { limit: 2, windowMs: 60_000 };
+    checkFixedWindow(store, "offender", 0, opts);
+    checkFixedWindow(store, "offender", 0, opts);
+    expect(checkFixedWindow(store, "offender", 0, opts).allowed).toBe(false); // spent
+    // Other clients come and go; the offender is still denied (its counter was not flushed).
+    for (let i = 0; i < 50; i++) checkFixedWindow(store, `other-${i}`, 0, opts);
+    expect(checkFixedWindow(store, "offender", 0, opts).allowed).toBe(false);
   });
 });

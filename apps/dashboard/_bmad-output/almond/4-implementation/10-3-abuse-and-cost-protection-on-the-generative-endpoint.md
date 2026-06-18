@@ -221,6 +221,31 @@ Dismissed as noise: "denied calls extend the window" (documented intentional, st
 "read-modify-write race under Fluid Compute" (both hunters confirmed it is sound — `checkFixedWindow` has
 no `await`, so the single-threaded event loop makes each check atomic within an instance).
 
+**Round 2** (re-review of the committed change, including the round-1 patches — the adversarial layers had
+not seen the fixes). Acceptance Auditor: still **0 AC violations**; patches match the recorded claims. 3
+more patches applied, all re-verified (typecheck + lint + build green; limiter suite 20/20; almond suites
+54/54):
+
+- [x] [Review][Patch] **The round-1 `store.clear()` safety valve flushed EVERY client's counter** — MED
+  (blind+edge). The full clear re-armed offenders and innocents alike, making the limiter flushable on
+  demand under a >10k-key flood. **Fixed:** evict only the OLDEST keys (Map insertion order) down to the
+  cap instead of clearing — bounds memory while leaving live counters intact; added a "no flush-everyone"
+  test. [src/lib/almond/rate-limit.ts]
+- [x] [Review][Patch] **`x-real-ip` trust is platform-conditional** — LOW (blind+edge). **Fixed:**
+  `clientIp` now prefers Vercel's non-spoofable `x-vercel-forwarded-for`, then `x-real-ip`, then the first
+  non-empty `x-forwarded-for` hop, via a shared `firstHop` helper; added a preference test.
+  [src/lib/almond/rate-limit.ts]
+- [x] [Review][Patch] **Throttle-wrapper test `kind` assertions passed even if the short-circuit broke**
+  — LOW (edge). **Fixed:** the test now injects a `prisma` Proxy that throws on any access, so "built
+  nothing" (the wrapper short-circuited before the loader) is provable, not incidental.
+  [src/lib/almond/rate-limit.test.ts]
+- [x] [Review][Patch] **Stale "13 tests" in the Dev Agent Record prose** — doc nit (auditor). **Fixed:**
+  updated to the authoritative count (20 limiter tests as shipped). [this story file]
+
+Round-2 dismissed/deferred: "per-instance scope is weak by construction" (informational — documented
+in-code; Vercel BotID is the named durable backstop); the empty/error-attempt throttle counting remains
+deferred (no new angle).
+
 ## Dev Notes
 
 ### What this story changes, file by file (READ THESE BEFORE EDITING)
@@ -368,7 +393,8 @@ claude-opus-4-8[1m] (Opus 4.8, 1M context) — BMAD dev-story workflow.
   (485b250)** — verified by stashing all of this story's tracked edits and re-running: the same 2 fail
   identically with none of my changes present. They are the "epic 8/9 db tests written-not-run" items
   from project memory. Not caused by, and not in scope for, Story 10.3 (see Completion Notes). No
-  regression: every test green on HEAD is still green; my 13 new limiter tests pass.
+  regression: every test green on HEAD is still green; my 20 new limiter tests pass (13 at dev-story, +7
+  added across the two code-review rounds).
 - `npm run typecheck` — green (both apps). `npm run lint` — dashboard 0 errors (the lone web warning is
   pre-existing, unrelated). `npm run build` — green (both apps).
 - Targeted: `rate-limit.test.ts` 13/13; `responder.test.ts` + `tools.test.ts` + the export/report pure
@@ -432,7 +458,7 @@ claude-opus-4-8[1m] (Opus 4.8, 1M context) — BMAD dev-story workflow.
 - `src/lib/almond/rate-limit.ts` — NEW. Pure fixed-window limiter (`checkFixedWindow`), `clientIp`, the
   `CHAT_RATE_LIMIT` / `GENERATION_THROTTLE` configs, singleton wrappers (`checkChatRateLimit`,
   `checkGenerationThrottle`), and the `resetRateLimits` test hook.
-- `src/lib/almond/rate-limit.test.ts` — NEW. 13 pure tests (injected clock, zero external calls).
+- `src/lib/almond/rate-limit.test.ts` — NEW. 20 pure tests (injected clock, zero external calls).
 - `src/app/api/almond/chat/route.ts` — MODIFIED. Per-IP `429` + `Retry-After` as the first statement in
   `POST`; `COST/ABUSE NOTE` rewritten to document the enforced protection + Vercel BotID (AC1, AC3).
 - `src/lib/almond/tools.ts` — MODIFIED. Per-farm throttle in `exportSpreadsheetSkill` /
@@ -452,3 +478,4 @@ claude-opus-4-8[1m] (Opus 4.8, 1M context) — BMAD dev-story workflow.
 | 2026-06-18 | Story 10.3 created (ready-for-dev) — abuse/cost protection on the generative Almond endpoint. |
 | 2026-06-18 | Implemented: per-IP rate limit on `/api/almond/chat` (429 + Retry-After) + per-farm generation throttle on the export/PDF skills, with offline-path parity; pure limiter module + 13 tests; copy + route doc updated. typecheck/lint/build green; 862 tests pass (2 pre-existing 9.3 db-test failures unrelated). Status → review. |
 | 2026-06-18 | Code review (3 adversarial layers): 0 AC violations. Applied 2 patches — `clientIp` now trusts Vercel `x-real-ip` over the spoofable `x-forwarded-for` hop (HIGH); limiter store hard-clears past the cap to bound memory (MED). Deferred 1 (throttle counts empty/error attempts — documented cost-protection tradeoff). Limiter suite 18/18, almond suites 52/52, typecheck/lint/build green. Status → done. Epic 10 + the Almond effort (Epics 7-10) complete. |
+| 2026-06-18 | Code review round 2 (re-review of the committed change incl. round-1 patches): 0 AC violations. Applied 3 patches — eviction-of-oldest instead of `store.clear()` (no flush-everyone, MED); `clientIp` prefers `x-vercel-forwarded-for` then `x-real-ip` (LOW); throwing-Proxy prisma makes the throttle short-circuit test load-bearing (LOW); fixed stale "13 tests" prose. Limiter suite 20/20, almond suites 54/54, typecheck/lint/build green. Status stays done. |

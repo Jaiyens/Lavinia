@@ -81,13 +81,16 @@ export function checkFixedWindow(
 
   if (store.size > MAX_STORE_KEYS) {
     sweepExpired(store, nowMs, opts.windowMs);
-    // Hard safety valve: if the sweep freed nothing (a flood of distinct LIVE keys within one window,
-    // e.g. many real clients on one instance), drop the whole store to actually bound memory rather
-    // than grow without limit on a long-lived instance. Forfeiting the in-memory counters under a
-    // >10k-distinct-key flood is acceptable — the durable cross-instance layer (Vercel BotID) is the
-    // real backstop. This request's decision is already computed from the local `state` below, so the
-    // clear never changes the answer we return; it only forgets history.
-    if (store.size > MAX_STORE_KEYS) store.clear();
+    // If the sweep freed nothing (a flood of distinct LIVE keys within one window), evict the OLDEST
+    // entries (a Map preserves insertion order) down to the cap — NOT a full `clear()`. A full clear
+    // would zero EVERY client's counter at once, re-arming offenders and innocents alike and making the
+    // limiter flushable on demand; evicting only the stalest keys bounds memory while leaving the
+    // most-recently-seen counters (the live traffic) intact. This request's decision is already computed
+    // from the local `state` below, so eviction never changes the answer we return.
+    for (const k of store.keys()) {
+      if (store.size <= MAX_STORE_KEYS) break;
+      store.delete(k);
+    }
   }
 
   const allowed = state.count <= opts.limit;
@@ -98,28 +101,33 @@ export function checkFixedWindow(
   return { allowed, remaining, retryAfterSeconds };
 }
 
+/** The first NON-EMPTY comma-hop of a header value, trimmed, or null. A leading comma / whitespace must
+ *  not be read as a real hop (it would otherwise collapse callers into the wrong bucket). */
+function firstHop(headerValue: string | null): string | null {
+  if (headerValue === null) return null;
+  const hop = headerValue
+    .split(",")
+    .map((h) => h.trim())
+    .find((h) => h.length > 0);
+  return hop ?? null;
+}
+
 /**
- * The caller's IP for per-IP rate-limiting. Prefers `x-real-ip` — on Vercel this is the platform-set
- * TRUE client IP, a single trusted value, NOT the client-spoofable multi-hop `x-forwarded-for` list.
- * Keying the limit on the leftmost `x-forwarded-for` hop would let a scripted caller rotate a fake IP
- * per request to mint a fresh budget each time (and a leading comma would dump everyone into one
- * bucket), defeating the limiter — so the trusted single-value header wins. Only when `x-real-ip` is
- * absent (e.g. local dev) do we fall back to the first NON-EMPTY `x-forwarded-for` hop. Last resort is
- * the literal `"unknown"` (a missing IP is rare on Vercel; all unknowns share one bucket rather than
- * each sailing past the limit). Never used for scope or auth — only as a rate-limit key.
+ * The caller's IP for per-IP rate-limiting. Prefers the headers the PLATFORM sets and a client cannot
+ * spoof: `x-vercel-forwarded-for` (set by Vercel's edge) first, then `x-real-ip` (also platform-set to
+ * the true client IP). Only when both are absent (e.g. local dev, or a non-Vercel front) does it fall
+ * back to the first non-empty `x-forwarded-for` hop — the least trusted source, since its leftmost hop
+ * is client-supplied (keying on it would let a caller rotate a fake IP per request to mint a fresh
+ * budget). Last resort is the literal `"unknown"` (a missing IP is rare on Vercel; all unknowns share
+ * one bucket rather than each sailing past the limit). Never used for scope or auth — only a limit key.
  */
 export function clientIp(headers: Headers): string {
-  const real = headers.get("x-real-ip")?.trim();
-  if (real) return real;
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const hop = forwarded
-      .split(",")
-      .map((h) => h.trim())
-      .find((h) => h.length > 0);
-    if (hop) return hop;
-  }
-  return "unknown";
+  return (
+    firstHop(headers.get("x-vercel-forwarded-for")) ??
+    firstHop(headers.get("x-real-ip")) ??
+    firstHop(headers.get("x-forwarded-for")) ??
+    "unknown"
+  );
 }
 
 // --- Process-singleton wrappers ----------------------------------------------------------------
