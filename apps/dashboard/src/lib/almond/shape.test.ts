@@ -82,6 +82,7 @@ function finding(over: Partial<FindingView> = {}): FindingView {
     status: over.status ?? "pending",
     meterId: "meterId" in over ? (over.meterId ?? null) : "m1",
     meterName: "meterName" in over ? (over.meterName ?? null) : "Pump 1",
+    rateSwitchTo: "rateSwitchTo" in over ? (over.rateSwitchTo ?? null) : "AG-A1",
     resultNote: over.resultNote ?? null,
   };
 }

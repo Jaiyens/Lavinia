@@ -263,24 +263,21 @@ function authorSummary(farmName: string, data: ExportData): SummarySectionData {
   };
 }
 
-/** A rate-switch finding: a meter the rate lever suggests is on the wrong rate. Read defensively from
- *  the finding's stored action JSON (the same defensive narrowing loadFindings uses). */
-type RateSwitch = { meterId: string; toRate: string | null; savingsCents: number };
+/** A rate-switch finding: a meter the rate lever suggests is on the wrong rate. Read from the GROUNDED
+ *  action kind that `loadFindings` narrows off the stored action JSON (`finding.rateSwitchTo`), never
+ *  from the farmer-facing label - the lever's label copy ("Move it to AG-B") deliberately never
+ *  contains the word "switch", so a label string-match would drop every real finding. */
+type RateSwitch = { meterId: string; toRate: string; savingsCents: number };
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-/** Extract a rate-switch from a finding's action JSON, or null when it is not a switch_rate finding.
- *  `action.params.to` is the suggested rate code; the savings is the finding's dollar impact (stored
- *  as float dollars on the row) converted to integer cents, floored to a non-negative whole cent. */
-function readRateSwitch(finding: FindingView, action: unknown): RateSwitch | null {
-  if (!isObject(action) || action.kind !== "switch_rate") return null;
-  if (finding.meterId === null) return null;
-  const params = isObject(action.params) ? action.params : null;
-  const toRate = params !== null && typeof params.to === "string" ? params.to : null;
+/** Extract a rate-switch from a finding, or null when it is not a switch_rate finding (or is
+ *  fleet-level with no meter). `finding.rateSwitchTo` is non-null exactly when the stored action's
+ *  `kind === "switch_rate"` and `params.to` is a readable rate code (the grounded suggestion);
+ *  the savings is the finding's dollar impact (stored as float dollars on the row) converted to
+ *  integer cents, floored to a non-negative whole cent. */
+function readRateSwitch(finding: FindingView): RateSwitch | null {
+  if (finding.meterId === null || finding.rateSwitchTo === null) return null;
   const savingsCents = Math.max(0, Math.round((finding.impactUsd ?? 0) * 100));
-  return { meterId: finding.meterId, toRate, savingsCents };
+  return { meterId: finding.meterId, toRate: finding.rateSwitchTo, savingsCents };
 }
 
 /**
@@ -293,34 +290,16 @@ function readRateSwitch(finding: FindingView, action: unknown): RateSwitch | nul
 function rateSwitchesInScope(
   findings: readonly FindingView[],
   metersById: Map<string, MeterView>,
-): { meter: MeterView; toRate: string | null; savingsCents: number }[] {
-  const out: { meter: MeterView; toRate: string | null; savingsCents: number }[] = [];
+): { meter: MeterView; toRate: string; savingsCents: number }[] {
+  const out: { meter: MeterView; toRate: string; savingsCents: number }[] = [];
   for (const f of findings) {
-    const sw = readRateSwitch(f, findingAction(f));
+    const sw = readRateSwitch(f);
     if (sw === null) continue;
     const meter = metersById.get(sw.meterId);
     if (meter === undefined) continue; // outside the filtered set
     out.push({ meter, toRate: sw.toRate, savingsCents: sw.savingsCents });
   }
   return out;
-}
-
-/** The stored action JSON is not surfaced on FindingView (it projects the readable parts), so the
- *  rate-switch read needs the raw action. FindingView does carry the suggested rate indirectly: the
- *  switch's target is the action's `params.to`. We reconstruct a minimal action from the view's
- *  fields so `readRateSwitch` stays the single narrowing place. The view's `actionLabel` is the
- *  lever's "Switch to {rate}" label and the `meterId` is set, so a switch finding is identifiable;
- *  the target rate is parsed from the label as a fallback when the raw action is unavailable. */
-function findingAction(f: FindingView): unknown {
-  // FindingView does not carry the raw action JSON, so we treat a finding with a meter and a
-  // "switch"-shaped action label as a rate switch and parse the target rate from the label. This
-  // keeps the report's rate review grounded in the same findings the rail shows, without re-running
-  // the lever. A finding with no readable target rate still lists the meter (toRate null -> the
-  // section shows a blank suggested cell, never a fabricated rate).
-  if (f.meterId === null || f.actionLabel === null) return null;
-  if (!/switch/i.test(f.actionLabel)) return null;
-  const match = f.actionLabel.match(/(?:to|onto)\s+([A-Za-z0-9-]+)/i);
-  return { kind: "switch_rate", params: { to: match?.[1] ?? null } };
 }
 
 /** The mis-rated section's data: the in-scope rate-switch meters with their current and suggested

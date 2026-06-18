@@ -126,11 +126,16 @@ type FakeRec = {
   createdAt: Date;
 };
 
+// Mirrors the PRODUCTION rate lever's stored action exactly (run-rate-lever.ts:139): the machine verb
+// is `kind: "switch_rate"`, the farmer-facing label is `en.rateOptimization.action(to)` = "Move it to
+// {to}" - which deliberately never contains the word "switch" - and `params.to` is the suggested rate.
+// The report must identify the switch off the grounded `kind`/`params.to`, NEVER by string-matching
+// this label, so the fixture uses the real label (not a "Switch to ..." fiction).
 function switchRateRec(pumpId: string, toRate: string, savingsUsd: number): FakeRec {
   return {
     id: `rec_${pumpId}`,
     situation: `Pump ${pumpId} could move to a cheaper rate.`,
-    action: { kind: "switch_rate", label: `Switch to ${toRate}`, params: { pumpId, to: toRate } },
+    action: { kind: "switch_rate", label: `Move it to ${toRate}`, params: { pumpId, to: toRate } },
     impactUsd: savingsUsd,
     impactNote: "Estimated from PG&E published rates.",
     severity: "act",
@@ -299,6 +304,30 @@ describe("runGenerateReport (the file path, real PDF, zero external calls)", () 
     expect(isPdf(result.bytes)).toBe(true);
     // A savings/mis-rated report still covers the in-scope meters.
     expect(result.meterCount).toBe(2);
+  });
+
+  // Regression for the review finding: the production rate lever writes the label "Move it to {to}"
+  // (en.rateOptimization.action), which does NOT contain "switch". The savings/mis-rated sections must
+  // still author rows off the GROUNDED action kind + params.to, never a label string-match. A report
+  // WITH real rate-switch findings must therefore be materially larger than the same report with NONE
+  // (the populated savings/mis-rated tables add rows + dollars), proving no finding is silently dropped.
+  it("populates savings off the GROUNDED action (production 'Move it to ...' label), not a label match", async () => {
+    const pumps = [
+      makePump(1, { rateSchedule: "AG-1A", close: "2026-03-12" }),
+      makePump(2, { rateSchedule: "AG-4B", close: "2026-03-12" }),
+    ];
+    const sections: ReportSectionKind[] = ["savings", "misRated"];
+    const withFindings = await runGenerateReport(
+      depsFor(pumps, [switchRateRec("pump_001", "AG-B", 4123), switchRateRec("pump_002", "AG-B", 887)]),
+      { sections },
+    );
+    const noFindings = await runGenerateReport(depsFor(pumps, []), { sections });
+    expect(withFindings.kind).toBe("file");
+    expect(noFindings.kind).toBe("file");
+    if (withFindings.kind !== "file" || noFindings.kind !== "file") return;
+    // The dollars the lever found (and the rate-switch rows) land in the PDF, so the populated report
+    // carries strictly more bytes than the honest "no savings / nothing flagged" empty-section report.
+    expect(withFindings.bytes.byteLength).toBeGreaterThan(noFindings.bytes.byteLength);
   });
 
   it("applies a filter and the report covers only the filtered set + its own coverage as-of", async () => {
