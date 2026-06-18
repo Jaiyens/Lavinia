@@ -7,6 +7,7 @@ import type { UIMessage } from "ai";
 import { en } from "@/copy/en";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { DotPattern } from "@/components/ui/dot-pattern";
+import type { AlmondNavChip } from "./almond-result";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
 import { AlmondComposer } from "./almond-composer";
@@ -18,6 +19,10 @@ type Props = {
   messages: UIMessage[];
   status: "submitted" | "streaming" | "ready" | "error";
   starters: string[];
+  /** Action chips per assistant message id (Story 7.5), captured in the launcher. */
+  navByMessage: Map<string, AlmondNavChip[]>;
+  /** Re-apply a chip's navigation (the chip is a link back to that view). */
+  onReplay: (chip: AlmondNavChip) => void;
   onSend: (text: string) => void;
   onRetry: () => void;
   onClose: () => void;
@@ -28,6 +33,8 @@ export function AlmondPanel({
   messages,
   status,
   starters,
+  navByMessage,
+  onReplay,
   onSend,
   onRetry,
   onClose,
@@ -94,6 +101,8 @@ export function AlmondPanel({
           status={status}
           farmName={farmName}
           starters={starters}
+          navByMessage={navByMessage}
+          onReplay={onReplay}
           onStarter={onSend}
           onRetry={onRetry}
         />

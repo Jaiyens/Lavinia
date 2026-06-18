@@ -82,3 +82,35 @@ describe("tracked-results copy (the FR-20 honesty law)", () => {
     expect(resultCopy).not.toContain("!");
   });
 });
+
+// Copy-law pins for Almond's action-chip labels (Story 7.5, FR2 / FR20). Each navigation Almond
+// drives leaves a chip the grower can read and tap back to. The labels must be plain operator
+// English — name what happened, no kW/tariff/interval jargon, no exclamation marks, no em dashes.
+describe("action-chip navigation copy (the FR-2 / FR-20 voice law)", () => {
+  const n = en.shell.almond.navigated;
+  const sample = [
+    n.meter("Westside Pump 17"),
+    n.meterFallback,
+    n.closed,
+    n.lens("map"),
+    n.filtered("AG-4 meters"),
+    n.lensAndFilter("table", "AG-4 meters"),
+    n.fallback,
+    n.ranchSuffix("Westside"),
+    n.rateSuffix("AG-4"),
+    en.shell.almond.navigatedAria("Opened Westside Pump 17"),
+  ].join(" ");
+
+  it("names the action in plain words (no kW/tariff/interval jargon)", () => {
+    expect(n.meter("Pump 9")).toBe("Opened Pump 9");
+    expect(n.lens("map")).toBe("Showed the map");
+    expect(sample).not.toMatch(/\bkW\b/i);
+    expect(sample).not.toMatch(/tariff/i);
+    expect(sample).not.toMatch(/interval/i);
+  });
+
+  it("uses plain operator voice: no em dashes, no exclamation marks", () => {
+    expect(sample).not.toContain("—");
+    expect(sample).not.toContain("!");
+  });
+});

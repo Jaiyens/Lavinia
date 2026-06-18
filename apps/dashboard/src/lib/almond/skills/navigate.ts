@@ -49,14 +49,17 @@ export type NavigateAction = {
 };
 
 /**
- * The typed result the skill returns to the model (and, on `navigate`, to the 7.4 bridge):
- *   - `navigate`        a clean resolve carrying the action to emit.
+ * The typed result the skill returns to the model (and, on `navigate`, to the 7.4/7.5 bridge):
+ *   - `navigate`        a clean resolve carrying the action to emit. When the action opens a meter it
+ *                       also carries the resolved `meterName` — the human name for Story 7.5's action
+ *                       chip ("Opened Pump 17"), captured here where the match happened so the
+ *                       responder needs no second meter read to label it.
  *   - `clarify`         >= 2 meters matched: name the candidates, emit NO action (the ambiguity rule).
  *   - `none`            nothing matched (or an empty/actionless request); never fabricate a target.
  *   - `unknown-surface` a requested lens/surface the registry does not list: refused, not coerced.
  */
 export type NavigateResult =
-  | { kind: "navigate"; action: NavigateAction }
+  | { kind: "navigate"; action: NavigateAction; meterName?: string }
   | { kind: "clarify"; candidates: string[] }
   | { kind: "none" }
   | { kind: "unknown-surface"; requested: string };
@@ -115,7 +118,8 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
   const query = (input.query ?? "").trim();
   if (query !== "") {
     const match = resolveMeterQuery(meters, query);
-    if (match.kind === "found") return { kind: "navigate", action: { meter: match.meter.id } };
+    if (match.kind === "found")
+      return { kind: "navigate", action: { meter: match.meter.id }, meterName: match.meter.name };
     // >= 2 matches: name them and emit NOTHING (FR3 — never auto-navigate an ambiguous request).
     if (match.kind === "ambiguous") return { kind: "clarify", candidates: match.names };
     return { kind: "none" };

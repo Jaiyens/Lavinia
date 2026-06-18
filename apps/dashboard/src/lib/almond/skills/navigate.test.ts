@@ -50,24 +50,25 @@ const METERS: MeterView[] = [
 ];
 
 describe("resolveNavigate — meter path", () => {
-  it("single exact-name match returns a navigate action carrying the meter ID (not the query)", () => {
+  it("single exact-name match returns a navigate action carrying the meter ID (not the query) and the name", () => {
     const result = resolveNavigate(METERS, { open: "meter", query: "Pump 17" });
-    expect(result).toEqual({ kind: "navigate", action: { meter: "m17" } });
+    // The meter id is the URL value; the name rides alongside for Story 7.5's action chip.
+    expect(result).toEqual({ kind: "navigate", action: { meter: "m17" }, meterName: "Pump 17" });
   });
 
   it("resolves by SA id", () => {
     const result = resolveNavigate(METERS, { open: "meter", query: "SA-170" });
-    expect(result).toEqual({ kind: "navigate", action: { meter: "m170" } });
+    expect(result).toEqual({ kind: "navigate", action: { meter: "m170" }, meterName: "Pump 170" });
   });
 
   it("resolves by meter id", () => {
     const result = resolveNavigate(METERS, { open: "meter", query: "m4" });
-    expect(result).toEqual({ kind: "navigate", action: { meter: "m4" } });
+    expect(result).toEqual({ kind: "navigate", action: { meter: "m4" }, meterName: "West Pump 4" });
   });
 
   it("treats a bare query (no `open`) as a meter request", () => {
     const result = resolveNavigate(METERS, { query: "West Pump 4" });
-    expect(result).toEqual({ kind: "navigate", action: { meter: "m4" } });
+    expect(result).toEqual({ kind: "navigate", action: { meter: "m4" }, meterName: "West Pump 4" });
   });
 
   it("AMBIGUITY RULE: >= 2 name matches return clarify and emit NO action (FR3)", () => {

@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { AlmondAvatar } from "./almond-avatar";
-import { AlmondToolChips } from "./almond-result";
+import { AlmondToolChips, AlmondActionChips, type AlmondNavChip } from "./almond-result";
 
 const t = en.shell.almond;
 
@@ -38,11 +38,24 @@ type Props = {
   status: "submitted" | "streaming" | "ready" | "error";
   farmName: string;
   starters: string[];
+  /** Action chips per assistant message id (Story 7.5). */
+  navByMessage: Map<string, AlmondNavChip[]>;
+  /** Re-apply a chip's navigation (the chip is a link back to that view). */
+  onReplay: (chip: AlmondNavChip) => void;
   onStarter: (question: string) => void;
   onRetry: () => void;
 };
 
-export function AlmondMessages({ messages, status, farmName, starters, onStarter, onRetry }: Props) {
+export function AlmondMessages({
+  messages,
+  status,
+  farmName,
+  starters,
+  navByMessage,
+  onReplay,
+  onStarter,
+  onRetry,
+}: Props) {
   const endRef = useRef<HTMLDivElement>(null);
   // Autoscroll to the newest content as it streams in.
   useEffect(() => {
@@ -98,8 +111,10 @@ export function AlmondMessages({ messages, status, farmName, starters, onStarter
             </div>
           );
         }
-        // Skip an assistant message with nothing to show (no text, not looking up, no tool chips).
-        if (!text && !isLookingUp(m) && !hasToolPart(m)) return null;
+        const chips = navByMessage.get(m.id) ?? [];
+        // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
+        // no action chip).
+        if (!text && !isLookingUp(m) && !hasToolPart(m) && chips.length === 0) return null;
         return (
           <div key={m.id} className="flex items-start gap-2">
             <AlmondAvatar size={26} className="mt-0.5" />
@@ -117,6 +132,8 @@ export function AlmondMessages({ messages, status, farmName, starters, onStarter
               ) : (
                 <span className="whitespace-pre-wrap">{text}</span>
               )}
+              {/* What Almond just did on the screen, and a tap back to it (Story 7.5). */}
+              <AlmondActionChips chips={chips} onReplay={onReplay} />
             </div>
           </div>
         );

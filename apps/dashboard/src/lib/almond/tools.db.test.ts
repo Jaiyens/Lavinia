@@ -215,6 +215,9 @@ describe("the offline stub responder", () => {
     const hit = await meterDetail(depsA, name as string);
     expect(hit.found).toBe(true);
     if (hit.found) expect(body).toContain(hit.meter.id);
+    // Story 7.5: the part also carries the server-composed action-chip label, by meter NAME (not id),
+    // identically on the stub and live paths. "Opened <name>" is the plain-English chip text.
+    expect(body).toContain(`Opened ${name}`);
   });
 
   it("writes NO data-navigate part for a data question (only the grounded text answer)", async () => {
@@ -231,6 +234,20 @@ describe("the offline stub responder", () => {
     });
     const body = await res.text();
     expect(body).toContain("text-delta");
+    expect(body).not.toContain("data-navigate");
+  });
+
+  it("never-hijack: an idle turn with no user request emits NO data-navigate part (Story 7.5, FR4)", async () => {
+    // The guarantee is structural — a navigation is written only in direct response to a user turn
+    // that drives it, never spontaneously. With no user request to drive navigation, the responder
+    // must move nothing on screen.
+    const res = await createStubResponder().toResponse({
+      uiMessages: [],
+      system: "ignored by the stub",
+      deps: depsA,
+      actor: { authedOwner: false },
+    });
+    const body = await res.text();
     expect(body).not.toContain("data-navigate");
   });
 

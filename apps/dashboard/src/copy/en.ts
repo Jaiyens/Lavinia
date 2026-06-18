@@ -337,6 +337,28 @@ export const en = {
         getRatesSummary: "Looked at your rates",
         getReconciliation: "Looked at your billing data",
       },
+      // Action chips: a plain-English record of each navigation Almond drove, and a link back to
+      // that view (Story 7.5, FR2). Plain operator words only, no kW/tariff/interval jargon, no
+      // exclamation marks, no em dashes. The lens value is already a plain word (map/table/chart/
+      // calendar). Composed by `describeNavigation` (src/lib/almond/skills/describe-navigation.ts).
+      navigated: {
+        meter: (name: string): string => `Opened ${name}`,
+        // Used only if a clean meter resolve somehow lacks a name (should not happen).
+        meterFallback: "the meter",
+        // A meter cleared (drawer closed). The v1 skill never emits this, but the action shape admits it.
+        closed: "Closed the meter",
+        lens: (lens: string): string => `Showed the ${lens}`,
+        filtered: (what: string): string => `Filtered the table to ${what}`,
+        lensAndFilter: (lens: string, what: string): string =>
+          `Showed the ${lens} and filtered to ${what}`,
+        // Honest fallback if an action carried nothing recognizable (never for a clean resolve).
+        fallback: "Moved the screen",
+        // Suffix the filter composer appends for a ranch / rate filter so the chip reads naturally.
+        ranchSuffix: (value: string): string => `${value} ranch`,
+        rateSuffix: (value: string): string => `${value} meters`,
+      },
+      // Accessible label prefix for an action chip (the chip re-applies the same view).
+      navigatedAria: (label: string): string => `${label}. Tap to return to this view.`,
     },
     // The finding card (situation + one action + dollars + severity + one-tap response).
     findings: {

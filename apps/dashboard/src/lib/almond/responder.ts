@@ -21,8 +21,14 @@ import {
   summarizeReconciliation,
   UNKNOWN_RATE,
 } from "./shape";
-import type { NavigateAction, NavigateInput, NavigateResult } from "./skills/navigate";
-import { buildAlmondSkills, navigateSkill, type AlmondActor, type AlmondToolDeps } from "./tools";
+import {
+  resolveNavigate,
+  type NavigateAction,
+  type NavigateInput,
+  type NavigateResult,
+} from "./skills/navigate";
+import { describeNavigation } from "./skills/describe-navigation";
+import { buildAlmondSkills, type AlmondActor, type AlmondToolDeps } from "./tools";
 
 /**
  * The injected model boundary for Almond, mirroring `src/lib/extract/reader.ts`:
@@ -54,18 +60,39 @@ export interface AlmondResponder {
 // On a clean `navigate` resolve, the SERVER writes a typed, TRANSIENT `data-navigate` part onto the
 // existing UI-message stream (ADR-A02, AR17) — one stream, no second channel. `transient: true`
 // keeps it OUT of message history: the client receives it once via `useChat`'s `onData` callback
-// (never replayed on a re-render or a reload), which is what makes "applied exactly once" (AC3)
+// (never replayed on a re-render or a reload), which is what makes "applied exactly once" (7.4 AC3)
 // structural rather than a fragile dedupe. The SAME helper serves the stub and the live model path,
-// so the emitted part shape is identical on both (AC5). The pure `navigate` skill (Story 7.3) still
+// so the emitted part shape is identical on both (AC6). The pure `navigate` skill (Story 7.3) still
 // just RETURNS the action; the responder lifts it onto the stream (the 7.3/7.4 boundary).
+//
+// NEVER-HIJACK (Story 7.5, FR4): `writeNavigatePart` is the ONLY writer of a navigate part, and it
+// is called ONLY from within a responder's per-turn `toResponse` — never from a timer, interval, or
+// background effect. So a navigation is emitted strictly in response to the grower's turn that drove
+// it; Almond never moves the screen spontaneously.
+//
+// CHIP LABEL (Story 7.5, FR2): the part carries BOTH the `NavigateAction` (so 7.4's `apply` works
+// unchanged) AND a server-composed plain-English `label` for the action chip. The label needs the
+// meter NAME (the action carries only the id); the name rides on the `navigate` result
+// (`resolveNavigate` captured it where the match happened), so labeling needs NO second meter read
+// and the write stays synchronous on both paths. The name is never fabricated.
 
 /** The data-part type the client bridge (`useAlmondNavigation`) listens for. */
 const NAVIGATE_PART_TYPE = "data-navigate" as const;
-/** A stable part id (navigation is non-reconciling; the id gives 7.5's chip a key). */
+/** A stable part id (navigation is non-reconciling; chip keys are derived client-side per message). */
 const NAVIGATE_PART_ID = "almond-nav";
 
-function writeNavigatePart(writer: UIMessageStreamWriter, action: NavigateAction): void {
-  writer.write({ type: NAVIGATE_PART_TYPE, id: NAVIGATE_PART_ID, data: action, transient: true });
+function writeNavigatePart(
+  writer: UIMessageStreamWriter,
+  action: NavigateAction,
+  meterName?: string,
+): void {
+  const label = describeNavigation(action, meterName);
+  writer.write({
+    type: NAVIGATE_PART_TYPE,
+    id: NAVIGATE_PART_ID,
+    data: { action, label },
+    transient: true,
+  });
 }
 
 /** Narrow an unknown tool output (the live path inspects `onStepFinish` tool results). */
@@ -89,6 +116,9 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
             messages,
             tools: buildAlmondSkills(deps, actor),
             stopWhen: stepCountIs(6),
+            // Synchronous: the chip label needs only the action + the meter name, and the name rides
+            // on the tool's own result (`navigate` already loaded the meters), so there is no second
+            // read and nothing to await — the part is written in step order with no failure surface.
             onStepFinish: ({ toolResults }) => {
               for (const tr of toolResults) {
                 if (
@@ -96,7 +126,7 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                   isNavigateResult(tr.output) &&
                   tr.output.kind === "navigate"
                 ) {
-                  writeNavigatePart(writer, tr.output.action);
+                  writeNavigatePart(writer, tr.output.action, tr.output.meterName);
                 }
               }
             },
@@ -259,13 +289,14 @@ function navigationStubText(result: NavigateResult): string {
 export function createStubResponder(): AlmondResponder {
   return {
     async toResponse({ uiMessages, deps }) {
-      // A navigation turn drives the screen via the shipped skill (offline); any other turn gets the
-      // existing grounded data answer. Both stream text; only a clean navigate writes the part.
+      // A navigation turn drives the screen via the shipped resolver (offline); any other turn gets
+      // the existing grounded data answer. Both stream text; only a clean navigate writes the part.
       const text = lastUserText(uiMessages);
       let navigation: NavigateResult | null = null;
       let answer: string;
       if (isNavigationTurn(text)) {
-        const result = await navigateSkill(deps, deriveNavigateInput(text));
+        const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
+        const result = resolveNavigate(meters, deriveNavigateInput(text));
         // A turn that looks like navigation but resolves to nothing (e.g. "show me the data", or a
         // verb with no parseable target) is better served as a data question than a dead-end, so
         // fall through to the grounded answer instead of "I could not find that on your farm".
@@ -287,7 +318,7 @@ export function createStubResponder(): AlmondResponder {
           }
           writer.write({ type: "text-end", id });
           if (navigation?.kind === "navigate") {
-            writeNavigatePart(writer, navigation.action);
+            writeNavigatePart(writer, navigation.action, navigation.meterName);
           }
         },
       });
