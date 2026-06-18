@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import type { PrismaClient } from "@prisma/client";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { seedSampleFarm } from "../../../prisma/sample-farm";
 import { createTestDb, type TestDb } from "@/test/pg-harness";
 import {
@@ -18,6 +18,31 @@ import { composeStubAnswer, createStubResponder } from "./responder";
 
 // Integration test: run Almond's tool executors through Prisma against a throwaway Postgres
 // database on the local test cluster (src/test/pg-harness.ts), never the dev/prod Neon db.
+
+// Mock the Blob storage seam so the OWNER export path (which now persists to Reports via
+// storeReport -> putPrivateBlob, Story 8.6) never reaches the real Vercel Blob store. The stub
+// responder is an OFFLINE path (zero external calls is a Law), and an owner export turn flows
+// through persistence; without this mock the test would fire a real network write whenever
+// BLOB_READ_WRITE_TOKEN is present in the environment. Mocked exactly as route.db.test.ts does, so
+// the offline stub export path has no real-network surface regardless of the environment.
+const FAKE_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // a tiny "PK.." zip header
+vi.mock("@/lib/storage/blob", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/storage/blob")>();
+  return {
+    ...actual,
+    putPrivateBlob: vi.fn(async (pathname: string) => ({ pathname, byteSize: FAKE_BYTES.byteLength })),
+    getPrivateBlob: vi.fn(async () => ({
+      stream: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(FAKE_BYTES);
+          controller.close();
+        },
+      }),
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      byteSize: FAKE_BYTES.byteLength,
+    })),
+  };
+});
 
 let db: TestDb;
 let prisma: PrismaClient;
