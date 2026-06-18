@@ -16,23 +16,27 @@ const deps: AlmondToolDeps = {
   farmName: "Test Farm",
 };
 
-const READ_TOOLS = [
+// The public-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,
+// so it is read-safe and handed to every actor; the owner-only export/report skills (Epic 8) are the
+// first capability the gate will withhold.
+const PUBLIC_SKILLS = [
   "getFarmOverview",
   "getMeter",
   "getRatesSummary",
   "getReconciliation",
   "listFindings",
   "listMeters",
+  "navigate",
 ].sort();
 
 describe("buildAlmondSkills capability gating", () => {
-  it("hands an authenticated owner exactly the six read tools (no owner-only skill exists yet)", () => {
+  it("hands an authenticated owner the six read tools plus navigate (no owner-only skill exists yet)", () => {
     const skills = buildAlmondSkills(deps, { authedOwner: true });
-    expect(Object.keys(skills).sort()).toEqual(READ_TOOLS);
+    expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
   });
 
-  it("hands the public Tour actor the SAME read tools — capability gates nothing yet", () => {
+  it("hands the public Tour actor the SAME set — navigate is unconditional, capability gates nothing yet", () => {
     const skills = buildAlmondSkills(deps, { authedOwner: false });
-    expect(Object.keys(skills).sort()).toEqual(READ_TOOLS);
+    expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
   });
 });

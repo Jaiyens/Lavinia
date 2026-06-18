@@ -9,6 +9,7 @@ import {
   findingList,
   meterDetail,
   meterList,
+  navigateSkill,
   ratesSummary,
   reconciliation,
   type AlmondToolDeps,
@@ -80,7 +81,7 @@ describe("Almond tool executors over the seeded farm", () => {
     expect(stateTotal).toBe(farmAPumpNames.length);
   });
 
-  it("buildAlmondSkills exposes exactly the read-only tool set for both capability levels", () => {
+  it("buildAlmondSkills exposes the read tools + navigate for both capability levels", () => {
     const expected = [
       "getFarmOverview",
       "getMeter",
@@ -88,13 +89,14 @@ describe("Almond tool executors over the seeded farm", () => {
       "getReconciliation",
       "listFindings",
       "listMeters",
+      "navigate",
     ].sort();
     const ownerSkills = buildAlmondSkills(depsA, { authedOwner: true });
     expect(Object.keys(ownerSkills).sort()).toEqual(expected);
-    // Nothing is gated by capability yet (navigate is read-safe and arrives in Story 7.3; the
-    // owner-only export/report skills in Epic 8), so the public Tour actor gets the SAME six
-    // read tools. This parity guards the seam against a future regression once owner-only
-    // skills are added.
+    // Nothing is gated by capability yet: `navigate` (Story 7.3) is read-safe and added
+    // unconditionally, so the public Tour actor gets the SAME set. The owner-only export/report
+    // skills (Epic 8) are the first capability the gate will withhold. This parity guards the seam
+    // against a future regression once owner-only skills are added.
     const publicSkills = buildAlmondSkills(depsA, { authedOwner: false });
     expect(Object.keys(publicSkills).sort()).toEqual(expected);
   });
@@ -114,6 +116,19 @@ describe("farm scoping (cross-farm reads are impossible)", () => {
       const probe = await meterDetail(depsB, n);
       expect(probe.found).toBe(false);
     }
+  });
+
+  it("navigate is farm-scoped: farm B cannot navigate to a farm A meter", async () => {
+    // The navigate skill inherits scope from `deps` (FR7): resolving a farm A meter name against
+    // farm B's meters finds nothing and emits no action, so Almond can never drive one farm to
+    // another farm's pump. (Self-match still works: farm B navigates to its own pump.)
+    const aName = farmAPumpNames[0];
+    expect(aName).toBeTruthy();
+    const crossFarm = await navigateSkill(depsB, { open: "meter", query: aName as string });
+    expect(crossFarm).toEqual({ kind: "none" });
+
+    const ownFarm = await navigateSkill(depsB, { open: "meter", query: FARM_B_PUMP });
+    expect(ownFarm.kind).toBe("navigate");
   });
 
   it("findings are scoped to the farm", async () => {

@@ -14,6 +14,7 @@ import {
   summarizeReconciliation,
   type MeterFilters,
 } from "./shape";
+import { navigateInputSchema, resolveNavigate, type NavigateInput } from "./skills/navigate";
 
 /**
  * The read-only, farm-scoped data Almond can read. Each executor takes the SAME `deps` (a
@@ -84,6 +85,19 @@ export async function reconciliation(deps: AlmondToolDeps) {
 }
 
 /**
+ * The `navigate` skill executor (Story 7.3). Loads the farm's meters (scoped by `deps`, like every
+ * read tool) and delegates to the pure `resolveNavigate` resolver, which turns the request into a
+ * typed `NavigateAction` over the canonical surface keys — or a clarify/none/unknown-surface result.
+ * It EMITS the action as its return value; the server->client bridge that writes the `data-navigate`
+ * part and applies it via `useQueryState` setters is Story 7.4. Read-only on data: setting URL state
+ * mutates no Finding/rate/meter, so navigate is read-safe and handed to every actor (ADR-A08).
+ */
+export async function navigateSkill(deps: AlmondToolDeps, input: NavigateInput) {
+  const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
+  return resolveNavigate(meters, input);
+}
+
+/**
  * Skills handed to the model ONLY for an authenticated farm owner (ADR-A08). Empty for now —
  * the owner-only `exportSpreadsheet` / `generateReport` skills arrive in Epic 8, where this is
  * the single place they are added (they will close over `deps` like the read tools). Returning
@@ -150,12 +164,20 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
       inputSchema: z.object({}),
       execute: () => reconciliation(deps),
     }),
+
+    navigate: tool({
+      description:
+        "Drive the dashboard for the grower: open a specific meter, switch the lens (chart, table, map, or calendar), or filter the table by entity, ranch, or rate. Use this when the grower asks to see, open, show, or filter something. To open a meter, pass open: \"meter\" with a query (its name, SA id, or id). If the request matches more than one meter, this returns the candidates so you can ask which one; it never guesses, and it never navigates to a surface that does not exist.",
+      inputSchema: navigateInputSchema,
+      execute: (input) => navigateSkill(deps, input),
+    }),
   };
 
-  // Capability seam (ADR-A08): the read tools are public-safe and handed to every actor; any
-  // owner-only skill is spread in HERE only when `actor.authedOwner` is true, so the model is
-  // never handed a skill it must not call. Today `ownerOnlySkills()` is empty, so the set is the
-  // six read tools regardless of capability — the gate is wired, Epic 8 spends it.
+  // Capability seam (ADR-A08): the read tools above (including `navigate`) are public-safe and handed
+  // to every actor — `navigate` only sets URL state, so it is read-safe and added UNCONDITIONALLY.
+  // Any owner-only skill is spread in HERE only when `actor.authedOwner` is true, so the model is
+  // never handed a skill it must not call. Today `ownerOnlySkills()` is empty, so the set is the six
+  // read tools + `navigate` regardless of capability — the gate is wired, Epic 8 spends it.
   return {
     ...readTools,
     ...(actor.authedOwner ? ownerOnlySkills() : {}),
