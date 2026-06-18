@@ -1,6 +1,6 @@
 ---
 title: "Almond — Terra's Generative Operator"
-status: draft
+status: final
 created: 2026-06-17
 updated: 2026-06-17
 ---
@@ -86,9 +86,9 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 
 ### 5.1 Almond as operator — navigation skills
 
-- **FR1.** Almond can open and navigate any primary dashboard surface on the grower's behalf by setting the application's existing canonical URL state — the meter drawer (`meter`), the lens toggle (`lens`: calendar / table / chart / map), and the filters (`entity`, `ranch`, `rate`). It reuses these surfaces and adds no parallel navigation layer.
+- **FR1.** Almond can open and navigate any primary dashboard surface on the grower's behalf by setting the application's existing canonical URL state — the meter drawer (`meter`), the lens toggle (`lens`: calendar / table / chart / map), and the filters (`entity`, `ranch`, `rate`). The *surfaces* are reused (no parallel navigation UI), but because Almond runs server-side, a navigation request is emitted as a structured action that the already-mounted client panel applies to the URL state — a **server→client action bridge that is net-new work**, not existing reuse (see addendum). The model never receives a route; it requests a named navigation and the client performs it.
 - **FR2.** Every navigation Almond performs is recorded in the conversation as an **action chip** describing what it did ("Opened Pump 17", "Filtered the table to AG-4 meters", "Showed the map"), and the chip is itself a link back to that view. Because navigation changes no data, the grower's "undo" is simply navigating back.
-- **FR3.** Almond resolves plain-language references to real entities — a meter by name or SA-ID, a ranch, a legal entity, a rate schedule, a finding — using its grounded tools. When a reference is ambiguous at Batth scale (duplicate meter names across entities), Almond asks the grower to disambiguate rather than silently opening the wrong one.
+- **FR3.** Almond resolves plain-language references to real entities — a meter by name or SA-ID, a ranch, a legal entity, a rate schedule, a finding — using its grounded tools. **Ambiguity has a defined trigger: when two or more meters in the resolved farm match the requested name/number (or nothing matches), Almond asks the grower to disambiguate (or says it found nothing) rather than opening the wrong one.** Testable consequence: a request matching ≥2 meters never auto-navigates.
 - **FR4.** Almond drives the screen **only in response to a grower's request**. It never hijacks navigation unprompted; the grower's manual control of the dashboard is never overridden mid-task.
 
 ### 5.2 The skill framework
@@ -96,14 +96,14 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 - **FR5.** Almond's capabilities are organized as discrete, named **skills**, and the model selects the appropriate skill(s) for a request. The set is **extensible**: a new skill (e.g. PPTX, email delivery, a scheduled report) can be added without reworking Almond's core, its persona, or its grounding contract.
 - **FR6.** Every skill is **read-only with respect to farm and utility data.** A skill may navigate or generate an artifact; no skill mutates a finding, a rate, a meter, account data, or anything on the utility side. This extends Terra's "display, never execute" law to Almond.
 - **FR7.** Every skill is **farm-scoped by inheritance.** A skill operates only on the caller's resolved farm; no skill accepts a farm identifier or any scope from the model or client. Cross-farm action is structurally impossible (the Story 6.1 owner-scoping law).
-- **FR8.** Every skill draws its content **only from grounded farm data** via Almond's tool layer. No skill fabricates a number, a meter, a rate, or a dollar figure; when the data isn't present, the skill (and Almond) says so plainly rather than inventing.
+- **FR8.** Every skill draws its content **only from grounded farm data.** **Artifacts are assembled by deterministic code from the full grounded dataset — the model chooses the *shape* (which rows, columns, or sections), but never authors a cell value, a number, or report prose from its own context.** This is the law that makes a 183-row spreadsheet or a multi-page PDF trustworthy: there are no model-written numbers in a file a grower shares with a lender. Note the chat tools cap/summarize for readability (the meter list limits rows); those caps must NOT feed exports — export skills read a **dedicated full-data, farm-scoped path**. When data isn't present, the skill says so plainly rather than inventing.
 - **FR9.** Before producing a heavier artifact (a spreadsheet or PDF), Almond **states what it is about to make** in one short line ("I'll build a PDF of your 14 mis-rated meters and the savings on them") so the grower sees the shape before the file appears. This is a lightweight preview, not a multi-step approval gate — there is nothing destructive to approve.
 
 ### 5.3 Export skills — spreadsheet and PDF
 
-- **FR10.** **Spreadsheet skill.** Almond generates a CSV and an Excel (`.xlsx`) of what the grower asked for, **reusing the existing export logic** (`src/lib/dashboard/csv.ts` `metersCsv` and the meter-table CSV export) rather than building a parallel exporter; the `.xlsx` path extends, it does not replace.
+- **FR10.** **Spreadsheet skill.** Almond generates a CSV and an Excel (`.xlsx`) of what the grower asked for. It **reuses the pure `metersCsv` string-builder** where the shape matches; the **server-side generation, the `.xlsx` path, the bill-due-schedule exporter, and the file-delivery pipeline are net-new** (today's export is a client-side DOM download of the table shape, and `metersCsv` consumes `MeterRow`, not Almond's tool shapes — see addendum). Reuse the builder; build the server pipeline. Do not silently re-implement a parallel CSV format.
 - **FR11.** Spreadsheet content is **request-driven.** "Export my AG-4 meters", "the demand-charge findings as a spreadsheet", "this meter's last twelve bills" — Almond shapes the rows and columns from the request, grounded in real data, Excel-brained: tabular money, whole dollars, plain operator headers (pumps, meters, rates, bills), no kW/interval jargon. **v1 leads with the data growers already trust** — the meter table and the bill-due schedule; exporting findings/recommendations is secondary and deferred pending farmer validation (see §5.6's data-first instinct and Open Q4).
-- **FR12.** **PDF report skill.** Almond generates a clean PDF whose **content is whatever the grower asks for** (one meter, the mis-rated set, the whole farm, the savings found) — composed from grounded data, with sensible structure and defaults rather than one rigid template. The PDF is branded in the warm agricultural palette, written in plain operator English, money tabular and whole-dollar, and never leads with a lone screaming hero number (the hero-not-money-loudest law holds).
+- **FR12.** **PDF report skill.** Almond generates a clean PDF of what the grower asks for (one meter, the mis-rated set, the whole farm, the savings found). To keep "whatever they ask for" buildable and testable, the skill is **generative in *selection* and deterministic in *rendering*:** the model chooses which grounded sections to include and in what order; **each section is a tested, composable template that renders real data** — not free-form, model-authored layout or prose. The library of sections is the bounded, QA-able surface; the model's freedom is which to compose. Branded in the warm palette, plain operator English, money tabular and whole-dollar, never a lone screaming hero number (hero-not-money-loudest holds).
 - **FR13.** Artifact generation is correct and legible at Batth scale (183 meters): a full meter spreadsheet is complete (no silent row caps — if anything is bounded, the artifact says what was left out), and a whole-farm PDF stays readable and printable.
 
 ### 5.4 Delivery and the Reports area
@@ -115,7 +115,7 @@ FRs are globally numbered with stable IDs and grouped by capability. "Capabiliti
 
 ### 5.5 Trust, grounding, and safety
 
-- **FR18.** Almond inherits the grower's **authentication and farm scope.** An unauthenticated or farm-less caller gets no Almond action at all (mirrors the Story 6.1 route gate: 401 / clean 400).
+- **FR18.** Almond inherits the grower's **authentication and farm scope.** An unauthenticated or farm-less caller gets no Almond action (mirrors the Story 6.1 route gate: 401 / clean 400). **Generate and save skills additionally require an authenticated farm-owner:** the public demo/Tour path (which shares the chat route on the demo farm) gets read + navigate only — no Blob writes, no saved Reports — so an anonymous visitor can never write storage or a DB row. Navigation is safe to allow publicly; persistence is not.
 - **FR19.** Every generated artifact carries an **honest coverage / as-of footer.** If the farm's billing data is partial, the export says so (reusing the reconciliation/coverage honesty), so a PDF a grower shares with a lender never overclaims completeness.
 - **FR20.** Almond's **voice and persona are unchanged** across all new surfaces (action chips, previews, generated copy): the almond character, plain operator English, no exclamation marks, no kW/tariff jargon on the surface, and **no em dashes in any user-facing generated copy** (the project copy law).
 
@@ -143,10 +143,13 @@ Navigation skills driving existing surfaces (FR1–FR4); the extensible skill fr
 Mutations/write-actions; PPTX; email/outbound send; scheduled agents; chat-first front door; multi-farm. (See Non-Goals.)
 
 ### 7.3 Build priority and demo framing
-1. **Navigation skills first** — lowest risk, highest "wow," reuses everything; proves the operator model.
-2. **Spreadsheet skill** — extends the shipped CSV export; the Excel-brained grower's first real artifact.
+
+**Gate:** heavy build is gated behind farmer validation (Open Q4 / decision D14) — this sequence is *how* we build once validated, not a greenlight to start before a real grower confirms the thesis.
+
+1. **Navigation skills first** — highest "wow," proves the operator model; the dashboard surfaces are reused, but the **server→client action bridge (FR1) is the net-new piece to land first.**
+2. **Spreadsheet skill** — reuses the CSV builder, builds the server-side generation + delivery; the Excel-brained grower's first real artifact.
 3. **PDF report skill + Reports area** — the shareable proof of value; the demo's closer.
-4. **Surfacing** — onboarding nudge + action-flavored starters so the powers are discoverable.
+4. **Surfacing** — gentle onboarding nudge + action-flavored starters so the powers are discoverable without overbearing.
 The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away with a spreadsheet and a lender-ready PDF.
 
 ## 8. Cross-Cutting NFRs
@@ -155,7 +158,7 @@ The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away w
 - **Grounding integrity.** Fabrication rate is effectively zero — artifacts and answers are tool-sourced; absence is stated, never filled with a guess.
 - **Determinism & testability.** The model boundary stays injected (offline stub default, Vercel AI Gateway when keyed); dev/CI make zero external calls. Export shaping is pure and unit-tested; generated artifact bytes are verified by tests; navigation actions are deterministic.
 - **Performance (direction approved; numbers to set).** Navigation feels instant (no full reload). A meter-table spreadsheet generates in a few seconds; a whole-farm PDF in roughly ten seconds or less. Generation is serverless-safe (pure-JS libraries, no headless Chromium — see addendum). Speed is a felt requirement: a slow operator will not be trusted by a skeptical grower.
-- **Stays native to a constantly changing dashboard.** The dashboard evolves all the time; Almond's navigation must not drift out of sync with it. Navigation is defined against the single canonical surface contract — the closed URL-state key set (`lens | entity | ranch | rate | meter`) and the lens registry — as one source of truth, so a dashboard change updates Almond's reach in one place rather than scattering hardcoded routes. Almond must never offer to open a surface that no longer exists.
+- **Stays native to a constantly changing dashboard.** The dashboard evolves all the time; Almond's navigation must not drift out of sync. **Today the URL-state keys are bare string literals duplicated across many components and only the lens *values* are centralized (`lens.ts`); this requirement therefore includes *building* a single canonical surface registry** (the closed `lens | entity | ranch | rate | meter` set plus each lens) that both the dashboard and Almond read from, so a dashboard change updates Almond's reach in one place. Almond must never offer to open a surface that no longer exists. (Net-new, not an existing property — see addendum.)
 - **Mobile-first.** Download, the Reports area, and generated PDFs all work and read well on a phone; PDFs are printable.
 - **Accessibility & motion.** Action chips, previews, and the Reports area are keyboard-navigable with adequate tap targets; streamed actions/answers announce via a live region; Magic UI effects degrade gracefully under `prefers-reduced-motion`.
 - **Honest limits.** No silent truncation: if any artifact bounds its content (row caps, page limits), it states what was left out.
@@ -163,12 +166,12 @@ The demo story is UJ-1 → UJ-2: ask, watch Almond drive the screen, walk away w
 
 ## 9. Success Metrics
 
-- **Activation:** % of growers who complete at least one Almond-driven *action* (a navigation or an export) in their first session. Direction approved; numeric target to set. Note: because Almond is an addition (not the day-one draw), expect this modest early and climbing as growers grow AI-native — track the *trend*, not just the level.
-- **Value-via-Almond:** share of sessions where the grower reaches value through Almond rather than manual UI navigation; count of artifacts generated per active grower.
-- **Shareable proof:** count of PDFs/spreadsheets saved or downloaded — the artifact is the thing that leaves the product and pulls Terra into outside relationships.
-- **Retention proxy:** growers who generate an artifact return at a higher rate than those who don't.
+- **SM1 — Activation:** % of growers who complete at least one Almond-driven *action* (a navigation or an export) in their first session. Direction approved; numeric target to set. Because Almond is an addition (not the day-one draw), expect this modest early and climbing as growers grow AI-native — track the *trend*, not just the level.
+- **SM2 — Value-via-Almond:** share of sessions where the grower reaches value through Almond rather than manual UI navigation; count of artifacts generated per active grower.
+- **SM3 — Shareable proof:** count of PDFs/spreadsheets saved or downloaded — the artifact is what leaves the product and pulls Terra into outside relationships.
+- **SM4 — Retention proxy:** growers who generate an artifact return at a higher rate than those who don't.
 
-**Counter-metrics (watch these or the wedge is hollow):**
+**Counter-metrics (watch these or the value is hollow):**
 - **Fabrication / overclaim rate** — must stay ~0; any artifact stating a number not in the data is a critical failure.
 - **Wrong-target rate** — Almond opening or exporting the wrong meter/entity; disambiguation should catch this.
 - **Stale/overclaimed coverage on shared artifacts** — a PDF that hides partial data.

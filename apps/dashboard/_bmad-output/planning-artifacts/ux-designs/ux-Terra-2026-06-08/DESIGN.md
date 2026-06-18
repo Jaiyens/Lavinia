@@ -1,7 +1,7 @@
 ---
 name: Terra
 status: final
-updated: 2026-06-15
+updated: 2026-06-17
 colors:
   surface: '#faf9f4'
   surface-dim: '#ece9e0'
@@ -136,6 +136,12 @@ components:
   - severity-badge
   - bottom-sheet
   - skeleton
+  - almond-launcher
+  - almond-panel
+  - action-chip
+  - artifact-card
+  - reports-list
+  - coachmark
 ---
 
 ## Brand & Style
@@ -234,6 +240,12 @@ Per-component visual specs. The five the slice rebuilds first — **card, kpi-ca
 - **severity-badge** — `info` / `watch` / `act`. `act` = `alert` fill/accent; `watch` = charcoal weight + label, no fill; `info` = muted. No fourth state, no extra hue.
 - **bottom-sheet** — mobile findings collapse: a peeking summary ("3 findings · ~$78k ↑") at `e3` that expands to the rail's content; drag/tap to expand at `{motion.duration-slow}`.
 - **skeleton** *(new)* — loading placeholder that matches the final element's shape and rhythm (card outline, table rows, chart baseline). A slow shimmer in `surface-container` → `surface-container-high`. Replaces every spinner; the layout never jumps when data lands.
+- **almond-launcher** *(new)* — the operator copilot's resting state: a calm corner affordance (FAB-scale) in `surface-container-lowest` with a hairline `outline-variant` and the Almond mark, resting `{elevation.e1-resting}`, hover → `e2` + `{elevation.hover-lift}`, `:active` → `{elevation.press}`. Never pulses, never badges, never auto-opens. On first visit only, a one-time `coachmark` points to it.
+- **almond-panel** *(new)* — the conversation surface, opened from the launcher at `{elevation.e3-overlay}`; desktop = floating panel, mobile = full-height sheet (same grammar as `meter-drawer`). Slides in at `{motion.duration-slow}`, closes to the screen it came from. Streams answers into an `aria-live` region. Holds the composer, conversation, `action-chip`s, skill previews, and `artifact-card`s.
+- **action-chip** *(new)* — a compact `rounded.DEFAULT` chip in the panel recording a navigation Almond performed ("Opened Pump 21"); `surface-container-low`, `label`/`caption` type, a small lead icon, hover lift, `:active` press; tapping re-applies that view. Reads as a record of what happened, not a destructive control.
+- **artifact-card** *(new)* — a `card` in the panel for a finished file: a kind glyph (sheet / PDF), the file name, an honest coverage/as-of line in `caption`, and a primary **Download**. Any money inside is `num-tabular`, never a hero number. A saved copy appears in `reports-list`.
+- **reports-list** *(new)* — in the Account page: a list of `card` rows, one per saved artifact (kind glyph, name, the request that made it, date, re-download). Empty state is calm ("Nothing saved yet"), not an apology. Farm-scoped; private.
+- **coachmark** *(new)* — a single, dismissible one-time pointer to the launcher on first visit, in plain operator English ("Ask Almond to show your most expensive meter"). Appears once, never returns; honors reduced-motion (no float). This is the whole of Almond's nudging — there is no second prompt, no badge, no recurring tip.
 
 ## Do's and Don'ts
 
@@ -251,3 +263,5 @@ Per-component visual specs. The five the slice rebuilds first — **card, kpi-ca
 - **Don't** surface vanity metrics (soil %, health %) as heroes; the hero story is dollars.
 - **Don't** mix typefaces or radius systems for hierarchy; use weight, size, and the one shape scale.
 - **Don't** add a third status color; `watch` is typography, not a hue.
+- **Do** keep Almond gentle: it opens only when summoned, nudges exactly once (the coachmark), and never badges, pulses, blocks, or nags. The grower came for the dashboard; Almond is on call, not in the way.
+- **Don't** let Almond auto-open, stack notifications, or animate to draw attention. A pushy assistant loses a non-AI-native grower on the first session.
