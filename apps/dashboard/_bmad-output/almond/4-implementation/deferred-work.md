@@ -27,3 +27,17 @@ which produces structured navigate input and is unaffected.
   live path emits one `data-navigate` with the resolved action would close the AC5 runtime gap and
   exercise the `createUIMessageStream` + `writer.merge` ordering. [responder.ts, almond-launcher.tsx]
   (Acceptance Auditor nit)
+
+## Deferred from: code review of 10-1-action-and-export-flavored-starters (2026-06-18)
+
+- **Manual in-app verification of the new starters** — confirm on the signed-in app that an export/PDF
+  starter shows on Almond's empty chat and drives the real skill when tapped, and that NO export/PDF
+  starter shows on `/tour`. Not runnable in the headless review/dev environment; the gating laws are
+  proven by the pure unit tests + production build. Disclosed in the story's Dev Agent Record.
+  [Story 10.1 Task 5] (Acceptance Auditor)
+- **(Possible follow-up, pending the Story 10.1 decision) `navigate` cannot resolve a finding /
+  "opportunity"** — `resolveNavigate` (src/lib/almond/skills/navigate.ts) handles meter/lens/entity/
+  ranch/rate only. The "Open my biggest opportunity" starter (FR21's example) therefore has no direct
+  navigate target; the model must `listFindings` then navigate to that meter, or answer as a read. If
+  the Story 10.1 review decision keeps the starter copy, consider an Epic 7 enhancement that lets
+  `navigate` open the top/named finding directly. [src/lib/almond/skills/navigate.ts] (Edge Case Hunter, Med)

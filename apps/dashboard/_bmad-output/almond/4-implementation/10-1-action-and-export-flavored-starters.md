@@ -4,7 +4,7 @@ baseline_commit: e54c0aece4b2d9126f3c15392abe996dbd1e0cd6
 
 # Story 10.1: Action and export-flavored starters
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Effort: Almond — Terra's Generative Operator (Epics 7-10). Tracked in the per-effort folder
@@ -155,6 +155,34 @@ launcher.)
         action (drives the real skill). On `/tour`, confirm NO export/PDF starter shows. Record what you
         verified in the Dev Agent Record. (If a finding-gated starter does not appear, confirm the demo/
         owner farm actually has open findings.)
+
+### Review Findings
+
+Code review 2026-06-18 (Blind Hunter + Edge Case Hunter + Acceptance Auditor, Opus 4.8). All six ACs
+judged satisfied; no crash-class defect. Findings below.
+
+- [x] [Review][Decision] "Open my biggest opportunity" has no direct `navigate` target — the shipped
+  `navigate` skill resolves only meter / lens / entity / ranch / rate (verified in
+  `src/lib/almond/skills/navigate.ts`), not a finding or "opportunity". The starter is spec-faithful
+  (FR21's exact example) and AC3 still holds (it behaves as a typed request would: the model lists
+  findings then navigates to that meter, or answers as a read), but it is the only starter not backed
+  1:1 by a skill, and it is lexically close to the retained read question. Decide: keep the copy (and
+  defer navigate finding-resolution to an Epic 7 enhancement) vs reword to a guaranteed-navigable target
+  (e.g. "Open my costliest meter"). [src/copy/en.ts, src/lib/almond/starters.ts] — **RESOLVED
+  2026-06-18: keep the copy** (spec-faithful FR21 example; AC3 still holds). The navigate
+  finding-resolution gap is logged as a deferred Epic 7 enhancement in `deferred-work.md`.
+- [x] [Review][Patch] 4-cap drops the wrong-rate read question for owners-with-findings — for
+  `canExport && findingCount>0`, `.slice(0,4)` keeps `[open, export, pdf, costliestMeters]` and drops
+  `wrongRate` (the product's #1 lever) and `dataCompleteness`. Reorder the read tail to
+  `wrongRate, costliestMeters, dataCompleteness` so the wrong-rate question survives the cap for the
+  highest-value users; this also makes the owner-with-findings set exactly match the spec's recommended
+  4-tuple. No test change needed (order beyond position 0 is not pinned). [src/lib/almond/starters.ts:39]
+  — **APPLIED 2026-06-18:** read tail reordered to `wrongRate, costliestMeters, dataCompleteness`; lint
+  clean and 18 starter/copy tests green.
+- [x] [Review][Defer] Manual in-app verification not performed (headless env) — confirm an export
+  starter shows and drives the skill on the signed-in app, and is absent on `/tour`. Disclosed in the
+  Dev Agent Record; the gating laws are proven by the unit tests + production build. Pre-existing
+  (environment limitation, not a code defect). [story Task 5]
 
 ## Dev Notes
 
@@ -366,3 +394,8 @@ Modified:
   capability from both launcher mount points, and updated the starter + copy-law tests. typecheck +
   lint + build green; full suite 843/845 (2 pre-existing Story 9.3 Blob db-test failures, confirmed on
   baseline). Status: ready-for-dev -> in-progress -> review.
+- 2026-06-18 — Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, Opus 4.8). All 6 ACs
+  satisfied; no crash-class defect. 1 decision (resolved: keep the spec-faithful "Open my biggest
+  opportunity" copy, defer navigate finding-resolution to Epic 7), 1 patch applied (reorder the read
+  tail so wrong-rate survives the 4-cap for owners-with-findings), 1 deferred (manual in-app verify),
+  5 dismissed. Status: review -> done.

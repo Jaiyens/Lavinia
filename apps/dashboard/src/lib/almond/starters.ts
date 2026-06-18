@@ -36,7 +36,9 @@ export function almondStarters(ctx: StarterContext): string[] {
   if (ctx.canExport) out.push(s.exportMeters); // exportSpreadsheet (owner-only); every farm has meters
   if (ctx.canExport && hasFindings) out.push(s.misRatedPdf); // generateReport (owner-only)
   // Always-safe read questions round out the set (and carry it entirely for a no-finding Tour visitor).
-  out.push(s.costliestMeters, s.wrongRate, s.dataCompleteness);
+  // wrongRate leads the tail so the #1-lever question survives the 4-cap for an owner who has findings
+  // (whose first three slots are the open/export/PDF actions).
+  out.push(s.wrongRate, s.costliestMeters, s.dataCompleteness);
   // Cap at four (mobile-first restraint; surfacing stays gentle, FR22). De-dupe defensively.
   return [...new Set(out)].slice(0, 4);
 }
