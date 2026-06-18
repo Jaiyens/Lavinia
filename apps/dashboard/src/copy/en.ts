@@ -490,6 +490,21 @@ export const en = {
       // no exclamation marks, no em dashes. Every number is authored deterministically; a missing
       // value shows a coverage label, never a fabricated or zero figure.
       report: {
+        // The composed document itself (Story 9.2): the title block stamped at the top of every PDF
+        // and the bounds note the composer states when a section is capped, so nothing is ever
+        // silently truncated. Plain operator words only, no kW/interval jargon, no exclamation marks,
+        // no em dashes.
+        document: {
+          // The document eyebrow above the farm name, so a printed page reads as a Terra report.
+          eyebrow: "Terra report",
+          // The document title names the farm; the farm name is grounded data, never a claim.
+          title: (farmName: string): string => `${farmName}`,
+          // A single plain note stating what the PDF bounds when a section is capped, so a reader
+          // never mistakes a shortened section for the whole picture. The full data is always in the
+          // spreadsheet export, which has no cap. `shown`/`total` are deterministic counts.
+          cappedNote: (sectionName: string, shown: number, total: number): string =>
+            `${sectionName} shows the top ${shown} of ${total}. The spreadsheet export lists all ${total} with no cap.`,
+        },
         // Farm-summary section: the farm at a glance, a few measured stats, never a screaming hero.
         summary: {
           eyebrow: "Farm summary",
