@@ -55,8 +55,8 @@ beforeEach(() => {
 });
 
 describe("GENERATED_REPORT_KINDS", () => {
-  it("mirrors the export tables (meters, billDue)", () => {
-    expect([...GENERATED_REPORT_KINDS]).toEqual(["meters", "billDue"]);
+  it("carries the export tables plus the PDF report kind (Story 9.3)", () => {
+    expect([...GENERATED_REPORT_KINDS]).toEqual(["meters", "billDue", "report"]);
   });
 });
 

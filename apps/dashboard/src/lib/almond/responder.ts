@@ -33,7 +33,12 @@ import {
   type ExportSpreadsheetInput,
   type ExportSpreadsheetResult,
 } from "./skills/export-spreadsheet";
-import { storeReport } from "./reports/store";
+import {
+  runGenerateReport,
+  type GenerateReportInput,
+  type GenerateReportResult,
+} from "./skills/generate-report";
+import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import { buildAlmondSkills, type AlmondActor, type AlmondToolDeps } from "./tools";
 
 /**
@@ -106,27 +111,28 @@ function isNavigateResult(output: unknown): output is NavigateResult {
   return typeof output === "object" && output !== null && "kind" in output;
 }
 
-// --- The export download bridge (Story 8.5) + Reports persistence (Story 8.6) -------------------
+// --- The file download bridge (Story 8.5 / 9.3) + Reports persistence (Story 8.6) ---------------
 //
-// The `exportSpreadsheet` skill (owner-only) builds the file's bytes; the responder lifts them onto
-// the SAME UI-message stream as a transient `data-report` part the panel renders as a download card.
-// The bytes are base64-encoded so they ride the JSON stream (and `useChat`'s `onData`) intact, then
-// the panel rebuilds a Blob client-side. `transient: true` keeps the (potentially large) bytes OUT
-// of message history, so they are delivered once and never replayed or persisted. The model-visible
-// tool output is collapsed to a tiny text summary (`toModelOutput` in tools.ts), so the bytes never
-// enter the prompt window. A typed `empty` / `error` outcome is NOT written as a download card - the
-// preview/answer text carries it - so a failed or empty export never produces a partial download.
+// The `exportSpreadsheet` (8.5) and `generateReport` (9.3) skills (both owner-only) build a file's
+// bytes; the responder lifts them onto the SAME UI-message stream as a transient `data-report` part
+// the panel renders as a download card. The bytes are base64-encoded so they ride the JSON stream
+// (and `useChat`'s `onData`) intact, then the panel rebuilds a Blob client-side. `transient: true`
+// keeps the (potentially large) bytes OUT of message history, so they are delivered once and never
+// replayed or persisted. The model-visible tool output is collapsed to a tiny text summary
+// (`toModelOutput` in tools.ts), so the bytes never enter the prompt window. A typed `empty` /
+// `error` outcome is NOT written as a download card - the preview/answer text carries it - so a failed
+// or empty file never produces a partial download.
 //
 // PERSISTENCE (Story 8.6): for an AUTHED OWNER, the same bytes are ALSO kept in the grower's Reports
 // before the card is written: `storeReport` writes them to a private blob and records a
 // GeneratedReport row, and the card gains a "saved to Reports" line (`saved: true`). The public Tour
-// is never an owner, so its export is never stored (capability-by-omission) and its card has no
-// saved line. Persistence is best-effort relative to the download: if the store fails, the grower
-// STILL gets the file (the card is written with `saved: false`) rather than losing the download.
+// is never an owner, so its file is never stored (capability-by-omission) and its card has no saved
+// line. Persistence is best-effort relative to the download: if the store fails, the grower STILL
+// gets the file (the card is written with `saved: false`) rather than losing the download.
 
 /** The data-part type the client download card listens for. */
 const REPORT_PART_TYPE = "data-report" as const;
-/** A stable part id (a turn produces at most one export; non-reconciling, like the navigate part). */
+/** A stable part id (a turn produces at most one file; non-reconciling, like the navigate part). */
 const REPORT_PART_ID = "almond-report";
 
 /** The payload the panel needs to offer the download: the base64 bytes plus the server-authored
@@ -151,23 +157,74 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Persist the export to the owner's Reports (8.6) when the caller is an authed owner, then write the
- * bytes onto the stream as a transient `data-report` download card. Called only for a clean `file`
- * result; an empty/error outcome is surfaced as text, never an empty download.
+ * A clean `file` outcome from either file skill, normalized to the single shape the persist-and-stream
+ * path needs. The export (8.5) and report (9.3) results share every download field; they differ only
+ * in the persisted `kind` (the export's table, vs `"report"` for a PDF), so the caller supplies that.
+ * Carrying the bytes + metadata here lets ONE function serve both skills with no duplicated logic.
+ */
+type StreamableFile = {
+  kind: GeneratedReportKind;
+  preview: string;
+  fileName: string;
+  contentType: string;
+  bytes: Uint8Array;
+  meterCount: number;
+  coverageAsOf: string | null;
+  params: ReportToStore["params"];
+};
+
+/** Normalize a clean export result into the common streamable-file shape, or null for empty/error
+ *  (no download is written for those). The persisted kind is the export's table. */
+function exportFile(result: ExportSpreadsheetResult): StreamableFile | null {
+  if (result.kind !== "file") return null;
+  return {
+    kind: result.table,
+    preview: result.preview,
+    fileName: result.fileName,
+    contentType: result.contentType,
+    bytes: result.bytes,
+    meterCount: result.meterCount,
+    coverageAsOf: result.coverageAsOf,
+    params: result.params,
+  };
+}
+
+/** Normalize a clean report result into the common streamable-file shape, or null for empty/error.
+ *  A PDF is always persisted under the `"report"` kind. */
+function reportFile(result: GenerateReportResult): StreamableFile | null {
+  if (result.kind !== "file") return null;
+  return {
+    kind: "report",
+    preview: result.preview,
+    fileName: result.fileName,
+    contentType: result.contentType,
+    bytes: result.bytes,
+    meterCount: result.meterCount,
+    coverageAsOf: result.coverageAsOf,
+    params: result.params,
+  };
+}
+
+/**
+ * Persist a generated file to the owner's Reports (8.6) when the caller is an authed owner, then write
+ * the bytes onto the stream as a transient `data-report` download card. Serves BOTH the spreadsheet
+ * (8.5) and the PDF report (9.3): the caller normalizes its result to a `StreamableFile` first, so a
+ * null (empty/error outcome) writes no card - a failed or empty file is surfaced as text, never an
+ * empty download.
  *
  * Persistence runs ONLY for an authed owner (`actor.authedOwner` + a `userId`): the public Tour is
- * never an owner, so its export is never stored. A store failure does not cost the grower the
+ * never an owner, so its file is never stored. A store failure does not cost the grower the
  * download — the card is still written, just with `saved: false`. Scope (farmId) and authorship
  * (userId) come from `deps`/`actor`, never from the model.
  */
 async function persistAndWriteReportPart(
   writer: UIMessageStreamWriter,
-  result: ExportSpreadsheetResult,
+  file: StreamableFile | null,
   deps: AlmondToolDeps,
   actor: AlmondActor,
   requestText: string,
 ): Promise<void> {
-  if (result.kind !== "file") return;
+  if (file === null) return;
 
   let saved = false;
   if (actor.authedOwner) {
@@ -175,13 +232,13 @@ async function persistAndWriteReportPart(
       await storeReport(
         { prisma: deps.prisma, farmId: deps.farmId, createdById: actor.userId },
         {
-          kind: result.table,
-          title: result.fileName,
-          requestText: requestText.trim() || result.preview,
-          coverageAsOf: result.coverageAsOf,
-          params: result.params,
-          bytes: result.bytes,
-          contentType: result.contentType,
+          kind: file.kind,
+          title: file.fileName,
+          requestText: requestText.trim() || file.preview,
+          coverageAsOf: file.coverageAsOf,
+          params: file.params,
+          bytes: file.bytes,
+          contentType: file.contentType,
         },
       );
       saved = true;
@@ -193,10 +250,10 @@ async function persistAndWriteReportPart(
   }
 
   const data: AlmondReportData = {
-    fileName: result.fileName,
-    contentType: result.contentType,
-    base64: toBase64(result.bytes),
-    meterCount: result.meterCount,
+    fileName: file.fileName,
+    contentType: file.contentType,
+    base64: toBase64(file.bytes),
+    meterCount: file.meterCount,
     saved,
   };
   writer.write({ type: REPORT_PART_TYPE, id: REPORT_PART_ID, data, transient: true });
@@ -204,6 +261,14 @@ async function persistAndWriteReportPart(
 
 /** Narrow an unknown tool output to an export result (the live path inspects `onStepFinish`). */
 function isExportResult(output: unknown): output is ExportSpreadsheetResult {
+  if (typeof output !== "object" || output === null || !("kind" in output)) return false;
+  const kind = (output as { kind: unknown }).kind;
+  return kind === "file" || kind === "empty" || kind === "error";
+}
+
+/** Narrow an unknown tool output to a generate-report result. Same outcome shape as the export, so
+ *  this checks the discriminant kinds the report skill returns. */
+function isReportResult(output: unknown): output is GenerateReportResult {
   if (typeof output !== "object" || output === null || !("kind" in output)) return false;
   const kind = (output as { kind: unknown }).kind;
   return kind === "file" || kind === "empty" || kind === "error";
@@ -229,8 +294,8 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
             tools: buildAlmondSkills(deps, actor),
             stopWhen: stepCountIs(6),
             // The navigate chip is synchronous (the name rides on the tool result), but a clean
-            // export now also PERSISTS to Reports for an owner (8.6), which is async, so the step
-            // handler awaits that write before the card is streamed.
+            // export or report now also PERSISTS to Reports for an owner (8.6), which is async, so the
+            // step handler awaits that write before the card is streamed.
             onStepFinish: async ({ toolResults }) => {
               for (const tr of toolResults) {
                 if (!tr) continue;
@@ -245,7 +310,12 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                 // stream as a download card (8.5). An empty or errored export writes no card - the
                 // model's text carries that outcome instead.
                 if (tr.toolName === "exportSpreadsheet" && isExportResult(tr.output)) {
-                  await persistAndWriteReportPart(writer, tr.output, deps, actor, requestText);
+                  await persistAndWriteReportPart(writer, exportFile(tr.output), deps, actor, requestText);
+                }
+                // A clean PDF report (9.3) follows the SAME path: persist to Reports, then stream the
+                // bytes as a download card. Empty/error outcomes write no card (text carries them).
+                if (tr.toolName === "generateReport" && isReportResult(tr.output)) {
+                  await persistAndWriteReportPart(writer, reportFile(tr.output), deps, actor, requestText);
                 }
               }
             },
@@ -399,6 +469,14 @@ export function deriveNavigateInput(text: string): NavigateInput {
 // the public Tour, like the model, never gets an export.
 
 const EXPORT_VERB = /\b(export|download|spreadsheet|excel|xlsx|csv)\b/;
+// A PDF/report request. Checked BEFORE the export verb so "download a pdf" / "make me a report" drive
+// the report skill, while "export"/"spreadsheet"/"csv" still drive the spreadsheet (8.5).
+const REPORT_VERB = /\b(pdf|report|printout|print out|write[- ]?up|one[- ]?pager)\b/;
+
+/** Whether the latest user turn asks for a PDF report (vs a spreadsheet). */
+export function isReportTurn(text: string): boolean {
+  return REPORT_VERB.test(text);
+}
 
 /** Whether the latest user turn asks for a spreadsheet/download. */
 export function isExportTurn(text: string): boolean {
@@ -412,6 +490,21 @@ export function isExportTurn(text: string): boolean {
 export function deriveExportInput(text: string): ExportSpreadsheetInput {
   if (/\b(bill|due|closing|close date|read date)\b/.test(text)) return { table: "billDue" };
   return { table: "meters" };
+}
+
+/** Parse a deterministic `GenerateReportInput` from the (lower-cased) user text. The offline stub
+ *  picks the SECTION SHAPE from a few plain words; a free-text rate/entity/ranch filter and a meter
+ *  name are NOT derived (the same reason export/navigate do not - lower-cased text vs the model's
+ *  structured value), so the offline report is the whole farm, which is the honest default. A request
+ *  that names savings or rates gets those sections too; otherwise it defaults to the farm summary plus
+ *  the meter table (a non-empty whole-farm document). */
+export function deriveReportInput(text: string): GenerateReportInput {
+  const sections: GenerateReportInput["sections"] = ["summary"];
+  if (/\b(save|saving|savings|money|cheaper)\b/.test(text)) sections.push("savings");
+  if (/\b(rate|tariff|mis-?rated|wrong rate)\b/.test(text)) sections.push("misRated");
+  // Always include the full meter table so the whole-farm document lists every meter (no cap).
+  sections.push("meterTable");
+  return { sections };
 }
 
 /** A short, grounded acknowledgment the stub streams alongside (navigate) or instead of the part. */
@@ -432,17 +525,25 @@ function navigationStubText(result: NavigateResult): string {
 export function createStubResponder(): AlmondResponder {
   return {
     async toResponse({ uiMessages, deps, actor }) {
-      // Turn routing, in capability order: an OWNER's export turn builds a file (offline); a
-      // navigation turn drives the screen; any other turn gets the grounded data answer. The export
-      // branch is gated on `actor.authedOwner` for parity with the factory gate - the public Tour
-      // never gets an export (capability-by-omission), exactly as the model is never handed the skill.
+      // Turn routing, in capability order: an OWNER's PDF-report turn builds a report (offline); an
+      // OWNER's export turn builds a spreadsheet (offline); a navigation turn drives the screen; any
+      // other turn gets the grounded data answer. The report and export branches are gated on
+      // `actor.authedOwner` for parity with the factory gate - the public Tour never gets either
+      // (capability-by-omission), exactly as the model is never handed those skills. The report verb
+      // is checked BEFORE the export verb so "download a pdf" builds a PDF, not a spreadsheet.
       const text = lastUserText(uiMessages);
       let navigation: NavigateResult | null = null;
-      let report: ExportSpreadsheetResult | null = null;
+      let file: StreamableFile | null = null;
       let answer: string;
-      if (actor.authedOwner && isExportTurn(text)) {
+      if (actor.authedOwner && isReportTurn(text)) {
+        const result = await runGenerateReport(deps, deriveReportInput(text));
+        file = reportFile(result);
+        // The text carries the one-line preview on success, or the typed empty/error line otherwise;
+        // a download card is only written for a clean file (below), never for empty/error.
+        answer = result.kind === "file" ? result.preview : result.message;
+      } else if (actor.authedOwner && isExportTurn(text)) {
         const result = await runExportSpreadsheet(deps, deriveExportInput(text));
-        report = result;
+        file = exportFile(result);
         // The text carries the one-line preview on success, or the typed empty/error line otherwise;
         // a download card is only written for a clean file (below), never for empty/error.
         answer = result.kind === "file" ? result.preview : result.message;
@@ -472,11 +573,11 @@ export function createStubResponder(): AlmondResponder {
           if (navigation?.kind === "navigate") {
             writeNavigatePart(writer, navigation.action, navigation.meterName);
           }
-          // A clean offline export persists to the owner's Reports (8.6, owner-gated above) and then
-          // writes the download card. The stub only reaches here for an authed owner, exactly as the
-          // model is only ever handed the export skill for an owner (capability parity).
-          if (report?.kind === "file") {
-            await persistAndWriteReportPart(writer, report, deps, actor, text);
+          // A clean offline export OR report persists to the owner's Reports (8.6, owner-gated above)
+          // and then writes the download card. The stub only reaches here for an authed owner, exactly
+          // as the model is only ever handed those skills for an owner (capability parity).
+          if (file !== null) {
+            await persistAndWriteReportPart(writer, file, deps, actor, text);
           }
         },
       });

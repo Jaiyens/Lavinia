@@ -446,9 +446,11 @@ export const en = {
         // grower knows exactly what they are getting before they open it.
         skill: {
           // Plain name of each table type, used in the preview line and on the download card.
+          // `report` is the PDF report kind (Story 9.3); the spreadsheet kinds are the tables above.
           kind: {
             meters: "meters",
             billDue: "bill due dates",
+            report: "report",
           },
           // The one-line preview Almond states before the file lands ("a lightweight preview, NOT an
           // approval gate"): how many meters, which table, and any filter applied. Singular/plural is
@@ -580,6 +582,50 @@ export const en = {
           demandLabel: "Demand charge",
           // Shown for a field with no value on file (never an invented value).
           notOnFile: "Not on file",
+        },
+        // The generateReport skill (Story 9.3): a one-line statement of the PDF Almond is about to
+        // build, then the file itself as a download card (the SAME data-report card the spreadsheet
+        // uses). Plain operator words only, no kW/interval jargon, no exclamation marks, no em dashes.
+        // The shape is stated plainly so the grower knows what they are getting before it appears.
+        skill: {
+          // The default whole-document title (no single-meter scope), used in the filename slug.
+          defaultTitle: "report",
+          // Plain operator name of each section, woven into the one-line shape statement in selection
+          // order, so the grower reads exactly what the PDF will contain before it lands.
+          sectionName: {
+            summary: "your farm's totals",
+            meterTable: "every meter",
+            misRated: "the meters that may be on the wrong rate",
+            savings: "the dollars on each",
+            singleMeter: "the meter detail",
+          },
+          // The one-line shape statement Almond gives before the file appears ("a one or two page
+          // summary: ..."). Lists the chosen sections in order; never an approval gate, just a courtesy
+          // so the grower sees the shape first. A filter clause (e.g. "for AG-A1") is appended when set.
+          preview: (parts: string, filter: string | null): string => {
+            const where = filter ? ` ${filter}` : "";
+            return `I will put together a one or two page summary${where}: ${parts}.`;
+          },
+          // Fallback when the model chose no recognizable section (the skill defaults to a farm summary
+          // plus the meter table, so the PDF is never empty); states that plain default.
+          defaultParts: "your farm's totals and every meter",
+          // The filter clause woven into the shape statement (e.g. "for AG-A1", "in North ranch"). Only
+          // the one filter the grower asked for is named; an unset filter contributes nothing.
+          filterClause: {
+            rate: (rate: string): string => `for ${rate}`,
+            entity: (entity: string): string => `for ${entity}`,
+            ranch: (ranch: string): string => `for ${ranch} ranch`,
+          },
+          // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
+          // partial file). Calm operator English, offers a retry path by re-asking.
+          error: "I could not build that report. Ask me to try it again.",
+          // Honest empty case: a filter (or an empty farm) left no meters, so there is nothing to put
+          // in a report. Never an empty PDF.
+          empty: "No meters match that, so there is nothing to put in a report.",
+          // Shown when a single-meter report was asked for but the named meter was not found, so the
+          // grower can correct the name rather than receive a report about the wrong pump.
+          meterNotFound: (query: string): string =>
+            `I could not find a meter matching "${query}", so I did not build that report.`,
         },
       },
     },

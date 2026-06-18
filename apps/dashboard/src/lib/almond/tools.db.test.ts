@@ -106,7 +106,7 @@ describe("Almond tool executors over the seeded farm", () => {
     expect(stateTotal).toBe(farmAPumpNames.length);
   });
 
-  it("buildAlmondSkills gates exportSpreadsheet to the owner; the public Tour gets only the read-safe set", () => {
+  it("buildAlmondSkills gates the file-writing skills to the owner; the public Tour gets only the read-safe set", () => {
     const readSafe = [
       "getFarmOverview",
       "getMeter",
@@ -116,14 +116,19 @@ describe("Almond tool executors over the seeded farm", () => {
       "listMeters",
       "navigate",
     ].sort();
-    // The authenticated owner gets the read-safe set + the owner-only export skill (Story 8.5).
+    // The authenticated owner gets the read-safe set + the owner-only file skills: exportSpreadsheet
+    // (Story 8.5) and generateReport (Story 9.3).
     const ownerSkills = buildAlmondSkills(depsA, { authedOwner: true, userId: "user_owner" });
-    expect(Object.keys(ownerSkills).sort()).toEqual([...readSafe, "exportSpreadsheet"].sort());
-    // The public Tour actor gets ONLY the read-safe set: exportSpreadsheet is withheld by omission,
-    // so the model can never call it for the demo farm. `navigate` (Story 7.3) stays unconditional.
+    expect(Object.keys(ownerSkills).sort()).toEqual(
+      [...readSafe, "exportSpreadsheet", "generateReport"].sort(),
+    );
+    // The public Tour actor gets ONLY the read-safe set: the file-writing skills are withheld by
+    // omission, so the model can never call them for the demo farm. `navigate` (Story 7.3) stays
+    // unconditional.
     const publicSkills = buildAlmondSkills(depsA, { authedOwner: false, userId: null });
     expect(Object.keys(publicSkills).sort()).toEqual(readSafe);
     expect(Object.keys(publicSkills)).not.toContain("exportSpreadsheet");
+    expect(Object.keys(publicSkills)).not.toContain("generateReport");
   });
 });
 
