@@ -256,6 +256,21 @@ export function MeterDrawer({
                 {t.periodRange(formatDate(d.latest.start), formatDate(d.latest.close))}
               </p>
 
+              {/* When the demand charge dominates the bill, explain it in plain language first:
+                  one short spike set the whole month's charge. Size carries the emphasis. */}
+              {d.latest.demandCents !== null &&
+                d.latest.totalCents !== null &&
+                d.latest.totalCents > 0 &&
+                d.latest.demandCents >= d.latest.totalCents * 0.4 && (
+                  <div className="mb-4 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low p-4">
+                    <p className="type-headline tnum text-on-surface">
+                      {t.spikeHeadline(formatUsdWhole(d.latest.demandCents))}
+                    </p>
+                    <p className="type-body-md mt-1 text-on-surface-variant">{t.spikeBody}</p>
+                    <p className="type-caption mt-1 text-on-surface-variant">{t.spikeSubLabel}</p>
+                  </div>
+                )}
+
               {d.latest.touRows.length > 0 && (
                 <>
                   <p className="type-caption mb-1 text-on-surface-variant">{t.energyHeader}</p>
@@ -277,9 +292,7 @@ export function MeterDrawer({
                 label={t.demand}
                 cents={d.latest.demandCents}
                 nullLabel={t.demandNone}
-                sub={
-                  d.latest.peakKw !== null ? t.peakNote(NUM_FMT.format(d.latest.peakKw)) : undefined
-                }
+                sub={d.latest.peakKw !== null ? t.peakNote() : undefined}
               />
 
               {d.latest.otherRows.length > 0 && (

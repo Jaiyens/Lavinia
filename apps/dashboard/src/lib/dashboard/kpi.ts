@@ -65,6 +65,27 @@ function lastDelta(series: number[]): number | null {
   return last - prev;
 }
 
+/**
+ * Labeled monthly PG&E spend (reconciled meters only, AR-15), ascending by month. Powers the
+ * Home spend area-chart hero. Each point is a calendar month ("2026-03") and its summed printed
+ * total in integer cents. Months with no reconciled bill simply do not appear (never zero-filled).
+ */
+export function spendByMonth(meters: MeterView[]): { month: string; cents: number }[] {
+  const byMonth = new Map<string, number>();
+  for (const m of meters) {
+    if (m.coverageState !== RECONCILED) continue;
+    for (const p of m.periods) {
+      if (p.printedTotalCents != null) {
+        const k = monthKey(p.close);
+        byMonth.set(k, (byMonth.get(k) ?? 0) + p.printedTotalCents);
+      }
+    }
+  }
+  return [...byMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, cents]) => ({ month, cents }));
+}
+
 export function computeKpiStrip(meters: MeterView[]): KpiStrip {
   const reconciled = meters.filter((m) => m.coverageState === RECONCILED);
 

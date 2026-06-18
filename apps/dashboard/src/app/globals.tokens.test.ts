@@ -28,9 +28,10 @@ const COLOR_TOKENS: Record<string, string> = {
   "outline-variant": "#d9d4c6",
   primary: "#2fa84f",
   "on-primary": "#ffffff",
-  "primary-container": "#c9ebd2",
+  "primary-container": "#cdebd4",
   "on-primary-container": "#0c3d1c",
-  "money-positive": "#1fbf5a",
+  // One green across the dashboard: savings green == the aurora brand green (#2fa84f).
+  "money-positive": "#2fa84f",
   "on-money-positive": "#ffffff",
   alert: "#bd4b34",
   "on-alert": "#ffffff",

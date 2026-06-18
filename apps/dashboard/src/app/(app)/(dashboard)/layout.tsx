@@ -6,9 +6,8 @@ import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
-import { FindingsRail } from "../_components/shell/findings-rail";
-import { FindingsSheet } from "../_components/shell/findings-sheet";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
+import { TopoBackground } from "../_components/topo-background";
 import { almondStarters } from "@/lib/almond/starters";
 
 // The dashboard renders live DB data and reads URL search params via nuqs, so it is
@@ -30,15 +29,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // (app) layout; this passes the id along so the shell renders the right farm.
   const resolved = await resolveFarm(await sessionUserId(), false);
   if (resolved === null) redirect(CONNECT_SOURCE_PATH);
+  // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
+  // mockup, with findings shown in-content). The Energy surface renders its own findings rail.
+  // We still resolve the count here for Almond's opening prompt (request-cached, so no extra query).
   const findings: FindingView[] = await resolveFindings(resolved.farm.id);
   return (
     <NuqsAdapter>
-      <div className="flex min-h-dvh w-full bg-paper text-on-surface">
+      <TopoBackground />
+      <div className="flex min-h-dvh w-full text-on-surface">
         <AgentRail />
-        <main className="min-w-0 flex-1 px-5 pb-32 lg:px-12 lg:pb-12">{children}</main>
-        <FindingsRail findings={findings} />
+        <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
       </div>
-      <FindingsSheet findings={findings} />
       <AgentTabBar />
       <AlmondLauncher
         farmName={resolved.farm.name}

@@ -43,7 +43,7 @@ export function ColumnChart({
             <div key={i} className="flex h-full flex-1 flex-col justify-end" title={c.label}>
               <div
                 className={cn(
-                  "w-full rounded-t-[3px]",
+                  "w-full rounded-t-lg",
                   c.highlight ? "bg-risk" : "bg-green-deep/85",
                 )}
                 style={{ height: `${pct}%` }}

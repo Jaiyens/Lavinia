@@ -9,6 +9,7 @@ const METERS = [
 function row(overrides: Partial<FindingRow>): FindingRow {
   return {
     id: "rec-1",
+    tool: "rate-optimization",
     situation: "Lateral 3 Booster is billed on AG-C.",
     action: { kind: "switch_rate", label: "Move it to AG-A", params: { pumpId: "pump-1" } },
     impactUsd: 13644.97,

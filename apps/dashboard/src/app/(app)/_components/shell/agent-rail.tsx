@@ -23,6 +23,7 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
       <div className="px-3 pb-6">
         <Wordmark className="text-on-surface" />
       </div>
+      <p className="px-3 pb-2 type-label-caps text-on-surface-variant/70">{en.shell.navTrack}</p>
       <nav className="flex flex-col gap-1">
         {AGENTS.map((agent) => {
           const Icon = agent.icon;
@@ -31,7 +32,7 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
               <span
                 key={agent.key}
                 aria-disabled="true"
-                className="flex h-11 cursor-not-allowed select-none items-center gap-3 rounded-[var(--radius-control)] px-3 text-on-surface-variant/50"
+                className="flex h-11 cursor-not-allowed select-none items-center gap-3 rounded-xl px-3 text-on-surface-variant/50"
               >
                 <Icon size={18} aria-hidden />
                 <span className="type-body-md">{agent.label}</span>
@@ -43,19 +44,21 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
           }
           const active = isAgentActive(agent, pathname, demo);
           const href = agentHref(agent, demo) ?? agent.href;
+          // Active item = a soft white pill with a hairline + gentle shadow and the brand green
+          // on the icon and label (the reference's selected-nav treatment, in Terra's palette).
           return (
             <Link
               key={agent.key}
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+                "flex h-11 items-center gap-3 rounded-xl px-3 type-body-md transition-colors",
                 active
-                  ? "bg-primary-container font-semibold text-on-primary-container"
+                  ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
                   : "text-on-surface hover:bg-surface-container-low",
               )}
             >
-              <Icon size={18} aria-hidden />
+              <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
               <span>{agent.label}</span>
             </Link>
           );
@@ -78,19 +81,23 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
               href="/account"
               aria-current={pathname === "/account" ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+                "flex h-11 items-center gap-3 rounded-xl px-3 type-body-md transition-colors",
                 pathname === "/account"
-                  ? "bg-primary-container font-semibold text-on-primary-container"
+                  ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
                   : "text-on-surface hover:bg-surface-container-low",
               )}
             >
-              <UserRound size={18} aria-hidden />
+              <UserRound
+                size={18}
+                aria-hidden
+                className={pathname === "/account" ? "text-primary" : undefined}
+              />
               <span>{en.account.navLabel}</span>
             </Link>
             <form action={signOutAction}>
               <button
                 type="submit"
-                className="flex h-11 w-full items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                className="flex h-11 w-full items-center gap-3 rounded-xl px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low"
               >
                 <LogOut size={18} aria-hidden />
                 <span>{en.auth.signOut}</span>

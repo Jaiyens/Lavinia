@@ -9,7 +9,7 @@
 
 :root {
   /* Bright, warm white-and-green system. One dominant green, gold + sky accents. */
-  --bg: #faf9f4;
+  --bg: #eef1f5;
   --tint: #f1f4ec;
   /* Legacy white-card surface. The DESIGN.md `surface` (paper) lives in the
      design-system block below; this white tone is DESIGN's `surface-bright`. */
@@ -17,10 +17,15 @@
   --ink: #16190f;
   --ink-soft: #3f4435;
   --muted: #6e7560;
+  /* ONE green across the whole dashboard: the aurora green (#2fa84f, the marketing-site
+     anchor in apps/web TERRA_AURORA). Every solid/accent green is exactly this. `deep` is
+     kept as a token name for gradient endpoints + strokes but points at the same green;
+     `hover` is the only resting variant - a barely-darker shade of the SAME hue so buttons
+     still answer the cursor. `tint` is a pale wash of the same hue. */
   --green: #2fa84f;
-  --green-deep: #1c7a2b;
-  --green-hover: #166522;
-  --green-tint: #e7f2e3;
+  --green-deep: #2fa84f;
+  --green-hover: #268a41;
+  --green-tint: #e7f3e9;
   --gold: #f2c14e;
   --sky: #cde7f2;
   --line: #e7e8df;
@@ -51,33 +56,35 @@
      bottom sheet. Three colors max on any screen: green, clay, charcoal-on-paper.
      ---------------------------------------------------------------------- */
 
-  /* Surfaces — warm paper canvas stepping up through off-whites, never gray-on-white. */
-  --surface: #faf9f4; /* the paper canvas (== --bg); DESIGN surface / background */
-  --surface-dim: #ece9e0;
+  /* Surfaces — clean cool-neutral canvas with white cards (reference reskin 2026-06-17): the page
+     is a soft cool grey, cards are white and float on shadow more than border. */
+  --surface: #eef1f5; /* the cool light-grey page canvas (== --bg) */
+  --surface-dim: #e3e7ee;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #f6f4ec;
-  --surface-container: #f1eee4;
-  --surface-container-high: #ebe8dd;
-  --surface-container-highest: #e5e1d5;
+  --surface-container-low: #f7f8fb;
+  --surface-container: #eef1f5;
+  --surface-container-high: #e6eaf1;
+  --surface-container-highest: #dde2eb;
 
-  /* Ink — warm charcoal, never pure black; muted warm gray for secondary text. */
-  --on-surface: #1a1a17;
-  --on-surface-variant: #5a554c;
-  --inverse-surface: #2c2c28;
-  --inverse-on-surface: #f4f2ec;
+  /* Ink — cool near-black; muted cool gray for secondary text. */
+  --on-surface: #16181d;
+  --on-surface-variant: #5b6470;
+  --inverse-surface: #24262c;
+  --inverse-on-surface: #f3f5f9;
 
-  /* Lines — hairline borders before shadows. */
-  --outline: #9a9384;
-  --outline-variant: #d9d4c6;
+  /* Lines — very light cool hairlines (cards lean on shadow, not border). */
+  --outline: #c3c9d3;
+  --outline-variant: #e5e8ee;
 
-  /* Brand green — dominant: nav, primary actions, in-the-money state. */
+  /* Brand green — dominant: nav, primary actions, in-the-money state. The aurora green. */
   --primary: #2fa84f;
   --on-primary: #ffffff;
-  --primary-container: #c9ebd2;
+  --primary-container: #cdebd4;
   --on-primary-container: #0c3d1c;
 
-  /* Positive money — a slightly brighter green, the only second green, for savings/credits. */
-  --money-positive: #1fbf5a;
+  /* Positive money — savings/credits. The SAME aurora green as everything else (no second
+     green): a savings figure and a primary action now read as one consistent green. */
+  --money-positive: #2fa84f;
   --on-money-positive: #ffffff;
 
   /* Alert — one warm clay/terracotta tone, used sparingly for `act` severity and
@@ -89,13 +96,13 @@
 
   /* Soft warm ambient shadow (DESIGN.md): large blur, very low opacity — a soft
      light on paper. Only the drawer and the mobile bottom sheet lift meaningfully. */
-  --shadow-elevated: 0 8px 28px rgba(26, 26, 23, 0.06);
+  --shadow-elevated: 0 10px 30px rgba(20, 24, 40, 0.08);
 
   /* Layout rails + radius (DESIGN.md spacing/rounded). */
   --agent-rail: 240px;
   --findings-rail: 320px;
-  --radius-control: 0.375rem; /* default: buttons, inputs, kpi cards, table */
-  --radius-lg: 0.75rem; /* larger objects: drawer, bottom sheet, map, modal */
+  --radius-control: 0.625rem; /* default: buttons, inputs, kpi cards, table (rounder reskin) */
+  --radius-lg: 1.25rem; /* larger objects: cards, drawer, bottom sheet, map, modal */
 
   /* ----------------------------------------------------------------------
      Elevation + motion scale (DESIGN.md 2026-06-15 "restrained polish").
@@ -104,10 +111,10 @@
      e3 floats the drawer / sheet / tooltip; e4 tops the stack. Durations and
      easing drive every transition so spec and code cannot drift. All neutralized
      by the prefers-reduced-motion block at the bottom of this file. */
-  --shadow-e1: 0 1px 2px rgba(20, 25, 15, 0.05), 0 1px 1px rgba(20, 25, 15, 0.04);
-  --shadow-e2: 0 6px 16px rgba(20, 25, 15, 0.07), 0 2px 4px rgba(20, 25, 15, 0.05);
-  --shadow-e3: 0 12px 32px rgba(20, 25, 15, 0.1);
-  --shadow-e4: 0 24px 56px rgba(20, 25, 15, 0.16);
+  --shadow-e1: 0 1px 2px rgba(20, 24, 40, 0.04), 0 2px 8px rgba(20, 24, 40, 0.05);
+  --shadow-e2: 0 8px 24px rgba(20, 24, 40, 0.08), 0 2px 6px rgba(20, 24, 40, 0.05);
+  --shadow-e3: 0 16px 40px rgba(20, 24, 40, 0.1);
+  --shadow-e4: 0 28px 64px rgba(20, 24, 40, 0.16);
 
   --ease-standard: cubic-bezier(0.16, 1, 0.3, 1); /* the house curve, ease-out expo */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -397,7 +404,7 @@ body {
 /* Soft green focus ring, never a hard outline. */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(47, 163, 54, 0.35);
+  box-shadow: 0 0 0 3px rgba(47, 168, 79, 0.35);
   border-radius: 4px;
 }
 
@@ -490,10 +497,10 @@ html {
 /* A quiet one-shot pulse on a freshly surfaced recommendation. No popup, no loop. */
 @keyframes terra-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(28, 122, 43, 0.32);
+    box-shadow: 0 0 0 0 rgba(47, 168, 79, 0.32);
   }
   100% {
-    box-shadow: 0 0 0 14px rgba(28, 122, 43, 0);
+    box-shadow: 0 0 0 14px rgba(47, 168, 79, 0);
   }
 }
 
@@ -568,6 +575,22 @@ html {
   transform-box: fill-box;
   transform-origin: bottom;
   animation: terra-bar-grow var(--dur-data) var(--ease-standard) both;
+}
+
+/* Background topo lines: a slow horizontal drift. Each line div is 200vw wide and shifts by one
+   100vw tile, so the wave (which repeats every tile) flows seamlessly. Honored by the
+   prefers-reduced-motion block below, which freezes all animation. */
+@keyframes terra-topo-flow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100vw);
+  }
+}
+.topo-line {
+  animation: terra-topo-flow linear infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {

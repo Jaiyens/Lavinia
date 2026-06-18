@@ -13,14 +13,14 @@ type LensDef = {
   available: boolean;
 };
 
-// Priority order = the order the default-picker walks (Chart first, per DESIGN.md, once it
-// is available). Flip `available` as each lens's story lands: table 2.4, chart 2.8, map 2.9,
-// calendar 3.5. The default then moves to the highest-priority available lens automatically.
+// Priority order = the order the default-picker walks. TABLE is first (the default): it is the
+// grower's Excel, the lens a low-software-literacy operator reads without learning anything (the
+// Carson/Maya/Sally relay decision). Calendar second, then chart and map behind a tap.
 export const LENSES: readonly LensDef[] = [
-  { key: "chart", available: true },
   { key: "table", available: true },
-  { key: "map", available: true },
   { key: "calendar", available: true },
+  { key: "chart", available: true },
+  { key: "map", available: true },
 ] as const;
 
 export const LENS_KEYS: readonly Lens[] = LENSES.map((l) => l.key);

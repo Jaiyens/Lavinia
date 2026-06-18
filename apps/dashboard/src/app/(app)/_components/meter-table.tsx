@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useQueryState } from "nuqs";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { en } from "@/copy/en";
+import { en, rateGloss } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import type { MeterView } from "@/lib/dashboard/load";
 import {
@@ -52,6 +52,21 @@ function EmptyCell() {
 function TextCell({ value }: { value: string | null }) {
   if (value === null || value === "") return <EmptyCell />;
   return <span className="text-on-surface">{value}</span>;
+}
+
+// Rate is a first-class fact (the whole rate-optimization thesis): the code in a green pill so the
+// eye lands on it, with the plain-English gloss beneath so the grower never stares at a bare code.
+function RateCell({ rate }: { rate: string | null }) {
+  if (rate === null || rate === "") return <EmptyCell />;
+  const gloss = rateGloss(rate);
+  return (
+    <span className="inline-flex flex-col">
+      <span className="type-label-caps inline-flex w-fit items-center rounded-[var(--radius-control)] bg-primary-container px-2 py-0.5 font-semibold text-on-primary-container">
+        {rate}
+      </span>
+      {gloss && <span className="mt-0.5 type-caption text-on-surface-variant">{gloss}</span>}
+    </span>
+  );
 }
 
 function LegacyCell({ isLegacy }: { isLegacy: boolean }) {
@@ -108,7 +123,7 @@ function renderCell(key: SortKey, row: MeterRow): ReactNode {
     case "entity":
       return <TextCell value={row.entity} />;
     case "rate":
-      return <TextCell value={row.rate} />;
+      return <RateCell rate={row.rate} />;
     case "legacy":
       return <LegacyCell isLegacy={row.isLegacy} />;
     case "cost":

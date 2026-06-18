@@ -17,6 +17,8 @@ import { LensToggle } from "./lens-toggle";
 import { LensRegion } from "./lens-region";
 import { FilterBar } from "./filter-bar";
 import { MeterDrawer } from "./meter-drawer";
+import { FindingsRail } from "./shell/findings-rail";
+import { FindingsSheet } from "./shell/findings-sheet";
 
 // The center data hero (Home == Energy dashboard today). Server Component: reads the dashboard
 // farm from the DB (the real reconciled account when connected, else the badged representative
@@ -88,62 +90,75 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   }
 
   return (
-    <div className="relative py-6 lg:py-10">
-      <DotPattern
-        width={22}
-        height={22}
-        cr={1}
-        className={cn(
-          "pointer-events-none absolute inset-0 -z-10 h-[320px] text-primary/15",
-          "[mask-image:radial-gradient(360px_circle_at_top,white,transparent)]",
-        )}
-      />
-      {dataKind === "representative" && (
-        <div className="mb-4 inline-flex items-center rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-2.5 py-1">
-          <AnimatedShinyText className="type-label-caps text-on-surface-variant" shimmerWidth={80}>
-            {en.shell.representativeBadge}
-          </AnimatedShinyText>
+    <>
+      {/* Energy keeps the persistent findings rail (now attached here, not the shell): a
+          content column on the left, the 320px findings rail flush on the right. */}
+      <div className="flex">
+        <div className="relative min-w-0 flex-1 px-5 py-6 lg:px-12 lg:py-10">
+          <DotPattern
+            width={22}
+            height={22}
+            cr={1}
+            className={cn(
+              "pointer-events-none absolute inset-0 -z-10 h-[320px] text-primary/15",
+              "[mask-image:radial-gradient(360px_circle_at_top,white,transparent)]",
+            )}
+          />
+          {dataKind === "representative" && (
+            <div className="mb-4 inline-flex items-center rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-2.5 py-1">
+              <AnimatedShinyText
+                className="type-label-caps text-on-surface-variant"
+                shimmerWidth={80}
+              >
+                {en.shell.representativeBadge}
+              </AnimatedShinyText>
+            </div>
+          )}
+
+          {pendingPull && (
+            <div className="mb-4 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low px-4 py-3 type-body-sm text-on-surface-variant">
+              {en.shell.pendingPull}
+            </div>
+          )}
+
+          <Reveal>
+            <header className="mb-8">
+              <p className="type-label-caps text-primary">{en.shell.farmEyebrow}</p>
+              <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
+            </header>
+
+            <div className="mb-6">
+              <KpiStrip meters={meters} />
+            </div>
+
+            <div className="mb-6">
+              <LensToggle />
+            </div>
+
+            <div className="mb-4">
+              <FilterBar meters={meters} />
+            </div>
+
+            <div>
+              <LensRegion meters={meters} schedule={schedule} todayIso={todayIso} />
+            </div>
+          </Reveal>
+
+          {/* The shared drill-in (Story 2.5). Outside the Reveal stagger so a deep-linked
+              ?meter= drawer is not delayed by the entrance choreography. */}
+          <MeterDrawer
+            meters={meters}
+            findings={findings}
+            verifications={verifications}
+            trackedResults={trackedResults}
+            readOnly={demoOnly}
+          />
         </div>
-      )}
 
-      {pendingPull && (
-        <div className="mb-4 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low px-4 py-3 type-body-sm text-on-surface-variant">
-          {en.shell.pendingPull}
-        </div>
-      )}
+        <FindingsRail findings={findings} readOnly={demoOnly} />
+      </div>
 
-      <Reveal>
-        <header className="mb-8">
-          <p className="type-label-caps text-primary">{en.shell.farmEyebrow}</p>
-          <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
-        </header>
-
-        <div className="mb-6">
-          <KpiStrip meters={meters} />
-        </div>
-
-        <div className="mb-6">
-          <LensToggle />
-        </div>
-
-        <div className="mb-4">
-          <FilterBar meters={meters} />
-        </div>
-
-        <div>
-          <LensRegion meters={meters} schedule={schedule} todayIso={todayIso} />
-        </div>
-      </Reveal>
-
-      {/* The shared drill-in (Story 2.5). Outside the Reveal stagger so a deep-linked
-          ?meter= drawer is not delayed by the entrance choreography. */}
-      <MeterDrawer
-        meters={meters}
-        findings={findings}
-        verifications={verifications}
-        trackedResults={trackedResults}
-        readOnly={demoOnly}
-      />
-    </div>
+      <FindingsSheet findings={findings} readOnly={demoOnly} />
+    </>
   );
 }
