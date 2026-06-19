@@ -789,6 +789,80 @@ export const en = {
           cappedNote: (sectionName: string, shown: number, total: number): string =>
             `${sectionName} shows the top ${shown} of ${total}. The spreadsheet export lists all ${total} with no cap.`,
         },
+        // Cover section (the first page): the Terra mark, the farm name, the as-of date, and the
+        // single biggest opportunity stated in dollars, plus the farm's total loaded spend and total
+        // demand charge. Every figure traces to the analysis (the same numbers the dashboard shows);
+        // when there is no dollar opportunity on file the cover states that plainly, never invents a
+        // hero. Plain operator words, no em dashes, no exclamation marks.
+        cover: {
+          eyebrow: "Terra report",
+          // The cover headline names the farm; the farm name is grounded data, never a claim.
+          heading: (farmName: string): string => `${farmName}`,
+          // The as-of line above the hero, stated plainly. When no bill has posted, the absence is
+          // honest, never a fabricated date.
+          asOf: (date: string): string => `Figures as of ${date}.`,
+          asOfNone: "No bills have posted yet, so this report carries no dated figures.",
+          // The hero label above the single biggest opportunity figure (the analysis topFinding).
+          heroLabel: "Biggest opportunity",
+          // The hero line: the meter name and the estimated yearly figure ("Westside Pump 17 saves
+          // about $61,418 a year"). The dollar value is the analysis topFinding impact, formatted at
+          // the render edge; the meter name is grounded data.
+          hero: (meterName: string, amount: string): string =>
+            `${meterName} could save about ${amount} a year.`,
+          // The hero detail line names the rate move when the biggest opportunity is a rate switch
+          // ("Move it from AG-B to AG-C"); omitted when the finding carries no rate move.
+          heroRate: (fromRate: string, toRate: string): string =>
+            `Move it from ${fromRate} to ${toRate}.`,
+          heroRateTo: (toRate: string): string => `Move it to ${toRate}.`,
+          // The hero line when the biggest finding carries a dollar but is not a rate switch (a demand
+          // spike, a bill to check): the meter and the figure, framed as money worth a look.
+          heroNonRate: (meterName: string, amount: string): string =>
+            `${meterName} has about ${amount} worth a look.`,
+          // Shown when there is no dollar opportunity on file: the cover states that plainly rather
+          // than inventing a hero figure.
+          heroNone: "No dollar opportunities are flagged in the data on file.",
+          // The two supporting stat tiles below the hero: the farm's total loaded spend this cycle and
+          // its total demand charge, both summed from the analysis (never hand-formatted).
+          spendLabel: "Total loaded spend this cycle",
+          spendNone: "No bills loaded yet",
+          demandLabel: "Total demand charge this cycle",
+          demandNone: "None on file",
+        },
+        // Opportunities section (the first section after the cover): the ranked rate-switch findings,
+        // most savings first, with the current rate, the suggested rate, and the estimated yearly
+        // dollars. This is the money-first lead. An empty set states there is nothing to switch,
+        // honestly, never an empty table.
+        opportunities: {
+          eyebrow: "Opportunities",
+          heading: "Where the money is",
+          // A one-line lead above the table, stating the count and the summed estimate.
+          lead: (count: number, total: string): string =>
+            count === 1
+              ? `One rate change could save about ${total} a year.`
+              : `${count} rate changes could save about ${total} a year.`,
+          columns: {
+            meter: "Meter",
+            currentRate: "Billed on",
+            suggestedRate: "Better rate",
+            savings: "Estimated yearly savings",
+          },
+          // The PG&E one-change-a-year caveat, restated honestly so a reader never reads the dollars
+          // as stackable or guaranteed. No exclamation, no em dash.
+          note: "Estimated from PG&E's published rates over the bills on file. PG&E allows one rate change per 12 months.",
+          // Honest empty: nothing to switch, stated plainly.
+          empty: "No rate changes are flagged in the data on file.",
+        },
+        // Charts section: a few plain bar charts drawn natively (no images), so the report reads at a
+        // glance. Each chart states what it shows; a chart with no data states its absence honestly.
+        charts: {
+          eyebrow: "At a glance",
+          heading: "The farm in three charts",
+          demandTitle: "Highest demand charges this cycle",
+          spendTitle: "Spend by entity this cycle",
+          rateMixTitle: "Meters by rate",
+          // Shown for a chart with no data to draw (no demand charges, no entities, no rates on file).
+          empty: "Nothing to chart in the data on file.",
+        },
         // Farm-summary section: the farm at a glance, a few measured stats, never a screaming hero.
         summary: {
           eyebrow: "Farm summary",
@@ -875,6 +949,9 @@ export const en = {
           // Plain operator name of each section, woven into the one-line shape statement in selection
           // order, so the grower reads exactly what the PDF will contain before it lands.
           sectionName: {
+            cover: "your biggest opportunity",
+            opportunities: "where the money is",
+            charts: "a few charts",
             summary: "your farm's totals",
             meterTable: "every meter",
             misRated: "the meters that may be on the wrong rate",

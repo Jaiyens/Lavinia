@@ -146,6 +146,81 @@ export const styles = StyleSheet.create({
   alert: {
     color: palette.alert,
   },
+  // The cover page block: generous top breathing room so the report opens with the farm, not a wall
+  // of numbers. The Terra mark sits above the farm name; the hero stat sits below.
+  cover: {
+    marginBottom: 24,
+  },
+  // The Terra wordmark on the cover, a measured brand label (never a screaming hero).
+  coverMark: {
+    fontSize: 11,
+    color: palette.green,
+    fontWeight: 700,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  // The farm name on the cover: a title, the largest type on the page, but a name not a money figure
+  // (the north-star rule: the farm known at a glance, money present but not loudest).
+  coverHeading: {
+    fontSize: 24,
+    color: palette.ink,
+    fontWeight: 700,
+    marginBottom: 4,
+  },
+  // The hero label above the biggest-opportunity figure.
+  heroLabel: {
+    fontSize: 9,
+    color: palette.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  // The hero opportunity line: the money, in the savings green, at a measured (not screaming) title
+  // size, deliberately sized at the heading scale rather than larger than the farm name.
+  heroValue: {
+    fontSize: 15,
+    color: palette.moneyPositive,
+    fontWeight: 700,
+    lineHeight: 1.35,
+    marginBottom: 4,
+  },
+  // The hero detail line (the rate move) below the hero figure, plain body.
+  heroDetail: {
+    fontSize: 10,
+    color: palette.ink,
+    lineHeight: 1.4,
+    marginBottom: 12,
+  },
+  // A single chart's title.
+  chartTitle: {
+    fontSize: 10,
+    color: palette.ink,
+    fontWeight: 700,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  // A horizontal bar-chart row: the label, the bar track, and the value, in a flex row.
+  chartRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  // The category label at the start of a bar row.
+  chartRowLabel: {
+    fontSize: 8,
+    color: palette.ink,
+    width: 120,
+    paddingRight: 6,
+  },
+  // The value drawn after a bar (monospace so figures align to the digit).
+  chartRowValue: {
+    fontSize: 8,
+    color: palette.inkMuted,
+    fontFamily: "Courier",
+    paddingLeft: 6,
+  },
   // The coverage footer band: a hairline rule above muted coverage lines.
   footer: {
     marginTop: 12,
