@@ -87,7 +87,7 @@
 # Retrospective:  optional | done
 
 generated: 2026-06-17
-last_updated: 2026-06-18T16:15:00-0700
+last_updated: 2026-06-18T17:45:00-0700
 project: Terra
 project_key: ALM
 tracking_system: file-system
@@ -101,7 +101,7 @@ development_status:
   7-3-the-navigate-skill-entity-resolver-and-ambiguity-rule: done
   7-4-the-server-client-navigation-bridge: done
   7-5-action-chips-and-the-never-hijack-guarantee: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done  # epic-7-10-retro-2026-06-18.md (consolidated Almond retro)
 
   # Epic 8: Almond hands you a spreadsheet (the first artifact and its memory)
   # Built + merged to main on the epic-8-9-overnight branch (commits 79f3dee..ea04e07,
@@ -114,7 +114,7 @@ development_status:
   8-5-the-exportspreadsheet-skill-with-preview-and-immediate-download: done
   8-6-reports-persistence-generatedreport-private-blob-and-the-owner-scoped-download-route: done
   8-7-the-reports-area: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done  # epic-7-10-retro-2026-06-18.md (consolidated Almond retro)
 
   # Epic 9: Almond builds the lender-ready PDF (the shareable proof)
   # Built + merged to main on the epic-8-9-overnight branch (commits 0ad42bd..f283f7f,
@@ -123,11 +123,11 @@ development_status:
   9-1-the-tested-pdf-section-template-library: done
   9-2-the-pdf-composer-generative-selection-over-the-full-data-path: done
   9-3-the-generatereport-skill-with-preview-save-and-download: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done  # epic-7-10-retro-2026-06-18.md (consolidated Almond retro)
 
   # Epic 10: Surfacing Almond, gently (discoverability without overbearing)
   epic-10: done
   10-1-action-and-export-flavored-starters: done
   10-2-rail-entry-and-the-calm-first-run-nudge: done
   10-3-abuse-and-cost-protection-on-the-generative-endpoint: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done  # epic-7-10-retro-2026-06-18.md (consolidated Almond retro)
