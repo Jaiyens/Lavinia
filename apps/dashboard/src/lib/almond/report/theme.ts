@@ -1,35 +1,37 @@
-// The warm-palette + plain-typography theme for every PDF section Almond renders (Epic 9). A PDF is
+// The palette + plain-typography theme for every PDF section Almond renders (Epic 9). A PDF is
 // not the browser: @react-pdf/renderer takes literal style values, never CSS custom properties, so
-// the DESIGN.md warm tokens that live as `--surface` / `--primary` / `--alert` in globals.css are
+// the DESIGN.md tokens that live as `--surface` / `--primary` / `--alert` in globals.css are
 // mirrored here as the hex literals the renderer needs. This is the ONE place the report palette is
 // defined, so every section (summary, meter table, mis-rated, savings, single-meter, footer) speaks
-// the same warm system the screen does and no section can drift to an off-palette color.
+// the same system the screen does and no section can drift to an off-palette color.
 //
 // Verbatim hex from src/app/globals.css (the DESIGN.md design-system block): one dominant green, one
-// warm clay alert, warm charcoal ink on warm paper. Pure constants and a shared StyleSheet; no React,
-// no I/O, so it is safe to import from a "nodejs"-runtime section and from an offline test.
+// clay alert, charcoal ink on the cool light-grey paper (Kamran's 2026-06-18 Home-redesign reskin
+// replaced the earlier warm cream). Pure constants and a shared StyleSheet; no React, no I/O, so it
+// is safe to import from a "nodejs"-runtime section and from an offline test.
 
 import { StyleSheet } from "@react-pdf/renderer";
 
-/** The warm palette, hex literals mirrored from globals.css (DESIGN.md design-system tokens). */
+/** The cool-grey palette, hex literals mirrored from globals.css (DESIGN.md design-system tokens). */
 export const palette = {
-  /** Warm paper canvas (--surface / --bg). */
-  paper: "#faf9f4",
-  /** A stepped-up warm off-white for header/table bands (--surface-container-low). */
-  band: "#f6f4ec",
-  /** A slightly deeper warm band for table header rows (--surface-container). */
-  bandStrong: "#f1eee4",
-  /** Warm charcoal ink, never pure black (--on-surface). */
-  ink: "#1a1a17",
-  /** Muted warm gray for secondary text (--on-surface-variant). */
-  inkMuted: "#5a554c",
+  /** Cool light-grey paper canvas (--surface / --bg). */
+  paper: "#eef1f5",
+  /** A stepped lighter off-white for header/table bands (--surface-container-low). */
+  band: "#f7f8fb",
+  /** A deeper grey band for table header rows, kept visible on the cool paper now that
+   *  --surface-container equals the canvas (--surface-container-high). */
+  bandStrong: "#e6eaf1",
+  /** Near-black charcoal ink, never pure black (--on-surface). */
+  ink: "#16181d",
+  /** Muted cool grey for secondary text (--on-surface-variant). */
+  inkMuted: "#5b6470",
   /** Hairline border before any shadow (--outline-variant). */
-  line: "#d9d4c6",
+  line: "#e5e8ee",
   /** Dominant brand green: headings accent, positive state (--primary). */
   green: "#2fa84f",
-  /** The brighter savings/credit green, the only second green (--money-positive). */
-  moneyPositive: "#1fbf5a",
-  /** The one warm clay alert tone, used sparingly for a mis-rated / at-risk row (--alert). */
+  /** The savings/credit green (--money-positive; unified to the brand green in the reskin). */
+  moneyPositive: "#2fa84f",
+  /** The one clay alert tone, used sparingly for a mis-rated / at-risk row (--alert). */
   alert: "#bd4b34",
   /** White, for ink reversed onto a green band (--on-primary). */
   onAccent: "#ffffff",

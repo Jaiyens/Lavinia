@@ -1,35 +1,37 @@
 ---
 name: Terra
 status: final
-updated: 2026-06-17
+updated: 2026-06-18
+# Palette reskinned 2026-06-18 (Kamran's Home redesign): warm cream -> cool light-grey. Values are
+# the source of truth in src/app/globals.css; the globals.tokens.test.ts guard pins them verbatim.
 colors:
-  surface: '#faf9f4'
-  surface-dim: '#ece9e0'
+  surface: '#eef1f5'
+  surface-dim: '#e3e7ee'
   surface-bright: '#ffffff'
   surface-container-lowest: '#ffffff'
-  surface-container-low: '#f6f4ec'
-  surface-container: '#f1eee4'
-  surface-container-high: '#ebe8dd'
-  surface-container-highest: '#e5e1d5'
-  on-surface: '#1a1a17'
-  on-surface-variant: '#5a554c'
-  inverse-surface: '#2c2c28'
-  inverse-on-surface: '#f4f2ec'
-  outline: '#9a9384'
-  outline-variant: '#d9d4c6'
+  surface-container-low: '#f7f8fb'
+  surface-container: '#eef1f5'
+  surface-container-high: '#e6eaf1'
+  surface-container-highest: '#dde2eb'
+  on-surface: '#16181d'
+  on-surface-variant: '#5b6470'
+  inverse-surface: '#24262c'
+  inverse-on-surface: '#f3f5f9'
+  outline: '#c3c9d3'
+  outline-variant: '#e5e8ee'
   primary: '#2fa84f'
   on-primary: '#ffffff'
-  primary-container: '#c9ebd2'
+  primary-container: '#cdebd4'
   on-primary-container: '#0c3d1c'
-  money-positive: '#1fbf5a'
+  money-positive: '#2fa84f'
   on-money-positive: '#ffffff'
   alert: '#bd4b34'
   on-alert: '#ffffff'
   alert-container: '#f7ddd4'
   on-alert-container: '#4e1306'
   gold: '#f2c14e'
-  background: '#faf9f4'
-  on-background: '#1a1a17'
+  background: '#eef1f5'
+  on-background: '#16181d'
 typography:
   money-hero:
     fontFamily: Inter, sans-serif
@@ -163,12 +165,12 @@ Voice in the UI is plain operator English: confident, never salesy, no exclamati
 
 ## Colors
 
-One dominant color, one sharp accent, and a single restrained alert tone. Everything else is warm neutral.
+One dominant color, one sharp accent, and a single restrained alert tone. Everything else is cool neutral.
 
 - **Brand green `primary #2FA84F`** is the dominant color — navigation, primary actions, the in-the-money state, and the tint for any beam or shimmer effect.
-- **Warm paper `surface #FAF9F4`** is the canvas, never pure white. Containers step up through warm off-whites (`surface-container-*`), never gray cards on white.
-- **Warm charcoal `on-surface #1A1A17`** is the ink, never pure black. Secondary text is muted warm gray `on-surface-variant #5A554C`.
-- **`money-positive #1FBF5A`** — a slightly brighter green reserved for *positive money*: savings found, credits, in-the-money deltas. The only place a second green appears.
+- **Cool light-grey paper `surface #EEF1F5`** is the canvas, never pure white. Containers step through cool greys (`surface-container-*`).
+- **Charcoal `on-surface #16181D`** is the ink, never pure black. Secondary text is muted cool grey `on-surface-variant #5B6470`.
+- **`money-positive #2FA84F`** is reserved for *positive money*: savings found, credits, in-the-money deltas. The reskin unified it to the brand green, so it is no longer a distinct second green.
 - **`alert #BD4B34`** — a warm clay/terracotta, the single alert tone. Used sparingly for `act`-severity findings and high-dollar-at-risk map pins. The traffic-light "bad," kept warm so it belongs to the agrarian palette rather than a SaaS red.
 - **`gold #F2C14E`** — not a content color. It exists only as the warm second stop for the `primary → gold` border beam / shimmer on the one "live" hero moment (the Energy agent card). Never used for text, state, or fills.
 - **`watch` severity has no dedicated color.** It is carried by typography and label only. Three content colors max on any screen: green, clay, charcoal-on-paper.

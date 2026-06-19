@@ -6,7 +6,9 @@ export type AlmondState = "idle" | "thinking" | "done";
  * Almond, the farm agent's face: the warm almond nut with a green sprout, drawn inline so it
  * scales crisply and tints to the brand. `state` switches the expression (idle / thinking /
  * done); `onDark` lightens the sprout for the dark-green launcher button ("On the button").
- * Static by design — each state reads on its own, so it is reduced-motion-safe.
+ * Static by design — each state reads on its own as a still glyph. The only
+ * motion is the idle face's occasional eye blink (the `.almond-eyes` keyframe in globals.css), which
+ * the reduced-motion block freezes so the mascot stays a static, readable face when less motion is asked.
  *
  * Art of record: DESIGN.md `almond-mascot` and the state board at `public/almond.svg`.
  * (Listening = the idle face inside a ring drawn by the launcher; first-login = idle inside the
@@ -90,10 +92,14 @@ export function AlmondAvatar({
         <>
           <ellipse cx="40" cy="99" rx="6.5" ry="4" fill="#E0875A" opacity="0.32" />
           <ellipse cx="80" cy="99" rx="6.5" ry="4" fill="#E0875A" opacity="0.32" />
-          <circle cx="50" cy="88" r="5.5" fill="#3A2A1C" />
-          <circle cx="48.3" cy="86.4" r="1.7" fill="#fff" opacity="0.85" />
-          <circle cx="70" cy="88" r="5.5" fill="#3A2A1C" />
-          <circle cx="68.3" cy="86.4" r="1.7" fill="#fff" opacity="0.85" />
+          {/* Eyes (with their catch-light dots) grouped so both lids drop together on the blink
+              keyframe; the cheeks and smile stay still. Frozen under reduced-motion. */}
+          <g className="almond-eyes">
+            <circle cx="50" cy="88" r="5.5" fill="#3A2A1C" />
+            <circle cx="48.3" cy="86.4" r="1.7" fill="#fff" opacity="0.85" />
+            <circle cx="70" cy="88" r="5.5" fill="#3A2A1C" />
+            <circle cx="68.3" cy="86.4" r="1.7" fill="#fff" opacity="0.85" />
+          </g>
           <path d="M51 101 Q60 109 69 101" stroke="#3A2A1C" strokeWidth="2.5" strokeLinecap="round" />
         </>
       )}

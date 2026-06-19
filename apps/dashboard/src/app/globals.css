@@ -593,6 +593,27 @@ html {
   will-change: transform;
 }
 
+/* Almond's eyes blink occasionally - a small sign of life on the mascot, calm and rare (one quick
+   blink every few seconds, never a loop you notice). transform-box: fill-box pins the squash origin
+   to the eyes' own box (the SVG root would scale them off-center), exactly like .chart-bar-grow.
+   Frozen by the reduced-motion block below, so the face stays a static, readable glyph for anyone
+   who asks for less motion. */
+@keyframes terra-almond-blink {
+  0%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  98% {
+    transform: scaleY(0.08);
+  }
+}
+.almond-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: terra-almond-blink 5.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -607,7 +628,8 @@ html {
   .pulse-once,
   .drawer-in,
   .skeleton,
-  .chart-bar-grow {
+  .chart-bar-grow,
+  .almond-eyes {
     animation: none !important;
     animation-delay: 0ms !important;
   }

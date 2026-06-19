@@ -66,7 +66,7 @@ Install Magic UI components via the shadcn CLI (the repo is already configured: 
 
 What still holds (these COMPOSE with Magic UI, they do not fight it):
 - Typography: Inter throughout (loaded via next/font). Hierarchy from weight + size.
-- Color: the warm agricultural palette is our brand — green #2fa84f dominant, warm cream/paper background (#faf9f4, never pure white), warm charcoal text (#16190f). Magic UI effects should be tinted into this palette (e.g. beams/gradients in greens/golds), not left as their default neon. Tokens live in `src/app/globals.css`.
+- Color: green #2fa84f is the dominant brand color, on a cool light-grey paper background (#eef1f5, never pure white) with near-black charcoal text (#16181d) and a gold #f2c14e accent. (Kamran's 2026-06-18 Home-redesign reskin replaced the earlier warm-cream palette; DESIGN.md `colors:` and `src/app/globals.css` are the source of truth.) Magic UI effects should be tinted into this palette (e.g. beams/gradients in greens/golds), not left as their default neon. Tokens live in `src/app/globals.css`.
 - Money/usage values use tabular figures. Money is the story, not a lone screaming hero number; the data hero (chart, table, map) leads (north star: the farm, known at a glance).
 - Mobile-first. The farmer is on a phone in a truck.
 - Voice: plain operator English. No exclamation marks. Confident, never salesy.
