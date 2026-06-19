@@ -43,3 +43,6 @@ _bmad-output/
 
 # Personal Claude Code overrides for this project (not shared)
 .claude/settings.local.json
+
+# overnight orchestration scaffolding (not product code)
+.night/
