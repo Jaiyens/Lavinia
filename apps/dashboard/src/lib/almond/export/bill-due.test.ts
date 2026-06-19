@@ -251,7 +251,9 @@ describe("billDueCsvFromSchedule (reuses gridCsv, no parallel format)", () => {
   });
 });
 
-/** Read .xlsx bytes back into a cell grid for assertions. */
+/** Read .xlsx bytes back into a cell grid for assertions. A real Excel date cell (the closing-date
+    column now carries dates, not strings, so it sorts/filters as a date) is read back as its ISO
+    date-only string, so the existing date assertions still read "2026-07-12". */
 async function readGrid(bytes: Uint8Array): Promise<string[][]> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(bytes as unknown as ArrayBuffer);
@@ -261,7 +263,10 @@ async function readGrid(bytes: Uint8Array): Promise<string[][]> {
   sheet.eachRow({ includeEmpty: true }, (row) => {
     const cells: string[] = [];
     row.eachCell({ includeEmpty: true }, (cell) => {
-      cells.push(cell.value === null || cell.value === undefined ? "" : String(cell.value));
+      const v = cell.value;
+      if (v === null || v === undefined) cells.push("");
+      else if (v instanceof Date) cells.push(v.toISOString().slice(0, 10));
+      else cells.push(String(v));
     });
     grid.push(cells);
   });
@@ -311,5 +316,32 @@ describe("billDueWorkbookFromSchedule (reuses buildGridWorkbook, no parallel for
     expect(schedRow?.[4]).toBe("Scheduled (may shift)");
     const flat = grid.map((r) => r.join(" ")).join("\n");
     expect(flat).toContain("It is never a billed total");
+  });
+
+  it("applies the house style: a frozen header, an AutoFilter, and a REAL date in the closing-date column", async () => {
+    const meters = [
+      meter({ id: "Billed", coverageState: "reconciled", serialCode: "Q", periods: [period("2026-03-12T00:00:00.000Z", 5000)] }),
+      meter({ id: "Sched", coverageState: "needs_review", serialCode: "Q" }),
+    ];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(
+      (await billDueWorkbookFromSchedule(exportData(meters), SCHEDULE, REF)) as unknown as ArrayBuffer,
+    );
+    const sheet = wb.worksheets[0];
+    if (!sheet) throw new Error("sheet missing");
+    // Frozen header + AutoFilter (the shared house style).
+    expect(sheet.views[0]?.state).toBe("frozen");
+    expect(sheet.autoFilter).toBeTruthy();
+    // The closing-date cell is a REAL Excel date (sortable/filterable), not a string, with a date numFmt.
+    let dateCell: ExcelJS.Cell | null = null;
+    sheet.eachRow({ includeEmpty: false }, (row) => {
+      if (row.getCell(1).value === "Billed") dateCell = row.getCell(4);
+    });
+    expect(dateCell).not.toBeNull();
+    const cell = dateCell as unknown as ExcelJS.Cell;
+    expect(cell.type).toBe(ExcelJS.ValueType.Date);
+    expect(cell.value instanceof Date).toBe(true);
+    expect(typeof cell.numFmt).toBe("string");
+    expect(cell.numFmt).toMatch(/yyyy-mm-dd/i);
   });
 });

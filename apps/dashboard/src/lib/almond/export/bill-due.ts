@@ -202,6 +202,10 @@ export function billDueWorkbookFromSchedule(
     header: billDueHeader(),
     rows: rows.map(billDueCells),
     footer: billDueFooter(rows),
+    // The closing-date column (index 3) carries ISO date strings; render them as real Excel dates so
+    // a reader can sort and filter by date. The shared house style (forest header band, frozen
+    // header, AutoFilter) comes from buildGridWorkbook.
+    dateColumns: [3],
   });
 }
 

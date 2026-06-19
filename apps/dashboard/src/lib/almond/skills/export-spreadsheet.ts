@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { en } from "@/copy/en";
 import type { MeterView } from "@/lib/dashboard/load";
+import { loadFindings } from "@/lib/dashboard/findings";
+import { analyzeFarm } from "@/lib/almond/analysis";
 import {
   loadExportData,
   summarizeExportState,
   type ExportData,
   type ExportLoadDeps,
 } from "@/lib/almond/export/load";
-import { buildMetersWorkbook } from "@/lib/almond/export/xlsx";
+import { buildAnalystMetersWorkbook } from "@/lib/almond/export/xlsx";
 import { buildBillDueWorkbook } from "@/lib/almond/export/bill-due";
 
 /**
@@ -180,9 +182,23 @@ export function exportFileName(farmName: string, table: ExportTable): string {
   return `${slug(farmName)}-${suffix}.xlsx`;
 }
 
-/** Build the .xlsx bytes for the chosen table over the (already filtered) export data. */
-function buildWorkbook(data: ExportData, table: ExportTable): Promise<Uint8Array> {
-  return table === "billDue" ? buildBillDueWorkbook(data) : buildMetersWorkbook(data);
+/**
+ * Build the .xlsx bytes for the chosen table over the (already filtered) export data. The meter
+ * workbook is driven from the ONE pure analysis (analyzeFarm) so its Summary / Meters /
+ * Opportunities sheets can never contradict the live dashboard; the bill-due workbook keeps its
+ * schedule path. Findings are scoped to the export's farm and to the filtered meter set (analyzeFarm
+ * only attaches a finding when its meter is in the set), so a filtered export shows only that set's
+ * opportunities.
+ */
+async function buildWorkbook(
+  deps: ExportLoadDeps,
+  data: ExportData,
+  table: ExportTable,
+): Promise<Uint8Array> {
+  if (table === "billDue") return buildBillDueWorkbook(data);
+  const findings = await loadFindings(deps.prisma, deps.farmId);
+  const analysis = analyzeFarm(data.meters, findings);
+  return buildAnalystMetersWorkbook(analysis, data.state, data.farm.name);
 }
 
 /**
@@ -215,7 +231,7 @@ export async function runExportSpreadsheet(
       state: summarizeExportState(filtered),
     };
 
-    const bytes = await buildWorkbook(filteredData, table);
+    const bytes = await buildWorkbook(deps, filteredData, table);
     const filter = resolveFilter(input);
     return {
       kind: "file",
