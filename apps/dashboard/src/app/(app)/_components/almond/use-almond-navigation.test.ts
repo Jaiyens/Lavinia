@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { applyNavigateAction, type NavigationSetters } from "./use-almond-navigation";
+import {
+  applyNavigateAction,
+  energyPathFor,
+  navigateActionToQuery,
+  type NavigationSetters,
+} from "./use-almond-navigation";
 
 // Pure test of the action -> setter mapping (the bridge's client contract). The hook itself wires
 // these setters to nuqs's `useQueryState` under the adapter; the in-browser "URL changed" behavior
@@ -50,5 +55,42 @@ describe("applyNavigateAction", () => {
     const { setters, calls } = recordingSetters();
     applyNavigateAction(setters, {});
     expect(calls).toEqual([]);
+  });
+});
+
+// The deep-link path (open-meter / show-map fix): when Almond drives the screen from a surface that
+// does NOT mount the meter drawer or lens views (Home), the action is routed to the energy surface as
+// a query string instead of applied in place. These prove the serialization the route push depends on.
+describe("navigateActionToQuery", () => {
+  it("serializes a meter open to the meter key", () => {
+    expect(navigateActionToQuery({ meter: "m-17" })).toBe("meter=m-17");
+  });
+
+  it("serializes a lens switch", () => {
+    expect(navigateActionToQuery({ lens: "map" })).toBe("lens=map");
+  });
+
+  it("serializes filters in canonical key order and url-encodes their values", () => {
+    expect(navigateActionToQuery({ lens: "table", rate: "AG-A1", ranch: "Home Ranch" })).toBe(
+      "lens=table&ranch=Home+Ranch&rate=AG-A1",
+    );
+  });
+
+  it("omits null/undefined keys (a fresh deep link has nothing to clear)", () => {
+    expect(navigateActionToQuery({ meter: null })).toBe("");
+    expect(navigateActionToQuery({})).toBe("");
+  });
+});
+
+describe("energyPathFor", () => {
+  it("routes the public Tour to its own energy surface, never out of the Tour", () => {
+    expect(energyPathFor("/tour")).toBe("/tour/energy");
+    expect(energyPathFor("/tour/energy")).toBe("/tour/energy");
+  });
+
+  it("routes the live app (and an unknown/null path) to /energy", () => {
+    expect(energyPathFor("/")).toBe("/energy");
+    expect(energyPathFor("/energy")).toBe("/energy");
+    expect(energyPathFor(null)).toBe("/energy");
   });
 });

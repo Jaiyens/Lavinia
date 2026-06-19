@@ -29,6 +29,7 @@ export function AlmondPanel() {
     onReplay,
     send,
     retry,
+    editMessage,
     closeAlmond,
   } = useAlmondChat();
   const reduce = useReducedMotion();
@@ -58,11 +59,11 @@ export function AlmondPanel() {
         "fixed z-40 outline-none",
         // Mobile: a sheet above the tab bar, clear of the findings sheet.
         "inset-x-3 bottom-20",
-        // Desktop: anchored bottom-right, fixed width.
-        "lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[27rem]",
+        // Desktop: anchored bottom-right, a roomier fixed width than before.
+        "lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[30rem]",
       ].join(" ")}
     >
-      <div className="relative flex h-[min(72dvh,580px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
+      <div className="relative flex h-[min(78dvh,680px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
         <ShineBorder shineColor={["#2fa84f", "#f2c14e"]} borderWidth={1} duration={16} />
 
         <header className="relative flex items-center gap-3 overflow-hidden border-b border-outline-variant px-4 py-3">
@@ -96,6 +97,7 @@ export function AlmondPanel() {
           onReplay={onReplay}
           onStarter={(q) => send(q)}
           onRetry={retry}
+          onEdit={editMessage}
         />
         <AlmondComposer variant="panel" />
       </div>

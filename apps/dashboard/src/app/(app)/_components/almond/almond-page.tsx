@@ -26,6 +26,7 @@ export function AlmondPage() {
     onReplay,
     send,
     retry,
+    editMessage,
   } = useAlmondChat();
   const empty = messages.length === 0;
 
@@ -82,6 +83,7 @@ export function AlmondPage() {
         onReplay={onReplay}
         onStarter={(q) => send(q)}
         onRetry={retry}
+        onEdit={editMessage}
       />
       <div className="sticky bottom-0 bg-paper pb-4 pt-2">
         <AlmondComposer variant="page" />

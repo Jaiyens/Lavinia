@@ -33,15 +33,30 @@ export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) 
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
   const canSend = !busy && (value.trim().length > 0 || files.length > 0);
+
+  // Grow the box with its content line by line (capped by max-h), so a single line sits centered with
+  // no stray scrollbar and a long question expands instead of cramming text against the edges. The
+  // scrollbar only appears once the content passes the cap.
+  function autosize(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  function resetSize() {
+    const el = textareaRef.current;
+    if (el) el.style.height = "auto";
+  }
 
   function submit() {
     if (!canSend) return;
     send(value, files);
     setValue("");
     setFiles([]);
+    resetSize();
   }
 
   function onSubmit(e: FormEvent) {
@@ -80,8 +95,12 @@ export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) 
 
       <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low transition-colors focus-within:border-primary">
         <textarea
+          ref={textareaRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            autosize(e.target);
+          }}
           onKeyDown={onKeyDown}
           rows={1}
           autoFocus={autoFocus}
@@ -89,7 +108,9 @@ export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) 
           aria-label={t.placeholder}
           className={cn(
             "w-full resize-none bg-transparent px-3.5 text-on-surface outline-none placeholder:text-on-surface-variant",
-            isPage ? "max-h-48 min-h-[3.5rem] pt-3.5 type-title" : "max-h-28 min-h-[2.5rem] pt-2.5 type-body-md",
+            isPage
+              ? "max-h-56 min-h-[3.25rem] py-3.5 leading-7 type-title"
+              : "max-h-40 min-h-[2.75rem] py-3 leading-6 type-body-md",
           )}
         />
         <div className="flex items-center gap-1.5 px-2 pb-2">

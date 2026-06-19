@@ -563,9 +563,32 @@ export const en = {
       greeting: (farmName: string): string =>
         `I can answer questions about ${farmName}. Ask me about a meter, your rates, or where the money is going.`,
       thinking: "Thinking",
+      // Farm-flavored thinking lines, rotated while Almond works so the wait feels alive and on-brand
+      // (an almond out walking the farm), not a dead spinner. Plain operator English, no exclamation
+      // marks, no em dashes. Cycled in order; under reduced motion only the first is shown.
+      thinkingPhrases: [
+        "Walking the rows",
+        "Checking the meters",
+        "Reading your bills",
+        "Counting the pumps",
+        "Looking through your rates",
+      ],
       streaming: "Almond is answering",
       error: "That did not work.",
       retry: "Try again",
+      // Per-message controls (copy the text, edit and re-ask a question, regenerate an answer). Plain
+      // operator words, no exclamation marks.
+      copy: "Copy",
+      copied: "Copied",
+      copyAria: "Copy this message",
+      editAction: "Edit",
+      editAria: "Edit this question and ask again",
+      editSave: "Update",
+      editCancel: "Cancel",
+      regenerate: "Try again",
+      regenerateAria: "Ask Almond to answer again",
+      // Collapsible disclosure that reveals the model's reasoning when it streamed any (best-effort).
+      thoughtLabel: "Thought",
       // Per-farm generation throttle (Story 10.3, AR16): shown by both file skills when one farm has
       // built too many heavy artifacts (spreadsheet / PDF) in a short window. Calm, retryable, never a
       // hard error. Plain operator English, no exclamation mark.
@@ -611,6 +634,17 @@ export const en = {
         listFindings: "Looked at your findings",
         getRatesSummary: "Looked at your rates",
         getReconciliation: "Looked at your billing data",
+      },
+      // One quiet line under the answer instead of a row of loud chips: a "Looked at" prefix plus the
+      // short noun for each source, joined with a middot ("Looked at your whole farm · your findings").
+      lookedAtPrefix: "Looked at",
+      lookedAtShort: {
+        getFarmOverview: "your whole farm",
+        listMeters: "your meters",
+        getMeter: "a meter",
+        listFindings: "your findings",
+        getRatesSummary: "your rates",
+        getReconciliation: "your billing data",
       },
       // Action chips: a plain-English record of each navigation Almond drove, and a link back to
       // that view (Story 7.5, FR2). Plain operator words only, no kW/tariff/interval jargon, no
