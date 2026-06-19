@@ -115,6 +115,7 @@ describe("Almond tool executors over the seeded farm", () => {
       "listFindings",
       "listMeters",
       "navigate",
+      "queryMeters",
     ].sort();
     // A caller who canExport (an authed owner OR the demo/Tour viewer) gets the read-safe set + the
     // file skills: exportSpreadsheet (Story 8.5) and generateReport (Story 9.3).
@@ -153,8 +154,13 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
     // The card carries a server-authored file name and the base64 bytes (non-empty).
     expect(body).toContain(".xlsx");
     expect(body).toContain("base64");
-    // The one-line preview is streamed as the answer text.
-    expect(body).toContain("I will export your");
+    // The one-line preview is streamed as the answer text. smoothStream chunks it into
+    // word-level text-delta events, so reconstruct the streamed text before asserting the
+    // phrase (a raw substring check on the SSE body is brittle against word-chunking).
+    const streamedText = [...body.matchAll(/"type":"text-delta"[^}]*?"delta":"([^"]*)"/g)]
+      .map((m) => m[1])
+      .join("");
+    expect(streamedText).toContain("I will export your");
     // The base64 payload is substantial (a real zipped workbook, not an empty file).
     const match = body.match(/"base64":"([^"]+)"/);
     expect(match?.[1]).toBeTruthy();
