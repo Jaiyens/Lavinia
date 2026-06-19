@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Check, Copy, Pencil, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { mdToHtml, mdToPlain } from "./markdown-clipboard";
 
 const t = en.shell.almond;
 
@@ -34,12 +35,38 @@ export function AlmondMessageActions({
   const [copied, setCopied] = useState(false);
 
   async function copy() {
+    // The message body is markdown. Put BOTH a rich HTML flavor (real <strong>/<em>/<del>/<a>/lists,
+    // no `**`/`~~` markers) and a clean plain-text flavor on the clipboard, so a rich target (Mail,
+    // Notes, Docs) pastes bold as bold while a plain target pastes clean prose. This fixes the
+    // grower's #1 complaint: copied answers leaked literal asterisks and tildes.
+    const plain = mdToPlain(text);
     try {
-      await navigator.clipboard.writeText(text);
+      if (
+        typeof ClipboardItem !== "undefined" &&
+        typeof navigator.clipboard?.write === "function"
+      ) {
+        const html = mdToHtml(text);
+        const item = new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([plain], { type: "text/plain" }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        // Older browsers / no ClipboardItem: write the markers-stripped plain text.
+        await navigator.clipboard.writeText(plain);
+      }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard can be blocked (insecure context / denied permission); fail quietly.
+      // Clipboard can be blocked (insecure context / denied permission); fail quietly, and try the
+      // simplest path once more so a partial failure still copies clean text where possible.
+      try {
+        await navigator.clipboard.writeText(plain);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      } catch {
+        // Give up quietly.
+      }
     }
   }
 
