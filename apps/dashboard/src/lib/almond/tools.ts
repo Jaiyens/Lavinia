@@ -5,6 +5,7 @@ import { en } from "@/copy/en";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
+import { analyzeFarm } from "./analysis";
 import {
   rateSchedulesByFrequency,
   resolveMeterQuery,
@@ -12,8 +13,10 @@ import {
   summarizeFindings,
   summarizeMeterDetail,
   summarizeMeters,
+  summarizeRanking,
   summarizeReconciliation,
   type MeterFilters,
+  type RankMetersOptions,
 } from "./shape";
 import { checkGenerationThrottle } from "./rate-limit";
 import { navigateInputSchema, resolveNavigate, type NavigateInput } from "./skills/navigate";
@@ -109,6 +112,27 @@ export async function ratesSummary(deps: AlmondToolDeps) {
 export async function reconciliation(deps: AlmondToolDeps) {
   const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
   return summarizeReconciliation(meters);
+}
+
+/**
+ * The `queryMeters` skill executor (Almond hardening T2). The ranking/aggregation read tool: it
+ * loads the farm's meters AND findings (scoped by `deps`), feeds the SINGLE source of truth
+ * `analyzeFarm` (so cost = the latest reconciled bill and savings = the meter's rate-switch finding,
+ * exactly as the dashboard derives them), then shapes a ranking with the pure `summarizeRanking`.
+ * This is what lets the model answer "which costs the most / top N / by entity / priciest pump" with
+ * a real ranking instead of punting that data does not come back ordered. Read-only: it touches no
+ * record, so it is handed to every actor (ADR-A08). Scope (farmId) is inherited from `deps`, never
+ * from the input. Numbers stay numbers (integer cents) so a downstream answer never re-rounds.
+ */
+export async function queryMeters(
+  deps: AlmondToolDeps,
+  opts: RankMetersOptions & { groupBy?: "entity" } = {},
+) {
+  const [meters, findings] = await Promise.all([
+    loadMetersForFarm(deps.prisma, deps.farmId),
+    loadFindings(deps.prisma, deps.farmId),
+  ]);
+  return summarizeRanking(analyzeFarm(meters, findings), opts);
 }
 
 /**
@@ -267,6 +291,43 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
         "List the farm's open findings (money-saving opportunities and issues), highest dollar impact first. Use this when the grower asks about savings, opportunities, or what needs attention.",
       inputSchema: z.object({}),
       execute: () => findingList(deps),
+    }),
+
+    queryMeters: tool({
+      description:
+        'Rank the farm\'s meters (pumps) by a number and get the ordered list back. Use this whenever the grower asks WHICH meter is the most or least of something, the TOP N, a TOTAL, or a breakdown BY ENTITY: "which pump costs me the most", "the priciest pump", "my top 5 by bill", "biggest demand charge", "where are the savings", "most expensive by company". sortBy "cost" ranks by the latest bill (the default), "demand" by the demand charge, "savings" by the estimated dollars from a rate change (mis-rated meters only). order defaults to "desc" (the most first); pass "asc" for the least. Pass limit for the top N (for example limit 1 for "the single priciest"). groupBy "entity" returns a per-entity rollup instead of meters. Optionally narrow with filterRate or filterEntity (case-insensitive). The data ALWAYS comes back ranked; report the order it returns and quote the meter name plus the whole-dollar figure.',
+      inputSchema: z.object({
+        sortBy: z
+          .enum(["cost", "demand", "savings"])
+          .optional()
+          .describe(
+            "What to rank by: cost (latest bill, default), demand (demand charge), or savings (estimated rate-switch dollars).",
+          ),
+        order: z
+          .enum(["asc", "desc"])
+          .optional()
+          .describe("desc (most first, default) or asc (least first)."),
+        groupBy: z
+          .enum(["entity"])
+          .optional()
+          .describe("Return a per-entity rollup (summed) instead of the meter list."),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .max(183)
+          .optional()
+          .describe("Return only the top N rows (for example 1 for the single priciest, 5 for a top 5)."),
+        filterRate: z
+          .string()
+          .optional()
+          .describe("Narrow to one rate schedule, case-insensitive contains (for example AG-C)."),
+        filterEntity: z
+          .string()
+          .optional()
+          .describe("Narrow to one legal billing entity, case-insensitive contains."),
+      }),
+      execute: (opts) => queryMeters(deps, opts),
     }),
 
     getRatesSummary: tool({

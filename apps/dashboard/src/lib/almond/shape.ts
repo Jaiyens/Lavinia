@@ -1,6 +1,7 @@
 import type { MeterView } from "@/lib/dashboard/load";
 import type { KpiStrip } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
+import type { EnrichedMeter, FarmAnalysis } from "./analysis";
 import { formatUsdWhole } from "@/lib/format/money";
 
 /**
@@ -301,4 +302,196 @@ export function summarizeFindings(findings: FindingView[]): FindingSummary[] {
       meterName: f.meterName,
     };
   });
+}
+
+// --- Ranking / aggregation (the queryMeters tool, Almond hardening T2) ---------------------------
+//
+// The pure ranker the `queryMeters` tool (tools.ts) is built on, so the agent answers "which costs
+// the most / top N / by entity / priciest pump" with a real ranking instead of punting. It reads
+// the SINGLE source of truth, the T1 `FarmAnalysis` (cost = latest-reconciled printed total, savings
+// = the meter's top rate-switch finding), so a number Almond ranks on can never disagree with the
+// dashboard. Pure (no Prisma, no I/O), so it is unit-testable offline over a fixture analysis.
+
+/** What to rank by: `cost` (latest reconciled bill), `demand` (latest demand charge), or `savings`
+ *  (estimated annual rate-switch saving). All three sort on the same integer-cents fields the
+ *  analysis already carries; null cents sort LAST in a descending rank (unknown is never "the most").
+ */
+export type RankSortBy = "cost" | "demand" | "savings";
+export type RankOrder = "asc" | "desc";
+
+export type RankMetersOptions = {
+  /** The field to rank on (default "cost"). */
+  sortBy?: RankSortBy;
+  /** Sort direction (default "desc": the priciest / biggest-saving first). */
+  order?: RankOrder;
+  /** Keep only mis-rated (rate-switch opportunity) meters before ranking, when "savings". The
+   *  savings sort already drops zero-saving meters; an explicit savings request implies them. */
+  filterRate?: string;
+  /** Case-insensitive contains filter on the legal billing entity. */
+  filterEntity?: string;
+  /** Cap the returned rows (after sorting). Omit for all. */
+  limit?: number;
+};
+
+/** The integer-cents value a meter is ranked on for a given field; null when that meter has no
+ *  proven value for it (sorted last in a descending rank, never treated as the largest). A zero
+ *  saving is a real 0 (not "unknown"), so a savings rank can legitimately end in zeros. */
+function rankValue(m: EnrichedMeter, sortBy: RankSortBy): number | null {
+  if (sortBy === "demand") return m.demandChargeCents;
+  if (sortBy === "savings") return m.flags.estAnnualSavingsCents;
+  return m.thisCycleCents;
+}
+
+/** Stable comparator over a cents getter that puts null LAST regardless of order (null is "unknown",
+ *  never the most or least), then orders the known values asc/desc, with the analysis's name/id
+ *  tie-break for a deterministic result. */
+function compareByValue(
+  getCents: (m: EnrichedMeter) => number | null,
+  order: RankOrder,
+): (a: EnrichedMeter, b: EnrichedMeter) => number {
+  return (a, b) => {
+    const ca = getCents(a);
+    const cb = getCents(b);
+    if (ca === null && cb === null) return rankTieBreak(a, b);
+    if (ca === null) return 1;
+    if (cb === null) return -1;
+    if (ca !== cb) return order === "asc" ? ca - cb : cb - ca;
+    return rankTieBreak(a, b);
+  };
+}
+
+function rankTieBreak(a: EnrichedMeter, b: EnrichedMeter): number {
+  if (a.name !== b.name) return a.name < b.name ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+/** Case-insensitive contains, treating an empty/absent filter as "match all" (mirrors `matches`). */
+function rankMatches(value: string | null, filter: string | undefined): boolean {
+  if (!filter) return true;
+  if (value === null) return false;
+  return value.toLowerCase().includes(filter.toLowerCase());
+}
+
+/**
+ * Rank the farm's meters by a chosen field, the pure core of the `queryMeters` tool. Reuses the T1
+ * analysis: a "savings" rank is `analysis.opportunities` (mis-rated meters, biggest saving first)
+ * narrowed by any filter; a "cost"/"demand" rank sorts the enriched meters on the matching cents
+ * field. Filters are case-insensitive contains on rate and entity. The result is deterministic
+ * (null cents last; name/id tie-break), so the same query always returns the same order.
+ */
+export function rankMeters(analysis: FarmAnalysis, opts: RankMetersOptions = {}): EnrichedMeter[] {
+  const sortBy = opts.sortBy ?? "cost";
+  const order = opts.order ?? "desc";
+  // A savings rank starts from the mis-rated opportunities (already a rate switch with a positive
+  // saving); cost/demand start from every meter. Then apply the optional filters.
+  const base = sortBy === "savings" ? analysis.opportunities : analysis.meters;
+  const filtered = base.filter(
+    (m) => rankMatches(m.rate, opts.filterRate) && rankMatches(m.entity, opts.filterEntity),
+  );
+  const sorted = [...filtered].sort(compareByValue((m) => rankValue(m, sortBy), order));
+  if (opts.limit !== undefined && opts.limit > 0) return sorted.slice(0, opts.limit);
+  return sorted;
+}
+
+/** A per-entity rollup of a ranking (groupBy: "entity"), summing the ranked field across the meters
+ *  in each entity. Built from the SAME `analysis.byEntity` rollups for cost/demand (so the totals
+ *  agree with the dashboard's per-entity figures) and from the ranked meters for savings. Sorted
+ *  desc by the summed value (asc when requested), with an entity-name tie-break. */
+export type EntityRankRow = {
+  entity: string;
+  meterCount: number;
+  /** The summed ranked field in integer cents (cost, demand, or savings). */
+  totalCents: number;
+};
+
+export function rankByEntity(analysis: FarmAnalysis, opts: RankMetersOptions = {}): EntityRankRow[] {
+  const sortBy = opts.sortBy ?? "cost";
+  const order = opts.order ?? "desc";
+  const rows = new Map<string, EntityRankRow>();
+  for (const m of rankMeters(analysis, { ...opts, limit: undefined })) {
+    if (m.entity === null) continue;
+    const row = rows.get(m.entity) ?? { entity: m.entity, meterCount: 0, totalCents: 0 };
+    row.meterCount += 1;
+    row.totalCents += rankValue(m, sortBy) ?? 0;
+    rows.set(m.entity, row);
+  }
+  const sorted = [...rows.values()].sort((a, b) => {
+    if (a.totalCents !== b.totalCents) {
+      return order === "asc" ? a.totalCents - b.totalCents : b.totalCents - a.totalCents;
+    }
+    return a.entity < b.entity ? -1 : a.entity > b.entity ? 1 : 0;
+  });
+  if (opts.limit !== undefined && opts.limit > 0) return sorted.slice(0, opts.limit);
+  return sorted;
+}
+
+/** One ranked meter, shaped for the model: the name, where it sits, its rate, and the three integer-
+ *  cents economics the rank can be read from (the model quotes whichever the question asked). Numbers
+ *  stay numbers; no formatted string here (the model formats whole dollars at the surface). */
+export type RankedMeterRow = {
+  name: string;
+  entity: string | null;
+  ranch: string | null;
+  rate: string | null;
+  /** Latest reconciled printed total in cents; null when the meter has no posted bill. */
+  thisCycleCents: number | null;
+  /** Latest reconciled demand charge in cents; null when none. */
+  demandChargeCents: number | null;
+  /** Estimated annual rate-switch saving in cents (0 when the meter is not mis-rated). */
+  estSavingsCents: number;
+  /** The suggested rate when this meter is mis-rated; null otherwise. */
+  suggestedRate: string | null;
+};
+
+function toRankedMeterRow(m: EnrichedMeter): RankedMeterRow {
+  return {
+    name: m.name,
+    entity: m.entity,
+    ranch: m.ranch,
+    rate: m.rate,
+    thisCycleCents: m.thisCycleCents,
+    demandChargeCents: m.demandChargeCents,
+    estSavingsCents: m.flags.estAnnualSavingsCents,
+    suggestedRate: m.flags.suggestedRate,
+  };
+}
+
+/** The compact, model-readable shape the `queryMeters` tool returns: the ranked list (or per-entity
+ *  rollups when grouped), how it was sorted, and a tiny aggregate (count + summed ranked field) so
+ *  the model can state a total without re-summing. Numbers stay numbers (integer cents). */
+export type RankedMetersView = {
+  sortBy: RankSortBy;
+  order: RankOrder;
+  count: number;
+  /** The summed ranked field across the RETURNED rows, integer cents. */
+  totalCents: number;
+  meters: RankedMeterRow[];
+  /** Per-entity rollups, present only when groupBy "entity" was requested. */
+  byEntity?: EntityRankRow[];
+};
+
+/**
+ * Shape a ranking for the model: the ranked meter rows plus a small aggregate (count and the summed
+ * ranked field). When `groupBy` is "entity" it also carries per-entity rollups. The summed total is
+ * over the RETURNED rows (so a top-5 total is the top 5, not the whole farm), with null cents counted
+ * as 0. This is what `queryMeters.execute` returns; pure so it is unit-testable without a model.
+ */
+export function summarizeRanking(
+  analysis: FarmAnalysis,
+  opts: RankMetersOptions & { groupBy?: "entity" } = {},
+): RankedMetersView {
+  const sortBy = opts.sortBy ?? "cost";
+  const order = opts.order ?? "desc";
+  const ranked = rankMeters(analysis, opts);
+  const rows = ranked.map(toRankedMeterRow);
+  const totalCents = ranked.reduce((sum, m) => sum + (rankValue(m, sortBy) ?? 0), 0);
+  const view: RankedMetersView = {
+    sortBy,
+    order,
+    count: rows.length,
+    totalCents,
+    meters: rows,
+  };
+  if (opts.groupBy === "entity") view.byEntity = rankByEntity(analysis, opts);
+  return view;
 }

@@ -16,8 +16,9 @@ const deps: AlmondToolDeps = {
   farmName: "Test Farm",
 };
 
-// The read-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,
-// so it is read-safe and handed to every actor regardless of capability.
+// The read-safe set: the read tools + `navigate` (Story 7.3) + `queryMeters` (Almond hardening T2).
+// `navigate` only sets URL state and `queryMeters` only reads/ranks, so both are read-safe and handed
+// to every actor regardless of capability.
 const READ_SAFE_SKILLS = [
   "getFarmOverview",
   "getMeter",
@@ -26,6 +27,7 @@ const READ_SAFE_SKILLS = [
   "listFindings",
   "listMeters",
   "navigate",
+  "queryMeters",
 ].sort();
 
 // The file-building skills: each WRITES a file, so each is handed only to a caller who `canExport`
@@ -54,6 +56,19 @@ describe("buildAlmondSkills capability gating", () => {
     expect(Object.keys(skills).sort()).toEqual(READ_SAFE_SKILLS);
     for (const skill of FILE_SKILLS) {
       expect(Object.keys(skills)).not.toContain(skill);
+    }
+  });
+
+  it("hands queryMeters (the ranking/aggregation tool, T2) to EVERY actor as read-safe", () => {
+    // queryMeters only reads and ranks the farm's own data (no record write), so the model can answer
+    // "which costs the most / top N / by entity" for any caller, regardless of export capability.
+    const actors = [
+      { authedOwner: true, canExport: true, userId: "user_1" },
+      { authedOwner: false, canExport: true, userId: null },
+      { authedOwner: false, canExport: false, userId: null },
+    ];
+    for (const actor of actors) {
+      expect(Object.keys(buildAlmondSkills(deps, actor))).toContain("queryMeters");
     }
   });
 });
