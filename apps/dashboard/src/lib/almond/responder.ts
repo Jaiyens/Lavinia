@@ -9,6 +9,7 @@ import {
   type UIMessageStreamWriter,
 } from "ai";
 import { createGatewayModel, hasGatewayKey } from "@/lib/ai/gateway";
+import { en } from "@/copy/en";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
@@ -349,6 +350,23 @@ function toTextChunks(text: string): string[] {
 
 type StubIntent = "rates" | "reconciliation" | "findings" | "meters" | "overview";
 
+/** Filenames of file attachments on the latest user turn. By the time the stub runs, spreadsheets
+ *  have already been parsed to text in the route, so these are the PDFs/images the live model would
+ *  read natively; the offline stub uses them only to acknowledge an attachment it cannot read. */
+function lastUserAttachmentNames(uiMessages: UIMessage[]): string[] {
+  for (let i = uiMessages.length - 1; i >= 0; i--) {
+    const m = uiMessages[i];
+    if (m?.role === "user") {
+      return (m.parts ?? []).flatMap((p) =>
+        p.type === "file"
+          ? [typeof p.filename === "string" && p.filename.length > 0 ? p.filename : "a file"]
+          : [],
+      );
+    }
+  }
+  return [];
+}
+
 /** The lower-cased text of the most recent user turn (empty if none). */
 function lastUserText(uiMessages: UIMessage[]): string {
   for (let i = uiMessages.length - 1; i >= 0; i--) {
@@ -569,6 +587,13 @@ export function createStubResponder(): AlmondResponder {
         }
       } else {
         answer = await composeStubAnswer(deps, uiMessages);
+        // Acknowledge any PDF/image attachment so the offline path is honest that a file was sent
+        // (the live model actually reads it; the deterministic stub cannot). Parity with the live
+        // path, which sees the same attachment.
+        const attached = lastUserAttachmentNames(uiMessages);
+        if (attached.length > 0) {
+          answer = `${en.shell.almond.attachmentAck(attached)} ${answer}`;
+        }
       }
       const stream = createUIMessageStream({
         execute: async ({ writer }) => {
@@ -596,8 +621,10 @@ export function createStubResponder(): AlmondResponder {
 
 /**
  * The default responder: live Gateway when a key is present, else the offline stub. This is the
- * single selection point — the route just calls this.
+ * single selection point — the route just calls this. `modelId` is the grower's chosen model (an
+ * allowlisted Gateway `provider/model` string, already validated in the route); the stub ignores it
+ * so dev/CI stays offline regardless of the picked model.
  */
-export function defaultAlmondResponder(): AlmondResponder {
-  return hasGatewayKey() ? createGatewayResponder() : createStubResponder();
+export function defaultAlmondResponder(modelId?: string): AlmondResponder {
+  return hasGatewayKey() ? createGatewayResponder(modelId) : createStubResponder();
 }

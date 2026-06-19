@@ -6,7 +6,7 @@ import { resolveFarm, resolveFindings } from "@/app/(app)/(dashboard)/_data";
 import { AgentRail } from "@/app/(app)/_components/shell/agent-rail";
 import { AgentTabBar } from "@/app/(app)/_components/shell/agent-tabbar";
 import { AlmondLauncher } from "@/app/(app)/_components/almond/almond-launcher";
-import { AlmondLauncherProvider } from "@/app/(app)/_components/almond/almond-launcher-provider";
+import { AlmondChatProvider } from "@/app/(app)/_components/almond/almond-launcher-provider";
 import { TopoBackground } from "@/app/(app)/_components/topo-background";
 import { almondStarters } from "@/lib/almond/starters";
 import { Button } from "@/components/ui";
@@ -32,7 +32,14 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
           first run, and the Tour already carries its own connect CTA. His redesign added the
           TopoBackground and moved findings in-content (no shell findings rail); Almond's provider and
           the capability-gated launcher (canExport: false on the demo) are grafted back onto it. */}
-      <AlmondLauncherProvider>
+      <AlmondChatProvider
+        farmName={resolved?.farm.name ?? "the demo farm"}
+        // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
+        // starters are withheld (`canExport: false`) and attachments are off (`canAttach: false`).
+        // Mirrors the chat route withholding those capabilities from the public actor.
+        starters={almondStarters({ findingCount: findings.length, canExport: false })}
+        canAttach={false}
+      >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
           <AgentRail demo />
@@ -51,16 +58,8 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
           </main>
         </div>
         <AgentTabBar demo />
-        {resolved && (
-          <AlmondLauncher
-            farmName={resolved.farm.name}
-            // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
-            // starters are withheld: `canExport: false`. Mirrors the chat route withholding those skills
-            // from the public actor (dataKind "representative" here, never "real").
-            starters={almondStarters({ findingCount: findings.length, canExport: false })}
-          />
-        )}
-      </AlmondLauncherProvider>
+        <AlmondLauncher />
+      </AlmondChatProvider>
     </NuqsAdapter>
   );
 }

@@ -6,23 +6,27 @@ export type AlmondState = "idle" | "thinking" | "done";
  * Almond, the farm agent's face: the warm almond nut with a green sprout, drawn inline so it
  * scales crisply and tints to the brand. `state` switches the expression (idle / thinking /
  * done); `onDark` lightens the sprout for the dark-green launcher button ("On the button").
- * Static by design — each state reads on its own as a still glyph. The only
- * motion is the idle face's occasional eye blink (the `.almond-eyes` keyframe in globals.css), which
- * the reduced-motion block freezes so the mascot stays a static, readable face when less motion is asked.
+ *
+ * Signs of life (all in `globals.css`, all frozen by the reduced-motion block):
+ *   - The idle face blinks occasionally (`.almond-eyes`), everywhere the mascot appears.
+ *   - `animated` adds a gentle breathing bob to the idle glyph — used on the big surfaces (the
+ *     /almond page hero and the panel header) where the motion reads; left off on tiny nav glyphs.
+ *   - The thinking face's thought bubbles drift up and the done face's sparkle twinkles.
  *
  * Art of record: DESIGN.md `almond-mascot` and the state board at `public/almond.svg`.
- * (Listening = the idle face inside a ring drawn by the launcher; first-login = idle inside the
- * coachmark halo. Those rings are the launcher's chrome, not the glyph.)
  */
 export function AlmondAvatar({
   size = 28,
   state = "idle",
   onDark = false,
+  animated = false,
   className,
 }: {
   size?: number;
   state?: AlmondState;
   onDark?: boolean;
+  /** Add the breathing bob to the idle glyph (for the larger hero/header surfaces). */
+  animated?: boolean;
   className?: string;
 }) {
   const stem = onDark ? "#4E9A63" : "#1F3D2B";
@@ -39,7 +43,7 @@ export function AlmondAvatar({
       fill="none"
       role="img"
       aria-label={label}
-      className={cn("shrink-0", className)}
+      className={cn("shrink-0", animated && state === "idle" && "almond-bob", className)}
     >
       {/* Sprout */}
       <path d="M60 33 L60 18" stroke={stem} strokeWidth="3" strokeLinecap="round" />
@@ -75,6 +79,7 @@ export function AlmondAvatar({
           <path d="M64 89 Q70 83 76 89" stroke="#3A2A1C" strokeWidth="2.6" strokeLinecap="round" />
           <path d="M49 99 Q60 110 71 99" stroke="#3A2A1C" strokeWidth="2.8" strokeLinecap="round" />
           <path
+            className="almond-sparkle"
             d="M96 40 L98.5 46 L104.5 48.5 L98.5 51 L96 57 L93.5 51 L87.5 48.5 L93.5 46 Z"
             fill="#C98A2B"
           />
@@ -84,9 +89,12 @@ export function AlmondAvatar({
           <circle cx="51" cy="84" r="4.6" fill="#3A2A1C" />
           <circle cx="69" cy="84" r="4.6" fill="#3A2A1C" />
           <path d="M55 101 Q60 103 65 101" stroke="#3A2A1C" strokeWidth="2.2" strokeLinecap="round" />
-          <circle cx="88" cy="48" r="3.4" fill="#C98A2B" />
-          <circle cx="98" cy="39" r="3.4" fill="#C98A2B" />
-          <circle cx="108" cy="30" r="3.4" fill="#C98A2B" />
+          {/* Thought bubbles drift up and fade in turn while Almond is thinking. */}
+          <g className="almond-thoughts">
+            <circle cx="88" cy="48" r="3.4" fill="#C98A2B" />
+            <circle cx="98" cy="39" r="3.4" fill="#C98A2B" />
+            <circle cx="108" cy="30" r="3.4" fill="#C98A2B" />
+          </g>
         </>
       ) : (
         <>

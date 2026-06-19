@@ -4,6 +4,8 @@ import { sessionUserId } from "@/lib/auth";
 import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
+import { resolveModel } from "@/lib/almond/models";
+import { parseSpreadsheetAttachments, stripFileAttachments } from "@/lib/almond/attachments/parse";
 import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 
 /**
@@ -49,14 +51,19 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   let uiMessages: UIMessage[];
+  // The grower's chosen model rides on the body too (Story: model picker). Captured here, validated
+  // against the allowlist below — never trusted as-is.
+  let requestedModel: unknown;
   try {
     const body: unknown = await req.json();
-    const messages =
-      body && typeof body === "object" ? (body as { messages?: unknown }).messages : undefined;
+    const obj =
+      body && typeof body === "object" ? (body as { messages?: unknown; model?: unknown }) : {};
+    const messages = obj.messages;
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: "messages required" }, { status: 400 });
     }
     uiMessages = messages as UIMessage[];
+    requestedModel = obj.model;
   } catch {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
@@ -69,10 +76,19 @@ export async function POST(req: Request): Promise<Response> {
   // the badged demo farm ("representative") and is NOT an owner. The factory uses this to gate
   // which skills the model is handed — today nothing is gated, but the flag is wired end to end.
   const authedOwner = resolved.dataKind === "real";
-  const responder = defaultAlmondResponder();
+  // Attachments are an owner-only context channel (capability parity with the export/report skills):
+  // an authed owner's spreadsheet/CSV is parsed to text and PDFs/images pass through to the model's
+  // native reading; a non-owner (public Tour) has any file parts stripped, so an untrusted caller can
+  // never push file bytes into the model. Read-only: attachments are context, never a data write.
+  const preparedMessages = authedOwner
+    ? await parseSpreadsheetAttachments(uiMessages)
+    : stripFileAttachments(uiMessages);
+  // Validate the requested model against the allowlist (a bad/forged value falls back to Opus 4.8) so
+  // an arbitrary model string can never reach the gateway. The stub path ignores it (offline/CI).
+  const responder = defaultAlmondResponder(resolveModel(requestedModel));
   try {
     return await responder.toResponse({
-      uiMessages,
+      uiMessages: preparedMessages,
       system: buildSystemPrompt(farmName),
       deps: { prisma, farmId: farm.id, farmName },
       // userId rides on the actor so an owner-only side effect (persisting an export to Reports,

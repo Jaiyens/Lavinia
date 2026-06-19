@@ -614,6 +614,65 @@ html {
   animation: terra-almond-blink 5.6s ease-in-out infinite;
 }
 
+/* A gentle "breathing" bob on the larger idle glyph (the /almond page hero, the panel header) so
+   Almond feels alive, not pasted on. Tiny amplitude; only applied via the `animated` prop so the
+   small nav glyphs stay still. Frozen under reduced motion. */
+@keyframes terra-almond-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3%);
+  }
+}
+.almond-bob {
+  animation: terra-almond-bob 4.2s ease-in-out infinite;
+}
+
+/* The thinking face's three thought bubbles drift up and fade in turn (a clear "working" sign).
+   Staggered so they ripple rather than pulse together. */
+@keyframes terra-almond-thought {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(2px) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1);
+  }
+}
+.almond-thoughts circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: terra-almond-thought 2.4s ease-in-out infinite;
+}
+.almond-thoughts circle:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.almond-thoughts circle:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+/* The done face's sparkle twinkles once it appears. */
+@keyframes terra-almond-sparkle {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(18deg);
+  }
+}
+.almond-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: terra-almond-sparkle 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -629,7 +688,10 @@ html {
   .drawer-in,
   .skeleton,
   .chart-bar-grow,
-  .almond-eyes {
+  .almond-eyes,
+  .almond-bob,
+  .almond-thoughts circle,
+  .almond-sparkle {
     animation: none !important;
     animation-delay: 0ms !important;
   }

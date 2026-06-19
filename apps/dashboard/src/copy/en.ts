@@ -426,6 +426,7 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
+      almond: "Almond",
       water: "Water",
       labor: "Labor",
     },
@@ -537,6 +538,27 @@ export const en = {
       // Composer.
       placeholder: "Ask anything about your farm",
       send: "Send",
+      // Full-page Almond tab (Notion-style): a calm greeting hero over a big composer. Plain
+      // operator English, no exclamation mark.
+      pageEyebrow: "Assistant",
+      pageGreeting: "How can I help you today?",
+      // Model picker (a grower can switch which model answers; one farmer loved this). Plain words.
+      modelLabel: "Model",
+      modelPickerAria: "Choose which model answers",
+      // File attachments (read-only context: PDFs, Excel, CSV). Owner-only.
+      attach: "Add a file",
+      attachAria: "Attach a PDF, Excel, or CSV",
+      removeAttachment: (name: string): string => `Remove ${name}`,
+      attachmentsLabel: "Attached",
+      // Shown by the offline stub (dev/demo) to acknowledge a file it cannot read; the live model
+      // actually reads the attachment.
+      attachmentAck: (names: string[]): string =>
+        names.length === 1
+          ? `I can see you attached ${names[0]}.`
+          : `I can see you attached ${names.length} files.`,
+      // The full page labels its starter chips "Suggested" (Notion-style); the panel uses
+      // `startersLabel` ("Try asking"). Same starters, different surface.
+      suggestedLabel: "Suggested",
       // States.
       greeting: (farmName: string): string =>
         `I can answer questions about ${farmName}. Ask me about a meter, your rates, or where the money is going.`,

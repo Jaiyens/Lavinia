@@ -20,3 +20,13 @@ test("the Almond launcher is not exposed on the public sign-in page", async ({ p
   await page.goto("/login");
   await expect(page.getByRole("button", { name: /open almond/i })).toHaveCount(0);
 });
+
+test("the dedicated Almond page renders on the public tour with a model picker", async ({ page }) => {
+  await page.goto("/tour/almond");
+  // The Notion-style greeting hero.
+  await expect(page.getByRole("heading", { name: /how can i help you today/i })).toBeVisible();
+  // A grower can switch models (the curated picker is present on both surfaces).
+  await expect(page.getByRole("combobox", { name: /choose which model answers/i })).toBeVisible();
+  // Attachments are owner-only (capability parity with export/report); the public Tour cannot attach.
+  await expect(page.getByRole("button", { name: /attach a pdf/i })).toHaveCount(0);
+});

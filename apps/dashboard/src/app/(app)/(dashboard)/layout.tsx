@@ -8,7 +8,7 @@ import { resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
-import { AlmondLauncherProvider } from "../_components/almond/almond-launcher-provider";
+import { AlmondChatProvider } from "../_components/almond/almond-launcher-provider";
 import { AlmondNudge } from "../_components/almond/almond-nudge";
 import { TopoBackground } from "../_components/topo-background";
 import { almondStarters } from "@/lib/almond/starters";
@@ -47,7 +47,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           first-run nudge open the same panel as the floating launcher (Story 10.2). His Home redesign
           moved findings in-content (no shell-wide findings rail) and added the TopoBackground; Almond's
           provider, nudge, and capability-gated launcher are grafted back onto that structure. */}
-      <AlmondLauncherProvider>
+      <AlmondChatProvider
+        farmName={resolved.farm.name}
+        starters={almondStarters({
+          findingCount: findings.length,
+          // Owner-only export/PDF starters: gate on the SAME signal the chat route uses for
+          // `authedOwner` (dataKind "real" = a connected owner; the badged demo fallback is not).
+          canExport: resolved.dataKind === "real",
+        })}
+        // Attachments are owner-only (capability parity with the chat route): a connected owner can
+        // attach bills/exports; the demo fallback cannot.
+        canAttach={resolved.dataKind === "real"}
+      >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
           <AgentRail />
@@ -55,16 +66,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
         <AgentTabBar />
         <AlmondNudge show={showNudge} />
-        <AlmondLauncher
-          farmName={resolved.farm.name}
-          starters={almondStarters({
-            findingCount: findings.length,
-            // Owner-only export/PDF starters: gate on the SAME signal the chat route uses for
-            // `authedOwner` (dataKind "real" = a connected owner; the badged demo fallback is not).
-            canExport: resolved.dataKind === "real",
-          })}
-        />
-      </AlmondLauncherProvider>
+        <AlmondLauncher />
+      </AlmondChatProvider>
     </NuqsAdapter>
   );
 }

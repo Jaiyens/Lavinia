@@ -3,46 +3,34 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
-import type { UIMessage } from "ai";
 import { en } from "@/copy/en";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { DotPattern } from "@/components/ui/dot-pattern";
-import type { AlmondNavChip } from "./almond-result";
-import type { AlmondReportCard } from "./almond-download-card";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
 import { AlmondComposer } from "./almond-composer";
+import { useAlmondChat } from "./almond-launcher-provider";
 
 const t = en.shell.almond;
 
-type Props = {
-  farmName: string;
-  messages: UIMessage[];
-  status: "submitted" | "streaming" | "ready" | "error";
-  starters: string[];
-  /** Action chips per assistant message id (Story 7.5), captured in the launcher. */
-  navByMessage: Map<string, AlmondNavChip[]>;
-  /** Download cards per assistant message id (Story 8.5), captured in the launcher. */
-  reportsByMessage: Map<string, AlmondReportCard[]>;
-  /** Re-apply a chip's navigation (the chip is a link back to that view). */
-  onReplay: (chip: AlmondNavChip) => void;
-  onSend: (text: string) => void;
-  onRetry: () => void;
-  onClose: () => void;
-};
-
-export function AlmondPanel({
-  farmName,
-  messages,
-  status,
-  starters,
-  navByMessage,
-  reportsByMessage,
-  onReplay,
-  onSend,
-  onRetry,
-  onClose,
-}: Props) {
+/**
+ * The floating chat panel (quick-ask from any screen). Reads the shared conversation from context,
+ * so it shows the SAME thread as the /almond full-page tab — ask in the panel, open the page, the
+ * conversation continues. The composer self-serves from context (model picker + attach live there).
+ */
+export function AlmondPanel() {
+  const {
+    farmName,
+    starters,
+    messages,
+    status,
+    navByMessage,
+    reportsByMessage,
+    onReplay,
+    send,
+    retry,
+    closeAlmond,
+  } = useAlmondChat();
   const reduce = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -50,13 +38,11 @@ export function AlmondPanel({
   useEffect(() => {
     panelRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeAlmond();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const busy = status === "submitted" || status === "streaming";
+  }, [closeAlmond]);
 
   return (
     <motion.div
@@ -73,10 +59,10 @@ export function AlmondPanel({
         // Mobile: a sheet above the tab bar, clear of the findings sheet.
         "inset-x-3 bottom-20",
         // Desktop: anchored bottom-right, fixed width.
-        "lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[26rem]",
+        "lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[27rem]",
       ].join(" ")}
     >
-      <div className="relative flex h-[min(70dvh,560px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
+      <div className="relative flex h-[min(72dvh,580px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
         <ShineBorder shineColor={["#2fa84f", "#f2c14e"]} borderWidth={1} duration={16} />
 
         <header className="relative flex items-center gap-3 overflow-hidden border-b border-outline-variant px-4 py-3">
@@ -85,14 +71,14 @@ export function AlmondPanel({
             height={16}
             className="pointer-events-none absolute inset-0 text-primary/15 [mask-image:linear-gradient(to_right,white,transparent)]"
           />
-          <AlmondAvatar size={32} className="relative" />
+          <AlmondAvatar size={32} animated className="relative" />
           <div className="relative min-w-0">
             <p className="type-body-md font-semibold text-on-surface">{t.name}</p>
             <p className="type-label-caps text-on-surface-variant">{t.tagline}</p>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeAlmond}
             aria-label={t.closeLabel}
             className="relative ml-auto grid h-9 w-9 place-items-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-tint"
           >
@@ -108,10 +94,10 @@ export function AlmondPanel({
           navByMessage={navByMessage}
           reportsByMessage={reportsByMessage}
           onReplay={onReplay}
-          onStarter={onSend}
-          onRetry={onRetry}
+          onStarter={(q) => send(q)}
+          onRetry={retry}
         />
-        <AlmondComposer onSend={onSend} disabled={busy} />
+        <AlmondComposer variant="panel" />
       </div>
     </motion.div>
   );

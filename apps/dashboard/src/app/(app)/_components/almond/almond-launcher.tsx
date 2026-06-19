@@ -1,184 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence } from "motion/react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
 import { en } from "@/copy/en";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { BorderBeam } from "@/components/ui/border-beam";
-import type { NavigateAction } from "@/lib/almond/skills/navigate";
-import type { AlmondReportData } from "@/lib/almond/responder";
-import type { AlmondNavChip } from "./almond-result";
-import type { AlmondReportCard } from "./almond-download-card";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondPanel } from "./almond-panel";
-import { useAlmondLauncher } from "./almond-launcher-provider";
-import { useAlmondNavigation } from "./use-almond-navigation";
-
-/**
- * Almond's chat carries two custom transient stream parts:
- *   - `data-navigate` (Story 7.5): a navigation `action` plus a plain-English `label` for the chip.
- *   - `data-report` (Story 8.5): a spreadsheet Almond made (base64 bytes + file name), rendered as a
- *     download card. Transient, so the bytes are delivered once and never replayed or persisted.
- */
-type AlmondUIMessage = UIMessage<
-  unknown,
-  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData }
->;
+import { useAlmondChat, ZERO_WIDTH_SPACE } from "./almond-launcher-provider";
 
 const t = en.shell.almond;
 
-/** Appended to the live-region text on alternating announcements so an identical label still changes
- *  the DOM text and is re-announced. Zero-width (U+200B): invisible and not spoken by screen readers. */
-const ZERO_WIDTH_SPACE = String.fromCharCode(0x200b);
-
-/** The id of the most recent assistant message, or undefined if none exists yet. Never falls back to
- *  a user message — a chip keyed to a user turn would never render (it only renders in the assistant
- *  bubble), so an unattributable chip stays buffered until its assistant message appears. */
-function lastAssistantId(messages: AlmondUIMessage[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]?.role === "assistant") return messages[i]?.id;
-  }
-  return undefined;
-}
-
 /**
- * Almond's persistent launcher: a corner button on every (app) screen that opens the chat
- * panel (the Notion-agent feel). Owns the `useChat` conversation so it survives open/close, and
- * streams against the farm-scoped `/api/almond/chat` endpoint (Story 6.1). Open/close is
- * ephemeral local UI state — no nuqs key (canonical keys are lens|entity|ranch|rate|meter only).
- *
- * It also owns the navigation bridge AND the action-chip record (Story 7.5): because the
- * `data-navigate` part is transient (never in `message.parts`), chips are captured here as the part
- * arrives and kept in launcher state, so they survive closing and reopening the panel. The chips are
- * threaded down to the message list; tapping one re-applies the same action (a link back).
+ * Almond's floating quick-ask launcher: a corner FAB on every (app) screen that opens the chat
+ * PANEL. The conversation itself now lives in `AlmondChatProvider` (so the panel and the dedicated
+ * /almond page share one thread); this component is just the FAB + the panel mount + the polite
+ * navigation announcer. On the dedicated Almond page the FAB is hidden — the page is the surface
+ * there, so a floating duplicate would be redundant.
  */
-export function AlmondLauncher({
-  farmName,
-  starters,
-}: {
-  farmName: string;
-  starters: string[];
-}) {
-  // Open/close is shared via context (Story 10.2) so the rail entry and the first-run nudge open the
-  // SAME panel as this FAB. Only the boolean is shared; all chat state below stays in this component.
-  const { open, setOpen } = useAlmondLauncher();
-  // One transport instance for the component's life (not a new one per render).
-  const [transport] = useState(() => new DefaultChatTransport({ api: "/api/almond/chat" }));
-  // The navigation bridge: when the server streams a `data-navigate` part, apply it through the
-  // canonical nuqs setters so the dashboard moves exactly as a manual click would (Story 7.4).
-  // `apply` is a stable callback, so closing over it (in `onData` / `onReplay`) is safe.
-  const { apply: applyNavigation } = useAlmondNavigation();
-  // Action chips, keyed by the assistant message that drove each navigation (Story 7.5).
-  const [navByMessage, setNavByMessage] = useState<Map<string, AlmondNavChip[]>>(new Map());
-  // Download cards, keyed by the assistant message that produced each spreadsheet (Story 8.5). Same
-  // capture-and-attribute pattern as the nav chips: the `data-report` part is transient (never in
-  // `message.parts`), so the card is captured here and kept in launcher state, surviving open/close.
-  const [reportsByMessage, setReportsByMessage] = useState<Map<string, AlmondReportCard[]>>(new Map());
-  // The latest navigation label, announced to screen readers via a polite live region (UX-DR7). The
-  // `seq` forces the live region's text to differ even when the same label repeats, so a repeat
-  // navigation (or a chip re-tap) is re-announced rather than silently swallowed.
-  const [announcement, setAnnouncement] = useState<{ text: string; seq: number }>({ text: "", seq: 0 });
-  // Chips received from `onData` but not yet attributed to their assistant message; flushed by the
-  // effect below. A ref (not state) because it is a hand-off buffer, not rendered directly.
-  const pendingChips = useRef<AlmondNavChip[]>([]);
-  // Same hand-off buffer for download cards (attributed to their assistant turn by the effect).
-  const pendingReports = useRef<AlmondReportCard[]>([]);
-  // Bumped on each navigation to trigger the flush effect (the transient part does not change
-  // `messages`, so the effect needs an explicit nudge).
-  const [flushTick, setFlushTick] = useState(0);
-
-  const announce = useCallback((label: string) => {
-    setAnnouncement((a) => ({ text: label, seq: a.seq + 1 }));
-  }, []);
-
-  const { messages, sendMessage, status, regenerate } = useChat<AlmondUIMessage>({
-    transport,
-    // `onData` fires once per received data part and is never replayed on a re-render or a reload
-    // (transient parts are not persisted to history), so each navigation is applied exactly once
-    // without any manual dedupe — the 7.4 "applied exactly once" guarantee is structural here.
-    onData: (part) => {
-      if (part.type === "data-navigate") {
-        const { action, label } = part.data;
-        applyNavigation(action); // one-shot apply (Story 7.4)
-        // Buffer the chip and nudge the flush effect, which attributes it to the assistant turn using
-        // the freshly-rendered `messages` (not a laggy ref), so attribution is never stale/misfiled.
-        pendingChips.current.push({ action, label });
-        setFlushTick((n) => n + 1);
-        announce(label);
-        return;
-      }
-      if (part.type === "data-report") {
-        // A spreadsheet Almond made: buffer the download card and nudge the flush effect to attribute
-        // it to the assistant turn. The card is delivered exactly once (the part is transient).
-        pendingReports.current.push(part.data);
-        setFlushTick((n) => n + 1);
-      }
-    },
-  });
-
-  // Attribute buffered chips to the assistant message that drove them, and prune any whose message no
-  // longer exists (e.g. after `regenerate()` replaces a turn with a new id). Runs against the current
-  // `messages`, so the assistant id is correct; if it is not present yet, chips stay buffered for the
-  // next pass. The updater is pure (the buffer is drained in the effect body, not inside setState).
-  useEffect(() => {
-    const liveIds = new Set(messages.map((m) => m.id));
-    const assistantId = lastAssistantId(messages);
-    const chipsToFlush = assistantId ? pendingChips.current : [];
-    if (chipsToFlush.length > 0) pendingChips.current = [];
-    setNavByMessage((prev) => {
-      let changed = false;
-      const next = new Map<string, AlmondNavChip[]>();
-      for (const [id, chips] of prev) {
-        if (liveIds.has(id)) next.set(id, chips);
-        else changed = true; // drop chips whose message is gone
-      }
-      if (chipsToFlush.length > 0 && assistantId) {
-        next.set(assistantId, [...(next.get(assistantId) ?? []), ...chipsToFlush]);
-        changed = true;
-      }
-      return changed ? next : prev;
-    });
-
-    // Same attribute-and-prune pass for download cards (Story 8.5).
-    const reportsToFlush = assistantId ? pendingReports.current : [];
-    if (reportsToFlush.length > 0) pendingReports.current = [];
-    setReportsByMessage((prev) => {
-      let changed = false;
-      const next = new Map<string, AlmondReportCard[]>();
-      for (const [id, cards] of prev) {
-        if (liveIds.has(id)) next.set(id, cards);
-        else changed = true; // drop cards whose message is gone
-      }
-      if (reportsToFlush.length > 0 && assistantId) {
-        next.set(assistantId, [...(next.get(assistantId) ?? []), ...reportsToFlush]);
-        changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [messages, flushTick]);
-
-  // Re-apply a chip's navigation (the chip is a link back to that view).
-  const onReplay = useCallback(
-    (chip: AlmondNavChip) => {
-      applyNavigation(chip.action);
-      announce(chip.label);
-    },
-    [applyNavigation, announce],
-  );
+export function AlmondLauncher() {
+  const { open, setOpen, announcement } = useAlmondChat();
+  const pathname = usePathname();
+  const onAlmondPage = pathname === "/almond" || pathname === "/tour/almond";
 
   return (
     <>
-      {/* Polite, visually hidden announcer for navigations Almond drives (UX-DR7). Mounted with the
-          launcher (not the panel) so it announces whether or not the panel is open. The trailing
-          zero-width space (toggled by `seq`) forces a text change so repeats are re-announced. */}
+      {/* Polite, visually hidden announcer for navigations Almond drives (UX-DR7). Mounted here (not
+          the panel) so it announces whether or not the panel is open. The trailing zero-width space
+          (toggled by `seq`) forces a text change so repeats are re-announced. */}
       <span className="sr-only" role="status" aria-live="polite">
         {announcement.text}
         {announcement.seq % 2 === 1 ? ZERO_WIDTH_SPACE : ""}
       </span>
 
-      {!open && (
+      {!open && !onAlmondPage && (
         <ShimmerButton
           onClick={() => setOpen(true)}
           aria-label={t.openLabel}
@@ -196,22 +51,7 @@ export function AlmondLauncher({
         </ShimmerButton>
       )}
 
-      <AnimatePresence>
-        {open && (
-          <AlmondPanel
-            farmName={farmName}
-            messages={messages}
-            status={status}
-            starters={starters}
-            navByMessage={navByMessage}
-            reportsByMessage={reportsByMessage}
-            onReplay={onReplay}
-            onSend={(text) => sendMessage({ text })}
-            onRetry={() => regenerate()}
-            onClose={() => setOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{open && <AlmondPanel />}</AnimatePresence>
     </>
   );
 }

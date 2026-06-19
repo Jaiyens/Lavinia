@@ -129,7 +129,11 @@ export function AlmondMessages({
           return null;
         return (
           <div key={m.id} className="flex items-start gap-2">
-            <AlmondAvatar size={26} className="mt-0.5" />
+            <AlmondAvatar
+              size={26}
+              state={isLookingUp(m) ? "thinking" : "idle"}
+              className="mt-0.5"
+            />
             <div
               className={cn(
                 "max-w-[85%] rounded-[var(--radius-lg)] rounded-bl-sm border border-outline-variant bg-paper px-3 py-2",
@@ -157,7 +161,7 @@ export function AlmondMessages({
 
       {waiting && (
         <div className="flex items-start gap-2">
-          <AlmondAvatar size={26} className="mt-0.5" />
+          <AlmondAvatar size={26} state="thinking" className="mt-0.5" />
           <AnimatedShinyText className="px-1 py-2 text-on-surface-variant">
             {t.thinking}
           </AnimatedShinyText>
