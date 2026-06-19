@@ -201,9 +201,10 @@ describe("resolveSections (de-duped, defaulted, order preserved)", () => {
     ]);
   });
 
-  it("defaults to a non-empty whole-farm shape (summary + meter table) when none chosen", () => {
-    expect(resolveSections({})).toEqual(["summary", "meterTable"]);
-    expect(resolveSections({ sections: [] })).toEqual(["summary", "meterTable"]);
+  it("defaults to the money-first whole-farm shape (cover, opportunities, charts, summary, meters) when none chosen", () => {
+    const moneyFirst = ["cover", "opportunities", "charts", "summary", "meterTable"];
+    expect(resolveSections({})).toEqual(moneyFirst);
+    expect(resolveSections({ sections: [] })).toEqual(moneyFirst);
   });
 });
 
@@ -279,12 +280,12 @@ describe("runGenerateReport (the file path, real PDF, zero external calls)", () 
     expect(result.params.sections).toEqual(["summary", "meterTable"]);
   });
 
-  it("defaults to summary + meter table when no sections are chosen (never an empty PDF)", async () => {
+  it("defaults to the money-first whole-farm report when no sections are chosen (never an empty PDF)", async () => {
     const result = await runGenerateReport(depsFor([makePump(1, { close: "2026-03-12" })]), {});
     expect(result.kind).toBe("file");
     if (result.kind !== "file") return;
     expect(isPdf(result.bytes)).toBe(true);
-    expect(result.params.sections).toEqual(["summary", "meterTable"]);
+    expect(result.params.sections).toEqual(["cover", "opportunities", "charts", "summary", "meterTable"]);
   });
 
   it("authors savings + mis-rated sections from the farm's rate-switch findings", async () => {
