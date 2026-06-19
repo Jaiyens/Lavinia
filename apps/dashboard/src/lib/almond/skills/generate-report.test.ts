@@ -126,16 +126,16 @@ type FakeRec = {
   createdAt: Date;
 };
 
-// Mirrors the PRODUCTION rate lever's stored action exactly (run-rate-lever.ts:139): the machine verb
-// is `kind: "switch_rate"`, the farmer-facing label is `en.rateOptimization.action(to)` = "Move it to
-// {to}" - which deliberately never contains the word "switch" - and `params.to` is the suggested rate.
-// The report must identify the switch off the grounded `kind`/`params.to`, NEVER by string-matching
-// this label, so the fixture uses the real label (not a "Switch to ..." fiction).
+// Mirrors the PRODUCTION engine's stored action exactly (run.ts -> rate-compare.ts:231): the machine
+// verb is `kind: "switch_rate"`, the farmer-facing label is `en.rateOptimization.action(to)` = "Move it
+// to {to}" - which deliberately never contains the word "switch" - and `params.toSchedule` is the
+// suggested rate. The report must identify the switch off the grounded `kind`/`params.toSchedule`, NEVER
+// by string-matching this label, so the fixture uses the real label (not a "Switch to ..." fiction).
 function switchRateRec(pumpId: string, toRate: string, savingsUsd: number): FakeRec {
   return {
     id: `rec_${pumpId}`,
     situation: `Pump ${pumpId} could move to a cheaper rate.`,
-    action: { kind: "switch_rate", label: `Move it to ${toRate}`, params: { pumpId, to: toRate } },
+    action: { kind: "switch_rate", label: `Move it to ${toRate}`, params: { pumpId, toSchedule: toRate } },
     impactUsd: savingsUsd,
     impactNote: "Estimated from PG&E published rates.",
     severity: "act",

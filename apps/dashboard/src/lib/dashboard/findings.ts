@@ -47,7 +47,7 @@ export type FindingView = {
   /** Resolved from the farm's meters when meterId matches; null otherwise. */
   meterName: string | null;
   /** When the stored action is a rate switch (action.kind === "switch_rate"), the
-   *  suggested rate code from action.params.to (e.g. "AG-B"); null for every other
+   *  suggested rate code from action.params.toSchedule (e.g. "AG-B"); null for every other
    *  finding, and null when a switch finding has no readable target. Surfaced HERE
    *  (the single tested narrowing place) so a consumer reads the GROUNDED action kind
    *  off the stored JSON, never string-parses the farmer-facing label, whose copy
@@ -83,8 +83,9 @@ function nonEmpty(v: unknown): string | null {
 
 /** Narrow the stored action Json to its displayable parts plus the grounded rate-switch
  *  target. The rate-switch target reads off the machine verb (action.kind === "switch_rate")
- *  and action.params.to, NOT the farmer-facing label - the label copy ("Move it to AG-B")
- *  never contains the word "switch", so any label string-match misses every real finding. */
+ *  and action.params.toSchedule (the live engine's field; falls back to the legacy `to` for
+ *  any older rows), NOT the farmer-facing label - the label copy ("Move it to AG-B") never
+ *  contains the word "switch", so any label string-match misses every real finding. */
 function readAction(action: unknown): {
   label: string | null;
   meterId: string | null;
@@ -95,7 +96,9 @@ function readAction(action: unknown): {
   const params = isObject(action.params) ? action.params : null;
   const meterId = params !== null ? nonEmpty(params.pumpId) : null;
   const rateSwitchTo =
-    action.kind === "switch_rate" && params !== null ? nonEmpty(params.to) : null;
+    action.kind === "switch_rate" && params !== null
+      ? (nonEmpty(params.toSchedule) ?? nonEmpty(params.to))
+      : null;
   return { label, meterId, rateSwitchTo };
 }
 
