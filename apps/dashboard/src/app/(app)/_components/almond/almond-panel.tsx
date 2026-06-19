@@ -63,16 +63,16 @@ export function AlmondPanel() {
         "lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[30rem]",
       ].join(" ")}
     >
-      <div className="relative flex h-[min(78dvh,680px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
+      <div className="relative flex h-[min(78dvh,680px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-[0_18px_50px_rgba(20,24,40,0.18)]">
         <ShineBorder shineColor={["#2fa84f", "#f2c14e"]} borderWidth={1} duration={16} />
 
-        <header className="relative flex items-center gap-3 overflow-hidden border-b border-outline-variant px-4 py-3">
+        <header className="relative flex items-center gap-3 overflow-hidden border-b border-outline-variant bg-primary/[0.04] px-4 py-3.5">
           <DotPattern
             width={16}
             height={16}
             className="pointer-events-none absolute inset-0 text-primary/15 [mask-image:linear-gradient(to_right,white,transparent)]"
           />
-          <AlmondAvatar size={44} animated className="relative" />
+          <AlmondAvatar size={52} animated className="relative" />
           <div className="relative min-w-0">
             <p className="type-body-md font-semibold text-on-surface">{t.name}</p>
             <p className="type-label-caps text-on-surface-variant">{t.tagline}</p>

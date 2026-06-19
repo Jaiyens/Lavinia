@@ -41,13 +41,14 @@ export function AlmondLauncher() {
           background="#2fa84f"
           shimmerColor="#f2c14e"
           borderRadius="999px"
-          className="fixed bottom-20 right-4 z-40 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:right-6"
+          className="fixed bottom-20 right-4 z-40 gap-2.5 py-2 pl-2 pr-5 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:right-6"
         >
-          <span className="relative flex items-center gap-2 px-1 py-0.5">
-            <AlmondAvatar size={24} />
-            <span className="type-body-md font-medium text-white">{t.launcherLabel}</span>
+          {/* The mascot is the hero: a big almond on its own avatar disc, the label beside it. */}
+          <span className="relative grid h-12 w-12 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)] ring-1 ring-black/5">
+            <AlmondAvatar size={40} animated />
           </span>
-          <BorderBeam size={48} duration={6} colorFrom="#f2c14e" colorTo="#ffffff" />
+          <span className="type-body-md font-semibold text-white">{t.launcherLabel}</span>
+          <BorderBeam size={56} duration={6} colorFrom="#f2c14e" colorTo="#ffffff" />
         </ShimmerButton>
       )}
 
