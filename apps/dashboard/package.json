@@ -18,6 +18,7 @@
     "db:reset": "prisma db push --force-reset --skip-generate && prisma db seed",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "preview:seeded": "next build && node scripts/preview-seeded.mjs",
     "import:demo": "tsx scripts/import-demo-account.ts",
     "db:import-fixture": "tsx scripts/persist-demo-fixture.ts",
     "levers:run": "tsx scripts/run-levers.ts"
