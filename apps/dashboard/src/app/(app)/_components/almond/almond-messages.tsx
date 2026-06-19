@@ -47,6 +47,17 @@ function isLookingUp(m: UIMessage): boolean {
   return hasToolPart(m) && !hasText;
 }
 
+/** Whether a tool on this message is still running (called, no result yet). Stays true through the
+ *  SLOW work — building a spreadsheet or PDF — so we can keep an animated "still working" line on
+ *  screen instead of a frozen answer with no sign of life. */
+function toolRunning(m: UIMessage): boolean {
+  return partsOf(m).some((p) => {
+    if (!(p.type.startsWith("tool-") || p.type === "dynamic-tool")) return false;
+    if (!("state" in p) || typeof p.state !== "string") return false;
+    return p.state !== "output-available" && p.state !== "output-error";
+  });
+}
+
 type Props = {
   messages: UIMessage[];
   status: "submitted" | "streaming" | "ready" | "error";
@@ -83,6 +94,16 @@ export function AlmondMessages({
   }, [messages, status]);
 
   const waiting = status === "submitted";
+  // After the answer text has streamed, the model may still be BUILDING something slow (a spreadsheet
+  // or PDF). Keep an animated "still working" line under that turn so Almond never just vanishes mid
+  // task — the gap a grower hit when an export took a few seconds.
+  const last = messages[messages.length - 1];
+  const generating =
+    status === "streaming" &&
+    last !== undefined &&
+    last.role === "assistant" &&
+    toolRunning(last) &&
+    messageText(last).length > 0;
 
   return (
     <div
@@ -146,6 +167,7 @@ export function AlmondMessages({
       })}
 
       {waiting && <ThinkingLine />}
+      {generating && <WorkingLine />}
 
       {status === "error" && (
         <div className="flex items-center gap-2" role="alert">
@@ -281,9 +303,9 @@ function AssistantMessage({
   );
 }
 
-/** The live "thinking" line: a prominent, animated Almond beside a rotating farm-flavored phrase, so
- *  the wait reads as Almond out checking the farm rather than a dead spinner. */
-function ThinkingLine() {
+/** Rotate through the farm-flavored thinking phrases ("Walking the rows"…) on a gentle interval;
+ *  under reduced motion it holds the first phrase. Shared by the thinking and working lines. */
+function useRotatingPhrase(): string {
   const reduce = useReducedMotion();
   const phrases = t.thinkingPhrases;
   const [i, setI] = useState(0);
@@ -292,11 +314,30 @@ function ThinkingLine() {
     const id = window.setInterval(() => setI((n) => (n + 1) % phrases.length), 1800);
     return () => window.clearInterval(id);
   }, [reduce, phrases.length]);
-  const phrase = (reduce ? phrases[0] : phrases[i]) ?? t.thinking;
+  return (reduce ? phrases[0] : phrases[i]) ?? t.thinking;
+}
+
+/** The live "thinking" line shown BEFORE any answer arrives: a prominent, animated Almond beside a
+ *  rotating farm-flavored phrase, so the wait reads as Almond out checking the farm, not a dead box. */
+function ThinkingLine() {
+  const phrase = useRotatingPhrase();
   return (
     <div className="flex items-center gap-2">
       <AlmondAvatar size={THINKING_AVATAR} state="thinking" />
       <AnimatedShinyText className="px-1 py-2 text-on-surface-variant">{phrase}</AnimatedShinyText>
+    </div>
+  );
+}
+
+/** The "still working" line shown UNDER a streamed answer while Almond keeps building something slow
+ *  (a spreadsheet or PDF), so the file-generation wait always shows a live, animated Almond instead of
+ *  a frozen message. Aligned under the answer text, a touch smaller than the pre-answer thinking line. */
+function WorkingLine() {
+  const phrase = useRotatingPhrase();
+  return (
+    <div className="-mt-1 flex items-center gap-2 pl-9">
+      <AlmondAvatar size={24} state="thinking" />
+      <AnimatedShinyText className="type-body-sm text-on-surface-variant">{phrase}</AnimatedShinyText>
     </div>
   );
 }
