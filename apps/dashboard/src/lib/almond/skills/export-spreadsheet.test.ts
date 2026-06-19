@@ -110,11 +110,16 @@ function makePump(i: number, o: PumpOverrides = {}): FakePump {
   };
 }
 
-/** A typed fake exposing only `pump.findMany`, honoring the where.farmId filter. */
+/** A typed fake exposing `pump.findMany` (honoring the where.farmId filter) and
+ *  `recommendation.findMany` (the meter workbook now loads findings via loadFindings to drive the
+ *  analysis; an empty findings list is the realistic offline case here). */
 function fakePrisma(pumpsByFarm: Record<string, FakePump[]>): PrismaClient {
   return {
     pump: {
       findMany: async ({ where }: { where: { farmId: string } }) => pumpsByFarm[where.farmId] ?? [],
+    },
+    recommendation: {
+      findMany: async () => [],
     },
   } as unknown as PrismaClient;
 }
@@ -123,17 +128,22 @@ function depsFor(pumps: FakePump[], farmName = "Batth Farms"): ExportLoadDeps {
   return { prisma: fakePrisma({ farm_1: pumps }), farmId: "farm_1", farmName };
 }
 
-/** Read the bytes back into a workbook and return the single sheet's cells as a string grid. */
-async function readGrid(bytes: Uint8Array): Promise<string[][]> {
+/** Read the bytes back into a workbook and return a named sheet's cells as a string grid (a date
+    cell is read back as its ISO date-only string). The meter export is now a multi-sheet workbook
+    (Summary / Meters / Opportunities), so a caller names the sheet it wants to read. */
+async function readSheet(bytes: Uint8Array, name: string): Promise<string[][]> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(bytes as unknown as ArrayBuffer);
-  const sheet = wb.worksheets[0];
+  const sheet = wb.getWorksheet(name);
   if (!sheet) return [];
   const grid: string[][] = [];
   sheet.eachRow({ includeEmpty: true }, (row) => {
     const cells: string[] = [];
     row.eachCell({ includeEmpty: true }, (cell) => {
-      cells.push(cell.value === null || cell.value === undefined ? "" : String(cell.value));
+      const v = cell.value;
+      if (v === null || v === undefined) cells.push("");
+      else if (v instanceof Date) cells.push(v.toISOString().slice(0, 10));
+      else cells.push(String(v));
     });
     grid.push(cells);
   });
@@ -219,12 +229,14 @@ describe("runExportSpreadsheet (the file path)", () => {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     expect(result.preview).toContain("60 meters");
-    // The file actually carries every meter (no truncation at either end).
-    const grid = await readGrid(result.bytes);
+    // The Meters sheet actually carries every meter (no truncation at either end). It is sorted by
+    // This Cycle descending, so we assert the SET is complete rather than the order.
+    const grid = await readSheet(result.bytes, "Meters");
     const names = grid.map((r) => r[0]).filter((n) => n?.startsWith("Pump "));
     expect(names).toHaveLength(COUNT);
-    expect(names[0]).toBe("Pump 001");
-    expect(names[COUNT - 1]).toBe("Pump 060");
+    expect(new Set(names).size).toBe(COUNT);
+    expect(names).toContain("Pump 001");
+    expect(names).toContain("Pump 060");
   });
 
   it("applies a filter and the file + preview reflect only the filtered set", async () => {
@@ -238,11 +250,12 @@ describe("runExportSpreadsheet (the file path)", () => {
     if (result.kind !== "file") return;
     expect(result.meterCount).toBe(2);
     expect(result.preview).toBe("I will export your 2 meters on AG-A1 as a meters spreadsheet.");
-    const grid = await readGrid(result.bytes);
-    const names = grid.map((r) => r[0]).filter((n) => n?.startsWith("Pump "));
+    const grid = await readSheet(result.bytes, "Meters");
+    const names = grid.map((r) => r[0]).filter((n) => n?.startsWith("Pump ")).sort();
     expect(names).toEqual(["Pump 001", "Pump 003"]); // Pump 002 (AG-4) excluded
-    // The footer states coverage for the FILTERED set (2 meters), not the whole farm.
-    const flat = grid.map((r) => r.join(" ")).join("\n");
+    // The Summary's coverage footer states coverage for the FILTERED set (2 meters), not the farm.
+    const summary = await readSheet(result.bytes, "Summary");
+    const flat = summary.map((r) => r.join(" ")).join("\n");
     expect(flat).toContain("All 2 meters included");
   });
 
@@ -264,11 +277,29 @@ describe("runExportSpreadsheet (the file path)", () => {
     ];
     const result = await runExportSpreadsheet(depsFor(pumps), { table: "meters" });
     if (result.kind !== "file") throw new Error("expected file");
-    const grid = await readGrid(result.bytes);
-    const recon = grid.find((r) => r[0] === "Pump 001");
-    const noBill = grid.find((r) => r[0] === "Pump 002");
-    expect(recon?.[5]).toBe("$11,727.33"); // real whole-dollar money
-    expect(noBill?.[5]).toBe("No bill yet"); // coverage label, never $0
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(result.bytes as unknown as ArrayBuffer);
+    const meters = wb.getWorksheet("Meters");
+    if (!meters) throw new Error("Meters sheet missing");
+    let reconCost: ExcelJS.Cell | null = null;
+    let noBillCost: ExcelJS.Cell | null = null;
+    let noBillCoverage: ExcelJS.CellValue = null;
+    meters.eachRow({ includeEmpty: false }, (row) => {
+      if (row.getCell(1).value === "Pump 001") reconCost = row.getCell(5);
+      if (row.getCell(1).value === "Pump 002") {
+        noBillCost = row.getCell(5);
+        noBillCoverage = row.getCell(7).value;
+      }
+    });
+    // Reconciled: a REAL numeric currency cell (11,727.33), not a string dollar.
+    const rc = reconCost as unknown as ExcelJS.Cell;
+    expect(rc.type).toBe(ExcelJS.ValueType.Number);
+    expect(rc.value).toBeCloseTo(11_727.33, 2);
+    // Unreconciled: numeric-empty (never $0, never a string dollar); its Coverage cell explains why.
+    const nc = noBillCost as unknown as ExcelJS.Cell;
+    expect(nc.type).not.toBe(ExcelJS.ValueType.Number);
+    expect(nc.value).not.toBe(0);
+    expect(noBillCoverage).toBe("No bill yet");
   });
 
   it("returns a typed EMPTY outcome (never an empty file) when a filter matches nothing", async () => {
