@@ -49,6 +49,11 @@ beforeAll(async () => {
   db = await createTestDb();
   prisma = db.prisma;
   const farmA = await seedSampleFarm(prisma);
+  // The owner turns below act as userId "user_owner"; persistAndWriteReportPart records that id in
+  // GeneratedReport.createdById, a FK to User. Seed the matching User so the insert succeeds exactly
+  // as it does in production (where the id is always a real authenticated user). Without it the
+  // best-effort persist silently swallows a foreign-key violation and no row is written.
+  await prisma.user.create({ data: { id: "user_owner", name: "Sample Owner" } });
   depsA = { prisma, farmId: farmA.id, farmName: farmA.name };
 }, 120_000);
 
@@ -61,6 +66,27 @@ const askReport = (text: string): UIMessage => ({
   role: "user",
   parts: [{ type: "text", text }],
 });
+
+/**
+ * The answer text streams as 24-char `text-delta` chunks (responder.ts TEXT_CHUNK_SIZE), so any phrase
+ * longer than a chunk is fragmented across separate SSE events in the raw body. Decode the stream and
+ * join the deltas back into the contiguous answer text before asserting on a phrase. (The download
+ * card rides the same stream as a single, non-chunked part, so the byte/field assertions still read
+ * the raw body directly.)
+ */
+const streamedAnswerText = (body: string): string =>
+  body
+    .split("\n")
+    .filter((line) => line.startsWith("data: "))
+    .flatMap((line) => {
+      try {
+        const evt = JSON.parse(line.slice(6)) as { type?: string; delta?: unknown };
+        return evt.type === "text-delta" && typeof evt.delta === "string" ? [evt.delta] : [];
+      } catch {
+        return [];
+      }
+    })
+    .join("");
 
 describe("the offline stub responder: generateReport (Story 9.3)", () => {
   it("an OWNER report turn emits a transient data-report card with non-empty PDF bytes (zero external calls)", async () => {
@@ -79,7 +105,7 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
     expect(body).toContain(".pdf");
     expect(body).toContain("base64");
     // The one-line shape statement is streamed as the answer text (the preview, never an approval gate).
-    expect(body).toContain("one or two page summary");
+    expect(streamedAnswerText(body)).toContain("one or two page summary");
     // The base64 payload is substantial (a real PDF, not an empty file).
     const match = body.match(/"base64":"([^"]+)"/);
     expect(match?.[1]).toBeTruthy();
@@ -91,12 +117,17 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
 
   it("the same OWNER turn SAVES a report to the owner's Reports (kind 'report', Story 8.6)", async () => {
     const before = await listReportsForFarm(prisma, depsA.farmId);
-    await createStubResponder().toResponse({
+    const res = await createStubResponder().toResponse({
       uiMessages: [askReport("build a pdf summary for the bank")],
       system: "ignored by the stub",
       deps: depsA,
       actor: { authedOwner: true, userId: "user_owner" },
     });
+    // Drain the stream before asserting. Persistence runs inside the UI-message stream's execute
+    // callback (responder.ts persistAndWriteReportPart), so the row is written only once the body is
+    // consumed - exactly as test 1 and test 3 read it. Without this the list below races the un-awaited
+    // persist and reads before the row lands (passes alone, fails under a loaded suite run).
+    await res.text();
     const after = await listReportsForFarm(prisma, depsA.farmId);
     expect(after.length).toBe(before.length + 1);
     const newest = after[0];
