@@ -1,84 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker, StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { formatUsdWhole } from "@/lib/format/money";
 import type { MapPin } from "@/lib/dashboard/map";
+import { BasemapToggle, buildStyle, DEFAULT_CENTER, DEFAULT_ZOOM, type Basemap } from "./basemap";
 
 // The shared meter map (the live "farm on the map" view). Renders a real basemap (satellite
 // imagery or a plain street map) with one DOM-element marker per located meter; when a meter is
 // reconciled, its latest bill floats above the pin as a small chip (AR-15: only proven dollars
 // render). Used by BOTH the Energy map lens and the Home hero, so the heavy maplibre wiring
-// lives here once. maplibre-gl's JS is heavy, so it is imported lazily inside the effect.
-//
-// Tiles are keyless by default (Esri World Imagery for satellite, CARTO for streets) so the app
-// runs with no signup; set NEXT_PUBLIC_MAP_TILES_KEY (a MapTiler key) to upgrade. If tiles fail
-// to load, maplibre simply paints the paper background underneath - the map never hard-breaks.
+// lives here once. maplibre-gl's JS is heavy, so it is imported lazily inside the effect. The
+// basemap tiles/style + the satellite/streets toggle are shared with the parcel map (basemap.tsx).
 
 const t = en.shell.map;
-
-// Fresno-area default view for a pinless farm (the Central Valley home turf).
-const DEFAULT_CENTER: [number, number] = [-119.8, 36.7];
-const DEFAULT_ZOOM = 9;
-
-export type Basemap = "satellite" | "map";
-
-/** Per-basemap raster tile config. Keyless by default; MapTiler when a key is provided. */
-function tileConfig(basemap: Basemap): { tiles: string[]; attribution: string; maxzoom: number } {
-  const key = process.env.NEXT_PUBLIC_MAP_TILES_KEY;
-  if (key) {
-    const style = basemap === "satellite" ? "satellite" : "streets-v2";
-    const ext = basemap === "satellite" ? "jpg" : "png";
-    return {
-      tiles: [`https://api.maptiler.com/maps/${style}/{z}/{x}/{y}.${ext}?key=${key}`],
-      attribution: "(c) MapTiler (c) OpenStreetMap contributors",
-      maxzoom: 20,
-    };
-  }
-  if (basemap === "satellite") {
-    return {
-      tiles: [
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      ],
-      attribution: "Imagery (c) Esri, Maxar, Earthstar Geographics",
-      maxzoom: 19,
-    };
-  }
-  return {
-    tiles: [
-      "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-      "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-      "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-    ],
-    attribution: "(c) OpenStreetMap contributors (c) CARTO",
-    maxzoom: 20,
-  };
-}
-
-/** A maplibre style with the chosen raster basemap over the warm paper background. */
-function buildStyle(basemap: Basemap, paper: string): StyleSpecification {
-  const cfg = tileConfig(basemap);
-  return {
-    version: 8,
-    sources: {
-      base: {
-        type: "raster",
-        tiles: cfg.tiles,
-        tileSize: 256,
-        attribution: cfg.attribution,
-        maxzoom: cfg.maxzoom,
-      },
-    },
-    layers: [
-      // The paper background shows through if a tile 404s (the keyless fallback).
-      { id: "paper", type: "background", paint: { "background-color": paper } },
-      { id: "base", type: "raster", source: "base" },
-    ],
-  };
-}
 
 /** A built pin: the marker plus the handles open-state and hover toggles mutate in place. */
 type PinEntry = {
@@ -323,49 +261,8 @@ export function MeterMap({
       )}
     >
       <div ref={containerRef} className="h-full w-full" />
-      {/* Satellite / Map toggle, overlaid like the mockup. */}
-      <div
-        role="group"
-        aria-label={t.basemapLabel}
-        className="absolute right-3 top-3 flex overflow-hidden rounded-[var(--radius-control)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]"
-      >
-        <BasemapButton
-          active={basemap === "satellite"}
-          onClick={() => setBasemap("satellite")}
-          label={t.basemapSatellite}
-        />
-        <BasemapButton
-          active={basemap === "map"}
-          onClick={() => setBasemap("map")}
-          label={t.basemapStreets}
-        />
-      </div>
+      {/* Satellite / Map toggle, overlaid like the mockup (shared with the parcel map). */}
+      <BasemapToggle basemap={basemap} onChange={setBasemap} />
     </div>
-  );
-}
-
-function BasemapButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "min-h-[36px] px-3 type-body-sm font-semibold transition-colors",
-        active
-          ? "bg-primary-container text-on-primary-container"
-          : "text-on-surface-variant hover:bg-surface-container-low",
-      )}
-    >
-      {label}
-    </button>
   );
 }

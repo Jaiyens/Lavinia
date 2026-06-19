@@ -367,6 +367,49 @@ export const en = {
     attentionEmpty: "Nothing needs you right now. We will flag it here when it does.",
     attentionViewAll: "See all in Energy",
   },
+  // Energy > Parcel: the public-records parcel lookup. Given a point, find the county parcel that
+  // contains it (APN + boundary + acreage) from free county GIS sources. Plain operator English;
+  // no em dashes; the grower's words (parcel, county, acres).
+  parcel: {
+    // The Energy sub-tab label (sits beside "Energy" in the sub-nav).
+    navTab: "Parcel",
+    subnavLabel: "Energy sections",
+    eyebrow: "Public records",
+    title: "Parcel lookup",
+    intro:
+      "Enter a point and Terra finds the public county parcel that contains it: its APN, acreage, and boundary, straight from the county's own records.",
+    latLabel: "Latitude",
+    lngLabel: "Longitude",
+    lookup: "Look up parcel",
+    lookingUp: "Looking up...",
+    emptyTitle: "Look up a parcel",
+    emptyBody: "Enter a latitude and longitude, then look up the parcel that contains the point.",
+    apnLabel: "APN",
+    copyApn: "Copy",
+    copied: "Copied",
+    countyLabel: "County",
+    acresLabel: "Acres",
+    centroidLabel: "Centroid (lat, lng)",
+    sourceLink: "View county parcel source",
+    countyValue: (county: string): string => `${county} County`,
+    acresValue: (acres: number): string =>
+      `${acres.toLocaleString("en-US", { maximumFractionDigits: 2 })} acres`,
+    centroidValue: (lat: number, lng: number): string => `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    metersAway: (m: number): string =>
+      `${m.toLocaleString("en-US", { maximumFractionDigits: 1 })} m`,
+    // Honest note when the point fell on a road / right-of-way and we returned the nearest parcel.
+    nearestNote: (distance: string): string =>
+      `This point sits on a road or right-of-way, so no parcel contains it. Showing the nearest parcel, about ${distance} away.`,
+    // Error states keyed by the code /api/parcel returns.
+    errors: {
+      invalid_point: "Enter a latitude between -90 and 90 and a longitude between -180 and 180.",
+      out_of_coverage:
+        "Terra does not have a parcel source for this spot yet. Fresno County is live; more counties are coming.",
+      not_found: "No county parcel found at this point.",
+      upstream: "The county parcel service did not respond. Try again in a moment.",
+      lookup_failed: "That lookup did not work. Check the numbers and try again.",
+    },
+  },
   // The account / profile page (signed-in operator's own details + connected sources).
   account: {
     navLabel: "Account",
