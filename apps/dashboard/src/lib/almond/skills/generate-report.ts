@@ -11,8 +11,15 @@ import {
 } from "@/lib/almond/export/load";
 import { coveragePercent } from "@/lib/almond/export/coverage-footer";
 import { resolveMeterQuery } from "@/lib/almond/shape";
+import { analyzeFarm, type FarmAnalysis } from "@/lib/almond/analysis";
+import { formatUsd } from "@/lib/format/money";
 import { renderReport, type ReportSection, type ReportSelection } from "@/lib/almond/report/render";
 import type {
+  CoverSectionData,
+  OpportunitiesSectionData,
+  OpportunityRow,
+  ChartsSectionData,
+  ChartBar,
   SummarySectionData,
   MisRatedSectionData,
   MisRatedRow,
@@ -61,6 +68,9 @@ const t = en.shell.almond.report.skill;
 /** The sections the model may select for a report, in selection order. Mirrors the Story 9.1/9.2
  *  section templates. `singleMeter` needs a `meter` query; the others read the (filtered) farm. */
 export const REPORT_SECTIONS = [
+  "cover",
+  "opportunities",
+  "charts",
   "summary",
   "meterTable",
   "misRated",
@@ -83,7 +93,7 @@ export const generateReportInputSchema = z.object({
     .array(z.enum(REPORT_SECTIONS))
     .optional()
     .describe(
-      'Which sections to include, in the order they should appear. Options: "summary" (the farm at a glance), "meterTable" (every meter listed), "misRated" (meters that may be on the wrong rate), "savings" (estimated dollars from rate changes), "singleMeter" (one meter\'s detail; requires the meter name). Omit to get a farm summary plus the meter table.',
+      'Which sections to include, in the order they should appear. Options: "cover" (the first page: the biggest opportunity in dollars plus farm totals), "opportunities" (the ranked rate changes and the dollars they save), "charts" (a few bar charts), "summary" (the farm at a glance), "meterTable" (every meter listed), "misRated" (meters that may be on the wrong rate), "savings" (estimated dollars from rate changes), "singleMeter" (one meter\'s detail; requires the meter name). Omit to get the money-first whole-farm report (cover, opportunities, charts, summary, and the meter table).',
     ),
   rate: z.string().optional().describe("Only include meters on this rate schedule, e.g. AG-A1."),
   entity: z.string().optional().describe("Only include meters billed to this legal entity name."),
@@ -187,7 +197,14 @@ export function applyFilter(meters: readonly MeterView[], input: GenerateReportI
  */
 export function resolveSections(input: GenerateReportInput): ReportSectionKind[] {
   const chosen = input.sections ?? [];
-  const ordered = chosen.length > 0 ? chosen : (["summary", "meterTable"] as ReportSectionKind[]);
+  // The default is the money-first whole-farm report: the cover hero, the ranked opportunities, the
+  // charts, the farm summary, then every meter. The cover and opportunities lead with the dollars
+  // (the same figures the dashboard shows), so a grower who just asks for "a PDF" gets the honest,
+  // value-first document, never a plain summary that buries the money.
+  const ordered =
+    chosen.length > 0
+      ? chosen
+      : (["cover", "opportunities", "charts", "summary", "meterTable"] as ReportSectionKind[]);
   const seen = new Set<ReportSectionKind>();
   const out: ReportSectionKind[] = [];
   for (const s of ordered) {
@@ -261,6 +278,119 @@ function authorSummary(farmName: string, data: ExportData): SummarySectionData {
     // to state, so we pass null and the section shows the coverage label (never a fabricated $0).
     loadedSpendCents: reconciled === 0 ? null : kpi.spend.cents,
   };
+}
+
+// Format a posted-cycle close (a UTC-midnight ISO 8601 string from the loader) as a plain date in
+// UTC, so the printed day never shifts under the runner's timezone (the same rule the coverage footer
+// uses). Built once at module level. The cover wraps this in its own "Figures as of {date}." copy.
+const AS_OF_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+/** A human as-of date for the cover, or null when no bill has posted (the cover states the absence
+ *  honestly, never a fabricated date). The ISO string is the same `state.asOf` the footer reads. */
+function asOfDisplay(asOf: string | null): string | null {
+  return asOf === null ? null : AS_OF_FMT.format(new Date(asOf));
+}
+
+/**
+ * The cover section's data: the single biggest opportunity (the analysis topFinding, the SAME figure
+ * the dashboard ACT card shows) plus the farm's total loaded spend and total demand charge. Every
+ * dollar is integer cents from the analysis; nothing is hand-formatted here (the section formats at
+ * the render edge). `hero` is null when the analysis has no dollar finding (the cover then states that
+ * plainly, never invents a figure). A topFinding with impactCents 0 carries no dollar, so it is not a
+ * hero - the cover states no dollar opportunity rather than a "$0.00" hero.
+ */
+function authorCover(farmName: string, analysis: FarmAnalysis, asOf: string | null): CoverSectionData {
+  const top = analysis.topFinding;
+  const hero =
+    top === null || top.meterName === null || top.impactCents <= 0
+      ? null
+      : {
+          meterName: top.meterName,
+          amountCents: top.impactCents,
+          currentRate: top.currentRate,
+          suggestedRate: top.suggestedRate,
+          // A rate switch carries a suggested rate; a demand spike / bill-audit dollar does not.
+          isRateSwitch: top.suggestedRate !== null,
+        };
+  return {
+    farmName,
+    asOf: asOfDisplay(asOf),
+    hero,
+    // The totals roll up only reconciled meters (the same rule the KPI strip uses); a zero total means
+    // nothing is loaded, so we pass null and the cover shows the coverage label, never a fabricated $0.
+    totalSpendCents: analysis.totals.spendCents > 0 ? analysis.totals.spendCents : null,
+    totalDemandCents: analysis.totals.demandChargeCents > 0 ? analysis.totals.demandChargeCents : null,
+  };
+}
+
+/**
+ * The opportunities section's data: the ranked rate-switch findings, most savings first, exactly the
+ * `analysis.opportunities` rows (so the report and the dashboard agree). Each row carries the meter's
+ * current rate, the suggested rate, and the estimated yearly savings (integer cents from the analysis).
+ * The total is the summed savings across the opportunities. An empty set renders the honest empty line.
+ */
+function authorOpportunities(analysis: FarmAnalysis): OpportunitiesSectionData {
+  const rows: OpportunityRow[] = analysis.opportunities.map((m) => ({
+    meterName: m.name,
+    currentRate: m.rate,
+    suggestedRate: m.flags.suggestedRate,
+    savingsCents: m.flags.estAnnualSavingsCents,
+  }));
+  const totalSavingsCents = rows.reduce((sum, r) => sum + r.savingsCents, 0);
+  return { rows, totalSavingsCents };
+}
+
+/** How many bars each money chart shows at most (the demand-charge top N). The spec asks for the top
+ *  15 highest demand charges; the rate mix and spend-by-entity are bounded by their natural cardinality
+ *  (a handful of entities, a handful of rates), but we still cap them so a long-tail farm stays legible. */
+const DEMAND_TOP_N = 15;
+const ENTITY_TOP_N = 12;
+const RATE_TOP_N = 12;
+
+/**
+ * The charts section's data: three native bar charts authored from the analysis.
+ *  - demandTop: the meters with the highest demand charge this cycle (top N), cents per bar;
+ *  - spendByEntity: each entity's summed loaded spend this cycle (descending), cents per bar;
+ *  - rateMix: the count of meters on each rate schedule (descending), a count per bar.
+ * Every magnitude is grounded; the value labels are formatted once here (money through formatUsd, the
+ * rate-mix count as a plain integer). A chart with no data yields an empty bar list (the section then
+ * draws that chart's honest empty line). Money charts drop zero/null magnitudes so no empty bar shows.
+ */
+function authorCharts(analysis: FarmAnalysis): ChartsSectionData {
+  const demandTop: ChartBar[] = analysis.meters
+    .filter((m) => m.demandChargeCents !== null && m.demandChargeCents > 0)
+    .sort((a, b) => (b.demandChargeCents ?? 0) - (a.demandChargeCents ?? 0))
+    .slice(0, DEMAND_TOP_N)
+    .map((m) => ({
+      label: m.name,
+      value: m.demandChargeCents ?? 0,
+      display: formatUsd(m.demandChargeCents ?? 0),
+    }));
+
+  const spendByEntity: ChartBar[] = analysis.byEntity
+    .filter((e) => e.spendCents > 0)
+    .sort((a, b) => b.spendCents - a.spendCents)
+    .slice(0, ENTITY_TOP_N)
+    .map((e) => ({ label: e.entity, value: e.spendCents, display: formatUsd(e.spendCents) }));
+
+  // Rate mix: count meters per rate schedule. A meter with no rate on file is grouped under a plain
+  // "Not on file" label so the bar count still totals every meter (never a fabricated rate code).
+  const rateCounts = new Map<string, number>();
+  for (const m of analysis.meters) {
+    const key = m.rate ?? en.shell.almond.report.singleMeter.notOnFile;
+    rateCounts.set(key, (rateCounts.get(key) ?? 0) + 1);
+  }
+  const rateMix: ChartBar[] = [...rateCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .slice(0, RATE_TOP_N)
+    .map(([label, count]) => ({ label, value: count, display: String(count) }));
+
+  return { demandTop, spendByEntity, rateMix };
 }
 
 /** A rate-switch finding: a meter the rate lever suggests is on the wrong rate. Read from the GROUNDED
@@ -375,12 +505,19 @@ function authorSections(
   farmName: string,
   data: ExportData,
   findings: readonly FindingView[],
+  analysis: FarmAnalysis,
   singleMeter: MeterView | null,
 ): ReportSection[] {
   const metersById = new Map(data.meters.map((m) => [m.id, m]));
   const out: ReportSection[] = [];
   for (const kind of sections) {
-    if (kind === "summary") {
+    if (kind === "cover") {
+      out.push({ kind: "cover", data: authorCover(farmName, analysis, data.state.asOf) });
+    } else if (kind === "opportunities") {
+      out.push({ kind: "opportunities", data: authorOpportunities(analysis) });
+    } else if (kind === "charts") {
+      out.push({ kind: "charts", data: authorCharts(analysis) });
+    } else if (kind === "summary") {
       out.push({ kind: "summary", data: authorSummary(farmName, data) });
     } else if (kind === "meterTable") {
       out.push({ kind: "meterTable", data });
@@ -450,11 +587,21 @@ export async function runGenerateReport(
       singleMeter = match.meter;
     }
 
-    const findings = await loadFindings(deps.prisma, deps.farmId);
+    const allFindings = await loadFindings(deps.prisma, deps.farmId);
+    // Scope the findings to the filtered meter set so a filtered report's cover, opportunities, and
+    // charts describe exactly the meters in the report (the same rule rateSwitchesInScope applies to
+    // mis-rated/savings). A fleet-level finding (no meter) survives so the across-all-tools topFinding
+    // still ranks correctly; only meter-scoped findings outside the filtered set are dropped.
+    const inScopeIds = new Set(filtered.map((m) => m.id));
+    const findings = allFindings.filter((f) => f.meterId === null || inScopeIds.has(f.meterId));
+
+    // The single source of truth for the cover hero, the opportunities table, and the charts: the same
+    // enriched analysis the dashboard reads, so a generated figure can never contradict the screen.
+    const analysis = analyzeFarm(filtered, findings);
 
     const selection: ReportSelection = {
       farmName: deps.farmName,
-      sections: authorSections(sections, deps.farmName, filteredData, findings, singleMeter),
+      sections: authorSections(sections, deps.farmName, filteredData, findings, analysis, singleMeter),
       // The footer's coverage describes exactly the meters in the report (the filtered state), so the
       // PDF and a filtered spreadsheet state the same coverage.
       coverage: filteredData.state,

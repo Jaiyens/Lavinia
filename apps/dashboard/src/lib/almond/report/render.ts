@@ -33,6 +33,9 @@ type ReportDocument = ReactElement<ComponentProps<typeof Document>>;
 import { en } from "@/copy/en";
 import type { ExportData, ExportCoverageState } from "@/lib/almond/export/load";
 import { styles, palette } from "./theme";
+import { CoverSection } from "./sections/cover";
+import { OpportunitiesSection } from "./sections/opportunities";
+import { ChartsSection } from "./sections/charts";
 import { SummarySection } from "./sections/summary";
 import { MeterTableSection } from "./sections/meter-table";
 import { MisRatedSection } from "./sections/mis-rated";
@@ -40,6 +43,9 @@ import { SavingsSection } from "./sections/savings";
 import { SingleMeterSection } from "./sections/single-meter";
 import { CoverageFooterSection } from "./sections/footer";
 import type {
+  CoverSectionData,
+  OpportunitiesSectionData,
+  ChartsSectionData,
   SummarySectionData,
   MisRatedSectionData,
   SavingsSectionData,
@@ -59,6 +65,9 @@ const t = en.shell.almond.report;
  * is never capped, so it carries no `cappedNote` - it always lists every meter, wrapping across pages.
  */
 export type ReportSection =
+  | { kind: "cover"; data: CoverSectionData }
+  | { kind: "opportunities"; data: OpportunitiesSectionData; cappedNote?: ReportCappedNote }
+  | { kind: "charts"; data: ChartsSectionData }
   | { kind: "summary"; data: SummarySectionData }
   | { kind: "meterTable"; data: ExportData }
   | { kind: "misRated"; data: MisRatedSectionData; cappedNote?: ReportCappedNote }
@@ -136,6 +145,20 @@ function CappedNote({ note }: { note: ReportCappedNote }): ReactElement {
  */
 function renderSection(section: ReportSection): { node: ReactElement; wide: boolean } {
   switch (section.kind) {
+    case "cover":
+      return { node: createElement(CoverSection, { data: section.data }), wide: false };
+    case "opportunities":
+      return {
+        node: createElement(
+          View,
+          null,
+          createElement(OpportunitiesSection, { data: section.data }),
+          section.cappedNote ? createElement(CappedNote, { note: section.cappedNote }) : null,
+        ),
+        wide: false,
+      };
+    case "charts":
+      return { node: createElement(ChartsSection, { data: section.data }), wide: false };
     case "summary":
       return { node: createElement(SummarySection, { data: section.data }), wide: false };
     case "meterTable":
@@ -182,15 +205,21 @@ export function buildReportDocument(selection: ReportSelection): ReportDocument 
 
   const footer = createElement(CoverageFooterSection, { state: selection.coverage });
 
+  // The cover section carries the Terra mark and the farm name itself (it IS the title), so when a
+  // report leads with a cover we suppress the plain TitleBlock to avoid stamping the farm name twice.
+  // A report with no cover keeps the measured title block, exactly as before.
+  const hasCover = selection.sections.some((s) => s.kind === "cover");
+
   const pages: ReactElement[] = [];
 
-  // The main portrait page: title, every portrait section in order, then the stamped footer. `wrap`
-  // lets a long section (or a long list of sections) flow onto more portrait pages without truncation.
+  // The main portrait page: the title (or the cover, which is its own title), every portrait section
+  // in order, then the stamped footer. `wrap` lets a long section (or a long list of sections) flow
+  // onto more portrait pages without truncation.
   pages.push(
     createElement(
       Page,
       { key: "portrait", size: PORTRAIT, style: pageStyle, wrap: true },
-      createElement(TitleBlock, { farmName: selection.farmName }),
+      hasCover ? null : createElement(TitleBlock, { farmName: selection.farmName }),
       ...portrait,
       // When the meter table is on its own landscape page, the footer still belongs to the report, so
       // it is stamped here on the portrait page (the document's coverage statement), always present.
