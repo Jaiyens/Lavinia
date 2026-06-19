@@ -84,6 +84,7 @@ export function AlmondPage() {
         onStarter={(q) => send(q)}
         onRetry={retry}
         onEdit={editMessage}
+        windowScroll
       />
       <div className="sticky bottom-0 bg-paper pb-4 pt-2">
         <AlmondComposer variant="page" />

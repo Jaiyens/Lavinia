@@ -72,6 +72,10 @@ type Props = {
   onRetry: () => void;
   /** Edit a user turn and re-ask (drops that turn and everything after it, then resends). */
   onEdit: (messageId: string, newText: string) => void;
+  /** On the full /almond page the WINDOW is the scroll container, so autoscroll pins the window to
+   *  its bottom. In the floating panel the message list is its own scroll container (the default), so
+   *  we pin that instead. Pinning the right target is what stops the page jumping on each message. */
+  windowScroll?: boolean;
 };
 
 export function AlmondMessages({
@@ -85,12 +89,21 @@ export function AlmondMessages({
   onStarter,
   onRetry,
   onEdit,
+  windowScroll = false,
 }: Props) {
-  const endRef = useRef<HTMLDivElement>(null);
-  // Autoscroll to the newest content as it streams in.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Pin to the newest content as it streams in. On the full page the WINDOW scrolls, so we send it to
+  // its bottom; in the panel the list is its own scroll container, so we pin that. Scrolling the exact
+  // target (instead of scrollIntoView, which mis-aligns against the sticky composer) is what keeps the
+  // view from jumping up on every message and token.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, status]);
+    if (windowScroll) {
+      window.scrollTo({ top: document.documentElement.scrollHeight });
+      return;
+    }
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, status, windowScroll]);
 
   const waiting = status === "submitted";
   // After the answer text has streamed, the model may still be BUILDING something slow (a spreadsheet
@@ -106,6 +119,7 @@ export function AlmondMessages({
 
   return (
     <div
+      ref={scrollRef}
       className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
       role="log"
       aria-live="polite"
@@ -180,8 +194,6 @@ export function AlmondMessages({
           </button>
         </div>
       )}
-
-      <div ref={endRef} />
     </div>
   );
 }
