@@ -562,18 +562,11 @@ export const en = {
       // States.
       greeting: (farmName: string): string =>
         `I can answer questions about ${farmName}. Ask me about a meter, your rates, or where the money is going.`,
+      // Shown beside the spinning thinking ring before any answer arrives, and again while Almond is
+      // still building a file. Plain and calm, not farm-flavored. No exclamation marks, no em dashes.
       thinking: "Thinking",
-      // Farm-flavored thinking lines, rotated while Almond works so the wait feels alive and on-brand
-      // (an almond out walking the farm), not a dead spinner. Plain operator English, no exclamation
-      // marks, no em dashes. Cycled in order; under reduced motion only the first is shown.
-      thinkingPhrases: [
-        "Walking the rows",
-        "Checking the meters",
-        "Reading your bills",
-        "Counting the pumps",
-        "Looking through your rates",
-      ],
       streaming: "Almond is answering",
+      working: "Working on that",
       error: "That did not work.",
       retry: "Try again",
       // Per-message controls (copy the text, edit and re-ask a question, regenerate an answer). Plain

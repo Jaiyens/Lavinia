@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
 import type { UIMessage } from "ai";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
@@ -303,41 +302,41 @@ function AssistantMessage({
   );
 }
 
-/** Rotate through the farm-flavored thinking phrases ("Walking the rows"…) on a gentle interval;
- *  under reduced motion it holds the first phrase. Shared by the thinking and working lines. */
-function useRotatingPhrase(): string {
-  const reduce = useReducedMotion();
-  const phrases = t.thinkingPhrases;
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (reduce || phrases.length <= 1) return;
-    const id = window.setInterval(() => setI((n) => (n + 1) % phrases.length), 1800);
-    return () => window.clearInterval(id);
-  }, [reduce, phrases.length]);
-  return (reduce ? phrases[0] : phrases[i]) ?? t.thinking;
+/** The mascot wrapped in a thin, spinning conic ring (green -> gold) — the "thinking" loader. The
+ *  ring sits just outside the avatar and is left static under reduced motion (globals.css). One
+ *  component serves both the pre-answer thinking line and the slow file "working" line. */
+function ThinkingMascot({ size }: { size: number }) {
+  const ring = size + 10;
+  return (
+    <span
+      className="relative grid shrink-0 place-items-center"
+      style={{ width: ring, height: ring }}
+    >
+      <span aria-hidden className="almond-thinking-ring absolute inset-0 rounded-full" />
+      <AlmondAvatar size={size} state="thinking" />
+    </span>
+  );
 }
 
-/** The live "thinking" line shown BEFORE any answer arrives: a prominent, animated Almond beside a
- *  rotating farm-flavored phrase, so the wait reads as Almond out checking the farm, not a dead box. */
+/** The live "thinking" line shown BEFORE any answer arrives: the mascot inside a spinning ring beside
+ *  a calm shimmering "Thinking", so the wait reads as a polished loader, not a dead box. */
 function ThinkingLine() {
-  const phrase = useRotatingPhrase();
   return (
-    <div className="flex items-center gap-2">
-      <AlmondAvatar size={THINKING_AVATAR} state="thinking" />
-      <AnimatedShinyText className="px-1 py-2 text-on-surface-variant">{phrase}</AnimatedShinyText>
+    <div className="flex items-center gap-2.5">
+      <ThinkingMascot size={THINKING_AVATAR} />
+      <AnimatedShinyText className="px-1 py-2 text-on-surface-variant">{t.thinking}</AnimatedShinyText>
     </div>
   );
 }
 
 /** The "still working" line shown UNDER a streamed answer while Almond keeps building something slow
- *  (a spreadsheet or PDF), so the file-generation wait always shows a live, animated Almond instead of
- *  a frozen message. Aligned under the answer text, a touch smaller than the pre-answer thinking line. */
+ *  (a spreadsheet or PDF), so the file-generation wait always shows a live loader instead of a frozen
+ *  message. Aligned under the answer text, a touch smaller than the pre-answer thinking line. */
 function WorkingLine() {
-  const phrase = useRotatingPhrase();
   return (
-    <div className="-mt-1 flex items-center gap-2 pl-9">
-      <AlmondAvatar size={24} state="thinking" />
-      <AnimatedShinyText className="type-body-sm text-on-surface-variant">{phrase}</AnimatedShinyText>
+    <div className="-mt-1 flex items-center gap-2.5 pl-8">
+      <ThinkingMascot size={24} />
+      <AnimatedShinyText className="type-body-sm text-on-surface-variant">{t.working}</AnimatedShinyText>
     </div>
   );
 }

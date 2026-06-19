@@ -16,6 +16,7 @@ import { AGENTS, agentHref, isAgentActive } from "./agents";
 // single "Sign in" CTA, since a prospect on the tour has no session.
 export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
   const pathname = usePathname();
+  const almondActive = pathname === "/almond" || pathname === "/tour/almond";
   return (
     <aside
       aria-label={en.shell.agentsLabel}
@@ -59,23 +60,31 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
                   : "text-on-surface hover:bg-surface-container-low",
               )}
             >
-              {/* Almond is a live agent with its own tab; it shows its mascot glyph instead of a
-                  lucide icon (its `icon` is only a fallback). */}
-              {agent.key === "almond" ? (
-                <span aria-hidden className="flex shrink-0 items-center">
-                  <AlmondAvatar size={18} />
-                </span>
-              ) : (
-                <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
-              )}
+              <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
               <span>{agent.label}</span>
             </Link>
           );
         })}
       </nav>
-      {/* Footer. Signed-in: account + sign out. The public Tour has no session, so it shows a
-          single "Sign in" CTA that leads into the real onboarding instead. */}
+      {/* Footer, pinned to the bottom. Almond lives here as a prominent "Ask Almond" call to action
+          (not a domain in the TRACK list above): a filled-green pill with the mascot on its own disc,
+          so it is impossible to miss. Shown on BOTH the tour and the signed-in app. Below it sit the
+          signed-in-only account links (the tour has no session). */}
       <div className="mt-auto flex flex-col gap-1 pt-4">
+        <Link
+          href={demo ? "/tour/almond" : "/almond"}
+          aria-current={almondActive ? "page" : undefined}
+          className={cn(
+            "mb-1 flex items-center gap-2.5 rounded-2xl px-2.5 py-2.5 font-semibold text-on-primary transition-all",
+            "bg-primary shadow-[var(--shadow-soft)] hover:-translate-y-px hover:shadow-[var(--shadow-elevated)]",
+            almondActive && "shadow-[var(--shadow-elevated)] ring-2 ring-primary/30",
+          )}
+        >
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)]">
+            <AlmondAvatar size={26} animated />
+          </span>
+          <span className="type-body-md">{en.shell.almond.railLabel}</span>
+        </Link>
         {demo ? null : (
           <>
             <Link

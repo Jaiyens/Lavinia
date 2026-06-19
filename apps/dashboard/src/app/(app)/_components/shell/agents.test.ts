@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { AGENTS, isAgentActive } from "./agents";
+import { AGENTS, isAgentActive, type AgentItem } from "./agents";
 
 const home = AGENTS.find((a) => a.key === "home")!;
 const energy = AGENTS.find((a) => a.key === "energy")!;
-const water = AGENTS.find((a) => a.key === "water")!;
 
 describe("isAgentActive", () => {
   it("Home is active only on exactly /", () => {
@@ -25,9 +24,10 @@ describe("isAgentActive", () => {
     expect(isAgentActive(energy, "/energy-archive")).toBe(false);
   });
 
-  it("a future (non-live) agent is never active", () => {
-    expect(water.live).toBe(false);
-    expect(isAgentActive(water, "/water")).toBe(false);
-    expect(isAgentActive(water, "/")).toBe(false);
+  it("a non-live agent (no built route) is never active", () => {
+    // Coverage for the guard that keeps an unbuilt agent dark; the live list no longer ships one.
+    const future: AgentItem = { key: "energy", label: "Future", href: null, icon: energy.icon, live: false };
+    expect(isAgentActive(future, "/water")).toBe(false);
+    expect(isAgentActive(future, "/")).toBe(false);
   });
 });

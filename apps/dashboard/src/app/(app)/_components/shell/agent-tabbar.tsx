@@ -17,9 +17,9 @@ export function AgentTabBar({ demo = false }: { demo?: boolean } = {}) {
       aria-label={en.shell.agentsLabel}
       className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-outline-variant bg-paper lg:hidden"
     >
-      {/* Almond is a desktop rail tab; on mobile its entry is the floating launcher FAB (so the
-          bottom bar stays uncluttered), so it is filtered out here. */}
-      {AGENTS.filter((agent) => agent.key !== "almond").map((agent) => {
+      {/* Domain tabs (Home, Energy). On mobile, Almond's entry is the prominent floating launcher
+          FAB, so it stays out of this bottom bar to keep it uncluttered. */}
+      {AGENTS.map((agent) => {
         const Icon = agent.icon;
         if (!agent.live || agent.href === null) {
           return (

@@ -673,6 +673,27 @@ html {
   animation: terra-almond-sparkle 2.2s ease-in-out infinite;
 }
 
+/* Thinking ring: a thin conic sweep that spins around the mascot while Almond is working. Tinted
+   brand green -> gold and masked to a hairline ring, so the wait reads as a calm, modern loader
+   (not farm flavored). The reduced-motion block below leaves it static. */
+@keyframes terra-almond-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.almond-thinking-ring {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--primary) 110deg,
+    var(--gold) 200deg,
+    transparent 320deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  animation: terra-almond-spin 1s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -691,7 +712,8 @@ html {
   .almond-eyes,
   .almond-bob,
   .almond-thoughts circle,
-  .almond-sparkle {
+  .almond-sparkle,
+  .almond-thinking-ring {
     animation: none !important;
     animation-delay: 0ms !important;
   }
