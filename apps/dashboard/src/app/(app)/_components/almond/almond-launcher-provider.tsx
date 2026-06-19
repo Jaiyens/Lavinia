@@ -106,6 +106,20 @@ function dedupeChips(chips: AlmondNavChip[]): AlmondNavChip[] {
   return out;
 }
 
+/** Drop duplicate download cards (same file name), keeping first-seen order. Belt-and-suspenders to
+ *  the server's per-turn file dedupe: one generated file shows exactly one card, never two. */
+function dedupeReports(reports: AlmondReportCard[]): AlmondReportCard[] {
+  const seen = new Set<string>();
+  const out: AlmondReportCard[] = [];
+  for (const report of reports) {
+    if (!seen.has(report.fileName)) {
+      seen.add(report.fileName);
+      out.push(report);
+    }
+  }
+  return out;
+}
+
 /** Read a File into a base64 Data URL (browser only; called on a user send). */
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -244,7 +258,7 @@ export function AlmondChatProvider({
         else changed = true;
       }
       if (reportsToFlush.length > 0 && assistantId) {
-        next.set(assistantId, [...(next.get(assistantId) ?? []), ...reportsToFlush]);
+        next.set(assistantId, dedupeReports([...(next.get(assistantId) ?? []), ...reportsToFlush]));
         changed = true;
       }
       return changed ? next : prev;

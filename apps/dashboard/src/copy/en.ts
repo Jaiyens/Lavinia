@@ -757,8 +757,10 @@ export const en = {
           // The download card the panel renders for the generated file. The title names the file; the
           // hint restates what it covers so the card is self-explaining.
           card: {
-            // Download button / link label.
+            // Download button label, by file kind (the SAME card renders both the spreadsheet export
+            // and the PDF report, so it labels and icons itself by the file it actually carries).
             download: "Download spreadsheet",
+            downloadPdf: "Download PDF",
             // Accessible label for the download control (names the file).
             downloadAria: (fileName: string): string => `Download ${fileName}`,
             // Shown when the file was kept in the grower's Reports (owner-only persistence, Story

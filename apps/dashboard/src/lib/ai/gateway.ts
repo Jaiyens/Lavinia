@@ -38,7 +38,7 @@ export function hasGatewayKey(): boolean {
  * Construct a live Gateway-backed language model. Defaults to Opus 4.8. Only call this when
  * `hasGatewayKey()` is true (it throws otherwise via `resolveGatewayKey`).
  */
-export function createGatewayModel(modelId = "anthropic/claude-opus-4-8"): LanguageModel {
+export function createGatewayModel(modelId = "anthropic/claude-opus-4.8"): LanguageModel {
   const gateway = createGateway({ apiKey: resolveGatewayKey() });
   return gateway(modelId);
 }

@@ -298,6 +298,10 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
           // action), which previously rendered two identical action chips ("Opened Westside Pump 17"
           // twice). Keyed by the serialized action, so two DIFFERENT moves in one turn still both show.
           const writtenNav = new Set<string>();
+          // Same guard for file cards, keyed by file name: a multi-step loop surfacing the export/report
+          // result twice previously rendered (and for an owner, persisted) the SAME file twice. One file
+          // name = one card and one Reports row.
+          const writtenFiles = new Set<string>();
           const result = streamText({
             model,
             system,
@@ -326,14 +330,23 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                 }
                 // A clean export persists to the owner's Reports (8.6), then lifts its bytes onto the
                 // stream as a download card (8.5). An empty or errored export writes no card - the
-                // model's text carries that outcome instead.
+                // model's text carries that outcome instead. Deduped by file name so a repeated result
+                // never doubles the card (or the saved Reports row).
                 if (tr.toolName === "exportSpreadsheet" && isExportResult(tr.output)) {
-                  await persistAndWriteReportPart(writer, exportFile(tr.output), deps, actor, requestText);
+                  const file = exportFile(tr.output);
+                  if (file && !writtenFiles.has(file.fileName)) {
+                    writtenFiles.add(file.fileName);
+                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                  }
                 }
                 // A clean PDF report (9.3) follows the SAME path: persist to Reports, then stream the
                 // bytes as a download card. Empty/error outcomes write no card (text carries them).
                 if (tr.toolName === "generateReport" && isReportResult(tr.output)) {
-                  await persistAndWriteReportPart(writer, reportFile(tr.output), deps, actor, requestText);
+                  const file = reportFile(tr.output);
+                  if (file && !writtenFiles.has(file.fileName)) {
+                    writtenFiles.add(file.fileName);
+                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                  }
                 }
               }
             },
