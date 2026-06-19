@@ -28,6 +28,7 @@ import {
   type NavigateAction,
   type NavigateInput,
   type NavigateResult,
+  type NavState,
 } from "./skills/navigate";
 import { describeNavigation } from "./skills/describe-navigation";
 import {
@@ -102,8 +103,13 @@ function writeNavigatePart(
   writer: UIMessageStreamWriter,
   action: NavigateAction,
   meterName?: string,
+  state?: NavState,
 ): void {
-  const label = describeNavigation(action, meterName);
+  // The label is composed FROM the resolver's post-action state (the verify-before-narrate seam):
+  // a clear says "Showing all N", a filter says its real count, an empty filter says "no meters
+  // match" - never a count derived from the request. With no state (should not happen on a clean
+  // resolve) it falls back to the request-derived copy.
+  const label = describeNavigation(action, meterName, state);
   writer.write({
     type: NAVIGATE_PART_TYPE,
     id: NAVIGATE_PART_ID,
@@ -325,7 +331,12 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                   const key = JSON.stringify(tr.output.action);
                   if (!writtenNav.has(key)) {
                     writtenNav.add(key);
-                    writeNavigatePart(writer, tr.output.action, tr.output.meterName);
+                    writeNavigatePart(
+                      writer,
+                      tr.output.action,
+                      tr.output.meterName,
+                      tr.output.state,
+                    );
                   }
                 }
                 // A clean export persists to the owner's Reports (8.6), then lifts its bytes onto the
@@ -485,12 +496,18 @@ export async function composeStubAnswer(
 // enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
 // (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
 
-const NAV_VERB = /\b(open|show|see|view|go to)\b/;
+const NAV_VERB = /\b(open|show|see|view|go to|clear|reset)\b/;
+// A "show the whole farm again" / "clear the filter" / "show all meters" phrase: the clear-filters
+// intent (T5). Matched here so the offline stub drives the SAME clear action the live model would,
+// proving the bug fix (the table returns to every meter) with zero external calls.
+const CLEAR_FILTER = /\b(whole farm|all meters|all the meters|every meter|everything|no filter)\b/;
+const CLEAR_VERB = /\b(clear|reset|remove)\b.*\b(filter|filters)\b/;
 
 /** Whether the latest user turn is a request to drive the screen (vs. a data question). A lens word
  *  ("map"/"table"/...) also counts, so "switch to the map" is caught without `switch` being a verb. */
 export function isNavigationTurn(text: string): boolean {
   if (NAV_VERB.test(text)) return true;
+  if (CLEAR_FILTER.test(text) || CLEAR_VERB.test(text)) return true;
   return LENS_KEYS.some((k) => new RegExp(`\\b${k}\\b`).test(text));
 }
 
@@ -500,6 +517,13 @@ export function isNavigationTurn(text: string): boolean {
  *  dashboard's `filterMeters` is a case-sensitive exact match, so a stub-derived filter would
  *  silently match nothing. Filtering offline is left to the live model's structured input. */
 export function deriveNavigateInput(text: string): NavigateInput {
+  // A clear-filters phrase wins first: "show me the whole farm again" / "clear the filter" resets
+  // ALL three filter keys (the T5 bug fix). It may carry a lens word too ("show the table for the
+  // whole farm"), so the lens is still derived alongside the clear.
+  if (CLEAR_FILTER.test(text) || CLEAR_VERB.test(text)) {
+    const clearLens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
+    return clearLens ? { clear: true, lens: clearLens } : { clear: true };
+  }
   const lens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
   if (lens) return { lens };
   const opened = text.match(/\b(?:open|show|see|view|go to)\b\s+(?:me\s+|the\s+)*(.+)$/);
@@ -630,7 +654,7 @@ export function createStubResponder(): AlmondResponder {
           }
           writer.write({ type: "text-end", id });
           if (navigation?.kind === "navigate") {
-            writeNavigatePart(writer, navigation.action, navigation.meterName);
+            writeNavigatePart(writer, navigation.action, navigation.meterName, navigation.state);
           }
           // A clean offline export OR report writes the download card; for an authed owner it is also
           // persisted to Reports first (8.6) inside persistAndWriteReportPart, which is owner-gated, so
