@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutGrid, Zap } from "lucide-react";
+import { LayoutGrid, Zap, Sparkles } from "lucide-react";
 import { en } from "@/copy/en";
 
-// The agent rail lists AGENTS, not features (EXPERIENCE.md). Today only Home and Energy are built,
-// so only they appear here. Almond (the farm assistant) is NOT a domain in this list — it is a
-// cross-cutting assistant, surfaced as the prominent "Ask Almond" entry pinned at the bottom of the
-// rail (AgentRail) and as the floating launcher. Unbuilt domains (Water/Labor) are not shown at all.
-export type AgentKey = "home" | "energy";
+// The agent rail lists AGENTS, not features (EXPERIENCE.md). Almond (the farm assistant) sits right
+// under Home as the second item — its own mascot glyph marks it out (rendered in AgentRail), and the
+// floating launcher still offers the same assistant from anywhere. Unbuilt domains (Water/Labor) are
+// not shown at all.
+export type AgentKey = "home" | "almond" | "energy";
 
 export type AgentItem = {
   key: AgentKey;
@@ -19,6 +19,9 @@ export type AgentItem = {
 
 export const AGENTS: readonly AgentItem[] = [
   { key: "home", label: en.shell.agents.home, href: "/", icon: LayoutGrid, live: true },
+  // Almond is second, right under Home. It renders its own mascot glyph in the rail (special-cased
+  // there); `icon` is only a sensible lucide fallback.
+  { key: "almond", label: en.shell.agents.almond, href: "/almond", icon: Sparkles, live: true },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true },
 ] as const;
 
@@ -27,6 +30,7 @@ export const AGENTS: readonly AgentItem[] = [
 // demo without bouncing to login. agentHref maps an agent's canonical route to its tour route.
 const TOUR_HREF: Partial<Record<AgentKey, string>> = {
   home: "/tour",
+  almond: "/tour/almond",
   energy: "/tour/energy",
 };
 
