@@ -2,8 +2,9 @@
 // Brings up a throwaway local Postgres, pushes the schema, SEEDS the Batth demo farm, then runs
 // `next dev` against it. Uses your .env.local for everything EXCEPT the database (so the live
 // Almond model key is picked up, but the app talks to the throwaway DB, never Neon). Ctrl+C tears
-// the database down. The seeded demo means /tour works with no login; sign in (magic link prints
-// to THIS terminal) to test the owner-only export/PDF.
+// the database down. The seeded demo means /tour works with no login — including export + PDF now,
+// which a guest can pull of the demo farm (streamed, not saved). Signing in (magic link prints to
+// THIS terminal) only adds owner persistence: the export is also kept in the grower's Reports.
 import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,8 +53,8 @@ execFileSync("npx", ["prisma", "db", "seed"], { env, stdio: "inherit", cwd: APP 
 
 console.log("\n========================================================================");
 console.log(`  Almond preview is starting at:  http://localhost:${APP_PORT}`);
-console.log(`  - No login (read + navigate):    http://localhost:${APP_PORT}/tour`);
-console.log(`  - Full test (export/PDF):        http://localhost:${APP_PORT}  -> sign in`);
+console.log(`  - No login, FULL test (read + navigate + Excel + PDF):  http://localhost:${APP_PORT}/tour`);
+console.log(`  - Signed-in owner (exports also save to Reports):       http://localhost:${APP_PORT}  -> sign in`);
 console.log("    (the magic-link sign-in URL prints in THIS terminal)");
 console.log("  Ctrl+C to stop and drop the database.");
 console.log("========================================================================\n");
