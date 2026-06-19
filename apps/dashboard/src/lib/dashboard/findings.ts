@@ -47,12 +47,19 @@ export type FindingView = {
   /** Resolved from the farm's meters when meterId matches; null otherwise. */
   meterName: string | null;
   /** When the stored action is a rate switch (action.kind === "switch_rate"), the
-   *  suggested rate code from action.params.to (e.g. "AG-B"); null for every other
-   *  finding, and null when a switch finding has no readable target. Surfaced HERE
-   *  (the single tested narrowing place) so a consumer reads the GROUNDED action kind
-   *  off the stored JSON, never string-parses the farmer-facing label, whose copy
-   *  ("Move it to AG-B") deliberately never contains the word "switch". */
+   *  suggested rate code from action.params.toSchedule (e.g. "AG-C"), falling back to the
+   *  legacy action.params.to; null for every other finding, and null when a switch finding
+   *  has no readable target. Surfaced HERE (the single tested narrowing place) so a
+   *  consumer reads the GROUNDED action kind off the stored JSON, never string-parses the
+   *  farmer-facing label, whose copy ("Move it to AG-C") deliberately never contains the
+   *  word "switch". The engine writes the target to params.toSchedule, so reading only
+   *  params.to (the prior bug) left this null for every real finding. */
   rateSwitchTo: string | null;
+  /** The meter's CURRENT rate the switch finding moves off of, from
+   *  action.params.fromSchedule (falling back to action.params.from); null for every
+   *  non-switch finding. Pairs with rateSwitchTo so a consumer can render "AG-B -> AG-C".
+   *  Optional on the type (legacy literals predate it) but ALWAYS set by toFindingViews. */
+  rateSwitchFrom?: string | null;
   /** The result's note once Epic 4 closes the loop; null until then. */
   resultNote: string | null;
 };
@@ -82,21 +89,34 @@ function nonEmpty(v: unknown): string | null {
 }
 
 /** Narrow the stored action Json to its displayable parts plus the grounded rate-switch
- *  target. The rate-switch target reads off the machine verb (action.kind === "switch_rate")
- *  and action.params.to, NOT the farmer-facing label - the label copy ("Move it to AG-B")
- *  never contains the word "switch", so any label string-match misses every real finding. */
+ *  source/target. The rate-switch target reads off the machine verb (action.kind ===
+ *  "switch_rate") and action.params.toSchedule (the engine's actual key; params.to is kept
+ *  only as a legacy fallback), NOT the farmer-facing label - the label copy ("Move it to
+ *  AG-C") never contains the word "switch", so any label string-match misses every real
+ *  finding. This is the single tested place the canonical suggested rate is derived, so the
+ *  dashboard rail, the report, and analyzeFarm all agree. */
 function readAction(action: unknown): {
   label: string | null;
   meterId: string | null;
   rateSwitchTo: string | null;
+  rateSwitchFrom: string | null;
 } {
-  if (!isObject(action)) return { label: null, meterId: null, rateSwitchTo: null };
+  if (!isObject(action)) {
+    return { label: null, meterId: null, rateSwitchTo: null, rateSwitchFrom: null };
+  }
   const label = nonEmpty(action.label);
   const params = isObject(action.params) ? action.params : null;
   const meterId = params !== null ? nonEmpty(params.pumpId) : null;
+  // The switch source/target come from params.{from,to}Schedule (the engine's keys);
+  // params.{from,to} stay as legacy fallbacks so older fixtures/rows still read.
+  const isSwitch = action.kind === "switch_rate" && params !== null;
   const rateSwitchTo =
-    action.kind === "switch_rate" && params !== null ? nonEmpty(params.to) : null;
-  return { label, meterId, rateSwitchTo };
+    isSwitch && params !== null ? (nonEmpty(params.toSchedule) ?? nonEmpty(params.to)) : null;
+  const rateSwitchFrom =
+    isSwitch && params !== null
+      ? (nonEmpty(params.fromSchedule) ?? nonEmpty(params.from))
+      : null;
+  return { label, meterId, rateSwitchTo, rateSwitchFrom };
 }
 
 /** Narrow the stored result Json to the note v1 renders (4.2 owns the full diff). */
@@ -124,7 +144,7 @@ export function toFindingViews(
       // a card with a blank narrative line (same honesty law as the impact filter).
       const situation = nonEmpty(row.situation);
       if (situation === null) return null;
-      const { label, meterId, rateSwitchTo } = readAction(row.action);
+      const { label, meterId, rateSwitchTo, rateSwitchFrom } = readAction(row.action);
       return {
         id: row.id,
         tool: row.tool,
@@ -137,6 +157,7 @@ export function toFindingViews(
         meterId,
         meterName: meterId !== null ? (names.get(meterId) ?? null) : null,
         rateSwitchTo,
+        rateSwitchFrom,
         resultNote: readResultNote(row.result),
       };
     })

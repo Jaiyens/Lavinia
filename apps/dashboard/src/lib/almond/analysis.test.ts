@@ -68,6 +68,7 @@ function finding(over: Partial<FindingView> = {}): FindingView {
     meterId: "meterId" in over ? (over.meterId ?? null) : "m1",
     meterName: "meterName" in over ? (over.meterName ?? null) : null,
     rateSwitchTo: "rateSwitchTo" in over ? (over.rateSwitchTo ?? null) : "AG-B",
+    rateSwitchFrom: "rateSwitchFrom" in over ? (over.rateSwitchFrom ?? null) : "AG-A1",
     resultNote: over.resultNote ?? null,
   };
 }
@@ -118,12 +119,17 @@ const findings: FindingView[] = [
   finding({ id: "f-west", meterId: "west17", impactUsd: 6_500, rateSwitchTo: "AG-B" }),
   // Dairy Field Pump 4: a smaller rate-switch savings.
   finding({ id: "f-dairy", meterId: "dairy4", impactUsd: 1_200, rateSwitchTo: "AG-C" }),
-  // East Pump 9: a finding with NO rate switch (rateSwitchTo null) - not an opportunity.
+  // East Pump 9: a non-rate-switch ACT finding (e.g. a demand-charge spike) whose dollar impact
+  // is the LARGEST of all - it is NOT an opportunity (no rate switch), but it IS the topFinding,
+  // proving topFinding can differ from opportunities[0].
   finding({
     id: "f-east",
     meterId: "east9",
+    tool: "demand-charge",
     impactUsd: 9_999,
+    severity: "act",
     rateSwitchTo: null,
+    rateSwitchFrom: null,
     actionLabel: "Shift pumping off peak",
   }),
   // A fleet-level finding (no meterId) must be ignored by the meter map.
@@ -210,6 +216,39 @@ describe("analyzeFarm", () => {
     const east = a.meters.find((m) => m.id === "east9");
     expect(east?.flags.misRated).toBe(false);
     expect(east?.flags.estAnnualSavingsCents).toBe(0);
+  });
+
+  it("7. topFinding is the highest severity-then-dollar finding across ALL tools, and can differ from opportunities[0]", () => {
+    const a = analyzeFarm(meters, findings);
+    // East Pump 9's $9,999 demand-charge act finding outranks every rate switch, so it is the
+    // topFinding - while opportunities[0] (the biggest RATE SWITCH) is Westside Pump 17.
+    expect(a.topFinding?.meterName).toBe("East Pump 9");
+    expect(a.topFinding?.tool).toBe("demand-charge");
+    expect(a.topFinding?.impactCents).toBe(centsFromDollars(9_999));
+    expect(a.topFinding?.suggestedRate).toBeNull(); // not a rate switch
+    expect(a.opportunities[0]?.name).toBe("Westside Pump 17");
+    expect(a.topFinding?.meterName).not.toBe(a.opportunities[0]?.name);
+  });
+
+  it("8. rankedFindings lists every dollar finding sorted by compareFindings, in integer cents", () => {
+    const a = analyzeFarm(meters, findings);
+    // All four fixture findings carry a dollar (incl. the fleet finding with no meter).
+    expect(a.rankedFindings).toHaveLength(4);
+    // Sorted severity-then-dollar: East ($9,999 act) > Westside ($6,500 act) > fleet ($3,000 act) > Dairy ($1,200 act).
+    expect(a.rankedFindings.map((f) => f.impactCents)).toEqual([
+      centsFromDollars(9_999),
+      centsFromDollars(6_500),
+      centsFromDollars(3_000),
+      centsFromDollars(1_200),
+    ]);
+    expect(a.rankedFindings[0]?.meterName).toBe("East Pump 9");
+    for (const f of a.rankedFindings) expect(typeof f.impactCents).toBe("number");
+  });
+
+  it("topFinding is null when there are no findings", () => {
+    const a = analyzeFarm(meters, []);
+    expect(a.topFinding).toBeNull();
+    expect(a.rankedFindings).toEqual([]);
   });
 
   it("withholds spend from a non-reconciled meter (null, never zero-filled into a meter cell)", () => {

@@ -12,8 +12,38 @@
 import type { MeterView } from "@/lib/dashboard/load";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { centsFromDollars } from "@/lib/format/money";
+import { compareFindings } from "@/lib/recommendations/top-finding";
+import type { Severity } from "@/lib/recommendations/types";
 
 const RECONCILED = "reconciled";
+
+/** The single biggest finding across ALL tools (severity then dollar), the cover-hero / ACT-card
+ *  source. Dollars are integer cents (`number`); suggestedRate/currentRate carry the grounded
+ *  rate-switch source/target when this is a switch finding, else null. */
+export interface TopFinding {
+  meterId: string | null;
+  meterName: string | null;
+  tool: string;
+  severity: Severity;
+  /** centsFromDollars(impactUsd); 0 when the finding carries no dollar. */
+  impactCents: number;
+  label: string | null;
+  /** rateSwitchTo (the suggested rate) when this is a rate switch; null otherwise. */
+  suggestedRate: string | null;
+  /** rateSwitchFrom (the current rate) when this is a rate switch; null otherwise. */
+  currentRate: string | null;
+}
+
+/** A dollar-bearing finding in the "where the money is" list, sorted by compareFindings. Lite
+ *  shape (no meter linkage beyond the name); dollars are integer cents. */
+export interface RankedFinding {
+  meterName: string | null;
+  tool: string;
+  severity: Severity;
+  impactCents: number;
+  label: string | null;
+  suggestedRate: string | null;
+}
 
 export interface EnrichedMeter {
   id: string;
@@ -55,8 +85,15 @@ export interface FarmAnalysis {
   }>;
   /** Copy of meters, descending by thisCycleCents (null sorts last). */
   rankingsByCost: EnrichedMeter[];
-  /** Mis-rated meters only, descending by flags.estAnnualSavingsCents. */
+  /** Mis-rated (rate-switch) meters only, descending by flags.estAnnualSavingsCents. */
   opportunities: EnrichedMeter[];
+  /** The single highest-severity-then-dollar finding across ALL tools (cover hero / ACT card);
+   *  null when there are no findings. May differ from opportunities[0] (a non-rate-switch act
+   *  finding can outrank every rate switch). */
+  topFinding: TopFinding | null;
+  /** Every dollar-bearing finding (impactUsd != null), sorted by compareFindings - the
+   *  "opportunities-first / where the money is" list across all tools. */
+  rankedFindings: RankedFinding[];
 }
 
 /** The latest reconciled period's printed total and demand, in integer cents. A meter that is not
@@ -125,6 +162,12 @@ function tieBreak(a: EnrichedMeter, b: EnrichedMeter): number {
  * Pure and deterministic. Dollars are integer cents (`number`) throughout.
  */
 export function analyzeFarm(meters: MeterView[], findings: FindingView[]): FarmAnalysis {
+  // Resolve a finding's meter name from the meters here too, so the pure-fixture path (where a
+  // FindingView may carry meterName: null) still names its meter the way the DB path does.
+  const meterNames = new Map(meters.map((m) => [m.id, m.name]));
+  const nameOf = (f: FindingView): string | null =>
+    f.meterName ?? (f.meterId !== null ? (meterNames.get(f.meterId) ?? null) : null);
+
   const findingsByMeter = new Map<string, FindingView[]>();
   for (const finding of findings) {
     if (finding.meterId === null) continue;
@@ -193,6 +236,36 @@ export function analyzeFarm(meters: MeterView[], findings: FindingView[]): FarmA
     .filter((m) => m.flags.misRated)
     .sort(byCentsDescStable((m) => m.flags.estAnnualSavingsCents));
 
+  // topFinding / rankedFindings: rank across ALL tools with the shared comparator (severity then
+  // dollar), the same ordering the findings rail uses, so the cover hero never disagrees with it.
+  // compareFindings sorts on the float impactUsd; we expose integer cents on the result.
+  const sortedFindings = [...findings].sort(compareFindings);
+  const top = sortedFindings[0] ?? null;
+  const topFinding: TopFinding | null =
+    top === null
+      ? null
+      : {
+          meterId: top.meterId,
+          meterName: nameOf(top),
+          tool: top.tool,
+          severity: top.severity,
+          impactCents: centsFromDollars(top.impactUsd ?? 0),
+          label: top.actionLabel,
+          suggestedRate: top.rateSwitchTo,
+          currentRate: top.rateSwitchFrom ?? null,
+        };
+
+  const rankedFindings: RankedFinding[] = sortedFindings
+    .filter((f) => f.impactUsd !== null)
+    .map((f) => ({
+      meterName: nameOf(f),
+      tool: f.tool,
+      severity: f.severity,
+      impactCents: centsFromDollars(f.impactUsd ?? 0),
+      label: f.actionLabel,
+      suggestedRate: f.rateSwitchTo,
+    }));
+
   return {
     meters: enriched,
     totals: {
@@ -204,5 +277,7 @@ export function analyzeFarm(meters: MeterView[], findings: FindingView[]): FarmA
     byEntity,
     rankingsByCost,
     opportunities,
+    topFinding,
+    rankedFindings,
   };
 }
