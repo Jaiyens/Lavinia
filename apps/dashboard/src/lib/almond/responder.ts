@@ -2,6 +2,7 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  smoothStream,
   stepCountIs,
   streamText,
   type LanguageModel,
@@ -292,12 +293,20 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
       const requestText = lastUserText(uiMessages);
       const stream = createUIMessageStream({
         execute: ({ writer }) => {
+          // Dedupe navigate parts within a turn: a multi-step tool-calling loop can surface the SAME
+          // navigate result more than once (or the model can re-call `navigate` with an identical
+          // action), which previously rendered two identical action chips ("Opened Westside Pump 17"
+          // twice). Keyed by the serialized action, so two DIFFERENT moves in one turn still both show.
+          const writtenNav = new Set<string>();
           const result = streamText({
             model,
             system,
             messages,
             tools: buildAlmondSkills(deps, actor),
             stopWhen: stepCountIs(6),
+            // Stream the model's words at a steady cadence so the reply types in smoothly (like
+            // Claude/Notion) instead of arriving in uneven token bursts.
+            experimental_transform: smoothStream({ chunking: "word" }),
             // The navigate chip is synchronous (the name rides on the tool result), but a clean
             // export or report now also PERSISTS to Reports for an owner (8.6), which is async, so the
             // step handler awaits that write before the card is streamed.
@@ -309,7 +318,11 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                   isNavigateResult(tr.output) &&
                   tr.output.kind === "navigate"
                 ) {
-                  writeNavigatePart(writer, tr.output.action, tr.output.meterName);
+                  const key = JSON.stringify(tr.output.action);
+                  if (!writtenNav.has(key)) {
+                    writtenNav.add(key);
+                    writeNavigatePart(writer, tr.output.action, tr.output.meterName);
+                  }
                 }
                 // A clean export persists to the owner's Reports (8.6), then lifts its bytes onto the
                 // stream as a download card (8.5). An empty or errored export writes no card - the
@@ -338,14 +351,13 @@ export function createGatewayResponder(modelId?: string): AlmondResponder {
   return createModelResponder(createGatewayModel(modelId));
 }
 
-const TEXT_CHUNK_SIZE = 24;
-
+/** Split the stub answer into word-sized deltas (each word plus its trailing whitespace) so the
+ *  offline/demo path types in word-by-word and reads as smoothly as the live model's `smoothStream`
+ *  cadence, instead of arriving in fixed character blocks. The reassembled text is byte-identical. */
 function toTextChunks(text: string): string[] {
-  const chunks: string[] = [];
-  for (let i = 0; i < text.length; i += TEXT_CHUNK_SIZE) {
-    chunks.push(text.slice(i, i + TEXT_CHUNK_SIZE));
-  }
-  return chunks.length > 0 ? chunks : [""];
+  if (text.length === 0) return [""];
+  const chunks = text.match(/\S+\s*|\s+/g);
+  return chunks && chunks.length > 0 ? chunks : [""];
 }
 
 type StubIntent = "rates" | "reconciliation" | "findings" | "meters" | "overview";
@@ -547,17 +559,18 @@ function navigationStubText(result: NavigateResult): string {
 export function createStubResponder(): AlmondResponder {
   return {
     async toResponse({ uiMessages, deps, actor }) {
-      // Turn routing, in capability order: an OWNER's PDF-report turn builds a report (offline); an
-      // OWNER's export turn builds a spreadsheet (offline); a navigation turn drives the screen; any
-      // other turn gets the grounded data answer. The report and export branches are gated on
-      // `actor.authedOwner` for parity with the factory gate - the public Tour never gets either
-      // (capability-by-omission), exactly as the model is never handed those skills. The report verb
-      // is checked BEFORE the export verb so "download a pdf" builds a PDF, not a spreadsheet.
+      // Turn routing, in capability order: a PDF-report turn builds a report (offline); an export
+      // turn builds a spreadsheet (offline); a navigation turn drives the screen; any other turn gets
+      // the grounded data answer. The report and export branches are gated on `actor.canExport` for
+      // parity with the factory gate - a caller without it never gets either (capability-by-omission),
+      // exactly as the model is never handed those skills. Persistence stays owner-only (below), so a
+      // demo export is streamed but never stored. The report verb is checked BEFORE the export verb so
+      // "download a pdf" builds a PDF, not a spreadsheet.
       const text = lastUserText(uiMessages);
       let navigation: NavigateResult | null = null;
       let file: StreamableFile | null = null;
       let answer: string;
-      if (actor.authedOwner && isReportTurn(text)) {
+      if (actor.canExport && isReportTurn(text)) {
         // Through the throttled wrapper (Story 10.3), so the offline path honors the SAME per-farm
         // generation throttle the live model path does (parity); a throttled turn returns the typed
         // `error` outcome (the calm `busy` line) and writes no file.
@@ -566,7 +579,7 @@ export function createStubResponder(): AlmondResponder {
         // The text carries the one-line preview on success, or the typed empty/error line otherwise;
         // a download card is only written for a clean file (below), never for empty/error.
         answer = result.kind === "file" ? result.preview : result.message;
-      } else if (actor.authedOwner && isExportTurn(text)) {
+      } else if (actor.canExport && isExportTurn(text)) {
         // Through the throttled wrapper (Story 10.3) for the same per-farm throttle parity as above.
         const result = await exportSpreadsheetSkill(deps, deriveExportInput(text));
         file = exportFile(result);
@@ -606,9 +619,10 @@ export function createStubResponder(): AlmondResponder {
           if (navigation?.kind === "navigate") {
             writeNavigatePart(writer, navigation.action, navigation.meterName);
           }
-          // A clean offline export OR report persists to the owner's Reports (8.6, owner-gated above)
-          // and then writes the download card. The stub only reaches here for an authed owner, exactly
-          // as the model is only ever handed those skills for an owner (capability parity).
+          // A clean offline export OR report writes the download card; for an authed owner it is also
+          // persisted to Reports first (8.6) inside persistAndWriteReportPart, which is owner-gated, so
+          // a demo/Tour export is streamed but never stored. The file branch is reached for any
+          // `canExport` actor, matching which actors the model is handed those skills.
           if (file !== null) {
             await persistAndWriteReportPart(writer, file, deps, actor, text);
           }

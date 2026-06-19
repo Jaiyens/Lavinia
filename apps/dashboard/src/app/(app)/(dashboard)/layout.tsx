@@ -51,12 +51,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         farmName={resolved.farm.name}
         starters={almondStarters({
           findingCount: findings.length,
-          // Owner-only export/PDF starters: gate on the SAME signal the chat route uses for
-          // `authedOwner` (dataKind "real" = a connected owner; the badged demo fallback is not).
-          canExport: resolved.dataKind === "real",
+          // Export/PDF starters surface for every resolved farm now — a connected owner AND the
+          // badged demo fallback — matching the chat route, which hands the file skills on `canExport`
+          // (true for both). Owner exports persist to Reports; demo exports are streamed, never stored.
+          canExport: true,
         })}
-        // Attachments are owner-only (capability parity with the chat route): a connected owner can
-        // attach bills/exports; the demo fallback cannot.
+        // Attachments stay owner-only (capability parity with the chat route's attachment handling):
+        // a connected owner can attach bills/exports; the demo fallback cannot push file bytes in.
         canAttach={resolved.dataKind === "real"}
       >
         <TopoBackground />

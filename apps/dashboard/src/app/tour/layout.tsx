@@ -30,14 +30,15 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
       {/* Shared Almond panel open-state so the rail entry can open the launcher on the Tour too
           (Story 10.2). The first-run nudge is NOT mounted here: a Tour prospect is not a grower's
           first run, and the Tour already carries its own connect CTA. His redesign added the
-          TopoBackground and moved findings in-content (no shell findings rail); Almond's provider and
-          the capability-gated launcher (canExport: false on the demo) are grafted back onto it. */}
+          TopoBackground and moved findings in-content (no shell findings rail); Almond's provider is
+          grafted back onto it. */}
       <AlmondChatProvider
         farmName={resolved?.farm.name ?? "the demo farm"}
-        // The Tour is always the badged demo farm (never a real owner), so the owner-only export/PDF
-        // starters are withheld (`canExport: false`) and attachments are off (`canAttach: false`).
-        // Mirrors the chat route withholding those capabilities from the public actor.
-        starters={almondStarters({ findingCount: findings.length, canExport: false })}
+        // The Tour viewer CAN now pull a downloadable report of the demo farm, so the export/PDF
+        // starters are surfaced (`canExport: true`) to match the chat route handing the demo the file
+        // skills. Attachments stay OFF (`canAttach: false`): a guest never pushes file bytes into the
+        // model (the route strips attachments for non-owners). Demo exports are streamed, never stored.
+        starters={almondStarters({ findingCount: findings.length, canExport: true })}
         canAttach={false}
       >
         <TopoBackground />

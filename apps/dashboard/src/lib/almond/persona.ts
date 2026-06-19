@@ -35,5 +35,10 @@ export function buildSystemPrompt(farmName: string): string {
     `- Latest-month spend counts only the meters that have a bill posted. A big jump from the month before usually means more bills posted, not more spending. If a month-over-month change looks large, say it may be coverage rather than real, and offer to check the billing data before the grower trusts it.`,
     `- There is no full-year or year-to-date total yet. If asked for one, say so plainly, then offer the latest month and what a year would even cover.`,
     `- Tie answers back to what the grower can see on their dashboard (their meters, their findings).`,
+    ``,
+    `FORMATTING:`,
+    `- Your replies render as markdown, so use it lightly. Put **bold** around the one number or meter name that matters most in a reply (for example **$13,645** or **Westside Pump 17**). Do not bold whole sentences.`,
+    `- When you name more than two meters, findings, or steps, use a short markdown bullet list ("- " per line) instead of cramming them into one sentence.`,
+    `- Keep it plain: no headings, no code formatting, and no tables unless the grower asks for one. Separate paragraphs with a blank line.`,
   ].join("\n");
 }

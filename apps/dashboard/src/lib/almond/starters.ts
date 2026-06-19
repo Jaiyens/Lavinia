@@ -9,19 +9,20 @@ import { en } from "@/copy/en";
  *   - READ questions ("Which meters cost me the most?") — answered by the read tools, safe for any
  *     actor including the public Tour.
  *   - ACTION / EXPORT prompts that advertise Almond's operator powers (Epics 7-9): an open/navigate
- *     prompt (read-safe, every actor) and the export/PDF prompts (owner-only — they drive the
- *     `exportSpreadsheet`/`generateReport` skills the public Tour is never handed).
+ *     prompt (read-safe, every actor) and the export/PDF prompts (gated on `canExport` — they drive
+ *     the `exportSpreadsheet`/`generateReport` skills).
  *
  * The export/PDF starters are gated on `canExport` so a starter is NEVER offered that the model would
- * refuse: the gate matches the chat route's `authedOwner` exactly (both are `dataKind === "real"`).
+ * refuse: the gate matches the chat route's `canExport` exactly.
  */
 export type StarterContext = {
   /** Number of open findings on the farm. Finding-pointing prompts only show when this is > 0. */
   findingCount: number;
   /**
-   * Whether the caller may use the owner-only export/PDF skills. TRUE only for a signed-in grower on
-   * their OWN connected farm (`dataKind === "real"`, the same signal the chat route uses for
-   * `authedOwner`); FALSE for the public Tour / badged demo farm.
+   * Whether the caller may build a downloadable report (the `exportSpreadsheet`/`generateReport`
+   * skills). TRUE for a signed-in owner on their own farm AND for the demo/Tour viewer (a guest can
+   * pull a report of the demo farm; persistence stays owner-only). The same signal the chat route
+   * uses to hand the model the file skills.
    */
   canExport: boolean;
 };

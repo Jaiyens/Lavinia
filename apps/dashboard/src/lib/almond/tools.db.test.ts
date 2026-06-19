@@ -106,7 +106,7 @@ describe("Almond tool executors over the seeded farm", () => {
     expect(stateTotal).toBe(farmAPumpNames.length);
   });
 
-  it("buildAlmondSkills gates the file-writing skills to the owner; the public Tour gets only the read-safe set", () => {
+  it("buildAlmondSkills gates the file-writing skills on canExport; a no-export actor gets only the read-safe set", () => {
     const readSafe = [
       "getFarmOverview",
       "getMeter",
@@ -116,19 +116,18 @@ describe("Almond tool executors over the seeded farm", () => {
       "listMeters",
       "navigate",
     ].sort();
-    // The authenticated owner gets the read-safe set + the owner-only file skills: exportSpreadsheet
-    // (Story 8.5) and generateReport (Story 9.3).
-    const ownerSkills = buildAlmondSkills(depsA, { authedOwner: true, userId: "user_owner" });
+    // A caller who canExport (an authed owner OR the demo/Tour viewer) gets the read-safe set + the
+    // file skills: exportSpreadsheet (Story 8.5) and generateReport (Story 9.3).
+    const ownerSkills = buildAlmondSkills(depsA, { authedOwner: true, canExport: true, userId: "user_owner" });
     expect(Object.keys(ownerSkills).sort()).toEqual(
       [...readSafe, "exportSpreadsheet", "generateReport"].sort(),
     );
-    // The public Tour actor gets ONLY the read-safe set: the file-writing skills are withheld by
-    // omission, so the model can never call them for the demo farm. `navigate` (Story 7.3) stays
-    // unconditional.
-    const publicSkills = buildAlmondSkills(depsA, { authedOwner: false, userId: null });
-    expect(Object.keys(publicSkills).sort()).toEqual(readSafe);
-    expect(Object.keys(publicSkills)).not.toContain("exportSpreadsheet");
-    expect(Object.keys(publicSkills)).not.toContain("generateReport");
+    // A no-export actor gets ONLY the read-safe set: the file-writing skills are withheld by
+    // omission, so the model can never call them. `navigate` (Story 7.3) stays unconditional.
+    const noExportSkills = buildAlmondSkills(depsA, { authedOwner: false, canExport: false, userId: null });
+    expect(Object.keys(noExportSkills).sort()).toEqual(readSafe);
+    expect(Object.keys(noExportSkills)).not.toContain("exportSpreadsheet");
+    expect(Object.keys(noExportSkills)).not.toContain("generateReport");
   });
 });
 
@@ -144,7 +143,7 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
       uiMessages: [askExport("export my meters as a spreadsheet")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: true, userId: "user_owner" },
+      actor: { authedOwner: true, canExport: true, userId: "user_owner" },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -162,15 +161,16 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
     expect((match?.[1]?.length ?? 0)).toBeGreaterThan(1000);
   });
 
-  it("the PUBLIC Tour actor gets NO download card even on an export turn (capability-by-omission)", async () => {
+  it("a no-export actor gets NO download card even on an export turn (capability-by-omission)", async () => {
     const res = await createStubResponder().toResponse({
       uiMessages: [askExport("export my meters as a spreadsheet")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     const body = await res.text();
-    // The public actor falls through to the grounded answer; never an export.
+    // A no-export actor falls through to the grounded answer; never an export. (The demo/Tour viewer
+    // now CAN export — canExport true, streamed but not persisted — covered by the pure factory test.)
     expect(body).toContain("text-delta");
     expect(body).not.toContain("data-report");
   });
@@ -180,7 +180,7 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
       uiMessages: [askExport("which meters cost me the most")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: true, userId: "user_owner" },
+      actor: { authedOwner: true, canExport: true, userId: "user_owner" },
     });
     const body = await res.text();
     expect(body).toContain("text-delta");
@@ -267,7 +267,7 @@ describe("the offline stub responder", () => {
       deps: depsA,
       // The stub is read-only and grounds directly, so it ignores the actor; the field is
       // required on AlmondRequest because the model path needs it (capability gate).
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -293,7 +293,7 @@ describe("the offline stub responder", () => {
       uiMessages: [askNav(`open ${name}`)],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -316,7 +316,7 @@ describe("the offline stub responder", () => {
       uiMessages: [ask("how complete is my billing data")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     const body = await res.text();
     expect(body).toContain("text-delta");
@@ -331,7 +331,7 @@ describe("the offline stub responder", () => {
       uiMessages: [],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     const body = await res.text();
     expect(body).not.toContain("data-navigate");
@@ -350,7 +350,7 @@ describe("the offline stub responder", () => {
       uiMessages: [ask("show me the data")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     const body = await res.text();
     expect(body).toContain("text-delta");

@@ -59,6 +59,9 @@ type AlmondChatValue = {
   /** Send a turn with optional file attachments (PDF / Excel / CSV). */
   send: (text: string, files?: File[]) => void;
   retry: () => void;
+  /** Re-ask an earlier user turn with edited text: drop that turn and everything after it, then
+   *  resend. Powers the per-message Edit control. */
+  editMessage: (messageId: string, newText: string) => void;
   navByMessage: Map<string, AlmondNavChip[]>;
   reportsByMessage: Map<string, AlmondReportCard[]>;
   onReplay: (chip: AlmondNavChip) => void;
@@ -81,6 +84,26 @@ function lastAssistantId(messages: AlmondUIMessage[]): string | undefined {
     if (messages[i]?.role === "assistant") return messages[i]?.id;
   }
   return undefined;
+}
+
+/** A stable identity for an action chip (its navigation + its label), used to drop duplicates. */
+function chipKey(chip: AlmondNavChip): string {
+  return `${JSON.stringify(chip.action)}|${chip.label}`;
+}
+
+/** Drop duplicate chips (same navigation + label), keeping first-seen order. Belt-and-suspenders to
+ *  the server's per-turn navigate dedupe: a single turn that drove one move shows exactly one chip. */
+function dedupeChips(chips: AlmondNavChip[]): AlmondNavChip[] {
+  const seen = new Set<string>();
+  const out: AlmondNavChip[] = [];
+  for (const chip of chips) {
+    const key = chipKey(chip);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(chip);
+    }
+  }
+  return out;
 }
 
 /** Read a File into a base64 Data URL (browser only; called on a user send). */
@@ -163,8 +186,12 @@ export function AlmondChatProvider({
     setAnnouncement((a) => ({ text: label, seq: a.seq + 1 }));
   }, []);
 
-  const { messages, sendMessage, status, regenerate } = useChat<AlmondUIMessage>({
+  const { messages, sendMessage, setMessages, status, regenerate } = useChat<AlmondUIMessage>({
     transport,
+    // Coalesce the flood of token updates into ~50ms frames so a fast stream paints smoothly instead
+    // of thrashing a re-render per token (the "choppy" output). The server also paces words via
+    // smoothStream; together they read like Claude/Notion typing.
+    experimental_throttle: 50,
     // `onData` fires once per received data part and is never replayed on a re-render or a reload
     // (transient parts are not persisted to history), so each navigation is applied exactly once
     // without any manual dedupe — the 7.4 "applied exactly once" guarantee is structural here.
@@ -201,7 +228,7 @@ export function AlmondChatProvider({
         else changed = true;
       }
       if (chipsToFlush.length > 0 && assistantId) {
-        next.set(assistantId, [...(next.get(assistantId) ?? []), ...chipsToFlush]);
+        next.set(assistantId, dedupeChips([...(next.get(assistantId) ?? []), ...chipsToFlush]));
         changed = true;
       }
       return changed ? next : prev;
@@ -250,6 +277,21 @@ export function AlmondChatProvider({
 
   const retry = useCallback(() => void regenerate({ body: { model } }), [regenerate, model]);
 
+  const editMessage = useCallback(
+    (messageId: string, newText: string) => {
+      const trimmed = newText.trim();
+      if (!trimmed) return;
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      // Drop the edited user turn and everything after it (its old answer + any later turns), then
+      // resend the edited text as a fresh turn so Almond answers the corrected question. setMessages
+      // updates the chat synchronously, so the subsequent send appends onto the truncated history.
+      setMessages(messages.slice(0, idx));
+      send(trimmed);
+    },
+    [messages, setMessages, send],
+  );
+
   const value = useMemo<AlmondChatValue>(
     () => ({
       open,
@@ -265,6 +307,7 @@ export function AlmondChatProvider({
       status,
       send,
       retry,
+      editMessage,
       navByMessage,
       reportsByMessage,
       onReplay,
@@ -283,6 +326,7 @@ export function AlmondChatProvider({
       status,
       send,
       retry,
+      editMessage,
       navByMessage,
       reportsByMessage,
       onReplay,

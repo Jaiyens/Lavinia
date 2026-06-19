@@ -73,9 +73,12 @@ export async function POST(req: Request): Promise<Response> {
   const farmName = farm.name.trim() || "your farm";
   // Capability is a SERVER property, never from the request body (ADR-A08): an authed owner is
   // a signed-in grower on their OWN connected farm (dataKind "real"); the public Tour resolves
-  // the badged demo farm ("representative") and is NOT an owner. The factory uses this to gate
-  // which skills the model is handed — today nothing is gated, but the flag is wired end to end.
+  // the badged demo farm ("representative") and is NOT an owner. `authedOwner` gates PERSISTENCE
+  // (keeping an export in the owner's Reports). `canExport` is broader — it lets the demo/Tour
+  // viewer build a downloadable report of the demo farm too (a guest export, streamed but never
+  // stored). The factory uses `canExport` to gate which file skills the model is handed.
   const authedOwner = resolved.dataKind === "real";
+  const canExport = true; // every resolved farm (real owner OR demo) may pull a downloadable file
   // Attachments are an owner-only context channel (capability parity with the export/report skills):
   // an authed owner's spreadsheet/CSV is parsed to text and PDFs/images pass through to the model's
   // native reading; a non-owner (public Tour) has any file parts stripped, so an untrusted caller can
@@ -93,7 +96,7 @@ export async function POST(req: Request): Promise<Response> {
       deps: { prisma, farmId: farm.id, farmName },
       // userId rides on the actor so an owner-only side effect (persisting an export to Reports,
       // Story 8.6) can record who asked. Only ever the owner's own id; null for the public Tour.
-      actor: { authedOwner, userId: authedOwner ? userId : null },
+      actor: { authedOwner, canExport, userId: authedOwner ? userId : null },
     });
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a

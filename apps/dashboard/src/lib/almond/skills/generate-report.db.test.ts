@@ -94,7 +94,7 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
       uiMessages: [askReport("make me a pdf report of my farm")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: true, userId: "user_owner" },
+      actor: { authedOwner: true, canExport: true, userId: "user_owner" },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -121,7 +121,7 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
       uiMessages: [askReport("build a pdf summary for the bank")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: true, userId: "user_owner" },
+      actor: { authedOwner: true, canExport: true, userId: "user_owner" },
     });
     // Drain the stream before asserting. Persistence runs inside the UI-message stream's execute
     // callback (responder.ts persistAndWriteReportPart), so the row is written only once the body is
@@ -136,16 +136,17 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
     expect(newest?.requestText).toContain("pdf summary");
   });
 
-  it("the PUBLIC Tour actor gets NO card on a report turn and saves nothing (capability-by-omission)", async () => {
+  it("a no-export actor gets NO card on a report turn and saves nothing (capability-by-omission)", async () => {
     const before = await listReportsForFarm(prisma, depsA.farmId);
     const res = await createStubResponder().toResponse({
       uiMessages: [askReport("make me a pdf report")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: false, userId: null },
+      actor: { authedOwner: false, canExport: false, userId: null },
     });
     const body = await res.text();
-    // The public actor falls through to the grounded answer; never a report.
+    // A no-export actor falls through to the grounded answer; never a report. (The demo/Tour viewer
+    // now CAN build a report — canExport true — but persistence stays owner-only, so it saves nothing.)
     expect(body).toContain("text-delta");
     expect(body).not.toContain("data-report");
     const after = await listReportsForFarm(prisma, depsA.farmId);
@@ -157,7 +158,7 @@ describe("the offline stub responder: generateReport (Story 9.3)", () => {
       uiMessages: [askReport("which meters cost me the most")],
       system: "ignored by the stub",
       deps: depsA,
-      actor: { authedOwner: true, userId: "user_owner" },
+      actor: { authedOwner: true, canExport: true, userId: "user_owner" },
     });
     const body = await res.text();
     expect(body).toContain("text-delta");

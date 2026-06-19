@@ -16,10 +16,9 @@ const deps: AlmondToolDeps = {
   farmName: "Test Farm",
 };
 
-// The public-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,
-// so it is read-safe and handed to every actor; the owner-only export skill (Story 8.5) is the first
-// capability the gate withholds from the public Tour.
-const PUBLIC_SKILLS = [
+// The read-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,
+// so it is read-safe and handed to every actor regardless of capability.
+const READ_SAFE_SKILLS = [
   "getFarmOverview",
   "getMeter",
   "getRatesSummary",
@@ -29,23 +28,31 @@ const PUBLIC_SKILLS = [
   "navigate",
 ].sort();
 
-// The owner-only skills: each WRITES a file, so it is handed only to an authenticated owner, never
-// to the public Tour (capability-by-omission). exportSpreadsheet was added in Story 8.5;
-// generateReport in Story 9.3. Keep this list in sync with ownerOnlySkills() in tools.ts.
-const OWNER_ONLY_SKILLS = ["exportSpreadsheet", "generateReport"];
-const OWNER_SKILLS = [...PUBLIC_SKILLS, ...OWNER_ONLY_SKILLS].sort();
+// The file-building skills: each WRITES a file, so each is handed only to a caller who `canExport`
+// (an authed owner OR the demo/Tour viewer), withheld from a no-export actor by omission.
+// exportSpreadsheet was added in Story 8.5; generateReport in Story 9.3. Keep this list in sync with
+// fileSkills() in tools.ts.
+const FILE_SKILLS = ["exportSpreadsheet", "generateReport"];
+const EXPORT_SKILLS = [...READ_SAFE_SKILLS, ...FILE_SKILLS].sort();
 
 describe("buildAlmondSkills capability gating", () => {
-  it("hands an authenticated owner the read tools, navigate, AND the owner-only write skills", () => {
-    const skills = buildAlmondSkills(deps, { authedOwner: true, userId: "user_1" });
-    expect(Object.keys(skills).sort()).toEqual(OWNER_SKILLS);
+  it("hands an authenticated owner the read tools, navigate, AND the file-building skills", () => {
+    const skills = buildAlmondSkills(deps, { authedOwner: true, canExport: true, userId: "user_1" });
+    expect(Object.keys(skills).sort()).toEqual(EXPORT_SKILLS);
   });
 
-  it("withholds every owner-only write skill from the public Tour actor (capability-by-omission)", () => {
-    const skills = buildAlmondSkills(deps, { authedOwner: false, userId: null });
-    expect(Object.keys(skills).sort()).toEqual(PUBLIC_SKILLS);
-    // No owner-only write skill is present for the public actor.
-    for (const skill of OWNER_ONLY_SKILLS) {
+  it("hands the demo/Tour viewer (canExport, not an owner) the file-building skills too", () => {
+    // The guest-export capability: a non-owner who canExport still gets exportSpreadsheet and
+    // generateReport (the demo only ever sees demo-farm data; persistence stays owner-only,
+    // gated separately in the responder).
+    const skills = buildAlmondSkills(deps, { authedOwner: false, canExport: true, userId: null });
+    expect(Object.keys(skills).sort()).toEqual(EXPORT_SKILLS);
+  });
+
+  it("withholds every file-building skill from a no-export actor (capability-by-omission)", () => {
+    const skills = buildAlmondSkills(deps, { authedOwner: false, canExport: false, userId: null });
+    expect(Object.keys(skills).sort()).toEqual(READ_SAFE_SKILLS);
+    for (const skill of FILE_SKILLS) {
       expect(Object.keys(skills)).not.toContain(skill);
     }
   });

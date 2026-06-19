@@ -51,18 +51,25 @@ export type AlmondToolDeps = {
 };
 
 /**
- * The server-resolved capability of the caller. `authedOwner` is true only for a signed-in
- * grower acting on their OWN connected farm; the public Tour (demo farm) is false. The factory
- * gates owner-only skills by OMISSION — it never hands the model a skill it must not call — so
- * capability is a structural property, not a bypassable runtime check inside a skill (ADR-A08).
+ * The server-resolved capability of the caller. Two distinct capabilities, both SERVER properties
+ * resolved in the route from the session (never from the request body or the model):
  *
- * `userId` is the signed-in grower's id, carried so an owner-only side effect (Story 8.6:
- * persisting an export to Reports) can record WHO asked. It is null for the public Tour. Like
- * `authedOwner` it is a SERVER property, resolved in the route from the session, never from the
- * request body or the model.
+ *   - `canExport`   — may the model build a downloadable file (spreadsheet / PDF)? True for an
+ *                     authed owner AND for the demo/Tour viewer, so a guest can pull their own
+ *                     report (the demo only ever sees demo-farm data; the per-IP rate limit + the
+ *                     per-farm generation throttle bound the cost). The factory gates the file
+ *                     skills by OMISSION on this flag — it never hands the model a skill it must
+ *                     not call — so capability is structural, not a bypassable in-skill check.
+ *   - `authedOwner` — is this a signed-in grower on their OWN connected farm? Strictly narrower
+ *                     than `canExport`: it gates PERSISTENCE (Story 8.6 keeps an owner's export in
+ *                     their Reports). A demo export is streamed once and never stored.
+ *
+ * `userId` is the signed-in grower's id, carried so the owner-only persistence can record WHO
+ * asked. It is null for the public Tour / demo.
  */
 export type AlmondActor = {
   authedOwner: boolean;
+  canExport: boolean;
   userId: string | null;
 };
 
@@ -172,18 +179,19 @@ export function generateReportSkill(
 }
 
 /**
- * Skills handed to the model ONLY for an authenticated farm owner (ADR-A08). The single place an
- * owner-only capability is added; gated by OMISSION in `buildAlmondSkills` (the public Tour never
- * receives these, so the model can never call them). As of Story 9.3 this is `exportSpreadsheet`
- * (Story 8.5) and `generateReport` (Story 9.3): each WRITES a file (a real capability beyond the
- * read-safe public set), so both are owner-only.
+ * The file-building skills, handed to the model only when the caller `canExport` (an authed owner OR
+ * the demo/Tour viewer — see `AlmondActor`). The single place a file capability is added; gated by
+ * OMISSION in `buildAlmondSkills` so the model can never call a skill it was not given. As of Story
+ * 9.3 this is `exportSpreadsheet` (Story 8.5) and `generateReport` (Story 9.3): each builds a file.
+ * Persistence (keeping an owner's export in their Reports) is a SEPARATE, narrower gate applied in the
+ * responder on `authedOwner`, so a demo export is streamed once but never stored.
  *
  * `toModelOutput` collapses each tool's result for the MODEL's context to a tiny text summary, so the
  * file bytes never enter the prompt window (they are lifted onto the UI stream by the responder
  * instead). The full result, including the bytes, is still available to the responder via
  * `onStepFinish`'s tool results - that is where the download card is written and the file persisted.
  */
-function ownerOnlySkills(deps: AlmondToolDeps) {
+function fileSkills(deps: AlmondToolDeps) {
   return {
     exportSpreadsheet: tool({
       description:
@@ -285,13 +293,13 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
   // Capability seam (ADR-A08): the read tools above (including `navigate`) are public-safe and handed
   // to every actor — `navigate` only sets URL state, so it is read-safe and added UNCONDITIONALLY.
-  // Any owner-only skill is spread in HERE only when `actor.authedOwner` is true, so the model is
-  // never handed a skill it must not call. As of Story 8.5 `ownerOnlySkills()` carries
-  // `exportSpreadsheet` (it WRITES a file), so an owner gets the read set + navigate + export, while
-  // the public Tour gets only the read-safe set — the export skill is withheld by OMISSION.
+  // The file-building skills are spread in HERE only when `actor.canExport` is true, so the model is
+  // never handed a skill it must not call. `canExport` now includes the demo/Tour viewer (so a guest
+  // can pull a report of the demo farm); persistence stays owner-only, gated separately in the
+  // responder. A caller without `canExport` gets only the read-safe set — files withheld by OMISSION.
   return {
     ...readTools,
-    ...(actor.authedOwner ? ownerOnlySkills(deps) : {}),
+    ...(actor.canExport ? fileSkills(deps) : {}),
   };
 }
 

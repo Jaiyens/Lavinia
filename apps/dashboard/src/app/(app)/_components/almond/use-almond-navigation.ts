@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { SURFACE, lensQueryOptions, type Lens } from "@/lib/dashboard/surface";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
@@ -16,6 +17,17 @@ import type { NavigateAction } from "@/lib/almond/skills/navigate";
  * it from `useChat`'s `onData` when a `data-navigate` part arrives, and Story 7.5's action chip calls
  * the same `apply` to link back. Must be used under the nuqs adapter (the launcher is). Navigation
  * only sets URL state, so it mutates no data (FR6).
+ *
+ * SURFACE-AWARENESS (open-meter / show-map fix): the meter drawer and the lens views are mounted
+ * ONLY on the Energy dashboard (`/energy`, or `/tour/energy` on the public Tour). The Home overview
+ * is a bento grid that consumes none of these keys, so setting `?meter=` / `?lens=` in place while on
+ * Home moved nothing — "Open Westside Pump 17" and "Show me the map" silently failed. So when the
+ * grower is NOT already on the energy surface, `apply` ROUTES there carrying the action as a deep
+ * link (exactly how Home's own findings cards link via `?meter=`), and the energy page's existing
+ * nuqs consumers open the drawer / switch the lens / filter on mount. Almond's provider + panel live
+ * in the shared dashboard layout, so this client navigation keeps the conversation intact. When the
+ * grower IS on energy, it keeps the original in-place apply (no reload) — the path that already
+ * worked for filtering.
  */
 
 /** The five canonical URL-state setters, each typed to the value its key holds. */
@@ -41,7 +53,28 @@ export function applyNavigateAction(setters: NavigationSetters, action: Navigate
   if (action.meter !== undefined) setters.setMeter(action.meter);
 }
 
+/** The energy-surface path for the current shell: the public Tour mirrors the live app one level
+ *  deeper, so a grower mid-Tour is routed to `/tour/energy`, never out of the Tour into `/energy`. */
+export function energyPathFor(pathname: string | null): string {
+  return pathname?.startsWith("/tour") ? "/tour/energy" : "/energy";
+}
+
+/** Serialize a `NavigateAction` into a deep-link query string over the canonical surface keys. A
+ *  present key is written; a null/undefined key is omitted (a fresh deep link has nothing to clear,
+ *  unlike the in-place setters where `null` actively clears a key). */
+export function navigateActionToQuery(action: NavigateAction): string {
+  const params = new URLSearchParams();
+  if (action.lens != null) params.set(SURFACE.lens, action.lens);
+  if (action.entity != null) params.set(SURFACE.entity, action.entity);
+  if (action.ranch != null) params.set(SURFACE.ranch, action.ranch);
+  if (action.rate != null) params.set(SURFACE.rate, action.rate);
+  if (action.meter != null) params.set(SURFACE.meter, action.meter);
+  return params.toString();
+}
+
 export function useAlmondNavigation(): { apply: (action: NavigateAction) => void } {
+  const pathname = usePathname();
+  const router = useRouter();
   const [, setLens] = useQueryState(SURFACE.lens, lensQueryOptions());
   const [, setEntity] = useQueryState(SURFACE.entity);
   const [, setRanch] = useQueryState(SURFACE.ranch);
@@ -51,18 +84,30 @@ export function useAlmondNavigation(): { apply: (action: NavigateAction) => void
   return {
     apply: useCallback(
       (action: NavigateAction) => {
-        applyNavigateAction(
-          {
-            setLens: (value) => void setLens(value),
-            setEntity: (value) => void setEntity(value),
-            setRanch: (value) => void setRanch(value),
-            setRate: (value) => void setRate(value),
-            setMeter: (value) => void setMeter(value),
-          },
-          action,
-        );
+        const energyPath = energyPathFor(pathname);
+        // Already on the energy surface: apply in place via the canonical nuqs setters, so the
+        // open/lens/filter happens with no reload, indistinguishable from a manual click. This is
+        // the path that already worked for filtering on the Energy tab.
+        if (pathname === energyPath) {
+          applyNavigateAction(
+            {
+              setLens: (value) => void setLens(value),
+              setEntity: (value) => void setEntity(value),
+              setRanch: (value) => void setRanch(value),
+              setRate: (value) => void setRate(value),
+              setMeter: (value) => void setMeter(value),
+            },
+            action,
+          );
+          return;
+        }
+        // Anywhere else (Home mounts neither the meter drawer nor the lens views): route to the
+        // energy surface carrying the action as a deep link so its existing nuqs consumers open the
+        // drawer / switch the lens / filter on mount. Same shared layout, so the panel + thread stay.
+        const qs = navigateActionToQuery(action);
+        router.push(qs ? `${energyPath}?${qs}` : energyPath);
       },
-      [setLens, setEntity, setRanch, setRate, setMeter],
+      [pathname, router, setLens, setEntity, setRanch, setRate, setMeter],
     ),
   };
 }
