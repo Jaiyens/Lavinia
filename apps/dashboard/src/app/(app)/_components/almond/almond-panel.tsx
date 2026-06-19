@@ -71,7 +71,7 @@ export function AlmondPanel() {
             height={16}
             className="pointer-events-none absolute inset-0 text-primary/15 [mask-image:linear-gradient(to_right,white,transparent)]"
           />
-          <AlmondAvatar size={32} animated className="relative" />
+          <AlmondAvatar size={44} animated className="relative" />
           <div className="relative min-w-0">
             <p className="type-body-md font-semibold text-on-surface">{t.name}</p>
             <p className="type-label-caps text-on-surface-variant">{t.tagline}</p>
