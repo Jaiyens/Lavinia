@@ -193,11 +193,168 @@ export const en = {
     eyebrow: "Your farm",
     metersSummary: (meters: number, accounts: number): string =>
       `${meters} ${meters === 1 ? "meter" : "meters"} across ${accounts} ${accounts === 1 ? "account" : "accounts"}`,
+    // The top greeting strip (mockup style). The time-of-day word is picked in the component
+    // from the farm's Pacific clock; the name is the owner's first name when we have one.
+    greetingMorning: "Good morning",
+    greetingAfternoon: "Good afternoon",
+    greetingEvening: "Good evening",
+    greetingSub: "Your meters at a glance.",
+    // The lock toggle (top right) that turns drag-to-rearrange on/off, so a tile is never moved by
+    // accident. Locked by default; the lock icon shows the state.
+    editLayout: "Edit tabs",
+    // The summary card row across the top of Home (mirrors the mockup's stat cards).
+    kpi: {
+      meters: "Meters",
+      metersAttention: (n: number): string =>
+        n === 1 ? "1 needs attention" : `${n} need attention`,
+      metersAllClear: "All clear",
+      accounts: "PG&E accounts",
+      accountsSub: "Across all meters",
+      spend: "Latest monthly spend",
+      spendNotLoaded: "No bills loaded yet",
+      demand: "Demand charges",
+      noDemand: "None this cycle",
+      savings: "Savings found",
+      savingsNone: "Nothing flagged yet",
+    },
     stat: {
       meters: "Meters",
       attention: "Need attention",
       savings: "Savings found",
       allClear: "All clear",
+    },
+    // The spend area-chart hero (gradient chart + time-range pills + today marker).
+    spendHero: {
+      title: "PG&E spend",
+      sub: "By month, reconciled meters",
+      empty: "Not enough billing history yet",
+      // Spend with savings carved out (apples-to-apples year-over-year is not available yet), so we
+      // never show a big alarming cost-increase number on a save-you-money product.
+      spent: "spent",
+      foundToCut: (amount: string): string => `${amount} we found to cut`,
+      ranges: { m3: "3M", m6: "6M", y1: "1Y", all: "All" },
+    },
+    // The money-found band: the top-level total across the whole operation, with the count so a
+    // partial list reads as partial. Kept separate from the refund (forward savings, not money owed).
+    savingsCard: {
+      eyebrow: "Possible savings",
+      across: "we estimate across your operation",
+      count: (n: number): string => `${n} ${n === 1 ? "opportunity" : "opportunities"} found`,
+      cta: "See what needs a look",
+      zero: "We will flag savings here as we find them.",
+    },
+    // The bills surface: the top card of the landing. Time-sensitive money, real amounts from the
+    // connected account (no OCR, no "confirm" hedge). Three states by urgency.
+    bills: {
+      eyebrow: "Bills due",
+      // The dates list: the thing growers ask for first - WHEN each PG&E bill is due, and how much.
+      upcomingHeading: "When your bills are due",
+      overdueTag: "overdue",
+      dueCount: (n: number): string => `${n} bills`,
+      noDates: "No bill dates on file yet. Connect PG&E or add a bill to see them.",
+      dueRow: (date: string, amount: string): string => `${date} - ${amount}`,
+      dueThisWeek: (amount: string, n: number): string =>
+        `${amount} due across ${n} ${n === 1 ? "bill" : "bills"} this week`,
+      overdue: (amount: string, n: number): string =>
+        `${amount} overdue across ${n} ${n === 1 ? "bill" : "bills"}`,
+      disconnectionRisk: "Disconnection risk. Pay now to avoid a shutoff.",
+      soonest: (date: string): string => `Soonest due ${date}`,
+      allCurrent: "All bills current",
+      nextDue: (date: string, amount: string): string => `Next due ${date} (${amount})`,
+      noneCurrent: "No upcoming bills on file.",
+      cta: "Review bills",
+    },
+    // The retroactive-refund hook (PG&E Rule 17.1). A money CLAIM, so the estimate is conservative,
+    // hard-rounded, "up to", and the verify label is unmissable - never a promise.
+    refund: {
+      eyebrow: "Possible refund owed",
+      meters: (n: number): string =>
+        `${n} ${n === 1 ? "meter looks" : "meters look"} mis-classified on a commercial rate.`,
+      upTo: (amount: string): string => `You may be owed up to ${amount} back`,
+      estimateLabel: "Estimated. We verify before you claim anything.",
+      rule: "Commercial-rate pumps can reclaim up to 3 years under PG&E Rule 17.1.",
+      cta: "See which meters",
+    },
+    // The bottom trust line: the meter count, demoted from a headline to a quiet reassurance.
+    trustLine: (n: number): string => `We checked all ${n} of your meters.`,
+    // Type tags on each "what needs a look" row, keyed by the finding's engine tool.
+    tags: {
+      "rate-optimization": "Rate fix",
+      "demand-charge": "Spike",
+      "bill-audit": "Bill check",
+      solar: "Solar",
+      refund: "Refund",
+    } as Record<string, string>,
+    // The Rate Fix hero card (the conversion moment). Leads with one named pump and one dollar;
+    // the resolved state reuses the finding's result note (the trust loop, same card over time).
+    rateFix: {
+      eyebrow: "Rate fix",
+      // The hero is explicitly the biggest single item within the total found.
+      biggestEyebrow: "Biggest savings opportunity",
+      // Lead with plain meaning; the rate codes are demoted to supporting detail on the card.
+      plainLead: "You are on the wrong PG&E rate plan for how this pump actually runs.",
+      // The number is an ESTIMATE of what switching this pump's rate could be worth, read from the
+      // grower's own bills - never a promise. Say so plainly (it is tentative until confirmed).
+      perYear: "a year if you switch",
+      estimateNote: "An estimate from your own bills, not a promise. We check it with you before anything changes.",
+      trace: "See how we got this",
+      done: "Mark as done",
+      notNow: "Not now",
+      saving: "Saving",
+      emptyTitle: "Every pump is on its best rate.",
+      emptyBody: "Nothing to move.",
+      whatHappenedLabel: "What happened",
+    },
+    // The farm profile card (mirrors the reference's profile card) and the two gradient stat tiles.
+    profile: {
+      title: "Farm",
+      ownerRole: "Owner",
+      meters: "Meters",
+      accounts: "Accounts",
+      // Labeled "Operations" (the legal operating entities). Not "Ranches": the ranch rollup is
+      // empty in the data today, so "Ranches: 0" would mislead. Swap to "Ranches" once it is filled.
+      entities: "Operations",
+    },
+    tiles: {
+      reconciled: "Bills confirmed",
+      reconciledSub: (loaded: number, total: number): string => `${loaded} of ${total} meters`,
+    },
+    // The "Spend by entity" progress-bar card (mirrors the reference's "Developed areas").
+    byEntity: {
+      title: "Spend by entity",
+      empty: "No reconciled spend yet",
+    },
+    // The hero map + secondary panel and the bottom card row.
+    spendTrendTitle: "Spend trend",
+    spendTrendSub: "PG&E spend by month, reconciled meters",
+    spendTrendEmpty: "Not enough billing history yet",
+    findingsTitle: "What needs a look",
+    findingsViewAll: "See all in Energy",
+    findingsEmpty: "Nothing needs you right now. We will flag it here when it does.",
+    solarTitle: "Solar and NEM",
+    solarMeters: (n: number): string =>
+      n === 1 ? "1 solar meter" : `${n} solar meters`,
+    solarNameplate: (kw: string): string => `${kw} kW installed`,
+    solarTrueUp: (month: string): string => `Next true-up in ${month}`,
+    solarNone: "No solar on this farm yet",
+    // Weather (Open-Meteo). Condition labels map the WMO weather codes to plain words.
+    weather: {
+      title: "Weather",
+      now: "Now",
+      unavailable: "Weather is unavailable right now",
+      condition: (code: number): string => {
+        if (code === 0) return "Clear";
+        if (code === 1) return "Mostly clear";
+        if (code === 2) return "Partly cloudy";
+        if (code === 3) return "Overcast";
+        if (code === 45 || code === 48) return "Fog";
+        if (code >= 51 && code <= 57) return "Drizzle";
+        if (code >= 61 && code <= 67) return "Rain";
+        if (code >= 71 && code <= 77) return "Snow";
+        if (code >= 80 && code <= 82) return "Showers";
+        if (code >= 95) return "Thunderstorms";
+        return "Mixed";
+      },
     },
     agentsHeading: "Your agents",
     energyBlurb: "Rates, bills, demand charges, and solar across every meter.",
@@ -264,6 +421,8 @@ export const en = {
   shell: {
     // Agent rail (lists agents, not features). Home == the Energy dashboard today.
     agentsLabel: "Agents",
+    // Section label above the nav list (the reference groups its nav under headings).
+    navTrack: "Track",
     agents: {
       home: "Home",
       energy: "Energy",
@@ -307,6 +466,49 @@ export const en = {
         kind === "actual"
           ? `${name}, billed close. Open its detail`
           : `${name}, scheduled read, may shift. Open its detail`,
+      // Billing-cycle surface (2026-06-17): the Home next-close line, the Calendar
+      // KPI strip, and the open-cycle standing sheet. Plain dates, no kW, no dollars
+      // here; "expected" and "as of" carry the forecast/lag honesty in words.
+      cycle: {
+        nextCloseLine: (ranch: string, date: string, others: number): string =>
+          others <= 0
+            ? `Next bill close: ${ranch}, ${date}.`
+            : others === 1
+              ? `Next bill close: ${ranch}, ${date}. 1 more closes this week.`
+              : `Next bill close: ${ranch}, ${date}. ${others} more close this week.`,
+        // The watch clause, appended only when a meter is running hot. Typography
+        // and clay carry it; never red, never a dollar.
+        hotClause: "One meter is pulling harder than usual this cycle.",
+        unforecastable: (n: number): string =>
+          n === 1 ? "plus 1 meter we cannot forecast yet" : `plus ${n} meters we cannot forecast yet`,
+        emptyLine: (ranch: string, date: string): string =>
+          `No bills close in the next 10 days. Next is ${ranch}, ${date}.`,
+        none: "No upcoming closes on file yet.",
+        cta: "Open the calendar",
+        kpiClosingWeek: "Closing this week",
+        kpiClosingMonth: "Closing this month",
+        kpiHot: "Running hot",
+        // Forecast/lag honesty, in words (style is never the only signal).
+        expected: "expected",
+        standingTitle: (meter: string, date: string): string => `${meter}, closes ${date}`,
+        standingPeak: (date: string): string => `Highest pull so far this cycle was ${date}.`,
+        asOf: (date: string): string => `as of ${date}`,
+        asOfStale: (date: string): string => `as of ${date}, our last read for this meter`,
+        steer: (date: string): string =>
+          `This cycle's peak is not locked until it closes ${date}, so easing off before then still helps.`,
+        noReads:
+          "We do not have this cycle's reads yet. We will show where it stands once they land.",
+        trace: "See how we got this",
+        // The front-page billing-close surface: when each meter's PG&E billing closes (the date the
+        // serial sets), soonest first. The thing a grower asks to see first.
+        closesEyebrow: "When your billing closes",
+        closesNextLabel: "Next billing close",
+        closesMeters: (n: number): string =>
+          `${n} ${n === 1 ? "meter closes" : "meters close"} this day`,
+        closesRowMeters: (n: number): string => `${n} ${n === 1 ? "meter" : "meters"}`,
+        closesCta: "See the full calendar",
+        closesNone: "Add each meter's serial from the bill to see when its billing closes.",
+      },
     },
     // Findings rail (Story 3.1): the calm secondary feed beside the data hero.
     findingsLabel: "Findings",
@@ -698,7 +900,7 @@ export const en = {
         `${loaded} of ${total} meters loaded`,
       demandLabel: "Demand charges",
       noDemand: "No demand charges this cycle",
-      moverLabel: "Biggest mover",
+      moverLabel: "Biggest cost change vs last cycle",
       vsLast: "vs last cycle",
       // Screen-reader labels for the tappable cards (the tap scrolls/opens the driver).
       spendAria: "Show the meter table",
@@ -794,6 +996,12 @@ export const en = {
       pinOpenNote: "Its detail is open",
       emptyView: "No meters in this view",
       legendLabel: "Pin colors",
+      // The base-map switch (satellite imagery vs a plain street map), mirroring the mockup.
+      basemapLabel: "Base map",
+      basemapSatellite: "Satellite",
+      basemapStreets: "Map",
+      // Screen-reader label for a pin that has a known latest bill floating above it.
+      pinBillAria: (name: string, bill: string): string => `Meter ${name}, latest bill ${bill}`,
     },
     // The filter bar (Story 2.6): narrow the whole dashboard to an entity / ranch / rate.
     // A dimension with no values on this farm renders no control.
@@ -828,7 +1036,13 @@ export const en = {
       kwhQty: (kwh: string): string => `${kwh} kWh`,
       demand: "Demand charge",
       demandNone: "None",
-      peakNote: (kw: string): string => `Set a ${kw} kW peak this cycle`,
+      // Plain operator English: no kW on the surface. Duration and plain force, not the unit.
+      peakNote: (): string => `Pulled hard for about 15 minutes this cycle`,
+      // The promoted "one short spike" callout when a demand charge is the biggest part of a bill.
+      spikeHeadline: (usd: string): string => `${usd} of this bill was one short spike.`,
+      spikeBody:
+        "A pump pulled hard for about 15 minutes during this cycle. That one quarter hour set this charge for the whole month.",
+      spikeSubLabel: "This is your demand charge.",
       otherHeader: "Other charges",
       otherRow: "Other charge",
       total: "Bill total",

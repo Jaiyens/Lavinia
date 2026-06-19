@@ -21,6 +21,12 @@ export type MapPin = {
   longitude: number;
   /** needs_review coverage or BAD status: the pin earns clay; calm pins are green. */
   attention: boolean;
+  /**
+   * The meter's latest printed bill in integer cents, for the floating map label - but ONLY
+   * when the meter is `reconciled` (AR-15 honesty rule: a dollar figure renders only when
+   * proven). null otherwise, so the map shows a status dot instead of a fabricated number.
+   */
+  latestBillCents: number | null;
 };
 
 export type UnlocatedMeter = {
@@ -50,12 +56,20 @@ export function toMapPins(meters: readonly MeterView[]): MapData {
       // span the Atlantic. It reads as "no location yet" (the tray), never a fake pin.
       !(latitude === 0 && longitude === 0);
     if (valid) {
+      // Latest printed bill, gated on `reconciled` (AR-15): the newest period's printed total,
+      // shown only when the meter's coverage is proven; otherwise null (status dot, no number).
+      const latest = meter.periods[meter.periods.length - 1];
+      const latestBillCents =
+        meter.coverageState === "reconciled" && latest?.printedTotalCents != null
+          ? latest.printedTotalCents
+          : null;
       pins.push({
         meterId: meter.id,
         name: meter.name,
         latitude,
         longitude,
         attention: meter.coverageState === "needs_review" || meter.status === "BAD",
+        latestBillCents,
       });
     } else {
       unlocated.push({ meterId: meter.id, name: meter.name });

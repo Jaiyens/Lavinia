@@ -110,14 +110,24 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
         <span className="type-caption mt-1 text-on-surface-variant">
           {en.shell.kpi.coverage(spend.coverage.loaded, spend.coverage.total)}
         </span>
-        {spend.coverage.loaded > 0 && <Delta deltaCents={spend.deltaCents} series={spend.series} />}
+        {/* Calm trend line only - no big red "vs last cycle" increase as the headline stat (the
+            cost-increase delta read as alarming on a save-you-money product). */}
+        {spend.coverage.loaded > 0 && spend.series.length > 1 && (
+          <div className="mt-2">
+            <Sparkline series={spend.series} className="text-on-surface-variant" />
+          </div>
+        )}
       </Card>
 
       <Card label={en.shell.kpi.demandLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.demandAria}>
         {demand.hasDemand ? (
           <>
             <span className="type-headline mt-1 tnum text-on-surface">{formatUsd(demand.cents)}</span>
-            <Delta deltaCents={demand.deltaCents} series={demand.series} />
+            {demand.series.length > 1 && (
+              <div className="mt-2">
+                <Sparkline series={demand.series} className="text-on-surface-variant" />
+              </div>
+            )}
           </>
         ) : (
           <span className="type-body-md mt-2 text-on-surface-variant">{en.shell.kpi.noDemand}</span>

@@ -74,6 +74,7 @@ function finding(over: Partial<FindingView> = {}): FindingView {
   // Use `in` (not `??`) for nullable fields so an explicit `null` override is honored.
   return {
     id: over.id ?? "f1",
+    tool: over.tool ?? "rate-optimization",
     situation: over.situation ?? "This meter looks mis-rated",
     actionLabel: "actionLabel" in over ? (over.actionLabel ?? null) : "Move to AG-A1",
     impactUsd: "impactUsd" in over ? (over.impactUsd ?? null) : 4_322,

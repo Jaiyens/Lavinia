@@ -32,7 +32,7 @@ export default async function AccountPage() {
   const email = session?.user?.email ?? null;
 
   return (
-    <div className="mx-auto max-w-2xl py-8 lg:py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 lg:px-12 lg:py-12">
       <header className="mb-8">
         <p className="type-label-caps text-primary">{t.eyebrow}</p>
         <h1 className="type-display-lg mt-1 text-on-surface">{t.title}</h1>

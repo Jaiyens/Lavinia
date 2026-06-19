@@ -15,6 +15,9 @@ import type { RecStatus, Severity } from "@/lib/recommendations/types";
  *  renders with honest fallbacks, never throws the rail down). */
 export type FindingRow = {
   id: string;
+  /** The engine tool that produced this row (e.g. "rate-optimization", "demand-charge"),
+   *  so the UI can single out the rate-optimization finding for the Home "Rate Fix" hero. */
+  tool: string;
   situation: string;
   action: unknown;
   impactUsd: number | null;
@@ -26,6 +29,8 @@ export type FindingRow = {
 
 export type FindingView = {
   id: string;
+  /** The engine tool that produced this finding (for the Rate Fix hero selector). */
+  tool: string;
   situation: string;
   /** The action's farmer-facing label; null when the stored action is unreadable
    *  (the card renders the /copy fallback, never a blank). */
@@ -122,6 +127,7 @@ export function toFindingViews(
       const { label, meterId, rateSwitchTo } = readAction(row.action);
       return {
         id: row.id,
+        tool: row.tool,
         situation,
         actionLabel: label,
         impactUsd,

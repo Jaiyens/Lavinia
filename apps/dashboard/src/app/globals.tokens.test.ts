@@ -12,25 +12,30 @@ import { describe, expect, it } from "vitest";
 const CSS = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 // DESIGN.md colors: (verbatim hex). The :root declaration must read `--name: #hex;`.
+// NOTE (2026-06-18 merge): values synced to Kamran's Home-redesign palette reskin (warm cream ->
+// cool light-grey) as committed in globals.css. DESIGN.md / CLAUDE.md still describe the prior warm
+// palette and need updating to match (flagged in the merge report); this guard now protects the new
+// committed values so a later silent drift still fails here.
 const COLOR_TOKENS: Record<string, string> = {
-  surface: "#faf9f4",
-  "surface-dim": "#ece9e0",
+  surface: "#eef1f5",
+  "surface-dim": "#e3e7ee",
   "surface-container-lowest": "#ffffff",
-  "surface-container-low": "#f6f4ec",
-  "surface-container": "#f1eee4",
-  "surface-container-high": "#ebe8dd",
-  "surface-container-highest": "#e5e1d5",
-  "on-surface": "#1a1a17",
-  "on-surface-variant": "#5a554c",
-  "inverse-surface": "#2c2c28",
-  "inverse-on-surface": "#f4f2ec",
-  outline: "#9a9384",
-  "outline-variant": "#d9d4c6",
+  "surface-container-low": "#f7f8fb",
+  "surface-container": "#eef1f5",
+  "surface-container-high": "#e6eaf1",
+  "surface-container-highest": "#dde2eb",
+  "on-surface": "#16181d",
+  "on-surface-variant": "#5b6470",
+  "inverse-surface": "#24262c",
+  "inverse-on-surface": "#f3f5f9",
+  outline: "#c3c9d3",
+  "outline-variant": "#e5e8ee",
   primary: "#2fa84f",
   "on-primary": "#ffffff",
-  "primary-container": "#c9ebd2",
+  "primary-container": "#cdebd4",
   "on-primary-container": "#0c3d1c",
-  "money-positive": "#1fbf5a",
+  // One green across the dashboard: savings green == the aurora brand green (#2fa84f).
+  "money-positive": "#2fa84f",
   "on-money-positive": "#ffffff",
   alert: "#bd4b34",
   "on-alert": "#ffffff",
@@ -40,10 +45,10 @@ const COLOR_TOKENS: Record<string, string> = {
 };
 
 const LAYOUT_TOKENS: Record<string, string> = {
-  "agent-rail": "240px",
+  "agent-rail": "184px",
   "findings-rail": "320px",
-  "radius-control": "0.375rem",
-  "radius-lg": "0.75rem",
+  "radius-control": "0.625rem",
+  "radius-lg": "1.25rem",
 };
 
 // Each color token is exposed as a Tailwind color utility through @theme as

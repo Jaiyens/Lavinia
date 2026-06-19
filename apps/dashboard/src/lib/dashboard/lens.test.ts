@@ -10,19 +10,19 @@ import {
 
 describe("dashboard lens registry", () => {
   it("carries exactly the four canonical lens keys (architecture nuqs union)", () => {
-    expect(LENS_KEYS).toEqual(["chart", "table", "map", "calendar"]);
+    expect(LENS_KEYS).toEqual(["table", "calendar", "chart", "map"]);
   });
 
-  it("defaults to the Chart face now that 2.8 shipped it (DESIGN.md default hero)", () => {
-    expect(isLensAvailable("chart")).toBe(true);
-    expect(defaultLens()).toBe("chart");
+  it("defaults to the Table face — the grower's Excel, readable without learning anything", () => {
+    expect(isLensAvailable("table")).toBe(true);
+    expect(defaultLens()).toBe("table");
   });
 
   it("resolves an unknown, absent, or not-yet-available value to the default", () => {
-    expect(parseLens(undefined)).toBe("chart");
-    expect(parseLens(null)).toBe("chart");
-    expect(parseLens("")).toBe("chart");
-    expect(parseLens("bogus")).toBe("chart");
+    expect(parseLens(undefined)).toBe("table");
+    expect(parseLens(null)).toBe("table");
+    expect(parseLens("")).toBe("table");
+    expect(parseLens("bogus")).toBe("table");
   });
 
   it("passes through an available lens unchanged (all four since Story 3.5)", () => {
@@ -32,17 +32,15 @@ describe("dashboard lens registry", () => {
     expect(parseLens("calendar")).toBe("calendar");
   });
 
-  it("default picker follows priority order: once a higher-priority lens is available it wins", () => {
-    // Simulate the 2.8 flip without mutating the shipped registry.
-    const order: Lens[] = ["chart", "table", "map", "calendar"];
-    const pick = (avail: Record<Lens, boolean>): Lens =>
-      order.find((k) => avail[k]) ?? "table";
-    expect(pick({ chart: false, table: true, map: false, calendar: false })).toBe("table");
-    expect(pick({ chart: true, table: true, map: false, calendar: false })).toBe("chart");
-    expect(pick({ chart: false, table: false, map: true, calendar: false })).toBe("map");
+  it("default picker follows priority order: the highest-priority available lens wins", () => {
+    const order: Lens[] = ["table", "calendar", "chart", "map"];
+    const pick = (avail: Record<Lens, boolean>): Lens => order.find((k) => avail[k]) ?? "table";
+    expect(pick({ table: true, calendar: false, chart: false, map: false })).toBe("table");
+    expect(pick({ table: false, calendar: true, chart: true, map: false })).toBe("calendar");
+    expect(pick({ table: false, calendar: false, chart: false, map: true })).toBe("map");
   });
 
-  it("registry priority order has chart first so it becomes the default the moment it ships", () => {
-    expect(LENSES[0]?.key).toBe("chart");
+  it("registry priority order has table first so it is the default (the grower's Excel)", () => {
+    expect(LENSES[0]?.key).toBe("table");
   });
 });

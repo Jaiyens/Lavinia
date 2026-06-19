@@ -13,9 +13,11 @@ import {
   calendarBounds,
   calendarMonth,
   defaultCalendarMonth,
+  nextCloses,
   type CalendarDay,
 } from "@/lib/dashboard/calendar";
 import { SURFACE } from "@/lib/dashboard/surface";
+import { CycleStandingSheet } from "./cycle-standing-sheet";
 
 // The Calendar lens (Story 3.5, FR-16): each meter's billing-cycle close on a
 // small month grid - the timing hook, one lens face among four, never the home
@@ -57,6 +59,15 @@ export function CalendarLens({
   // init) so a filter change or fresh data can never strand it out of bounds.
   const [anchor, setAnchor] = useState(() => defaultCalendarMonth(meters, todayIso));
   const [openDayIso, setOpenDayIso] = useState<string | null>(null);
+  const [standingMeterId, setStandingMeterId] = useState<string | null>(null);
+
+  // KPI strip inputs follow the VISIBLE set so the counts match the grid below.
+  const closes = useMemo(
+    () => nextCloses(visible, schedule, todayIso),
+    [visible, schedule, todayIso],
+  );
+  const standingMeter =
+    standingMeterId !== null ? (meters.find((m) => m.id === standingMeterId) ?? null) : null;
 
   const bounds = useMemo(
     () => calendarBounds(visible, schedule, todayIso),
@@ -94,7 +105,7 @@ export function CalendarLens({
     <section
       id="energy-lens"
       aria-label={en.shell.lens.calendar}
-      className="scroll-mt-6 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4 sm:p-6"
+      className="scroll-mt-6 flex h-full min-h-0 flex-col rounded-[var(--radius-lg)] bg-surface-container-lowest p-4 shadow-e2 sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="type-title text-on-surface">{t.heading}</h2>
@@ -123,7 +134,20 @@ export function CalendarLens({
         </div>
       </div>
 
-      <div className="mt-4">
+      {/* Cycle KPI strip: the month at a glance, in the grower's frame. "Running hot" tints
+          clay only when > 0, and the label carries the meaning so color is never the only signal. */}
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <CycleKpi label={t.cycle.kpiClosingWeek} value={closes.closingThisWeek} />
+        <CycleKpi label={t.cycle.kpiClosingMonth} value={closes.closingThisMonth} />
+        <CycleKpi label={t.cycle.kpiHot} value={closes.hotCount} hot={closes.hotCount > 0} />
+      </div>
+      {closes.unforecastable > 0 && (
+        <p className="type-caption mt-2 text-on-surface-variant">
+          {t.cycle.unforecastable(closes.unforecastable)}
+        </p>
+      )}
+
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">
         <div aria-hidden className="grid grid-cols-7 gap-px">
           {t.weekdays.map((day) => (
             <p key={day} className="type-label-caps px-1 py-1 text-center text-on-surface-variant">
@@ -131,9 +155,9 @@ export function CalendarLens({
             </p>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[var(--radius-control)] border border-outline-variant bg-outline-variant">
+        <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px overflow-hidden rounded-[var(--radius-control)] border border-outline-variant bg-outline-variant">
           {Array.from({ length: model.leadingBlanks }, (_, i) => (
-            <div key={`lead-${i}`} aria-hidden className="min-h-16 bg-surface-container-lowest" />
+            <div key={`lead-${i}`} aria-hidden className="min-h-11 bg-surface-container-lowest" />
           ))}
           {model.days.map((day) => (
             <DayCell
@@ -150,7 +174,7 @@ export function CalendarLens({
           {Array.from(
             { length: (7 - ((model.leadingBlanks + model.days.length) % 7)) % 7 },
             (_, i) => (
-              <div key={`tail-${i}`} aria-hidden className="min-h-16 bg-surface-container-lowest" />
+              <div key={`tail-${i}`} aria-hidden className="min-h-11 bg-surface-container-lowest" />
             ),
           )}
         </div>
@@ -166,7 +190,11 @@ export function CalendarLens({
               <li key={`${chip.meterId}-${chip.kind}`}>
                 <button
                   type="button"
-                  onClick={() => void setMeter(chip.meterId)}
+                  onClick={() =>
+                    chip.kind === "scheduled"
+                      ? setStandingMeterId(chip.meterId)
+                      : void setMeter(chip.meterId)
+                  }
                   aria-label={t.chipAria(chip.meterName, chip.kind)}
                   className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[var(--radius-control)] border border-outline-variant px-3 text-left transition-colors hover:bg-surface-container-low"
                 >
@@ -200,7 +228,32 @@ export function CalendarLens({
       {!anySerials && (
         <p className="type-caption mt-2 text-on-surface-variant">{t.noSerials}</p>
       )}
+
+      {standingMeter !== null && (
+        <CycleStandingSheet
+          meter={standingMeter}
+          schedule={schedule}
+          todayIso={todayIso}
+          onClose={() => setStandingMeterId(null)}
+          onTrace={() => {
+            const id = standingMeter.id;
+            setStandingMeterId(null);
+            void setMeter(id);
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+/** One cycle KPI: a count under a caps label. The clay tint is paired with its label, so
+ *  color is never the only signal (a grower who cannot tell green from clay still reads it). */
+function CycleKpi({ label, value, hot = false }: { label: string; value: number; hot?: boolean }) {
+  return (
+    <div className="rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest p-3">
+      <p className="type-label-caps text-on-surface-variant">{label}</p>
+      <p className={cn("type-title tnum mt-1", hot ? "text-alert" : "text-on-surface")}>{value}</p>
+    </div>
   );
 }
 
@@ -220,7 +273,7 @@ function DayCell({
 
   if (!hasMarks) {
     return (
-      <div className="min-h-16 bg-surface-container-lowest p-1.5">
+      <div className="min-h-11 bg-surface-container-lowest p-1.5">
         <p className="type-caption tnum text-on-surface-variant">{day.day}</p>
       </div>
     );
@@ -232,7 +285,7 @@ function DayCell({
       aria-label={t.dayAria(day.iso, day.chips.length)}
       aria-expanded={isOpen}
       className={cn(
-        "min-h-16 bg-surface-container-lowest p-1.5 text-left transition-colors hover:bg-surface-container-low",
+        "min-h-11 bg-surface-container-lowest p-1.5 text-left transition-colors hover:bg-surface-container-low",
         isOpen && "bg-surface-container-low",
       )}
     >

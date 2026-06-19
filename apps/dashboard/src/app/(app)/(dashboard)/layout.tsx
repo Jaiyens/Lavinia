@@ -7,11 +7,10 @@ import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
-import { FindingsRail } from "../_components/shell/findings-rail";
-import { FindingsSheet } from "../_components/shell/findings-sheet";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
 import { AlmondLauncherProvider } from "../_components/almond/almond-launcher-provider";
 import { AlmondNudge } from "../_components/almond/almond-nudge";
+import { TopoBackground } from "../_components/topo-background";
 import { almondStarters } from "@/lib/almond/starters";
 import { ALMOND_NUDGE_COOKIE, shouldShowAlmondNudge } from "@/lib/almond/nudge";
 
@@ -34,6 +33,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // (app) layout; this passes the id along so the shell renders the right farm.
   const resolved = await resolveFarm(await sessionUserId(), false);
   if (resolved === null) redirect(CONNECT_SOURCE_PATH);
+  // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
+  // mockup, with findings shown in-content). The Energy surface renders its own findings rail.
+  // We still resolve the count here for Almond's opening prompt (request-cached, so no extra query).
   const findings: FindingView[] = await resolveFindings(resolved.farm.id);
   // First-run nudge gate (Story 10.2): owner-only and once-only. Decided server-side from the
   // dismissal cookie so a grower who already dismissed it never sees a flash of it.
@@ -42,14 +44,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <NuqsAdapter>
       {/* The open/close state of the ONE Almond panel is shared here so the rail entry and the
-          first-run nudge open the same panel as the floating launcher (Story 10.2). */}
+          first-run nudge open the same panel as the floating launcher (Story 10.2). His Home redesign
+          moved findings in-content (no shell-wide findings rail) and added the TopoBackground; Almond's
+          provider, nudge, and capability-gated launcher are grafted back onto that structure. */}
       <AlmondLauncherProvider>
-        <div className="flex min-h-dvh w-full bg-paper text-on-surface">
+        <TopoBackground />
+        <div className="flex min-h-dvh w-full text-on-surface">
           <AgentRail />
-          <main className="min-w-0 flex-1 px-5 pb-32 lg:px-12 lg:pb-12">{children}</main>
-          <FindingsRail findings={findings} />
+          <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
         </div>
-        <FindingsSheet findings={findings} />
         <AgentTabBar />
         <AlmondNudge show={showNudge} />
         <AlmondLauncher

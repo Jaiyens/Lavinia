@@ -5,10 +5,9 @@ import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveFarm, resolveFindings } from "@/app/(app)/(dashboard)/_data";
 import { AgentRail } from "@/app/(app)/_components/shell/agent-rail";
 import { AgentTabBar } from "@/app/(app)/_components/shell/agent-tabbar";
-import { FindingsRail } from "@/app/(app)/_components/shell/findings-rail";
-import { FindingsSheet } from "@/app/(app)/_components/shell/findings-sheet";
 import { AlmondLauncher } from "@/app/(app)/_components/almond/almond-launcher";
 import { AlmondLauncherProvider } from "@/app/(app)/_components/almond/almond-launcher-provider";
+import { TopoBackground } from "@/app/(app)/_components/topo-background";
 import { almondStarters } from "@/lib/almond/starters";
 import { Button } from "@/components/ui";
 import { en } from "@/copy/en";
@@ -30,13 +29,17 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
     <NuqsAdapter>
       {/* Shared Almond panel open-state so the rail entry can open the launcher on the Tour too
           (Story 10.2). The first-run nudge is NOT mounted here: a Tour prospect is not a grower's
-          first run, and the Tour already carries its own connect CTA. */}
+          first run, and the Tour already carries its own connect CTA. His redesign added the
+          TopoBackground and moved findings in-content (no shell findings rail); Almond's provider and
+          the capability-gated launcher (canExport: false on the demo) are grafted back onto it. */}
       <AlmondLauncherProvider>
-        <div className="flex min-h-dvh w-full bg-paper text-on-surface">
+        <TopoBackground />
+        <div className="flex min-h-dvh w-full text-on-surface">
           <AgentRail demo />
-          <main className="min-w-0 flex-1 px-5 pb-32 lg:px-12 lg:pb-12">
-            {/* Representative-data banner with a connect CTA, on every tour screen. */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant py-4">
+          <main className="min-w-0 flex-1 pb-32 lg:pb-12">
+            {/* Representative-data banner with a connect CTA, on every tour screen. Padded to the
+                content gutter since the surrounding main no longer pads (pages own their gutters). */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant px-5 py-4 lg:px-12">
               <p className="type-body-sm text-on-surface-variant">{en.tour.connectNote}</p>
               <Link href="/login">
                 <Button size="sm" variant="primary">
@@ -46,9 +49,7 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
             </div>
             {children}
           </main>
-          <FindingsRail findings={findings} readOnly />
         </div>
-        <FindingsSheet findings={findings} readOnly />
         <AgentTabBar demo />
         {resolved && (
           <AlmondLauncher
