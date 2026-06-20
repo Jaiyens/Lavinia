@@ -10,7 +10,12 @@
 
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
-import { nemDemandInsight, SOLAR_TOOL } from "@/lib/energy/solar-nem";
+import {
+  demandUncoveredShare,
+  nemDemandInsight,
+  solarBillFloor,
+  SOLAR_TOOL,
+} from "@/lib/energy/solar-nem";
 import { auditAllocation } from "@/lib/energy/solar-allocation";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
@@ -101,6 +106,26 @@ export async function runSolarInsight(
     if (insight === null) continue;
     if (resolvedPumpIds.has(meter.id)) continue;
 
+    // E-2 (FR21/FR23): the demand/service/non-bypassable floor and the uncovered
+    // share, both from honest billed line items the gate already trusts (the meter
+    // is reconciled, so its line items are settled). The floor is the charges solar
+    // categorically does not offset; the share is the demand portion of demand +
+    // offsettable energy. The share rides in the note BESIDE the dollar (never an
+    // impactUsd, never a percent multiplied into a credit), and the floor breakdown
+    // rides in params so the surface can render it as a labeled group, visually
+    // separated from the net-metering honest-blank (FR23, the F2 contract preserved:
+    // severity info, dollar in impactNote only).
+    const floor = solarBillFloor(meter.periods.flatMap((p) => p.lineItems));
+    const uncoveredShare = demandUncoveredShare({
+      demandOwedCents: insight.demandOwedCents,
+      offsettableCents: floor.offsettableCents,
+    });
+    const demandUsd = formatUsdWhole(insight.demandOwedCents);
+    const impactNote =
+      uncoveredShare !== null
+        ? en.solar.insight.noteWithShare(demandUsd, Math.round(uncoveredShare * 100))
+        : en.solar.insight.note(demandUsd);
+
     drafts.push(
       draftRecommendation({
         tool: SOLAR_TOOL,
@@ -111,7 +136,7 @@ export async function runSolarInsight(
           meter.name,
           en.solar.insight.positionPhrase(insight.position, insight.monthsCounted),
         ),
-        impactNote: en.solar.insight.note(formatUsdWhole(insight.demandOwedCents)),
+        impactNote,
         action: {
           kind: "review_solar_demand",
           label: en.solar.insight.action(),
@@ -122,6 +147,14 @@ export async function runSolarInsight(
             netKwh: insight.netKwh,
             nemChargesCents: insight.nemChargesCents,
             monthsCounted: insight.monthsCounted,
+            // E-2: the uncovered share (null when not quotable) and the floor the
+            // surface renders as a labeled group. No dollar of these is a credit;
+            // the net-metering credit stays honest-blank everywhere (FR10).
+            uncoveredShare,
+            floorCents: floor.floorCents,
+            floorDemandCents: floor.demandCents,
+            floorServiceCents: floor.serviceCents,
+            floorNbcCents: floor.nbcCents,
           },
           execute: null,
         },

@@ -44,6 +44,9 @@ beforeAll(async () => {
         create: [
           { kind: "demand", label: null, amountCents: 250, quantity: 0.16, unit: "kW" },
           { kind: "other", label: "Customer Charge 30 days @ $1.43343", amountCents: 4300 },
+          // E-2: a TOU energy line makes the offsettable portion quotable, so the F2 note
+          // and params carry the uncovered share. demand 250 / (250 + 750) = 25%.
+          { kind: "tou_energy", label: "Peak energy", amountCents: 750, quantity: 100, unit: "kWh" },
         ],
       },
     },
@@ -118,10 +121,33 @@ describe("runSolarInsight", () => {
     expect(rec.impactNote).toContain("$3"); // ~$2.50 rendered whole-dollar
     expect(rec.situation).toContain("between 5 and 8");
     expect(rec.situation).not.toContain("between 4 and 9"); // never the DR window
-    const action = rec.action as { kind: string; params?: { pumpId?: string; position?: string } };
+    const action = rec.action as {
+      kind: string;
+      params?: {
+        pumpId?: string;
+        position?: string;
+        uncoveredShare?: number | null;
+        floorCents?: number;
+        floorDemandCents?: number;
+        floorServiceCents?: number;
+        floorNbcCents?: number;
+      };
+    };
     expect(action.kind).toBe("review_solar_demand");
     expect(action.params?.pumpId).toBe(solarPumpId);
     expect(action.params?.position).toBe("net_zero");
+
+    // E-2 (FR21/FR23): the uncovered share rides BESIDE the dollar in the note, and the
+    // floor (demand + service + non-bypassable) rides in params for the labeled-group
+    // surface. demand 250 / (250 + 750 offsettable) = 25%; the note still carries no
+    // impactUsd and never a credit dollar (the F2 contract preserved).
+    expect(action.params?.uncoveredShare).toBeCloseTo(0.25);
+    expect(rec.impactNote).toContain("25%"); // the share said beside the demand dollar
+    // The floor is the charges solar never offsets: demand 250 + service 4300 = 4550.
+    expect(action.params?.floorDemandCents).toBe(250);
+    expect(action.params?.floorServiceCents).toBe(4300);
+    expect(action.params?.floorNbcCents).toBe(0);
+    expect(action.params?.floorCents).toBe(4550);
   });
 
   it("is idempotent and tool-scoped", async () => {

@@ -212,6 +212,8 @@ describe("toDrawerDetail", () => {
       nemChargesCents: null,
       trueUpAmountCents: null,
       demandOwedCents: null,
+      uncoveredShare: null, // no demand quotable -> honest-blank
+      floor: null, // no demand quotable -> no floor group
     });
 
     const empty = toDrawerDetail(meter({ id: "m2", coverageState: "no_bill", isSolar: true }));
@@ -331,6 +333,81 @@ describe("toDrawerDetail solar NEM facts (Story 3.4)", () => {
       meter({ id: "m7", coverageState: "reconciled", isSolar: true, trueUpAmountCents: 713031 }),
     );
     expect(d.solar.trueUpAmountCents).toBe(713031);
+  });
+
+  // E-2 (FR21/FR23): the floor (the charges solar never offsets) as a labeled-group
+  // value, and the uncovered share beside the demand charge - both honest-blank where the
+  // demand dollar is not quotable, never a fabricated floor or a fake 100% share.
+  it("builds the floor group and the uncovered share for a reconciled solar meter with demand", () => {
+    const m = meter({
+      id: "f1",
+      coverageState: "reconciled",
+      isSolar: true,
+      periods: [
+        period({
+          demandCents: 250,
+          lineItems: [
+            li({ kind: "demand", amountCents: 250, unit: "kW" }),
+            li({ kind: "other", label: "Customer Charge", amountCents: 4300 }),
+            li({ kind: "nbc", label: "PCIA", amountCents: 90 }),
+            li({ kind: "tou_energy", label: "Peak", amountCents: 750, unit: "kWh" }),
+          ],
+        }),
+      ],
+    });
+    const d = toDrawerDetail(m);
+    expect(d.solar.demandOwedCents).toBe(250);
+    expect(d.solar.floor).toEqual({
+      demandCents: 250,
+      serviceCents: 4300,
+      nbcCents: 90,
+      totalCents: 250 + 4300 + 90,
+    });
+    // demand 250 / (250 + 750 offsettable) = 0.25 of the bill solar does not cover.
+    expect(d.solar.uncoveredShare).toBeCloseTo(0.25);
+  });
+
+  it("leaves the floor and share honest-blank where the demand dollar is not quotable", () => {
+    // Reconciled solar meter, but no demand billed: floor null, share null.
+    const noDemand = meter({
+      id: "f2",
+      coverageState: "reconciled",
+      isSolar: true,
+      periods: [period({ lineItems: [li({ kind: "tou_energy", amountCents: 750, unit: "kWh" })] })],
+    });
+    expect(noDemand.coverageState).toBe("reconciled");
+    expect(toDrawerDetail(noDemand).solar.floor).toBeNull();
+    expect(toDrawerDetail(noDemand).solar.uncoveredShare).toBeNull();
+
+    // Unreconciled: withheld even with demand line items (AR-15).
+    const unrec = meter({
+      id: "f3",
+      coverageState: "needs_review",
+      isSolar: true,
+      periods: [period({ demandCents: 250, lineItems: [li({ kind: "demand", amountCents: 250 })] })],
+    });
+    expect(toDrawerDetail(unrec).solar.floor).toBeNull();
+    expect(toDrawerDetail(unrec).solar.uncoveredShare).toBeNull();
+  });
+
+  it("leaves the share null when no offsettable energy is on file (never a fake 100%)", () => {
+    const m = meter({
+      id: "f4",
+      coverageState: "reconciled",
+      isSolar: true,
+      periods: [
+        period({
+          demandCents: 250,
+          lineItems: [
+            li({ kind: "demand", amountCents: 250 }),
+            li({ kind: "other", label: "Customer Charge", amountCents: 4300 }),
+          ],
+        }),
+      ],
+    });
+    const d = toDrawerDetail(m);
+    expect(d.solar.floor?.totalCents).toBe(4550);
+    expect(d.solar.uncoveredShare).toBeNull(); // no TOU energy -> share fails closed
   });
 });
 

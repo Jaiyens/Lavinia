@@ -67,7 +67,9 @@ import {
   NET_ZERO_FLOOR_KWH,
   demandUncoveredShare,
   nemDemandInsight,
+  solarBillFloor,
   summarizeNemMonths,
+  type FloorLineItem,
   type NemDemandInsightInput,
 } from "./solar-nem";
 import type { RateCard, RatePlan } from "./rates";
@@ -286,5 +288,87 @@ describe("demandUncoveredShare (FR21: the uncovered share)", () => {
         expect(share).toBeLessThanOrEqual(1);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story E-2 (FR23): solarBillFloor - the demand/service/non-bypassable floor.
+// ---------------------------------------------------------------------------
+
+describe("solarBillFloor (FR23: the floor solar cannot offset)", () => {
+  it("separates the floor (demand + nbc + service) from the offsettable energy", () => {
+    const items: FloorLineItem[] = [
+      { kind: "tou_energy", amountCents: 700 },
+      { kind: "demand", amountCents: 250 },
+      { kind: "nbc", amountCents: 90 },
+      { kind: "other", amountCents: 1430 }, // the flat customer/service charge
+    ];
+    const floor = solarBillFloor(items);
+    expect(floor.demandCents).toBe(250);
+    expect(floor.nbcCents).toBe(90);
+    expect(floor.serviceCents).toBe(1430);
+    // The labeled-group sum is the whole floor solar never reduces.
+    expect(floor.floorCents).toBe(250 + 90 + 1430);
+    // Only the TOU energy is solar-offsettable.
+    expect(floor.offsettableCents).toBe(700);
+  });
+
+  it("sums across multiple cycles of line items", () => {
+    const items: FloorLineItem[] = [
+      { kind: "demand", amountCents: 100 },
+      { kind: "demand", amountCents: 150 },
+      { kind: "tou_energy", amountCents: 200 },
+      { kind: "tou_energy", amountCents: 300 },
+      { kind: "other", amountCents: 400 },
+    ];
+    const floor = solarBillFloor(items);
+    expect(floor.demandCents).toBe(250);
+    expect(floor.serviceCents).toBe(400);
+    expect(floor.offsettableCents).toBe(500);
+    expect(floor.floorCents).toBe(250 + 400);
+  });
+
+  it("feeds demandUncoveredShare honestly (the floor's offsettable is the share denominator)", () => {
+    const floor = solarBillFloor([
+      { kind: "demand", amountCents: 250 },
+      { kind: "tou_energy", amountCents: 750 },
+    ]);
+    const share = demandUncoveredShare({
+      demandOwedCents: floor.demandCents,
+      offsettableCents: floor.offsettableCents,
+    });
+    expect(share).toBeCloseTo(0.25);
+  });
+
+  it("returns offsettableCents null when no offsettable line item is on file (share fails closed)", () => {
+    const floor = solarBillFloor([{ kind: "demand", amountCents: 250 }]);
+    expect(floor.offsettableCents).toBeNull();
+    // A floor with no offsettable energy must NOT quote a fabricated 100% uncovered.
+    expect(
+      demandUncoveredShare({
+        demandOwedCents: floor.demandCents,
+        offsettableCents: floor.offsettableCents,
+      }),
+    ).toBeNull();
+  });
+
+  it("clamps a credit line to zero so it never understates the floor or pads the denominator", () => {
+    const floor = solarBillFloor([
+      { kind: "demand", amountCents: 300 },
+      { kind: "other", amountCents: -120 }, // a one-off credit line
+      { kind: "tou_energy", amountCents: -50 }, // an over-production energy credit
+    ]);
+    expect(floor.serviceCents).toBe(0); // the credit never makes the floor negative
+    expect(floor.offsettableCents).toBe(0); // present-but-zero, not null (a bucket was seen)
+    expect(floor.floorCents).toBe(300);
+  });
+
+  it("is empty (all zero, offsettable null) for no line items", () => {
+    const floor = solarBillFloor([]);
+    expect(floor.floorCents).toBe(0);
+    expect(floor.demandCents).toBe(0);
+    expect(floor.nbcCents).toBe(0);
+    expect(floor.serviceCents).toBe(0);
+    expect(floor.offsettableCents).toBeNull();
   });
 });

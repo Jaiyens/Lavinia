@@ -471,13 +471,50 @@ export function MeterDrawer({
                       : null
                   }
                 />
-                {d.solar.demandOwedCents !== null && (
-                  <FieldRow
-                    label={en.solar.insight.drawerDemandOwed}
-                    value={formatUsd(d.solar.demandOwedCents)}
-                  />
-                )}
               </dl>
+
+              {/* E-2 (FR23): the floor solar categorically does not offset - demand,
+                  service, non-bypassable - as a LABELED group, visually separated from the
+                  net-metering balance above so no layout reads as a composite "solar saved
+                  you X" (the honest-dollar separation guard). The uncovered share (FR21)
+                  rides beside the demand charge as a whole percent, never a credit, never a
+                  percent multiplied into a dollar. Renders only when the demand dollar is
+                  quotable (reconciled solar meter that owes demand). */}
+              {d.solar.floor !== null && (
+                <>
+                  <SectionHeader>{en.solar.insight.floorHeading}</SectionHeader>
+                  <dl>
+                    <MoneyRow
+                      label={en.solar.insight.floorDemand}
+                      cents={d.solar.floor.demandCents}
+                      nullLabel={t.notOnFile}
+                      sub={
+                        d.solar.uncoveredShare !== null
+                          ? en.solar.insight.floorUncoveredSub(
+                              Math.round(d.solar.uncoveredShare * 100),
+                            )
+                          : undefined
+                      }
+                    />
+                    <MoneyRow
+                      label={en.solar.insight.floorService}
+                      cents={d.solar.floor.serviceCents}
+                      nullLabel={t.notOnFile}
+                    />
+                    <MoneyRow
+                      label={en.solar.insight.floorNbc}
+                      cents={d.solar.floor.nbcCents}
+                      nullLabel={t.notOnFile}
+                    />
+                    <MoneyRow
+                      label={en.solar.insight.floorTotal}
+                      cents={d.solar.floor.totalCents}
+                      nullLabel={t.notOnFile}
+                      strong
+                    />
+                  </dl>
+                </>
+              )}
             </>
           )}
 

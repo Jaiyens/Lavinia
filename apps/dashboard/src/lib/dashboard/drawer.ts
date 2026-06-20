@@ -8,6 +8,8 @@
 import { drEnrollment, type DrProgram } from "@/lib/energy/dr";
 import { verifyBill, type BillVerification } from "@/lib/energy/bill-verify";
 import {
+  demandUncoveredShare,
+  solarBillFloor,
   summarizeNemMonths,
   type NemEnergyPosition,
 } from "@/lib/energy/solar-nem";
@@ -155,6 +157,16 @@ export type DrawerSolar = {
   /** Demand charge across reconciled cycles, integer cents; null when not
    *  quotable (unreconciled) or no demand was billed. Solar never reduces it. */
   demandOwedCents: number | null;
+  /** E-2 (FR21): the share of the bill solar does NOT cover, in [0,1]; null when not
+   *  quotable (no offsettable energy on file, the same fail-closed posture). Rendered
+   *  as a whole percent beside the demand dollar, never a credit, never a percent
+   *  multiplied into a dollar. */
+  uncoveredShare: number | null;
+  /** E-2 (FR23): the demand/service/non-bypassable floor - the charges solar
+   *  categorically does not offset - as a labeled group, integer cents; null when not
+   *  quotable (unreconciled or no billed line items). Shown visually separated from the
+   *  net-metering honest-blank so no layout reads as a composite "solar saved you X". */
+  floor: { demandCents: number; serviceCents: number; nbcCents: number; totalCents: number } | null;
 };
 
 export type DrawerDetail = {
@@ -266,6 +278,30 @@ export function toDrawerDetail(meter: MeterView, allMeters?: MeterView[]): Drawe
     ? meter.periods.reduce<number>((sum, p) => sum + (p.demandCents ?? 0), 0)
     : 0;
 
+  // E-2 (FR21/FR23): the floor (the charges solar never offsets) and the uncovered
+  // share, from the same reconciled line items the demand dollar trusts. Quotable
+  // only for a reconciled solar meter that actually owes a demand charge (the AR-15
+  // gate plus the demand-billed gate, mirroring demandOwedCents). Otherwise null:
+  // honest-blank, never a fabricated floor or a fake 100% share.
+  const demandOwedCents = meter.isSolar && demandSumCents > 0 ? demandSumCents : null;
+  const billFloor = solarBillFloor(meter.periods.flatMap((p) => p.lineItems));
+  const solarFloor =
+    isCovered && demandOwedCents !== null
+      ? {
+          demandCents: billFloor.demandCents,
+          serviceCents: billFloor.serviceCents,
+          nbcCents: billFloor.nbcCents,
+          totalCents: billFloor.floorCents,
+        }
+      : null;
+  const uncoveredShare =
+    demandOwedCents !== null
+      ? demandUncoveredShare({
+          demandOwedCents,
+          offsettableCents: billFloor.offsettableCents,
+        })
+      : null;
+
   return {
     isCovered,
     drProgram: drEnrollment(meter.periods[meter.periods.length - 1]?.lineItems ?? []),
@@ -292,7 +328,9 @@ export function toDrawerDetail(meter: MeterView, allMeters?: MeterView[]): Drawe
       position: nemSummary?.position ?? null,
       nemChargesCents: nemSummary?.nemChargesCents ?? null,
       trueUpAmountCents: meter.trueUpAmountCents,
-      demandOwedCents: meter.isSolar && demandSumCents > 0 ? demandSumCents : null,
+      demandOwedCents,
+      uncoveredShare,
+      floor: solarFloor,
     },
   };
 }

@@ -290,3 +290,77 @@ export function demandUncoveredShare(args: {
   // so a floating-point edge can never surface a value outside the bound.
   return Math.min(1, Math.max(0, share));
 }
+
+// ---------------------------------------------------------------------------
+// Story E-2 (FR23): the demand/service/non-bypassable floor.
+// ---------------------------------------------------------------------------
+
+/** One billed line item, reduced to the only two fields the floor needs: its kind
+ *  and its integer-cent amount. Mirrors `BillingLineItemKind` without importing the
+ *  loader (this stays pure energy logic; the caller maps its rows down to this). */
+export type FloorLineItem = {
+  kind: "tou_energy" | "demand" | "nbc" | "other";
+  amountCents: number;
+};
+
+/**
+ * The bill floor: the charges solar categorically does NOT offset, separated from
+ * the solar-offsettable energy. Solar reduces daytime energy use; it never touches
+ * the demand charge (set by the evening peak), a non-bypassable charge, or the flat
+ * service/customer charge. So the floor is `demand + nbc + service(other)` and the
+ * offsettable portion is the `tou_energy` buckets.
+ *
+ * Pure over already-billed integer cents (NFR1): no UI, no DB, no clock, no rate
+ * math, no fabrication. Negative line amounts (credits) are clamped to zero per
+ * bucket so a one-off credit line never understates the floor or inflates the
+ * offsettable denominator into a fake share. `floorCents` is the labeled-group sum
+ * (FR23); `offsettableCents` feeds `demandUncoveredShare` (FR21). When no line
+ * items carry an offsettable bucket, `offsettableCents` is null (not on file), so
+ * `demandUncoveredShare` fails closed rather than quoting a 100% from absence.
+ */
+export type SolarBillFloor = {
+  /** Demand charge across the cycles, integer cents (>= 0). */
+  demandCents: number;
+  /** Non-bypassable charges across the cycles, integer cents (>= 0). */
+  nbcCents: number;
+  /** Flat service / customer charge (the `other` bucket), integer cents (>= 0). */
+  serviceCents: number;
+  /** The labeled-group floor sum: demand + nbc + service, integer cents (>= 0). */
+  floorCents: number;
+  /** The solar-offsettable energy portion (tou_energy), integer cents; null when no
+   *  offsettable line item is on file (so the share fails closed, never a fake 100%). */
+  offsettableCents: number | null;
+};
+
+/** Clamp a per-bucket sum to non-negative integer cents: a credit line (negative
+ *  amount) must never reduce the honest floor or pad the offsettable denominator. */
+function nonNegCents(cents: number): number {
+  return cents > 0 ? Math.round(cents) : 0;
+}
+
+export function solarBillFloor(lineItems: readonly FloorLineItem[]): SolarBillFloor {
+  let demand = 0;
+  let nbc = 0;
+  let service = 0;
+  let offsettable = 0;
+  let sawOffsettable = false;
+  for (const li of lineItems) {
+    if (li.kind === "demand") demand += li.amountCents;
+    else if (li.kind === "nbc") nbc += li.amountCents;
+    else if (li.kind === "other") service += li.amountCents;
+    else if (li.kind === "tou_energy") {
+      offsettable += li.amountCents;
+      sawOffsettable = true;
+    }
+  }
+  const demandCents = nonNegCents(demand);
+  const nbcCents = nonNegCents(nbc);
+  const serviceCents = nonNegCents(service);
+  return {
+    demandCents,
+    nbcCents,
+    serviceCents,
+    floorCents: demandCents + nbcCents + serviceCents,
+    offsettableCents: sawOffsettable ? nonNegCents(offsettable) : null,
+  };
+}

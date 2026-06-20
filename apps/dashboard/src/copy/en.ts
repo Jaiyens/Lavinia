@@ -1729,6 +1729,22 @@ export const en = {
         `${pump} ${positionPhrase}, but solar does not lower its demand charge. That charge is set by its single biggest draw, usually in the evening between 5 and 8 when the panels are nearly off.`,
       note: (demandUsd: string): string =>
         `About ${demandUsd} of its bills on file is the demand charge, which solar cannot reduce.`,
+      // E-2 (FR21): the same note with the uncovered share said beside the dollar - the
+      // portion of the bill solar does not touch, as a whole percent (never a credit
+      // claim, never a percent multiplied into a dollar).
+      noteWithShare: (demandUsd: string, uncoveredPct: number): string =>
+        `About ${demandUsd} of its bills on file is the demand charge, which solar cannot reduce. That is about ${uncoveredPct}% of the bill solar does not cover.`,
+      // E-2 (FR23): the floor labels - the charges solar categorically does not offset,
+      // shown as a labeled group separated from any net-metering balance so no layout
+      // reads as a composite "solar saved you X".
+      floorHeading: "What solar does not cover",
+      floorDemand: "Demand charge",
+      floorService: "Service charge",
+      floorNbc: "Non-bypassable charges",
+      floorTotal: "Bill floor",
+      // The uncovered share said under the demand charge, as a whole percent.
+      floorUncoveredSub: (uncoveredPct: number): string =>
+        `about ${uncoveredPct}% of the bill solar does not cover`,
       action: (): string => "See its evening demand",
       // Drawer NEM section labels (the printed solar facts).
       drawerPosition: "Solar balance",
