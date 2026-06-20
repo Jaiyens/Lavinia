@@ -81,7 +81,7 @@ export const en = {
   app: {
     name: "Terra",
   },
-  // Sign-in (Epic 5, Story 5.1). No passwords: Google SSO or an emailed magic link.
+  // Sign-in (Epic 5, Story 5.1). No passwords: Google SSO or an emailed 6-digit code.
   // Plain operator English; no em dashes, no exclamation marks, never salesy.
   auth: {
     heading: "Sign in to Terra",
@@ -90,17 +90,28 @@ export const en = {
     or: "or",
     emailLabel: "Email address",
     emailPlaceholder: "you@farm.com",
-    sendLink: "Send a sign-in link",
-    linkSent: "Check your email for a sign-in link.",
-    error: "That did not work. Try again.",
+    sendCode: "Email me a code",
+    error: "That did not work. Try again, or send a new code.",
     signOut: "Sign out",
     tourPrompt: "Just want to look around first?",
-    // The magic-link email itself (Story 5.1, real sender). Plain operator English.
+    // The code-entry step: after we email a 6-digit code, the operator types it back here.
+    // A typed code is more reliable on a phone than a tapped link (it works in the same tab
+    // and is not consumed by email link-scanners). Plain operator English.
+    code: {
+      heading: "Check your email",
+      sentTo: (email: string) =>
+        `We sent a 6-digit code to ${email}. Enter it below. It expires in 10 minutes.`,
+      label: "6-digit code",
+      placeholder: "000000",
+      verify: "Verify and sign in",
+      resend: "Send a new code",
+      differentEmail: "Use a different email",
+    },
+    // The code email itself (real sender). The code is rendered large in the body.
     email: {
-      subject: "Your Terra sign-in link",
-      heading: "Sign in to Terra",
-      body: "Tap the button below to sign in. This link works once and expires in 24 hours.",
-      button: "Sign in to Terra",
+      subject: "Your Terra sign-in code",
+      heading: "Your sign-in code",
+      body: "Enter this code to sign in to Terra. It works once and expires in 10 minutes.",
       ignore: "If you did not ask to sign in, you can ignore this email.",
     },
   },

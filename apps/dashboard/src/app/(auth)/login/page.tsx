@@ -1,24 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
-import { normalizeEmail } from "@/lib/email-normalize";
 import { Button, Input } from "@/components/ui";
 import { LogoMark } from "@/components/logo";
 import { en } from "@/copy/en";
 
 // The sign-in surface (Story 5.1). No passwords: Google SSO (only when its env creds are
-// set) and an emailed magic link. Both run as Server Actions that call Auth.js signIn.
-// Public route (allowlisted in auth.config.ts). Modern centered "front door" - a logo chip,
-// a confident headline, the Google button, an "or" divider, the email link form, and a
-// quiet path to the sample tour - all on the shared AuthBackdrop from the (auth) layout.
+// set) and an emailed 6-digit code. Two steps on one page: (1) enter email -> we email a
+// code; (2) type the code -> sign in. Public route (allowlisted in auth.config.ts). Modern
+// centered "front door" on the shared AuthBackdrop from the (auth) layout.
 export const dynamic = "force-dynamic";
 
 const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
 
-// Only same-origin relative paths are honored as the post-login destination, so the
-// gate's `callbackUrl` returns a deep-linked user to where they were headed without
-// opening a redirect to an external site. Anything else falls back to the home dashboard.
-function safeCallback(value: FormDataEntryValue | null): string {
+// Only same-origin relative paths are honored as the post-login destination, so the gate's
+// `callbackUrl` returns a deep-linked user to where they were headed without opening a
+// redirect to an external site. Anything else falls back to the home dashboard.
+function safeCallback(value: FormDataEntryValue | string | null): string {
   if (typeof value === "string" && value.startsWith("/") && !value.startsWith("//")) {
     return value;
   }
@@ -30,37 +28,44 @@ async function signInWithGoogle(formData: FormData) {
   await signIn("google", { redirectTo: safeCallback(formData.get("callbackUrl")) });
 }
 
-async function signInWithEmail(formData: FormData) {
+// Step 1: email a 6-digit code, then move to the code-entry step (carrying the normalized
+// email + callbackUrl in the URL). `redirect: false` so Auth.js sends the code but does not
+// throw its own redirect; we send the operator to our code step instead. Doubles as the
+// "send a new code" action on step 2.
+async function requestCode(formData: FormData) {
   "use server";
   const raw = formData.get("email");
-  if (typeof raw !== "string" || raw.trim().length === 0) {
+  // Match Auth.js's identifier normalization (lowercase + trim) so the email we put in the
+  // verify form equals the identifier stored against the code.
+  const email = typeof raw === "string" ? raw.toLowerCase().trim() : "";
+  const callbackUrl = safeCallback(formData.get("callbackUrl"));
+  if (!email || !email.includes("@")) {
     redirect("/login?error=1");
   }
-  // Normalize before the magic link is minted so the verification-token identifier and the
-  // User row that gets created/looked up share one canonical form (case/Unicode-insensitive).
-  // Sends the magic link (stubbed sender logs the URL) then redirects to the
-  // verifyRequest page configured in auth.config.ts (/login?sent=email).
-  await signIn("email", {
-    email: normalizeEmail(raw),
-    redirectTo: safeCallback(formData.get("callbackUrl")),
-  });
+  let sent = true;
+  try {
+    await signIn("email", { email, redirect: false });
+  } catch {
+    // sendLoginCode re-throws on a Resend transport/config error; show the calm error state
+    // rather than an unhandled exception page.
+    sent = false;
+  }
+  if (!sent) redirect("/login?error=1");
+  redirect(
+    `/login?step=code&email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
+  );
 }
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ step?: string; email?: string; error?: string; callbackUrl?: string }>;
 }) {
   const params = await searchParams;
   const t = en.auth;
-  // The gate appends ?callbackUrl when it bounces a deep link to /login; carry it through
-  // the forms so sign-in returns the user there (sanitized to same-origin in the action).
-  const callbackUrl =
-    typeof params.callbackUrl === "string" &&
-    params.callbackUrl.startsWith("/") &&
-    !params.callbackUrl.startsWith("//")
-      ? params.callbackUrl
-      : "/";
+  const callbackUrl = safeCallback(params.callbackUrl ?? null);
+  const onCodeStep = params.step === "code" && typeof params.email === "string" && params.email.length > 0;
+
   return (
     <div className="reveal flex w-full max-w-sm flex-col items-center gap-9">
       {/* Brand lockup: a floating logo chip over the confident headline. */}
@@ -69,69 +74,124 @@ export default async function LoginPage({
           <LogoMark className="size-7 text-primary" />
         </span>
         <div className="flex flex-col gap-2">
-          <h1 className="type-display-lg text-on-surface">{t.heading}</h1>
-          <p className="type-body-md text-on-surface-variant">{t.subhead}</p>
+          <h1 className="type-display-lg text-on-surface">
+            {onCodeStep ? t.code.heading : t.heading}
+          </h1>
+          <p className="type-body-md text-on-surface-variant">
+            {onCodeStep ? t.code.sentTo(params.email as string) : t.subhead}
+          </p>
         </div>
       </div>
 
-      {params.sent === "email" ? (
-        <p className="type-body-md w-full rounded-[var(--radius-control)] border border-primary/30 bg-primary-container/40 px-4 py-3 text-center text-on-surface">
-          {t.linkSent}
-        </p>
-      ) : null}
       {params.error ? (
         <p className="type-body-md w-full rounded-[var(--radius-control)] bg-alert-container px-4 py-3 text-center font-medium text-on-alert-container">
           {t.error}
         </p>
       ) : null}
 
-      <div className="flex w-full flex-col gap-4">
-        {googleEnabled ? (
-          <>
-            <form action={signInWithGoogle}>
-              <input type="hidden" name="callbackUrl" value={callbackUrl} />
-              <button
-                type="submit"
-                className="lift inline-flex h-11 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-outline-variant bg-surface-bright px-5 font-semibold text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
-              >
-                <GoogleG />
-                <span>{t.google}</span>
-              </button>
-            </form>
+      {onCodeStep ? (
+        <CodeStep email={params.email as string} callbackUrl={callbackUrl} />
+      ) : (
+        <div className="flex w-full flex-col gap-4">
+          {googleEnabled ? (
+            <>
+              <form action={signInWithGoogle}>
+                <input type="hidden" name="callbackUrl" value={callbackUrl} />
+                <button
+                  type="submit"
+                  className="lift inline-flex h-11 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-outline-variant bg-surface-bright px-5 font-semibold text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+                >
+                  <GoogleG />
+                  <span>{t.google}</span>
+                </button>
+              </form>
 
-            <div className="flex items-center gap-3 text-on-surface-variant">
-              <span className="h-px flex-1 bg-outline-variant" />
-              <span className="type-label-caps">{t.or}</span>
-              <span className="h-px flex-1 bg-outline-variant" />
-            </div>
-          </>
-        ) : null}
+              <div className="flex items-center gap-3 text-on-surface-variant">
+                <span className="h-px flex-1 bg-outline-variant" />
+                <span className="type-label-caps">{t.or}</span>
+                <span className="h-px flex-1 bg-outline-variant" />
+              </div>
+            </>
+          ) : null}
 
-        <form action={signInWithEmail} className="flex flex-col gap-3">
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
-          <Input
-            type="email"
-            name="email"
-            label={t.emailLabel}
-            placeholder={t.emailPlaceholder}
-            autoComplete="email"
-            required
-          />
-          <Button type="submit" variant="primary" className="w-full">
-            {t.sendLink}
-          </Button>
-        </form>
-      </div>
+          <form action={requestCode} className="flex flex-col gap-3">
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            <Input
+              type="email"
+              name="email"
+              label={t.emailLabel}
+              placeholder={t.emailPlaceholder}
+              autoComplete="email"
+              required
+            />
+            <Button type="submit" variant="primary" className="w-full">
+              {t.sendCode}
+            </Button>
+          </form>
+        </div>
+      )}
 
       {/* Story 5.3: a prospect can see the badged representative dashboard with zero
-          commitment, no sign-in. A quiet, full-width secondary path so there is an obvious
-          no-sign-in way to look around. */}
-      <div className="flex w-full flex-col items-center gap-3 border-t border-outline-variant pt-7">
-        <p className="type-caption text-on-surface-variant">{t.tourPrompt}</p>
-        <Link href="/tour" className="w-full">
-          <Button type="button" variant="secondary" className="w-full">
-            {en.tour.link} <span aria-hidden>&rarr;</span>
-          </Button>
+          commitment, no sign-in. Hidden on the code step to keep that screen focused. */}
+      {onCodeStep ? null : (
+        <div className="flex w-full flex-col items-center gap-3 border-t border-outline-variant pt-7">
+          <p className="type-caption text-on-surface-variant">{t.tourPrompt}</p>
+          <Link href="/tour" className="w-full">
+            <Button type="button" variant="secondary" className="w-full">
+              {en.tour.link} <span aria-hidden>&rarr;</span>
+            </Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Step 2: type the 6-digit code. A NATIVE GET form straight to the Auth.js email callback -
+// identical to opening a magic link, but the operator supplies the code. Auth.js re-hashes
+// the code, matches the single-use VerificationToken, checks the 10-min expiry, and signs
+// the user in (redirecting to callbackUrl). No server action / CSRF needed for this GET.
+function CodeStep({ email, callbackUrl }: { email: string; callbackUrl: string }) {
+  const t = en.auth;
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <form method="get" action="/api/auth/callback/email" className="flex flex-col gap-3">
+        <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="callbackUrl" value={callbackUrl} />
+        <Input
+          name="token"
+          label={t.code.label}
+          placeholder={t.code.placeholder}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          required
+          autoFocus
+          className="text-center text-lg tracking-[0.5em]"
+        />
+        <Button type="submit" variant="primary" className="w-full">
+          {t.code.verify}
+        </Button>
+      </form>
+
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        {/* Re-send a fresh code for the same email. */}
+        <form action={requestCode}>
+          <input type="hidden" name="email" value={email} />
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <button
+            type="submit"
+            className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+          >
+            {t.code.resend}
+          </button>
+        </form>
+        <Link
+          href="/login"
+          className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+        >
+          {t.code.differentEmail}
         </Link>
       </div>
     </div>

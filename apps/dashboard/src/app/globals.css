@@ -617,7 +617,6 @@ html {
   will-change: transform;
 }
 
-<<<<<<< HEAD
 /* Almond's eyes blink occasionally - a small sign of life on the mascot, calm and rare (one quick
    blink every few seconds, never a loop you notice). transform-box: fill-box pins the squash origin
    to the eyes' own box (the SVG root would scale them off-center), exactly like .chart-bar-grow.

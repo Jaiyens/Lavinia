@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import NextAuth from "next-auth";
 import type { EmailConfig } from "@auth/core/providers/email";
 import { prisma } from "@/lib/db";
@@ -6,23 +7,41 @@ import { terraPrismaAdapter } from "@/lib/auth-adapter";
 import { normalizeEmail } from "@/lib/email-normalize";
 import { isStaticallyAllowed } from "@/lib/auth/allowlist";
 import { claimInvitesForUser, emailHasFarmAccess } from "@/lib/auth/invite";
-import { sendMagicLink } from "@/lib/email";
+import { sendLoginCode } from "@/lib/email";
 
-// Email magic link (no passwords). Built as a plain `type: "email"` provider object rather
-// than the Nodemailer factory on purpose: that factory hard-imports `nodemailer` (an
-// uninstalled peer) and throws without an SMTP `server`. Its sendVerificationRequest
-// delegates to the stubbed sender in lib/email.ts. This provider REQUIRES the adapter (for
-// the VerificationToken table), so it lives here in the full config, never in the edge
-// auth.config.ts (which has no adapter - including it there raises MissingAdapter).
-const magicLinkProvider: EmailConfig = {
+// How long a sign-in code stays valid. Short on purpose: a 6-digit code is brute-forceable
+// (1,000,000 combinations), so the verification window is the main limiter. The code is also
+// single-use (Auth.js deletes the VerificationToken row on a correct guess). For higher
+// assurance, add a rate limit / Vercel BotID on /api/auth/callback/email (see the redesign
+// note). 10 minutes balances "didn't arrive yet" against the brute-force window.
+const CODE_TTL_SECONDS = 10 * 60;
+
+/** A cryptographically-uniform 6-digit code, zero-padded ("000000"-"999999"). */
+function generateLoginCode(): string {
+  return randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+// Passwordless email sign-in via a typed 6-digit CODE (not a magic link). Built as a plain
+// `type: "email"` provider object rather than the Nodemailer factory on purpose: that factory
+// hard-imports `nodemailer` (an uninstalled peer) and throws without an SMTP `server`.
+//
+// `generateVerificationToken` makes Auth.js mint our 6-digit code as the verification token:
+// it stores sha256(code + AUTH_SECRET) in the VerificationToken table and hands the plaintext
+// code to `sendVerificationRequest` as `token`. The login page's code-entry form then GETs
+// /api/auth/callback/email?token=<code>&email=<identifier>, which Auth.js verifies exactly
+// like a clicked magic link (re-hash, match, check expiry, single-use), then signs the user
+// in. This provider REQUIRES the adapter (for the VerificationToken table), so it lives here
+// in the full config, never in the edge auth.config.ts (no adapter -> MissingAdapter).
+const emailCodeProvider: EmailConfig = {
   id: "email",
   type: "email",
   name: "Email",
   from: process.env.AUTH_EMAIL_FROM ?? "login@terra.example",
-  maxAge: 24 * 60 * 60,
+  maxAge: CODE_TTL_SECONDS,
   options: {},
-  async sendVerificationRequest({ identifier, url }) {
-    await sendMagicLink({ identifier, url });
+  generateVerificationToken: generateLoginCode,
+  async sendVerificationRequest({ identifier, token }) {
+    await sendLoginCode({ identifier, code: token });
   },
 };
 
@@ -46,8 +65,8 @@ const magicLinkProvider: EmailConfig = {
 // lives in lib/auth-adapter.ts so it is unit-testable without importing NextAuth.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  // Append the adapter-backed email provider to the edge-safe providers from authConfig.
-  providers: [...authConfig.providers, magicLinkProvider],
+  // Append the adapter-backed email code provider to the edge-safe providers from authConfig.
+  providers: [...authConfig.providers, emailCodeProvider],
   adapter: terraPrismaAdapter(prisma),
   // JWT sessions, capped at 4 hours. Paired with the browser-session cookie in
   // auth.config.ts this gives the "log in every time" policy: a fresh browser open always
