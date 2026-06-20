@@ -44,9 +44,9 @@ export function AlmondLauncher() {
           className="fixed bottom-20 right-4 z-40 gap-2.5 py-2 pl-2 pr-5 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:right-6"
         >
           {/* The mascot is the hero: a big almond on its own avatar disc, the label beside it. */}
-          <span className="relative grid h-12 w-12 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)] ring-1 ring-black/5">
+          <span className="relative grid h-14 w-14 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)] ring-1 ring-black/5">
             {/* The resting mascot watches the cursor wherever it goes on the screen. */}
-            <AlmondAvatar size={40} animated trackCursor />
+            <AlmondAvatar size={54} animated trackCursor />
           </span>
           <span className="type-body-md font-semibold text-white">{t.launcherLabel}</span>
           <BorderBeam size={56} duration={6} colorFrom="#f2c14e" colorTo="#ffffff" />

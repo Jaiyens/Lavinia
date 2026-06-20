@@ -74,7 +74,7 @@ export function AgentRail({
                   `icon` is only a fallback), so it stands out as the assistant in the list. */}
               {agent.key === "almond" ? (
                 <span aria-hidden className="flex shrink-0 items-center">
-                  <AlmondAvatar size={20} />
+                  <AlmondAvatar size={28} />
                 </span>
               ) : (
                 <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
