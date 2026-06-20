@@ -150,6 +150,50 @@ describe("buildSolarDataset - array grouping (FR7)", () => {
   });
 });
 
+describe("buildSolarDataset - true-up calendar (D-1, FR12/FR13)", () => {
+  it("exposes a twelve-month grid rolling forward from the injected nowMonth", () => {
+    const ds = buildSolarDataset([meter({ id: "p1", isSolar: true, trueUpMonth: 9 })], 5);
+    expect(ds.calendar.cells).toHaveLength(12);
+    expect(ds.calendar.cells.map((c) => c.month)).toEqual([5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4]);
+  });
+
+  it("places solar meters and arrays on the grid with their settling counts", () => {
+    const west = array({ id: "West", trueUpMonth: 12 });
+    const ds = buildSolarDataset(
+      [
+        meter({ id: "p1", isSolar: true, trueUpMonth: 12, benefitingArrays: [west] }),
+        meter({ id: "p2", isSolar: true, trueUpMonth: 12, benefitingArrays: [west] }),
+        meter({ id: "p3", isSolar: true, trueUpMonth: 9 }),
+      ],
+      10, // October
+    );
+    const december = ds.calendar.cells.find((c) => c.month === 12);
+    expect(december).toEqual({ month: 12, meterCount: 2, arrayCount: 1 });
+    expect(ds.calendar.nextUpcoming).toEqual({ month: 12, meterCount: 2, monthsAhead: 2 });
+  });
+
+  it("a meter with no true-up month is not placed; no months on file => null next-upcoming", () => {
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, trueUpMonth: null })],
+      6,
+    );
+    expect(ds.calendar.nextUpcoming).toBeNull();
+    expect(ds.calendar.cells.every((c) => c.meterCount === 0 && c.arrayCount === 0)).toBe(true);
+  });
+
+  it("the calendar next-upcoming agrees with the KPI nextTrueUp month", () => {
+    const ds = buildSolarDataset(
+      [
+        meter({ id: "p1", isSolar: true, trueUpMonth: 9 }),
+        meter({ id: "p2", isSolar: true, trueUpMonth: 12 }),
+      ],
+      6,
+    );
+    expect(ds.calendar.nextUpcoming?.month).toBe(ds.kpis.nextTrueUp?.month);
+    expect(ds.calendar.nextUpcoming?.meterCount).toBe(ds.kpis.nextTrueUp?.meterCount);
+  });
+});
+
 describe("buildSolarDataset - needs-review count (UX-DR2)", () => {
   it("counts solar meters not linked to any array; zero when all linked", () => {
     const west = array({ id: "West" });

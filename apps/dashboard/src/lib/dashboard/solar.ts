@@ -22,6 +22,11 @@ import {
   allocateArray,
   type AllocationMeterInput,
 } from "@/lib/energy/solar-allocation";
+import {
+  buildTrueUpCalendar,
+  type TrueUpCalendar,
+  type TrueUpEntryInput,
+} from "@/lib/energy/solar-calendar";
 import type { MeterView } from "./load";
 
 /** One solar-flagged meter, projected to the legibility fields the Solar tab renders (FR1, FR3). */
@@ -124,6 +129,14 @@ export type SolarDataset = {
   meters: SolarMeterView[];
   arrays: SolarArrayGroup[];
   kpis: SolarKpis;
+  /**
+   * D-1 (FR12/FR13): the true-up heartbeat. A twelve-month grid rolling forward from the injected
+   * `nowMonth`, placing each solar meter's and array's true-up month with its settling counts, plus
+   * the next-upcoming pull-out. The Calendar lens (D-2) renders it; the KPI strip's `nextTrueUp`
+   * tile mirrors `kpis.nextTrueUp`. Carries STRUCTURE and TIMING only - the true-up DOLLAR stays
+   * honest-blank until a statement is uploaded (Epic G), and is never carried here.
+   */
+  calendar: TrueUpCalendar;
   /** The needs-review surfacing (unlinked solar meters + unlinked NEMA codes), C-1/FR6. */
   needsReview: SolarNeedsReview;
   /**
@@ -323,10 +336,28 @@ export function buildSolarDataset(
     needsReviewCount: unlinkedMeters.length + unlinkedCodes.length,
   };
 
+  // D-1 (FR12/FR13): the true-up calendar across the fleet. Feed every solar meter AND every array
+  // that carries an on-file true-up month (a null/out-of-range month is simply not placed, counted
+  // upstream as "no month on file"). The grid rolls forward from the same injected `nowMonth` the
+  // KPI next-true-up uses, so the two never disagree about what is next. No dollar is carried.
+  const calendarEntries: TrueUpEntryInput[] = [];
+  for (const m of meters) {
+    if (isMonth(m.trueUpMonth)) {
+      calendarEntries.push({ id: m.id, kind: "meter", trueUpMonth: m.trueUpMonth });
+    }
+  }
+  for (const a of arrays) {
+    if (isMonth(a.trueUpMonth)) {
+      calendarEntries.push({ id: a.id, kind: "array", trueUpMonth: a.trueUpMonth });
+    }
+  }
+  const calendar = buildTrueUpCalendar(calendarEntries, nowMonth);
+
   return {
     meters,
     arrays,
     kpis,
+    calendar,
     needsReview,
     // DM4: fail-closed. Absent flag (undefined/false) => cautious nameplate; a date => verified.
     nameplateVerified: context.nameplateVerified === true,
