@@ -1587,6 +1587,78 @@ export const en = {
       back: "Back to Pump Timing",
     },
   },
+
+  // Parcels GIS: the full-screen land-mapping surface. Original Terra copy only; no third-party
+  // brand names or wording. Plain operator English, no exclamation marks, no em dashes.
+  parcelsGis: {
+    // Left nav rail items (icon + label).
+    nav: {
+      baseMaps: "Base Maps",
+      listings: "Listings",
+      soldLand: "Sold Land",
+      mortgage: "Mortgage",
+      insights: "Insights",
+      layers: "Layers",
+      portfolio: "Portfolio",
+      account: "Your account",
+    },
+    searchPlaceholder: "Search parcels",
+    listings: {
+      title: "Listings",
+      close: "Close listings",
+      info: "About listings",
+      breadcrumb: "Home / Plat Map / California",
+      tabAll: "All",
+      tabSaved: "Saved",
+      filters: "Filters",
+      save: "Save listing",
+      available: "Available",
+      pending: "Pending",
+      perAcre: "/ac",
+      acresLabel: "acres",
+    },
+    // Top toolbar tool tooltips.
+    tools: {
+      select: "Select",
+      addPoint: "Add point",
+      measureWalk: "Walk a boundary",
+      history: "History",
+      drawRectangle: "Draw a rectangle",
+      drawLine: "Draw a line",
+      dropPin: "Drop a pin",
+      text: "Add a label",
+      duplicate: "Duplicate shape",
+      ruler: "Measure distance",
+      area: "Measure area",
+      export: "Export view",
+    },
+    right: {
+      newMap: "New Map",
+      insights: "Insights",
+      export: "Export",
+      banner: "Select land to get started.",
+      dismissBanner: "Dismiss",
+      close: "Close panel",
+      breadcrumb: "Home / California",
+      heading: "California",
+      // Two short paragraphs of original Terra-voice copy. Words wrapped in [[...]] render
+      // as green inline links in the panel.
+      bodyOne:
+        "California works more farmland than any other state, spread across [[58 counties]] and a patchwork of water districts. Terra pulls the public parcel record for each one, so ownership, acreage, and zoning sit in a single view.",
+      bodyTwo:
+        "Click any parcel to open its land record, or draw a boundary to measure acreage on the spot. Saved parcels and [[recent sales]] follow you into every county you work.",
+      allCounties: "All California Counties",
+      comparePlans: "Compare Plans",
+    },
+    controls: {
+      threeD: "3D",
+      layers: "Layers",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      fsa: "FSA",
+      parcel: "Parcel",
+    },
+  },
 } as const;
 
 export type CopyTree = typeof en;

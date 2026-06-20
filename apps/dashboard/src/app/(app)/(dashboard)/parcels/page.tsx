@@ -1,16 +1,12 @@
-import { ParcelsWorkspace } from "@/app/(app)/_components/parcels-workspace";
-import { loadRepresentativeFarm } from "@/lib/parcel/farm/seed";
+import { ParcelsGis } from "@/app/(app)/_components/parcels-gis/parcels-gis";
 
-// Parcels: the farmer's land, map-first. Loads straight to the operation's blocks on a full-screen
-// map (zero manual entry); the lat/long lookup is demoted to the "+ Add parcel" tool, and the
-// coordinate/APN engine is the ingestion mechanism behind it. Under (dashboard) so it is auth +
-// farm gated; the blocks are the seeded representative farm until a real farm is connected.
+// Parcels: the farmer's land as a full-screen GIS land-mapping surface. A full-bleed dark
+// satellite map (reusing the shared Esri-imagery basemap) under light floating panels: a left
+// icon rail, a search pill, a listings panel, a map-tools toolbar, a right info/actions panel,
+// and bottom map controls. All placeholder/hardcoded data, no backend. The view pins itself to
+// fixed inset-0 and owns the whole viewport over the app shell.
 export const dynamic = "force-dynamic";
 
 export default function ParcelsPage() {
-  // The grower's Pacific calendar date (one timezone, like the rest of the dashboard), so relative
-  // dates (lease expiry, overdue tasks) and tree-age coloring anchor correctly.
-  const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
-  const farm = loadRepresentativeFarm(todayIso);
-  return <ParcelsWorkspace farm={farm} year={Number(todayIso.slice(0, 4))} demo={false} />;
+  return <ParcelsGis />;
 }

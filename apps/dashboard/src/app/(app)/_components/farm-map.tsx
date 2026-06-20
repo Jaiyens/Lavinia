@@ -120,8 +120,6 @@ export function FarmMap({
   const selectedRef = useRef(selectedApn);
   const onSelectRef = useRef(onSelect);
   const basemapRef = useRef(basemap);
-  const enableZoomRef = useRef<(() => void) | null>(null);
-  const disableZoomRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     parcelsRef.current = parcels;
@@ -210,11 +208,9 @@ export function FarmMap({
       });
       map.touchZoomRotate.disableRotation();
       map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
-      map.scrollZoom.disable();
-      enableZoomRef.current = () => map.scrollZoom.enable();
-      disableZoomRef.current = () => map.scrollZoom.disable();
-      container.addEventListener("click", enableZoomRef.current);
-      container.addEventListener("mouseleave", disableZoomRef.current);
+      // Scroll zoom is enabled outright (no click-to-arm gating): the wheel zooms the map
+      // immediately, so "I can't zoom in" is fixed. The +/- NavigationControl stays for taps.
+      map.scrollZoom.enable();
       popupRef.current = new lib.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: "farm-tip" });
       mapRef.current = map;
 
@@ -258,9 +254,6 @@ export function FarmMap({
 
     return () => {
       cancelled = true;
-      // `container` is captured at effect start; the map's container node does not change.
-      if (enableZoomRef.current) container.removeEventListener("click", enableZoomRef.current);
-      if (disableZoomRef.current) container.removeEventListener("mouseleave", disableZoomRef.current);
       popupRef.current?.remove();
       mapRef.current?.remove();
       mapRef.current = null;
