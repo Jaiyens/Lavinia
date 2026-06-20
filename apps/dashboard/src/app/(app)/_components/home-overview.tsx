@@ -250,7 +250,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
-    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-56px)] lg:overflow-hidden lg:p-4">
+    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-120px)] lg:overflow-hidden lg:p-4">
       {/* The whole farm stays on ONE screen at desktop widths: the board fills the viewport and the
           ROOT font size scales fluidly with it (see the fluid-scaling block in globals.css), so the
           numbers, labels, and spacing grow and shrink TOGETHER with the cards - the same density on a
