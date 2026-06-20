@@ -85,6 +85,11 @@ const INTERVAL_CHUNK = 5_000;
  * extractor and the Batth seed produce. The lines sum EXACTLY to printedTotalCents so the
  * cycle reconciles like a real extracted account; no per-bucket TOU split is attempted
  * (the ESPI/UtilityAPI summary does not carry one), so the energy is one flat line.
+ *
+ * The caller only invokes this for printedTotalCents > 0 (a zero/net-credit cycle is not
+ * reconciled into lines at all). The demand line is capped at the printed total so a demand
+ * charge that rounds above the total (or a total that is mostly the demand charge) can never
+ * emit a line exceeding the bill; demand + energy therefore always sum to EXACTLY the total.
  */
 function buildLineItems(
   summary: NormalizedSummary,
@@ -98,10 +103,15 @@ function buildLineItems(
   unit: string | null;
   rate: number | null;
 }[] {
-  const demandCents =
-    summary.demandChargeUsd != null ? centsFromDollars(summary.demandChargeUsd) : 0;
-  // Floor the energy remainder at 0 so a demand figure larger than the (rounding-noisy)
-  // total can never mint a negative energy line; the lines still reconcile to the total.
+  // Cap demand at the printed total (and floor at 0) so a demand figure larger than the
+  // (rounding-noisy) total cannot mint a line exceeding the bill, and a NEM-credit summary's
+  // negative demand figure cannot mint a negative line.
+  const demandCents = Math.min(
+    printedTotalCents,
+    summary.demandChargeUsd != null ? Math.max(0, centsFromDollars(summary.demandChargeUsd)) : 0,
+  );
+  // Energy is the remainder; with demand capped at the total it is always >= 0, and the two
+  // lines reconcile to printedTotalCents exactly.
   const energyCents = Math.max(0, printedTotalCents - demandCents);
   const items: {
     kind: string;
@@ -247,9 +257,11 @@ async function importOneMeter(
       });
       // The per-line-item breakdown that reconciles to printedTotalCents (the money
       // view sums the demand lines, the table/chart read them). Replace then recreate so
-      // a re-import is idempotent.
+      // a re-import is idempotent. Only a cycle with a POSITIVE printed total gets lines:
+      // a $0 or net-credit (NEM) cycle has no charges to reconcile, so minting a demand
+      // line against it would exceed the (zero/negative) total and never reconcile.
       await tx.billingLineItem.deleteMany({ where: { billingPeriodId: period.id } });
-      if (printedTotalCents != null) {
+      if (printedTotalCents != null && printedTotalCents > 0) {
         const lineItems = buildLineItems(summary, printedTotalCents, cycleKwh);
         if (lineItems.length > 0) {
           await tx.billingLineItem.createMany({

@@ -49,6 +49,12 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   const rateFinding = findings.find((f) => f.tool === "rate-optimization") ?? null;
   const listFindings = rateFinding ? findings.filter((f) => f.id !== rateFinding.id) : findings;
   const opportunityCount = findings.filter((f) => (f.impactUsd ?? 0) > 0).length;
+  // The Rate Fix empty state must not assert "every pump is on its best rate" until the rate
+  // engine actually had data to evaluate. It only prices meters whose bills reconciled, so a
+  // freshly connected farm (no reconciled bills yet) gets a null rateFinding because nothing was
+  // checked, not because everything is optimal. Gate the affirmative copy on real analysis having
+  // been possible; otherwise show the honest "still loading" state.
+  const rateAnalyzed = meters.some((m) => m.coverageState === "reconciled");
 
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: LA_TZ }).format(new Date());
   const bills = scanBills(meters, todayIso);
@@ -189,7 +195,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
         <DashboardTile
           className="h-full w-full"
           label={en.home.rateFix.biggestEyebrow}
-          detail={<RateFixCard finding={rateFinding} energyHref={energyHref} readOnly={demoOnly} />}
+          detail={<RateFixCard finding={rateFinding} analyzed={rateAnalyzed} energyHref={energyHref} readOnly={demoOnly} />}
         >
           {rateFinding ? (
             <>
@@ -203,7 +209,9 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
               </p>
             </>
           ) : (
-            <p className="type-body-md text-on-surface-variant">{en.home.rateFix.emptyTitle}</p>
+            <p className="type-body-md text-on-surface-variant">
+              {rateAnalyzed ? en.home.rateFix.emptyTitle : en.home.spendTrendEmpty}
+            </p>
           )}
         </DashboardTile>
       ),

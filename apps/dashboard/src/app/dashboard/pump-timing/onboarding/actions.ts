@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/access";
+import { canAccessFarm, requireRole } from "@/lib/auth/access";
 import { prisma } from "@/lib/db";
 import {
   type Readiness,
@@ -42,6 +42,41 @@ function field(formData: FormData, key: string): string | null {
 // userId fails (farmRole returns null).
 async function canManageFarm(farmId: string, userId: string | null): Promise<boolean> {
   return requireRole(prisma, farmId, userId, "manager");
+}
+
+// The read-only polls require only that the caller is an active member of that exact farm (any
+// role). Keyed on FarmMembership via the shared gate; a null userId fails. Used to degrade the
+// pollers to an empty/not-ready result rather than leaking another tenant's progress.
+async function callerCanAccessFarm(farmId: string): Promise<boolean> {
+  const userId = await sessionUserId();
+  return canAccessFarm(prisma, farmId, userId);
+}
+
+/** A not-ready Readiness so an unauthorized poll degrades gracefully instead of leaking. */
+function notReadyReadiness(): Readiness {
+  return {
+    sample: false,
+    hasCredentials: false,
+    billsReady: false,
+    intervalsReady: false,
+    ready: false,
+    bills: null,
+  };
+}
+
+/** Empty RevealCounts so an unauthorized reveal poll degrades gracefully instead of leaking. */
+function emptyRevealCounts(): RevealCounts {
+  return {
+    dataKind: "real",
+    hasCredentials: false,
+    accounts: 0,
+    electricMeters: 0,
+    gasMeters: 0,
+    billsReady: false,
+    intervalsReady: false,
+    bills: null,
+    ready: false,
+  };
 }
 
 /** "Connect PG&E": pull the sample feed, import, classify, go to confirm. */
@@ -157,8 +192,11 @@ export async function startConnectionAction(
   }
 }
 
-/** Poll where a farm's pull stands (read-only). The legacy pending screen calls this. */
+/** Poll where a farm's pull stands (read-only). The legacy pending screen calls this. The
+ *  farmId is client-supplied, so require active membership; a non-member gets a not-ready
+ *  result rather than another tenant's progress. */
 export async function connectionStatusAction(farmId: string): Promise<Readiness> {
+  if (!(await callerCanAccessFarm(farmId))) return notReadyReadiness();
   return pgeReadiness(prisma, farmId);
 }
 
@@ -168,6 +206,9 @@ export async function connectionStatusAction(farmId: string): Promise<Readiness>
  * data is not ready yet, so the poller keeps waiting.
  */
 export async function finishConnectionAction(farmId: string): Promise<boolean> {
+  // Client-supplied farmId mutates the farm (import + run engines), so gate ownership first.
+  const userId = await sessionUserId();
+  if (!(await canManageFarm(farmId, userId))) redirect("/login");
   const result = await finishPgeConnection(prisma, farmId);
   if (!result) return false;
   await runEngines(prisma, farmId);
@@ -182,6 +223,9 @@ export async function finishConnectionAction(farmId: string): Promise<boolean> {
  * lands on the results screen.
  */
 export async function continueWithReadyAction(farmId: string): Promise<void> {
+  // Client-supplied farmId mutates the farm (forced import + run engines), so gate ownership first.
+  const userId = await sessionUserId();
+  if (!(await canManageFarm(farmId, userId))) redirect("/login");
   const result = await finishPgeConnection(prisma, farmId, { force: true });
   if (result) await runEngines(prisma, farmId);
   revalidatePath("/dashboard/pump-timing");
@@ -190,8 +234,11 @@ export async function continueWithReadyAction(farmId: string): Promise<void> {
 
 // --- the rebuilt reveal -> finding -> save flow ---------------------------------
 
-/** Poll the live counts for the reveal screen (accounts, meters, bills). Read-only. */
+/** Poll the live counts for the reveal screen (accounts, meters, bills). Read-only. The
+ *  farmId is client-supplied, so require active membership; a non-member gets empty counts
+ *  rather than another tenant's data. */
 export async function connectionRevealAction(farmId: string): Promise<RevealCounts> {
+  if (!(await callerCanAccessFarm(farmId))) return emptyRevealCounts();
   return pgeReveal(prisma, farmId);
 }
 
@@ -248,6 +295,10 @@ export async function finishRevealAction(
   farmId: string,
   opts?: { force?: boolean },
 ): Promise<RevealFinish | null> {
+  // Client-supplied farmId mutates the farm (import + run engines + write findings), so gate
+  // ownership first. A non-owner gets null (the poller keeps waiting) rather than a leak.
+  const userId = await sessionUserId();
+  if (!(await canManageFarm(farmId, userId))) return null;
   const result = await finishPgeConnection(
     prisma,
     farmId,
@@ -270,12 +321,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * (finishRevealAction ran the import + engines), so this neither flips it nor re-runs.
  */
 export async function saveOwnerAction(formData: FormData): Promise<void> {
+  // This legacy action writes an owner Person onto a client-supplied farmId, so it MUST gate
+  // ownership before mutating. The farmId is fully client-controlled (a form field), so trust
+  // nothing: require a session AND an active owner/manager membership on that exact farm. Mirrors
+  // saveConfirmationAction below and the secure twin in src/app/(app)/onboarding/actions.ts.
+  const userId = await sessionUserId();
+  if (!userId) redirect("/login");
   const farmId = field(formData, "farmId");
   const name = field(formData, "name");
   const email = field(formData, "email");
   if (!farmId) throw new Error("Missing farm");
   if (!name) throw new Error("A name is required");
   if (!email || !EMAIL_RE.test(email)) throw new Error("A valid email is required");
+  if (!(await canManageFarm(farmId, userId))) redirect("/login");
 
   await prisma.person.create({
     data: { farmId, name, email, role: "owner", language: "en" },
