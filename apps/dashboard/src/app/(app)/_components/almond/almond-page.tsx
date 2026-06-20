@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
@@ -43,7 +44,15 @@ export function AlmondPage() {
   const [railOpen, setRailOpen] = useState(true);
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-4rem)]">
+    <div
+      className={cn(
+        "relative flex min-h-[calc(100dvh-4rem)]",
+        // Empty landing fits in one screen: cancel the shell's bottom padding (lg:pb-12) so the
+        // centered hero never forces a scrollbar when everything already fits. The conversation
+        // view keeps the normal min-height + window scroll for long threads.
+        empty && "lg:-mb-12",
+      )}
+    >
       {/* Saved-chats rail (desktop), collapsible. Self-hides when history is disabled (the Tour). */}
       {railOpen && <AlmondHistorySidebar onClose={() => setRailOpen(false)} />}
 
@@ -63,18 +72,18 @@ export function AlmondPage() {
         )}
 
         {empty ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-5 py-10 text-center lg:px-8">
-            <AlmondAvatar size={104} animated trackCursor className="mb-6" />
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-5 py-6 text-center lg:px-8">
+            <AlmondAvatar size={96} animated trackCursor className="mb-4" />
             <p className="eyebrow mb-2 text-primary">{t.pageEyebrow}</p>
             <h1 className="type-display-lg text-on-surface">{t.pageGreeting}</h1>
             <p className="mt-3 max-w-md type-body-md text-on-surface-variant">{t.greeting(farmName)}</p>
 
-            <div className="mt-8 w-full max-w-2xl">
+            <div className="mt-6 w-full max-w-2xl">
               <AlmondComposer variant="page" autoFocus />
             </div>
 
             {starters.length > 0 && (
-              <div className="mt-9 w-full max-w-2xl text-left">
+              <div className="mt-6 w-full max-w-2xl text-left">
                 <p className="eyebrow mb-3 text-on-surface-variant">{t.suggestedLabel}</p>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {starters.map((q) => (
