@@ -27,6 +27,9 @@ export default async function AccountPage() {
         orderBy: { type: "asc" },
       })
     : [];
+  const memberCount = farm
+    ? await prisma.farmMembership.count({ where: { farmId: farm.id, status: "active" } })
+    : 0;
 
   const t = en.account;
   const name = session?.user?.name?.trim() || null;
@@ -52,6 +55,19 @@ export default async function AccountPage() {
           <h2 className="type-label-caps mb-4 text-on-surface-variant">{t.farmHeading}</h2>
           <Row label={t.farmLabel} value={farm.name} />
         </section>
+      )}
+
+      {farm && (
+        <Link
+          href="/account/team"
+          className="mb-6 flex items-center justify-between rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 transition-colors hover:bg-surface-container-low"
+        >
+          <div>
+            <h2 className="type-label-caps mb-1 text-on-surface-variant">{en.team.eyebrow}</h2>
+            <p className="type-body-md text-on-surface">{en.team.summaryCard(memberCount)}</p>
+          </div>
+          <span className="type-body-sm font-semibold text-primary">{en.team.manageLink}</span>
+        </Link>
       )}
 
       <section className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">

@@ -8,22 +8,33 @@ import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
 import { signOutAction } from "../../actions";
 import { AlmondAvatar } from "../almond/almond-avatar";
+import { FarmSwitcher } from "./farm-switcher";
 import { AGENTS, agentHref, isAgentActive } from "./agents";
 
 // Desktop left rail (240px). Lists agents; the active live agent is primary, future agents are
 // dimmed + non-interactive with a "coming" tag. Mobile uses AgentTabBar instead. `demo` (the
 // public Tour) points the nav at the /tour routes and swaps the account/sign-out footer for a
-// single "Sign in" CTA, since a prospect on the tour has no session.
-export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
+// single "Sign in" CTA, since a prospect on the tour has no session. `farms`/`activeFarmId` drive
+// the farm switcher under the wordmark (omitted on the demo tour).
+export function AgentRail({
+  demo = false,
+  farms = [],
+  activeFarmId = null,
+}: {
+  demo?: boolean;
+  farms?: { id: string; name: string }[];
+  activeFarmId?: string | null;
+} = {}) {
   const pathname = usePathname();
   return (
     <aside
       aria-label={en.shell.agentsLabel}
       className="sticky top-0 hidden h-dvh w-40 shrink-0 flex-col overflow-y-auto border-r border-outline-variant bg-paper px-2.5 py-5 lg:flex"
     >
-      <div className="px-3 pb-6">
+      <div className="px-3 pb-4">
         <Wordmark className="text-on-surface" />
       </div>
+      {demo ? null : <FarmSwitcher farms={farms} activeFarmId={activeFarmId} />}
       <p className="px-3 pb-2 type-label-caps text-on-surface-variant/70">{en.shell.navTrack}</p>
       <nav className="flex flex-col gap-1">
         {AGENTS.map((agent) => {

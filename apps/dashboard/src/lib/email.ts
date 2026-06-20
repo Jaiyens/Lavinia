@@ -48,6 +48,76 @@ function magicLinkHtml(url: string): string {
 </html>`;
 }
 
+/** What the team invite sender needs: who to mail, which farm, who invited them, and the URL. */
+export type FarmInviteEmail = {
+  to: string;
+  farmName: string;
+  inviterName: string;
+  url: string;
+};
+
+/** The branded farm-invite HTML body (same shell as the magic link). */
+function farmInviteHtml({ farmName, inviterName, url }: Omit<FarmInviteEmail, "to">): string {
+  const t = en.team.inviteEmail;
+  return `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:${PAPER};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};padding:40px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border:1px solid #e7e5dc;border-radius:16px;overflow:hidden;">
+          <tr><td style="padding:32px 32px 8px;">
+            <span style="font-family:Inter,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${GREEN};">Terra</span>
+            <h1 style="margin:12px 0 0;font-family:Inter,Arial,sans-serif;font-size:22px;font-weight:600;color:${INK};">${t.heading(farmName)}</h1>
+            <p style="margin:12px 0 24px;font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:${MUTED};">${t.body(inviterName, farmName)}</p>
+            <a href="${url}" style="display:inline-block;font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;background:${GREEN};text-decoration:none;padding:12px 20px;border-radius:10px;">${t.button}</a>
+            <p style="margin:28px 0 0;font-family:Inter,Arial,sans-serif;font-size:13px;line-height:1.5;color:${MUTED};">${t.ignore}</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+/**
+ * Deliver a farm-team invite. Same Resend-or-stub boundary as sendMagicLink, but with one crucial
+ * difference: it NEVER throws. The FarmInvite row is already persisted by the time we send, so a
+ * transient email failure must not roll back the invite (the invitee can still sign in to claim it,
+ * and the owner can resend). The link is the plain app URL, not a token: access is proven only by
+ * signing in as the invited email.
+ */
+export async function sendFarmInvite({ to, farmName, inviterName, url }: FarmInviteEmail): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(`[farm-invite] no RESEND_API_KEY; no email sent to ${to}.`);
+      return;
+    }
+    console.log(`\n[farm-invite] ${to} was invited to ${farmName}: ${url}\n`);
+    return;
+  }
+  const from = process.env.AUTH_EMAIL_FROM ?? "Terra <onboarding@resend.dev>";
+  try {
+    const res = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: en.team.inviteEmail.subject(farmName),
+        html: farmInviteHtml({ farmName, inviterName, url }),
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(`[farm-invite] Resend send failed (${res.status}): ${detail.slice(0, 300)}`);
+    }
+  } catch (err) {
+    // Swallow: the invite is saved; the email is best-effort. Surface in logs only.
+    console.error("[farm-invite] send error:", err instanceof Error ? err.message : err);
+  }
+}
+
 /**
  * Deliver a magic-link sign-in URL.
  *  - RESEND_API_KEY set  -> send the branded email via Resend's HTTP API.

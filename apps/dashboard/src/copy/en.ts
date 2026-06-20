@@ -384,6 +384,87 @@ export const en = {
     connectMore: "Connect another account",
     signOut: "Sign out",
   },
+  // Team management (the multi-user farm membership feature). Plain operator English; the trust
+  // promise ("only this farm") is stated plainly. No em dashes, no exclamation marks.
+  team: {
+    navLabel: "Team",
+    eyebrow: "Team",
+    title: "Who can see this farm",
+    lede: (farmName: string): string =>
+      `Everyone here can open ${farmName}. They cannot see any other farm.`,
+    // Roles and what each can do (shown in the role picker and on each member row).
+    roles: {
+      owner: {
+        label: "Owner",
+        desc: "Runs the farm. Can add or remove people, connect data, and change anything.",
+      },
+      manager: {
+        label: "Manager",
+        desc: "Can see everything, use the tools, and add or remove teammates. Cannot remove the owner.",
+      },
+      viewer: { label: "View only", desc: "Can look but not change anything." },
+    },
+    // Add-people form.
+    addHeading: "Add people by email",
+    addPlaceholder: "manager@farm.com, irrigator@farm.com",
+    addHelper: "Paste one email or several, separated by commas or new lines.",
+    roleLabel: "What can they do",
+    reviewCta: "Review invites",
+    sendCta: "Send invites",
+    back: "Back",
+    // Confirm step (catches a typo before a real stranger is granted access).
+    confirmTitle: "Send these invites",
+    confirmBody: "Each person signs in with their own email and only sees this farm.",
+    invalidEmail: (bad: string): string =>
+      `That does not look like an email: ${bad}. Fix it or remove it.`,
+    added: (n: number): string =>
+      n === 1
+        ? "Invite sent. They can sign in with this email to open the farm."
+        : `${n} invites sent. Each person can sign in with their own email to open the farm.`,
+    alreadyOnTeam: "Some of those are already on the team. We left them as they are.",
+    sendError: "We saved the invites but could not email everyone. They can still sign in to join.",
+    // Member list.
+    membersHeading: "People with access",
+    invitesHeading: "Invited, not signed in yet",
+    you: "You",
+    statusActive: "Active",
+    statusInvited: "Invited, not signed in yet",
+    addedBy: (name: string): string => `Added by ${name}`,
+    // Row controls.
+    resend: "Resend invite",
+    cancelInvite: "Cancel invite",
+    changeRole: "Change role",
+    remove: "Remove from farm",
+    leave: "Leave this farm",
+    transfer: "Make owner",
+    removeConfirm: (name: string): string =>
+      `Remove ${name}? They will lose access to this farm right away. You can invite them back any time.`,
+    leaveConfirm: "Leave this farm? You will lose access right away.",
+    // Guard messages.
+    lastOwner: "Every farm needs an owner. Make someone else the owner first.",
+    managerLimited: "Only the owner can do that.",
+    cannotActOnOwner: "Only the owner can change the owner.",
+    // Account hub summary card.
+    summaryCard: (n: number): string =>
+      n === 1 ? "1 person has access" : `${n} people have access`,
+    manageLink: "Manage team",
+    // Farm switcher (for a user who can open more than one farm).
+    switcherHeading: "Farms you can open",
+    // Empty state.
+    empty: {
+      title: "It is just you so far",
+      body: "Add your managers and crew by email so they can open this farm with you. Each person signs in with their own email and only sees this farm.",
+    },
+    // The invite email itself (real sender via Resend). Plain operator English.
+    inviteEmail: {
+      subject: (farmName: string): string => `You have been added to ${farmName} on Terra`,
+      heading: (farmName: string): string => `Open ${farmName} on Terra`,
+      body: (inviter: string, farmName: string): string =>
+        `${inviter} added you to ${farmName}. Sign in with this email to see the farm's meters, bills, and savings. You will only see this one farm.`,
+      button: "Open the farm",
+      ignore: "If you were not expecting this, you can ignore this email.",
+    },
+  },
   // The Reports area (Story 8.7): a place in the grower's account that lists every spreadsheet
   // Almond has made them, newest first, each re-downloadable through the owner-scoped route. Plain
   // operator English, the grower's words. No kW/interval jargon, no em dashes, no exclamation marks.

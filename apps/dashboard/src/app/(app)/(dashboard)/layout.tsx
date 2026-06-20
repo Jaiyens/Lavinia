@@ -5,6 +5,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { farmRole } from "@/lib/auth/access";
+import { accessibleFarms } from "@/lib/onboarding/farm";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveActiveFarmId, resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
@@ -42,6 +43,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // owner/manager can attach. The Almond chat route applies the same role-derived gate.
   const role = userId ? await farmRole(prisma, resolved.farm.id, userId) : null;
   const canAttach = role === "owner" || role === "manager";
+  // The farms this user can switch between (the rail switcher). Single-farm users see a label.
+  const farms = await accessibleFarms(prisma, userId);
   // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
   // mockup, with findings shown in-content). The Energy surface renders its own findings rail.
   // We still resolve the count here for Almond's opening prompt (request-cached, so no extra query).
@@ -71,7 +74,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
-          <AgentRail />
+          <AgentRail farms={farms} activeFarmId={resolved.farm.id} />
           <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
         </div>
         <AgentTabBar />

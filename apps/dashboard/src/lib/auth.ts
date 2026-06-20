@@ -5,6 +5,7 @@ import { authConfig } from "@/lib/auth.config";
 import { terraPrismaAdapter } from "@/lib/auth-adapter";
 import { normalizeEmail } from "@/lib/email-normalize";
 import { isStaticallyAllowed } from "@/lib/auth/allowlist";
+import { claimInvitesForUser, emailHasFarmAccess } from "@/lib/auth/invite";
 import { sendMagicLink } from "@/lib/email";
 
 // Email magic link (no passwords). Built as a plain `type: "email"` provider object rather
@@ -68,17 +69,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailVerified = (profile as { email_verified?: boolean } | undefined)?.email_verified;
         if (emailVerified !== true) return false;
       }
-      // 2) Pre-launch lockdown. Off unless ACCESS_ALLOWLIST is set. When on, only listed emails
-      //    may sign in. Uniform `false` on any denial so the gate cannot be used to enumerate.
+      // 2) Pre-launch lockdown. Off unless ACCESS_ALLOWLIST is set. When on, sign-in is allowed
+      //    if the email is on the static allowlist OR has farm standing (an active membership or a
+      //    pending, non-expired invite) - so an invited teammate can sign in during lockdown. An
+      //    invite is NOT auto-added to the static allowlist, so a revoke removes standing fully.
+      //    Uniform `false` on any denial so the gate cannot be used to enumerate.
       const email = user?.email ? normalizeEmail(user.email) : null;
-      if (!isStaticallyAllowed(email)) {
-        // Phase 3 extension point: before denying, also allow an active FarmMembership or a
-        // pending, non-expired FarmInvite for this email, so an invited teammate can sign in
-        // during lockdown (the user's chosen behavior). Those tables land in the membership
-        // migration; until then the static allowlist is the only gate.
+      if (!isStaticallyAllowed(email) && !(await emailHasFarmAccess(prisma, email))) {
         return false;
       }
       return true;
+    },
+  },
+  events: {
+    // The invite-claim hook. Runs server-side on EVERY successful sign-in (new and returning),
+    // after the signIn callback above has already proven the email is verified. It is the ONLY
+    // place a pending FarmInvite becomes an active membership, and it matches on the normalized
+    // email only - a sign-in as a different address never claims someone else's invite. Non-
+    // blocking by design: the return is ignored, so a DB hiccup here never locks the user out.
+    async signIn({ user }) {
+      if (!user?.id) return;
+      try {
+        await claimInvitesForUser(prisma, { id: user.id, email: user.email });
+      } catch (err) {
+        // Best-effort: the invite stays pending and is retried on the next sign-in.
+        console.error("[invite-claim] failed:", err instanceof Error ? err.message : err);
+      }
     },
   },
 });

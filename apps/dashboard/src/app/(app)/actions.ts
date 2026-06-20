@@ -8,16 +8,41 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
-import { auth, signOut } from "@/lib/auth";
+import { auth, sessionUserId, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/auth/access";
-import { activeFarmId } from "@/lib/auth/active-farm";
+import { canAccessFarm, requireRole } from "@/lib/auth/access";
+import { ACTIVE_FARM_COOKIE, activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm } from "@/lib/onboarding/farm";
 import { acceptanceResult } from "@/lib/recommendations/result";
 import { ALMOND_NUDGE_COOKIE } from "@/lib/almond/nudge";
 import { en } from "@/copy/en";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+// Same secure-cookie rule as the session cookie (auth.config.ts): __Secure on https, plain on
+// the http e2e/local dev. Keeps the active-farm cookie's flags consistent with the session.
+const useSecureCookies =
+  Boolean(process.env.VERCEL) ||
+  (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").startsWith("https://");
+
+/**
+ * Set the active farm for a user who can open more than one. Validates membership BEFORE writing
+ * the cookie (never echoes a farm the caller is not a member of), so the switcher can never be
+ * used to widen access. The reader (activeFarmId) re-validates on every read too.
+ */
+export async function setActiveFarmAction(farmId: string): Promise<void> {
+  const userId = await sessionUserId();
+  if (!userId) return;
+  if (!(await canAccessFarm(prisma, farmId, userId))) return;
+  const store = await cookies();
+  store.set(ACTIVE_FARM_COOKIE, farmId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: useSecureCookies,
+  });
+  revalidatePath("/", "layout");
+}
 
 /**
  * End the session and return to the sign-in page (Story 5.1). The shell renders a
