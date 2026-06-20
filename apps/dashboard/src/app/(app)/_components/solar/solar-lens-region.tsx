@@ -16,15 +16,20 @@ import { SolarMapLens } from "./solar-map-lens";
 // Calendar (Epic D) still render the empty-but-structured "coming" placeholder until their stories land.
 // Switching the toggle swaps which view shows here, never a crash or a blank region. The Map lens reads
 // the canonical MeterView[] (it needs lat/long, which the solar dataset's legibility view does not
-// carry); it filters to solar meters itself. The placeholder branch keeps `aria-live` + the active-lens
+// carry); it filters to solar meters itself. It is also handed the page-edge `nowMonth` so its
+// true-up-soon pin signal (FR35) shares the dataset's clock-free window. The placeholder branch keeps `aria-live` + the active-lens
 // label so the structure stays whole and accessible for the not-yet-shipped lenses.
 
 export function SolarLensRegion({
   dataset,
   meters,
+  nowMonth,
 }: {
   dataset: SolarDataset;
   meters: MeterView[];
+  /** The page-edge "now" month (1-12), injected so the Map lens's true-up-soon window stays
+   *  clock-free and shares the same discipline as the dataset's next-true-up KPI (FR35, NFR1). */
+  nowMonth: number;
 }) {
   const [raw] = useQueryState(SURFACE.lens, solarLensQueryOptions());
   const active = parseSolarLens(raw);
@@ -34,7 +39,7 @@ export function SolarLensRegion({
   }
 
   if (active === "map") {
-    return <SolarMapLens meters={meters} />;
+    return <SolarMapLens meters={meters} nowMonth={nowMonth} />;
   }
 
   const label = en.solar.lens[active];

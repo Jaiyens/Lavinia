@@ -93,6 +93,28 @@ function isMonth(m: number | null): m is number {
 }
 
 /**
+ * How near a true-up has to be (in whole months ahead, inclusive of the current month) to count as
+ * "true-up soon". A single documented constant so the Map lens (the true-up-soon pin signal, FR35)
+ * and any future surface share one window, the same way `nextTrueUpAcross` shares `isMonth`. Three
+ * months reads as "this quarter" in plain operator terms, not a clock-precise countdown.
+ */
+export const TRUE_UP_SOON_MONTHS = 3;
+
+/**
+ * True when a meter's true-up settles within the next `TRUE_UP_SOON_MONTHS` (inclusive of the
+ * current month), relative to an injected `nowMonth` (1-12, never read from a clock). Reuses the
+ * same forward-wrapping 12-month window discipline as `nextTrueUpAcross` so the two never disagree
+ * about what "soon" means. Honest absence (a meter with no true-up month, or an out-of-range now)
+ * is never "soon" - never a fabricated date, never a guessed signal (FR35).
+ */
+export function isTrueUpSoon(trueUpMonth: number | null, nowMonth: number): boolean {
+  if (!isMonth(trueUpMonth) || !isMonth(nowMonth)) return false;
+  // Whole months from nowMonth forward to the true-up month, 0-11 (0 = settling this month).
+  const ahead = (trueUpMonth - nowMonth + 12) % 12;
+  return ahead < TRUE_UP_SOON_MONTHS;
+}
+
+/**
  * The next-upcoming true-up across the solar meters, relative to an injected current month
  * (`nowMonth`, 1-12, never read from a clock). Walks the next 12 months from `nowMonth` inclusive
  * and returns the first month any solar meter settles, with its settling count. A meter settling

@@ -22,6 +22,15 @@ export type MapPin = {
   /** needs_review coverage or BAD status: the pin earns clay; calm pins are green. */
   attention: boolean;
   /**
+   * An OPTIONAL, additive "true-up soon" signal, set only by surfaces that carry it (the solar Map
+   * lens, FR35). When true the marker draws a quiet ring around the status dot - a third encoded
+   * dimension on top of the attention/calm hue, never a hue of its own (color is never the only
+   * signal). Defaults to falsy/undefined, so the Energy map and the Home hero pins are unchanged.
+   * It is a timing signal, never a dollar (a true-up credit stays honest-blank until a statement
+   * is on file).
+   */
+  trueUpSoon?: boolean;
+  /**
    * The meter's latest printed bill in integer cents, for the floating map label - but ONLY
    * when the meter is `reconciled` (AR-15 honesty rule: a dollar figure renders only when
    * proven). null otherwise, so the map shows a status dot instead of a fabricated number.

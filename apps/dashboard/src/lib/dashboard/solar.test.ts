@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildSolarDataset, nextTrueUpAcross, type SolarMeterView } from "./solar";
+import {
+  buildSolarDataset,
+  isTrueUpSoon,
+  nextTrueUpAcross,
+  TRUE_UP_SOON_MONTHS,
+  type SolarMeterView,
+} from "./solar";
 import type { MeterView, MeterArrayView } from "./load";
 
 // A-3: the solar lens dataset is a PURE derivation over MeterView[]. These tests pin isSolar-only
@@ -193,6 +199,57 @@ describe("nextTrueUpAcross - injected now, no clock (UX-DR2)", () => {
 
   it("ignores an out-of-range month rather than guessing", () => {
     expect(nextTrueUpAcross([sm({ id: "a", trueUpMonth: 0 }), sm({ id: "b", trueUpMonth: 13 })], 1)).toBeNull();
+  });
+});
+
+describe("isTrueUpSoon - the Map lens true-up-soon signal (FR35)", () => {
+  const stubMeter: SolarMeterView = {
+    id: "stub",
+    name: "stub",
+    accountNumber: null,
+    entityName: null,
+    ranchName: null,
+    solarKw: null,
+    nemType: null,
+    trueUpMonth: null,
+    hasArray: false,
+  };
+
+  it("is true within the window (inclusive of this month) and false beyond it", () => {
+    // Window is TRUE_UP_SOON_MONTHS whole months ahead, inclusive of the current month.
+    expect(TRUE_UP_SOON_MONTHS).toBe(3);
+    // now = June (6): June (0 ahead), July (1), August (2) are soon; September (3) is not.
+    expect(isTrueUpSoon(6, 6)).toBe(true);
+    expect(isTrueUpSoon(7, 6)).toBe(true);
+    expect(isTrueUpSoon(8, 6)).toBe(true);
+    expect(isTrueUpSoon(9, 6)).toBe(false);
+    // A true-up 11 months out (last month before wrapping back) is not soon.
+    expect(isTrueUpSoon(5, 6)).toBe(false);
+  });
+
+  it("wraps across the year boundary the same way the next-true-up window does", () => {
+    // now = November (11): Nov (0), Dec (1), Jan (2) are soon; Feb (3) is not.
+    expect(isTrueUpSoon(11, 11)).toBe(true);
+    expect(isTrueUpSoon(12, 11)).toBe(true);
+    expect(isTrueUpSoon(1, 11)).toBe(true);
+    expect(isTrueUpSoon(2, 11)).toBe(false);
+  });
+
+  it("agrees with nextTrueUpAcross on what counts as within the window", () => {
+    // A meter the dataset reports as 2 months ahead is soon; one 3 ahead is not.
+    const soon = nextTrueUpAcross([{ ...stubMeter, trueUpMonth: 8 }], 6);
+    expect(soon?.monthsAhead).toBe(2);
+    expect(isTrueUpSoon(8, 6)).toBe(true);
+    const notSoon = nextTrueUpAcross([{ ...stubMeter, trueUpMonth: 9 }], 6);
+    expect(notSoon?.monthsAhead).toBe(3);
+    expect(isTrueUpSoon(9, 6)).toBe(false);
+  });
+
+  it("is never soon for honest absence or an out-of-range month (never guessed)", () => {
+    expect(isTrueUpSoon(null, 6)).toBe(false);
+    expect(isTrueUpSoon(0, 6)).toBe(false);
+    expect(isTrueUpSoon(13, 6)).toBe(false);
+    expect(isTrueUpSoon(6, 0)).toBe(false); // out-of-range now
   });
 });
 

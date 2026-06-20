@@ -111,8 +111,13 @@ function pinElement(
 ): { el: HTMLButtonElement; dot: HTMLSpanElement; chip: HTMLSpanElement | null; baseLabel: string } {
   const billText = pin.latestBillCents != null ? formatUsdWhole(pin.latestBillCents) : null;
   const stateLabel = pin.attention ? t.attention : t.calm;
+  // The optional true-up-soon dimension (the solar Map lens, FR35) is announced as words on the pin,
+  // so the ring is never the only signal it carries (a screen reader hears it too).
+  const fullStateLabel = pin.trueUpSoon ? t.pinTrueUpSoon(stateLabel) : stateLabel;
   const baseLabel =
-    showBill && billText ? t.pinBillAria(pin.name, billText) : t.pinAria(pin.name, stateLabel);
+    showBill && billText
+      ? t.pinBillAria(pin.name, billText)
+      : t.pinAria(pin.name, fullStateLabel);
 
   const el = document.createElement("button");
   el.type = "button";
@@ -157,6 +162,13 @@ function pinElement(
   dot.style.background = pin.attention ? "var(--alert)" : "var(--primary)";
   dot.style.border = "2px solid var(--surface-container-lowest)";
   dot.style.boxShadow = "var(--shadow-elevated)";
+  // The optional true-up-soon ring (the solar Map lens, FR35): a quiet outline around the status dot,
+  // a SECOND encoded dimension on top of the attention/calm hue, not a hue of its own. Additive - it
+  // only draws when the surface set pin.trueUpSoon, so the Energy map and the Home hero are unchanged.
+  if (pin.trueUpSoon) {
+    dot.style.outline = "2px solid var(--on-surface)";
+    dot.style.outlineOffset = "2px";
+  }
   el.appendChild(dot);
 
   el.addEventListener("click", onOpen);

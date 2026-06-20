@@ -1137,6 +1137,9 @@ export const en = {
       attention: "Needs attention",
       calm: "Looks calm",
       pinAria: (name: string, state: string): string => `Open meter ${name}, ${state}`,
+      // Wraps a pin's state when its true-up settles soon (the solar Map lens, FR35), so the ring's
+      // meaning is heard as words, not conveyed by the outline alone.
+      pinTrueUpSoon: (state: string): string => `${state}, true-up soon`,
       // Appended to the open pin's label while its drawer is showing (AC4 trace).
       pinOpenNote: "Its detail is open",
       emptyView: "No meters in this view",
@@ -1467,18 +1470,30 @@ export const en = {
     // toggle and the lens region; the Arrays, Map, Table, and Calendar views arrive in later stories).
     lensComing: "This view is on the way.",
     // The Map lens (A-6, FR35, UX-DR6): the solar fleet placed geographically, reusing the shared
-    // maplibre map. Launch-data pins only (coverage state, that the meter is on solar, true-up soon),
-    // a plain-word legend, NO array-health pin (no backing field at launch), and an honest tray for
-    // any solar meter with no resolvable location (listed, never placed at a guessed point). No dollar
-    // floats above a solar pin (a true-up credit is honest-blank until a statement is on file).
+    // maplibre map. Launch-data pins only - the three signals already on the meter at launch:
+    // coverage state (the needs-a-look / looks-calm hue), that the meter is on solar (every placed pin
+    // is pre-filtered to a solar meter), and true-up soon (a quiet ring around the dot when the annual
+    // settle is within the next few months). A plain-word legend pairs each signal with words. NO
+    // array-health pin (no backing field at launch). An honest tray lists any solar meter with no
+    // resolvable location (never placed at a guessed point) AND a labeled list names the true-up-soon
+    // meters, so the ring's meaning is also readable as words. No dollar floats above a solar pin (a
+    // true-up credit is honest-blank until a statement is on file).
     map: {
-      // Plain-word legend, paired with each pin color.
+      // Plain-word legend, paired with each pin signal.
       legendLabel: "Pin colors",
       attention: "Needs a look",
       calm: "Looks calm",
+      // The third launch signal (FR35): a quiet ring around the dot when the true-up settles soon.
+      trueUpSoon: "True-up soon",
       // Disclosure summary for solar meters without a resolvable location (listed, not placed).
       traySummary: (n: number): string =>
         n === 1 ? "1 solar meter with no location yet" : `${n} solar meters with no location yet`,
+      // Disclosure summary naming the solar meters whose true-up settles soon, so the ring signal is
+      // also present as words (color/outline is never the only signal).
+      trueUpSoonSummary: (n: number): string =>
+        n === 1 ? "1 solar meter with a true-up soon" : `${n} solar meters with a true-up soon`,
+      // Open the drawer on a meter row in either tray (Map-namespaced, not borrowed from Arrays).
+      openMeter: (name: string): string => `Open ${name}`,
       // Shown when no solar meter has a location and none is listed (never a crash or a blank region).
       emptyView: "No solar meters to place on the map yet.",
     },
