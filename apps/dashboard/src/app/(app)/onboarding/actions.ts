@@ -26,6 +26,7 @@ import {
   importBillUpload,
 } from "@/lib/onboarding/sources";
 import { runEngines } from "@/lib/recommendations/run";
+import { runSolarInsight } from "@/lib/recommendations/run-solar-insight";
 
 const CONNECT = "/onboarding/connect";
 
@@ -40,15 +41,23 @@ function field(formData: FormData, key: string): string | null {
  * insert) must not abort the confirm/sample action, or the farmer would see an error
  * instead of their freshly connected dashboard. The findings simply land empty and a later
  * re-run (the dashboard's refresh action) regenerates them. Logged, never surfaced. Must
- * wrap ONLY runEngines, never the redirect() below it (redirect signals via a thrown
+ * wrap ONLY the engine work, never the redirect() below it (redirect signals via a thrown
  * sentinel that has to propagate).
+ *
+ * SOLAR_TOOL is owned by the canonical runSolarInsight engine on a real farm (ADR-S05):
+ * runEngines no longer touches the key, so finalize calls runSolarInsight AFTER runEngines
+ * as the sole live SOLAR_TOOL owner. This finalize path serves real connected farms (the
+ * demo/seed farm gets its solar finding from runEngines' legacy branch via the seed run), so
+ * runSolarInsight runs here unconditionally; its own gates leave a no-solar farm with zero
+ * solar findings.
  */
 async function safeRunEngines(farmId: string): Promise<void> {
   try {
     await runEngines(prisma, farmId);
+    await runSolarInsight(prisma, farmId);
   } catch (err) {
     console.error(
-      `onboarding: runEngines failed for farm ${farmId}; landing the farmer on the dashboard anyway`,
+      `onboarding: engine run failed for farm ${farmId}; landing the farmer on the dashboard anyway`,
       err instanceof Error ? err.message : err,
     );
   }

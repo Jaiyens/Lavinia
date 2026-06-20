@@ -17,13 +17,29 @@ import type { DraftRecommendation } from "@/lib/recommendations";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import type { CycleBill, IntervalReading } from "@/lib/energy/types";
 
-/** Tools this runner owns; only these are cleared/replaced on a re-run. */
-const ENGINE_TOOLS = [
+/**
+ * Tools this runner owns; only these are cleared/replaced on a re-run.
+ *
+ * `SOLAR_TOOL` ownership is conditional (ADR-S05). For a REAL farm the canonical
+ * `runSolarInsight` engine is the sole `SOLAR_TOOL` owner: `runEngines` must not
+ * clear, insert, or otherwise touch the key, or it would double or delete-wipe the
+ * canonical solar findings. For a demo/seed farm (Batth, the Tour) the legacy
+ * `solarNemChecks` branch below still runs and owns the key, so `SOLAR_TOOL` is in
+ * the cleared/inserted set only on that path. `enginesToolsFor` resolves the set
+ * per farm.
+ */
+const REAL_ENGINE_TOOLS = [
   RATE_OPTIMIZATION_TOOL,
-  SOLAR_TOOL,
   DEMAND_CHARGE_TOOL,
   BILL_AUDIT_TOOL,
 ];
+
+/** Demo/seed farms add `SOLAR_TOOL` because the legacy `solarNemChecks` runs there. */
+const DEMO_ENGINE_TOOLS = [...REAL_ENGINE_TOOLS, SOLAR_TOOL];
+
+function engineToolsFor(isDemo: boolean): string[] {
+  return isDemo ? DEMO_ENGINE_TOOLS : REAL_ENGINE_TOOLS;
+}
 
 const LEGACY_FAMILIES = new Set(["AG-4", "AG-5"]);
 
@@ -55,9 +71,14 @@ export async function runEngines(
   const card = loadRateCard();
   const farm = await prisma.farm.findUniqueOrThrow({
     where: { id: farmId },
-    select: { timezone: true },
+    select: { timezone: true, isDemo: true },
   });
   const tz = farm.timezone;
+  // SOLAR_TOOL ownership is conditional (ADR-S05): on a real farm the canonical
+  // runSolarInsight engine owns it, so this runner skips every solar path. On a
+  // demo/seed farm the legacy solarNemChecks below still owns it.
+  const isDemo = farm.isDemo;
+  const engineTools = engineToolsFor(isDemo);
 
   // Load only the per-pump metadata + the (small) per-cycle billing periods with their
   // line items up front, NOT every pump's 15-minute interval history at once: a 183-meter
@@ -211,8 +232,11 @@ export async function runEngines(
         }),
       );
 
-      // Solar / NEM checks: solar-paired meters only.
-      if (pump.solarKw !== null) {
+      // Solar / NEM checks: solar-paired meters only, and ONLY on a demo/seed farm.
+      // On a real farm the canonical runSolarInsight engine is the sole SOLAR_TOOL
+      // owner (ADR-S05), so this legacy branch is skipped to avoid doubling or
+      // delete-wiping the canonical solar findings.
+      if (isDemo && pump.solarKw !== null) {
         drafts.push(
           ...solarNemChecks({
             farmId,
@@ -258,7 +282,7 @@ export async function runEngines(
   }
 
   await prisma.recommendation.deleteMany({
-    where: { farmId, tool: { in: ENGINE_TOOLS }, status: "pending" },
+    where: { farmId, tool: { in: engineTools }, status: "pending" },
   });
   await prisma.recommendation.createMany({
     data: drafts.map((d) => ({
