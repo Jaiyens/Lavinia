@@ -24,17 +24,23 @@ const GOLD = "#f2c14e";
 
 export function RateFixCard({
   finding,
+  analyzed = true,
   energyHref,
   readOnly = false,
 }: {
   finding: FindingView | null;
+  /** Whether the rate engine actually had data to evaluate (any meter's bills reconciled). When
+   *  false, a null finding means "not checked yet", NOT "every pump is already on its best rate":
+   *  the affirmative claim is only honest once analysis was possible. */
+  analyzed?: boolean;
   energyHref: string;
   readOnly?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
 
-  // Honest empty state: every pump already on its best rate (or none loaded yet).
+  // Honest empty state: only assert "every pump is on its best rate" when the engine had bills to
+  // check; otherwise say plainly that there is not enough billing history yet.
   if (finding === null) {
     return (
       <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
@@ -44,8 +50,14 @@ export function RateFixCard({
           </span>
           <span className="type-label-caps text-on-surface-variant">{t.eyebrow}</span>
         </div>
-        <p className="type-title mt-3 text-on-surface">{t.emptyTitle}</p>
-        <p className="type-body-md mt-1 text-on-surface-variant">{t.emptyBody}</p>
+        {analyzed ? (
+          <>
+            <p className="type-title mt-3 text-on-surface">{t.emptyTitle}</p>
+            <p className="type-body-md mt-1 text-on-surface-variant">{t.emptyBody}</p>
+          </>
+        ) : (
+          <p className="type-title mt-3 text-on-surface">{en.home.spendTrendEmpty}</p>
+        )}
       </section>
     );
   }
@@ -97,14 +109,21 @@ export function RateFixCard({
 
           {cents !== null && cents > 0 && (
             <>
+              {/* The hero dollar is the savings over the bills on file, NOT annualized: the engine
+                  sums the savings across the reconciled cycles and never normalizes to 12 months
+                  (a 6-month history would read ~2x low, an 18-month one ~1.5x high). Match the other
+                  money panels (the findings list, the money-found band) which render the figure with
+                  no cadence claim, and let the finding's own impactNote state the true basis. */}
               <div className="mt-4 flex items-baseline gap-2">
                 <span className="type-money-hero tnum text-money-positive">
                   {formatUsdWhole(cents)}
                 </span>
-                <span className="type-title text-on-surface-variant">{t.perYear}</span>
               </div>
-              {/* Honesty hedge: the number is an estimate from the grower's own bills, not a promise. */}
-              <p className="type-caption mt-1 text-on-surface-variant">{t.estimateNote}</p>
+              {/* The true period and basis, straight from the engine ("over the last N days of bills"
+                  on the live lever path); falls back to the plain estimate hedge otherwise. */}
+              <p className="type-caption mt-1 text-on-surface-variant">
+                {finding.impactNote ?? t.estimateNote}
+              </p>
             </>
           )}
 
