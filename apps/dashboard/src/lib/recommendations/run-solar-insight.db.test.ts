@@ -807,4 +807,155 @@ describe("demand-response routing finding (H-4, F7)", () => {
     const result = await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
     expect(result.created).toBe(0); // ineligible -> no finding, never a fabricated route
   });
+
+  // ADR-S05/ARCH-A7: runSolarInsight is the SOLE SOLAR_TOOL owner (delete-pending-then-insert). F7 is
+  // ROUTED on demand by Almond (not auto-swept), so the sole-owner sweep must CARRY FORWARD an already-
+  // routed pending F7 or it would be wiped by the very next sweep (which runs live on the statement
+  // upload and onboarding finalize). This is the regression that proves a routed F7 is durable, not
+  // clobbered - the test that was missing and hid the original blocker.
+  it("a routed F7 SURVIVES a subsequent runSolarInsight (the sole-owner sweep carries it forward)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Survive Farm", isDemo: false } });
+    const id = farm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P403",
+        serviceId: "SA-DR-SURVIVE",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        billingPeriods: {
+          create: {
+            start: new Date("2026-02-11T00:00:00.000Z"),
+            close: new Date("2026-03-12T00:00:00.000Z"),
+            billingLineItems: { create: [{ kind: "other", label: "Customer Charge", amountCents: 4300 }] },
+          },
+        },
+      },
+    });
+
+    await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    // The live sequence: an upload/finalize re-runs the sole owner. The routed F7 must not vanish.
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+
+    const f7s = (
+      await prisma.recommendation.findMany({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } })
+    ).filter((r) => (r.action as { kind?: string }).kind === "enroll_demand_response");
+    expect(f7s).toHaveLength(1); // exactly one, carried forward by the sweep - not wiped, not doubled
+    const f7 = f7s[0];
+    if (!f7) throw new Error("expected the F7 to survive");
+    expect((f7.action as { params?: { pumpId?: string } }).params?.pumpId).toBe(meter.id);
+    expect(f7.impactUsd).toBeNull(); // still honest-blank after the re-derive (NFR12)
+  });
+
+  it("runSolarInsight does NOT auto-emit F7 for an eligible meter (F7 is routed on demand, not swept)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR No-Auto Farm", isDemo: false } });
+    const id = farm.id;
+    // A fully F7-eligible meter (un-enrolled AG-C solar), but NOTHING routes it. The sweep must NOT
+    // create an F7 on its own - F7 floods the fleet otherwise, and it is an Almond-routed lever.
+    await prisma.pump.create({
+      data: {
+        name: "P404",
+        serviceId: "SA-DR-NO-AUTO",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        billingPeriods: {
+          create: {
+            start: new Date("2026-02-11T00:00:00.000Z"),
+            close: new Date("2026-03-12T00:00:00.000Z"),
+            billingLineItems: { create: [{ kind: "other", label: "Customer Charge", amountCents: 4300 }] },
+          },
+        },
+      },
+    });
+
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const f7s = (
+      await prisma.recommendation.findMany({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } })
+    ).filter((r) => (r.action as { kind?: string }).kind === "enroll_demand_response");
+    expect(f7s).toHaveLength(0); // never auto-emitted; F7 only exists once Almond routes it
+  });
+
+  it("the sweep drops a routed F7 once its meter is no longer eligible (now enrolled)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Enrolled-Later Farm", isDemo: false } });
+    const id = farm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P406",
+        serviceId: "SA-DR-ENROLLED-LATER",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        billingPeriods: {
+          create: {
+            start: new Date("2026-02-11T00:00:00.000Z"),
+            close: new Date("2026-03-12T00:00:00.000Z"),
+            billingLineItems: { create: [{ kind: "other", label: "Customer Charge", amountCents: 4300 }] },
+          },
+        },
+      },
+    });
+
+    await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    // A later bill shows the grower enrolled (a printed DR credit line). The meter is no longer F7-
+    // eligible, so the next sweep must DROP the routed F7 - never a stale fabricated route.
+    await prisma.billingPeriod.create({
+      data: {
+        pumpId: meter.id,
+        start: new Date("2026-03-12T00:00:00.000Z"),
+        close: new Date("2026-04-11T00:00:00.000Z"),
+        billingLineItems: { create: [{ kind: "other", label: "PDP Event Day Credit 06/12", amountCents: -500 }] },
+      },
+    });
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const f7s = (
+      await prisma.recommendation.findMany({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } })
+    ).filter((r) => (r.action as { kind?: string }).kind === "enroll_demand_response");
+    expect(f7s).toHaveLength(0); // the opportunity is gone -> the routed F7 drops, never goes stale
+  });
+
+  it("the sweep never resurrects a dismissed F7, even though the meter stays eligible", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Sticky Sweep Farm", isDemo: false } });
+    const id = farm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P405",
+        serviceId: "SA-DR-STICKY-SWEEP",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        billingPeriods: {
+          create: {
+            start: new Date("2026-02-11T00:00:00.000Z"),
+            close: new Date("2026-03-12T00:00:00.000Z"),
+            billingLineItems: { create: [{ kind: "other", label: "Customer Charge", amountCents: 4300 }] },
+          },
+        },
+      },
+    });
+
+    await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    // The grower dismisses the routed F7. A subsequent sweep must NOT carry it back (sticky).
+    await prisma.recommendation.updateMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      data: { status: "dismissed", resolvedAt: new Date() },
+    });
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const pendingF7 = (
+      await prisma.recommendation.findMany({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } })
+    ).filter((r) => (r.action as { kind?: string }).kind === "enroll_demand_response");
+    expect(pendingF7).toHaveLength(0); // a dismissed F7 never resurrects, even though the meter is still eligible
+  });
 });

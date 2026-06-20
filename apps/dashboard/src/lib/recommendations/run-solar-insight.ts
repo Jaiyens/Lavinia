@@ -126,6 +126,16 @@ export async function runSolarInsight(
         : [];
     }),
   );
+  // F7 (H-4, enroll_demand_response) is a METER-scoped finding: a dismissed/done demand-response
+  // routing on a meter never resurrects, keyed by pumpId, the same sticky-response discipline as F1.
+  const resolvedDemandResponsePumpIds = new Set(
+    resolved.flatMap((r) => {
+      const action = r.action as { kind?: unknown; params?: { pumpId?: unknown } } | null;
+      return action?.kind === "enroll_demand_response" && typeof action.params?.pumpId === "string"
+        ? [action.params.pumpId]
+        : [];
+    }),
+  );
 
   const drafts: DraftRecommendation[] = [];
   for (const meter of meters) {
@@ -244,6 +254,46 @@ export async function runSolarInsight(
         },
       }),
     );
+  }
+
+  // F7 (H-4, FR30): the demand-response routing finding. F7 is NOT auto-emitted for the whole eligible
+  // fleet - it is ROUTED on demand by Almond (one meter at a time) via routeDemandResponseFinding. But
+  // runSolarInsight is the SOLE SOLAR_TOOL owner (ADR-S05/ARCH-A7): its finalize sweep does
+  // deleteMany(pending SOLAR_TOOL) then re-inserts only its drafts, so without this the sweep would
+  // WIPE a routed F7 (the sweep runs live on the statement upload and onboarding finalize). So the
+  // sweep CARRIES FORWARD any already-routed pending F7 whose meter is STILL eligible (un-enrolled
+  // AG-C solar), re-deriving it from the same gate so it is idempotent and stays honest-blank. A
+  // routed F7 whose meter became enrolled (or whose meter vanished) is dropped - the opportunity is
+  // gone, never a stale fabricated route. A resolved (done/dismissed) F7 never resurrects (keyed by
+  // pumpId). This preserves "routed by Almond, owned by the sole sweep" without flooding the fleet.
+  const pendingRoutedF7PumpIds = new Set(
+    (
+      await prisma.recommendation.findMany({
+        where: { farmId, tool: SOLAR_TOOL, status: "pending" },
+        select: { action: true },
+      })
+    ).flatMap((r) => {
+      const action = r.action as { kind?: unknown; params?: { pumpId?: unknown } } | null;
+      return action?.kind === "enroll_demand_response" && typeof action.params?.pumpId === "string"
+        ? [action.params.pumpId]
+        : [];
+    }),
+  );
+  for (const meter of meters) {
+    if (!pendingRoutedF7PumpIds.has(meter.id)) continue; // only carry forward an ALREADY-routed F7
+    if (resolvedDemandResponsePumpIds.has(meter.id)) continue; // a resolved one never resurrects
+    const draft = buildDemandResponseFinding({
+      farmId,
+      pumpId: meter.id,
+      meterName: meter.name,
+      rateSchedule: meter.rateSchedule,
+      isSolar: meter.isSolar,
+      card,
+      lineItems: meter.periods.flatMap((p) => p.lineItems),
+      asOf,
+    });
+    if (draft === null) continue; // no longer eligible (e.g. now enrolled) -> the routed F7 drops
+    drafts.push(draft);
   }
 
   // F3 (C-4, FR9): the allocation audit. Assemble the solar dataset (the same array-group + needs-
@@ -511,13 +561,18 @@ export function buildDemandResponseFinding(args: {
 }
 
 /**
- * Route (persist) the F7 demand-response finding for one meter (H-4, FR30), the path Almond invokes to
- * "surface a solar finding and route a demand-response/repower finding". Idempotent and sticky: it
- * upserts the single pending F7 row for THIS meter (delete-pending-scoped-to-this-meter's
+ * Route (persist) the F7 demand-response finding for one meter (H-4, FR30), the explicit path Almond
+ * invokes to "surface a solar finding and route a demand-response/repower finding". F7 is NOT auto-
+ * emitted for the eligible fleet - it is routed here, one meter at a time, on demand. Idempotent and
+ * sticky: it upserts the single pending F7 row for THIS meter (delete-pending-scoped-to-this-meter's
  * enroll_demand_response, then insert) and refuses to resurrect a resolved (done/dismissed) one, the
- * same discipline as the F1-F6 emitters - WITHOUT touching any other SOLAR_TOOL finding. Returns
- * `{ created: 0 }` for an ineligible meter or a meter whose F7 the grower already resolved, never a
- * fabricated dollar.
+ * same discipline as the F1-F6 emitters - WITHOUT touching any other SOLAR_TOOL finding. Crucially, a
+ * routed F7 SURVIVES a subsequent runSolarInsight: that sweep is the sole SOLAR_TOOL owner and would
+ * otherwise wipe this row, so it CARRIES FORWARD an already-routed pending F7 whose meter is still
+ * eligible (ADR-S05/ARCH-A7). A meter that became enrolled drops its routed F7 (the opportunity is
+ * gone), and a resolved one stays resolved (both this path and the sweep dedupe against the resolved
+ * set). Returns `{ created: 0 }` for an ineligible meter or a meter whose F7 the grower already
+ * resolved, never a fabricated dollar.
  */
 export async function routeDemandResponseFinding(
   prisma: PrismaClient,
