@@ -37,7 +37,17 @@ export function SolarLensRegion({
   const active = parseSolarLens(raw);
 
   if (active === "arrays") {
-    return <ArraysLens arrays={dataset.arrays} meters={dataset.meters} />;
+    // The Arrays lens reads the SAME dataset.needsReview source the KPI count is computed from, so
+    // the strip total and the rendered needs-review rows (unlinked meters + unlinked NEMA codes)
+    // can never diverge (C-1, FR6). nameplateVerified drives the cautious "unverified layout"
+    // qualifier on each array card's nameplate (DM4).
+    return (
+      <ArraysLens
+        arrays={dataset.arrays}
+        needsReview={dataset.needsReview}
+        nameplateVerified={dataset.nameplateVerified}
+      />
+    );
   }
 
   if (active === "map") {

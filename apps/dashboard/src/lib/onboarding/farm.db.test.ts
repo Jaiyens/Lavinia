@@ -2,7 +2,12 @@ import type { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/test/pg-harness";
 import { parseInventory } from "@/lib/spreadsheet";
-import { createFarmFromConnection, importInventory, markSolarLayoutVerified } from "./farm";
+import {
+  createFarmFromConnection,
+  importInventory,
+  loadSolarFarmProvenance,
+  markSolarLayoutVerified,
+} from "./farm";
 
 // C-1 (FR6 + DM4): harden the importInventory populator. These integration tests run against a
 // throwaway local Postgres (no network, never the dev/prod db), the same harness the rest of the
@@ -156,5 +161,53 @@ describe("markSolarLayoutVerified - the DM4 provenance write (C-1, FR6)", () => 
     await markSolarLayoutVerified(prisma, farmId, null);
     const cleared = await prisma.farm.findUniqueOrThrow({ where: { id: farmId } });
     expect(cleared.solarLayoutVerifiedAt).toBeNull();
+  });
+});
+
+// C-1 fix (review finding 1): importInventory's unlinkedNemaCodes must be PERSISTED, not merely
+// returned as a transient value, or the needs-review signal vanishes after import and can never reach
+// the page. These tests pin the real end-to-end runtime path: importInventory writes the codes onto
+// Farm.unlinkedNemaCodes, and loadSolarFarmProvenance (the server-edge reader the Solar page calls)
+// re-reads them - so the surfacing is wired in production, not only at unit-test altitude.
+describe("importInventory + loadSolarFarmProvenance - the persisted needs-review codes (C-1 fix)", () => {
+  it("persists the unlinked codes onto the Farm and the reader edge re-reads them", async () => {
+    const { farmId } = await landFixture("Persisted Codes Farm");
+
+    // The transient return value AND the persisted column agree: GHOST was referenced but unlinked.
+    const farm = await prisma.farm.findUniqueOrThrow({ where: { id: farmId } });
+    expect(farm.unlinkedNemaCodes).toEqual(["GHOST"]);
+
+    // The server-edge reader the Solar page calls surfaces the same codes plus the DM4 flag.
+    const prov = await loadSolarFarmProvenance(prisma, farmId);
+    expect(prov.unlinkedNemaCodes).toEqual(["GHOST"]);
+    expect(prov.nameplateVerified).toBe(false); // cautious by default (no verification date yet)
+  });
+
+  it("a re-import that resolves a code clears the stale needs-review row, never leaves it set", async () => {
+    const { farmId } = await landFixture("Resolved Codes Farm");
+    expect((await loadSolarFarmProvenance(prisma, farmId)).unlinkedNemaCodes).toEqual(["GHOST"]);
+
+    // Re-import a sheet where a generating meter now defines GHOST (carries a nameplate): the code
+    // links to a real array, so it is no longer unlinked. The persisted list must clear to [].
+    const resolvedCsv = [
+      "Legal Entity,Account,SA ID,Pump Name,Rate Schedule,Crop,Status,Kind,NEMA,Net Metering,Solar kW,True-Up Month",
+      "Gen Entity LLC,09000000001,6000000001,Generator,NEMEXPM,almonds,GOOD,non_pump,AGG-A;AGG-B,nem2,1500,April",
+      "Ghost Gen LLC,09000000005,6000000005,Ghost Generator,NEMEXPM,almonds,GOOD,non_pump,GHOST,nem2,900,April",
+      "Orphan Entity LLC,09000000004,6000000004,Orphan Benef,AG-C,walnuts,GOOD,pump,GHOST,,,",
+    ].join("\n");
+    const { rows } = parseInventory(resolvedCsv);
+    const res = await importInventory(prisma, { rows, farmId });
+    expect(res.unlinkedNemaCodes).toEqual([]); // GHOST now has a generating meter
+
+    const prov = await loadSolarFarmProvenance(prisma, farmId);
+    expect(prov.unlinkedNemaCodes).toEqual([]); // the stale row cleared, not left set forever
+    expect(await prisma.solarArray.findFirst({ where: { farmId, name: "GHOST" } })).not.toBeNull();
+  });
+
+  it("a farm that never imported inventory reads honest empties (fail-closed)", async () => {
+    const { farmId } = await createFarmFromConnection(prisma, { name: "No Import Farm" });
+    const prov = await loadSolarFarmProvenance(prisma, farmId);
+    expect(prov.unlinkedNemaCodes).toEqual([]);
+    expect(prov.nameplateVerified).toBe(false);
   });
 });

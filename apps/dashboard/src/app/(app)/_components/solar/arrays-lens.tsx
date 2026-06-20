@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { cardClass } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
-import type { SolarArrayGroup, SolarMeterView } from "@/lib/dashboard/solar";
+import type { SolarArrayGroup, SolarNeedsReview } from "@/lib/dashboard/solar";
 import { AllocationBar } from "./allocation-bar";
 
 // The Arrays lens (A-5, UX-DR4): the DEFAULT solar data hero. One array-group card per SolarArray,
@@ -90,9 +90,13 @@ function MeterRow({
 
 function ArrayCard({
   group,
+  nameplateVerified,
   onOpen,
 }: {
   group: SolarArrayGroup;
+  /** DM4 (C-1, FR6): false renders the array nameplate CAUTIOUSLY with an "unverified layout"
+   *  qualifier - never suppressed, never presented as confirmed. */
+  nameplateVerified: boolean;
   onOpen: (id: string) => void;
 }) {
   return (
@@ -100,10 +104,18 @@ function ArrayCard({
       <header className="border-b border-outline-variant p-4">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="type-title text-on-surface">{group.name ?? t.unnamed}</h3>
+          {/* The nameplate is the ARRAY's nameplateKw, never derived from a code (FR3). When the
+              farm's export layout is not yet verified (DM4) the value is shown WITH an "unverified
+              layout" qualifier - cautious, not suppressed, never presented as confirmed. */}
           <span className="type-body-md tnum text-on-surface-variant">
             {t.nameplate(group.nameplateKw)}
           </span>
         </div>
+        {!nameplateVerified && (
+          <p className="type-caption mt-1 text-right text-on-surface-variant">
+            {t.nameplateUnverified}
+          </p>
+        )}
         <div className="mt-1 flex items-center justify-between gap-3">
           <span className="type-caption text-on-surface-variant">{t.meterCount(group.meters.length)}</span>
           <span className="type-caption text-on-surface-variant">
@@ -126,18 +138,25 @@ function ArrayCard({
 
 export function ArraysLens({
   arrays,
-  meters,
+  needsReview,
+  nameplateVerified,
 }: {
   arrays: SolarArrayGroup[];
-  meters: SolarMeterView[];
+  /** The SAME needs-review source the KPI count is computed from (C-1, FR6), so the strip total and
+   *  the rendered rows (unlinked meters + unlinked NEMA codes) can never diverge. */
+  needsReview: SolarNeedsReview;
+  /** DM4 (C-1, FR6): drives the cautious "unverified layout" qualifier on each array nameplate. */
+  nameplateVerified: boolean;
 }) {
   const [, setMeter] = useQueryState(SURFACE.meter);
   const open = (id: string) => void setMeter(id);
 
-  // Solar meters with no array link - never silently dropped (FR7 honesty + needs-review surfacing).
-  const unlinked = meters.filter((m) => !m.hasArray);
+  // Both needs-review gaps come straight from the dataset (the same set the KPI count totals), never
+  // recomputed here - so a row shown below is always reflected in the strip count and vice versa.
+  // (1) Solar meters with no array link; (2) NEMA codes meters referenced but no array was built for.
+  const { unlinkedMeters, unlinkedCodes } = needsReview;
 
-  if (arrays.length === 0 && unlinked.length === 0) {
+  if (arrays.length === 0 && unlinkedMeters.length === 0 && unlinkedCodes.length === 0) {
     return (
       <section
         id="solar-lens"
@@ -152,17 +171,17 @@ export function ArraysLens({
   return (
     <section id="solar-lens" aria-label={en.solar.lens.arrays} className="scroll-mt-6 space-y-4">
       {arrays.map((group) => (
-        <ArrayCard key={group.id} group={group} onOpen={open} />
+        <ArrayCard key={group.id} group={group} nameplateVerified={nameplateVerified} onOpen={open} />
       ))}
 
-      {unlinked.length > 0 && (
+      {unlinkedMeters.length > 0 && (
         <article className={cardClass({ className: "overflow-hidden" })}>
           <header className="border-b border-outline-variant p-4">
             <h3 className="type-title text-on-surface">{t.unlinkedHeading}</h3>
             <p className="type-caption mt-1 text-on-surface-variant">{t.unlinkedNote}</p>
           </header>
           <ul>
-            {unlinked.map((m) => (
+            {unlinkedMeters.map((m) => (
               <li key={m.id} className="border-t border-outline-variant first:border-t-0">
                 <button
                   type="button"
@@ -173,6 +192,28 @@ export function ArraysLens({
                   <span className="type-body-md text-on-surface">{m.name}</span>
                   <ProgramChip nemType={m.nemType} />
                 </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
+
+      {/* C-1 (FR6): array codes meters referenced but no generating meter defined, surfaced as a muted
+          needs-review card rather than silently dropped. The code is shown verbatim (never a guess,
+          never normalized); there is no meter to open, so the rows are static. */}
+      {unlinkedCodes.length > 0 && (
+        <article className={cardClass({ className: "overflow-hidden" })}>
+          <header className="border-b border-outline-variant p-4">
+            <h3 className="type-title text-on-surface">{t.unlinkedCodeHeading}</h3>
+            <p className="type-caption mt-1 text-on-surface-variant">{t.unlinkedCodeNote}</p>
+          </header>
+          <ul>
+            {unlinkedCodes.map((c) => (
+              <li
+                key={c.code}
+                className="border-t border-outline-variant px-4 py-2 first:border-t-0"
+              >
+                <span className="type-body-md tnum text-on-surface">{t.unlinkedCode(c.code)}</span>
               </li>
             ))}
           </ul>

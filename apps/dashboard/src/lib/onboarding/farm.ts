@@ -513,6 +513,12 @@ export async function importInventory(
         `importInventory: ${unlinked.length} NEMA code(s) had no generating meter, no SolarArray built: ${unlinked.join(", ")}`,
       );
     }
+    // Persist the unlinked codes onto the Farm IN THE SAME TRANSACTION as the array graph (C-1,
+    // FR6), so the needs-review signal survives the import and the Solar tab can re-read it at
+    // render - without persistence the codes vanish here and could never reach the page. Always
+    // write (the deduped/sorted array, or [] when none) so a re-import that resolves a previously
+    // unlinked code clears the stale needs-review row rather than leaving it set forever.
+    await tx.farm.update({ where: { id: farmId }, data: { unlinkedNemaCodes: unlinked } });
 
     result.entities = entityIdByKey.size;
     result.accounts = accountIdByNumber.size;
@@ -542,6 +548,44 @@ export async function markSolarLayoutVerified(
     where: { id: farmId },
     data: { solarLayoutVerifiedAt: verifiedAt },
   });
+}
+
+/** The farm-level solar provenance the Solar tab needs that does not live on a meter (C-1, FR6). */
+export type SolarFarmProvenance = {
+  /** `Farm.solarLayoutVerifiedAt != null` (DM4): false => the cautious nameplate render. */
+  nameplateVerified: boolean;
+  /** The persisted `importInventory` unlinked NEMA codes, coerced to a clean string[] (never null). */
+  unlinkedNemaCodes: string[];
+};
+
+/**
+ * Read the farm-level solar provenance the Solar tab renders from (C-1, FR6): the DM4 verification
+ * flag AND the persisted unlinked NEMA codes, in one query. This is the runtime source that makes the
+ * needs-review surfacing reach the page - importInventory persists the codes onto Farm.unlinkedNemaCodes
+ * (a Json column), and this re-reads them at the server page edge. Fail-closed and honest: a missing
+ * farm or an absent flag reads as UNVERIFIED, and a null / non-array / non-string JSON value coerces to
+ * an empty code list rather than a guessed or malformed row. Takes an explicit PrismaClient like every
+ * other onboarding DB edge.
+ */
+export async function loadSolarFarmProvenance(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<SolarFarmProvenance> {
+  const row = await prisma.farm.findUnique({
+    where: { id: farmId },
+    select: { solarLayoutVerifiedAt: true, unlinkedNemaCodes: true },
+  });
+  // Farm.unlinkedNemaCodes is a Prisma Json column, so it returns a loosely-typed JsonValue. Keep
+  // only a genuine array of non-empty strings; anything else (null, an object, a number) coerces to
+  // [] so the render never sees a fabricated or malformed code.
+  const raw = row?.unlinkedNemaCodes;
+  const unlinkedNemaCodes = Array.isArray(raw)
+    ? raw.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+    : [];
+  return {
+    nameplateVerified: row?.solarLayoutVerifiedAt != null,
+    unlinkedNemaCodes,
+  };
 }
 
 /**

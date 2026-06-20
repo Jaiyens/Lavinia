@@ -5,6 +5,7 @@ import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { loadTrackedResults } from "@/lib/dashboard/results";
+import { loadSolarFarmProvenance } from "@/lib/onboarding/farm";
 import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
@@ -55,16 +56,17 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   const meters = await resolveMeters(farm.id);
   const nowMonth = new Date().getMonth() + 1;
 
-  // DM4 (C-1, FR6): read whether this farm's inventory export column layout was verified, so the
-  // Solar tab renders the populated nameplate CAUTIOUSLY (with an "unverified layout" qualifier)
-  // until a human confirms it, never presenting an unverified figure as confirmed. Read at this
-  // server edge and injected so the pure dataset builder stays IO-free (NFR1). Fail-closed: any
-  // read issue leaves it unverified (the cautious branch).
-  const farmRow = await prisma.farm.findUnique({
-    where: { id: farm.id },
-    select: { solarLayoutVerifiedAt: true },
-  });
-  const nameplateVerified = farmRow?.solarLayoutVerifiedAt != null;
+  // The farm-level solar provenance the dataset needs that does not live on a meter (C-1, FR6),
+  // read in one query at this server edge and injected so the pure builder stays IO-free (NFR1):
+  //  - DM4 nameplateVerified (`Farm.solarLayoutVerifiedAt != null`): false renders the populated
+  //    nameplate CAUTIOUSLY (with an "unverified layout" qualifier) until a human confirms it,
+  //    never presenting an unverified figure as confirmed.
+  //  - unlinkedNemaCodes: the array codes meters referenced but no generating meter defined, which
+  //    importInventory persisted onto the Farm. Re-reading them HERE is what makes the needs-review
+  //    surfacing reach the page; without this runtime source the signal would vanish after import.
+  // Fail-closed: a missing farm / absent flag reads as unverified, and a malformed JSON value
+  // coerces to an empty code list (loadSolarFarmProvenance does the honest coercion).
+  const { nameplateVerified, unlinkedNemaCodes } = await loadSolarFarmProvenance(prisma, farm.id);
 
   // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
   // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
@@ -122,7 +124,12 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
                 Calendar (Epic D) fill in as their stories land. The shared drawer is mounted below
                 (A-5). Switching a lens writes only the `lens` key; a filter writes only its key;
                 neither drops the other or the open `?meter=` drawer. */}
-            <SolarSurface meters={meters} nowMonth={nowMonth} nameplateVerified={nameplateVerified} />
+            <SolarSurface
+              meters={meters}
+              nowMonth={nowMonth}
+              nameplateVerified={nameplateVerified}
+              unlinkedNemaCodes={unlinkedNemaCodes}
+            />
           </Reveal>
 
           {/* The shared drill-in (A-5). Outside the Reveal stagger so a deep-linked ?meter= drawer

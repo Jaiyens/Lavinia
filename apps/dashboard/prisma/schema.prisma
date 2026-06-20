@@ -39,6 +39,14 @@ model Farm {
   // Read by dashboard/solar.ts; written by markSolarLayoutVerified once a human confirms the layout.
   solarLayoutVerifiedAt DateTime?
 
+  // C-1 (Solar tab, FR6): the NEMA array codes meters referenced during the last inventory import
+  // but for which no generating meter defined an array, so no SolarArray was built. Persisted by
+  // importInventory (a JSON array of verbatim code strings, deduped + sorted; null/[] = none) so the
+  // Solar tab can re-read it at render and surface each as a needs-review row rather than letting the
+  // signal vanish after import. Never a guess: the codes are stored exactly as the master sheet
+  // listed them. Read by the solar-dashboard server edge -> dashboard/solar.ts.
+  unlinkedNemaCodes Json?
+
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   memberships     FarmMembership[]
   invites         FarmInvite[]
