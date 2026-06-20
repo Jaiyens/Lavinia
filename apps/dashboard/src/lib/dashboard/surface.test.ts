@@ -3,8 +3,8 @@ import { SURFACE, SURFACE_KEYS, lensQueryOptions, parseLens } from "./surface";
 import { defaultLens } from "./lens";
 
 describe("dashboard surface registry", () => {
-  it("is the single source of truth for exactly the five canonical URL-state keys", () => {
-    expect(SURFACE_KEYS).toEqual(["lens", "entity", "ranch", "rate", "meter"]);
+  it("is the single source of truth for exactly the canonical URL-state keys (incl. the A-7 account/program filters)", () => {
+    expect(SURFACE_KEYS).toEqual(["lens", "entity", "ranch", "rate", "account", "program", "meter"]);
   });
 
   it("maps every key name to its own literal, and the map covers exactly the key set", () => {
@@ -13,6 +13,8 @@ describe("dashboard surface registry", () => {
       entity: "entity",
       ranch: "ranch",
       rate: "rate",
+      account: "account",
+      program: "program",
       meter: "meter",
     });
     // No drift between the ordered key set and the registry object's keys.
@@ -35,9 +37,10 @@ describe("dashboard surface registry", () => {
   });
 
   it("leaves the filter/meter keys as bare nullable strings - centralizes only the key, no parser/default", () => {
-    // The registry centralizes the KEY for these four and nothing else; an added parser or default
-    // would be the exact behavior change Story 7.1 forbids, so the registry exposes neither.
-    for (const k of ["entity", "ranch", "rate", "meter"] as const) {
+    // The registry centralizes the KEY for these and nothing else; an added parser or default
+    // would be the exact behavior change Story 7.1 forbids, so the registry exposes neither. The
+    // A-7 account/program filters follow the same raw-nullable-string pattern.
+    for (const k of ["entity", "ranch", "rate", "account", "program", "meter"] as const) {
       expect(SURFACE[k]).toBe(k);
     }
   });

@@ -34,8 +34,12 @@ import {
 export { LENSES, LENS_KEYS, defaultLens, isLensAvailable, parseLens };
 export type { Lens };
 
-/** The closed set of canonical URL-state keys, in a stable order. */
-export const SURFACE_KEYS = ["lens", "entity", "ranch", "rate", "meter"] as const;
+/** The closed set of canonical URL-state keys, in a stable order. `account` and `program` are the
+ *  Solar tab's two net-new filter dimensions (A-7, FR1/UX5): `account` narrows by the PG&E account
+ *  number (FR1 names account alongside entity/ranch, not exposed on the energy dashboard today),
+ *  `program` by the net-metering program token. Both follow the raw-nullable-string filter pattern
+ *  (no parser, no default), exactly like `entity`/`ranch`/`rate`. */
+export const SURFACE_KEYS = ["lens", "entity", "ranch", "rate", "account", "program", "meter"] as const;
 
 /** A canonical dashboard surface key; a value outside this union is not navigable. */
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
@@ -51,6 +55,8 @@ export const SURFACE = {
   entity: "entity",
   ranch: "ranch",
   rate: "rate",
+  account: "account",
+  program: "program",
   meter: "meter",
 } as const satisfies Record<SurfaceKey, SurfaceKey>;
 

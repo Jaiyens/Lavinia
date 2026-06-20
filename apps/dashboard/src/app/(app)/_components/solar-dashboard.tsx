@@ -4,7 +4,6 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
-import { buildSolarDataset } from "@/lib/dashboard/solar";
 import { loadTrackedResults } from "@/lib/dashboard/results";
 import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
@@ -14,9 +13,7 @@ import { Reveal } from "./shell/reveal";
 import { MeterDrawer } from "./meter-drawer";
 import { FindingsRail } from "./shell/findings-rail";
 import { FindingsSheet } from "./shell/findings-sheet";
-import { SolarKpiStrip } from "./solar/solar-kpi-strip";
-import { SolarLensToggle } from "./solar/solar-lens-toggle";
-import { SolarLensRegion } from "./solar/solar-lens-region";
+import { SolarSurface } from "./solar/solar-surface";
 
 // The Solar tab data hero (A-1). A composition SIBLING of EnergyDashboard, not a fork: it renders
 // the same three-zone OS shell (the agent rail / mobile bottom tabs come from the surrounding
@@ -50,13 +47,13 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   // For now the rail renders the farm's findings so the three-zone shell is structurally whole.
   const findings = await resolveFindings(farm.id);
 
-  // Assemble the solar lens dataset (A-3) server-side from the request-cached MeterView[], so the
-  // KPI counts paint with the legibility surface and the allocation math (Epic C) never blocks first
-  // paint. The "now" month is read at this page edge (1-12) and INJECTED into the pure builder, which
-  // stays clock-free (NFR1). The dataset reads per-cycle summaries only, never the interval series.
+  // The request-cached MeterView[] for this farm. The solar dataset is assembled in the client
+  // SolarSurface (A-7) so the five filter dimensions (entity / ranch / rate / account / program)
+  // narrow the KPI counts and every lens CONSISTENTLY off one narrowed fleet. The "now" month is
+  // read at this server page edge (1-12) and INJECTED so the pure builder stays clock-free (NFR1);
+  // the dataset reads per-cycle summaries only, never the interval series (NFR4).
   const meters = await resolveMeters(farm.id);
   const nowMonth = new Date().getMonth() + 1;
-  const solar = buildSolarDataset(meters, nowMonth);
 
   // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
   // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
@@ -106,18 +103,15 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
               <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
             </header>
 
-            {/* The solar KPI strip (A-3): four calm tiles (solar meters | arrays | next true-up |
-                needs review) above the lens set, no dollar tile. Then the solar lens set (A-2): the
-                toggle (Arrays / Calendar / Map / Table, default Arrays) over the lens region, which
-                renders the Arrays lens (A-5) as the default data hero; Map (A-6), Table (A-8), and
-                Calendar (Epic D) fill in as their stories land. The filter bar arrives in a later
-                story; the shared drawer is mounted below (A-5). Switching a lens writes only the
-                `lens` key and swaps the region below, never a crash or a blank shell. */}
-            <div className="space-y-5">
-              <SolarKpiStrip kpis={solar.kpis} />
-              <SolarLensToggle />
-              <SolarLensRegion dataset={solar} meters={meters} nowMonth={nowMonth} />
-            </div>
+            {/* The filter-aware solar surface (A-7): the KPI strip (A-3, four calm tiles, no dollar
+                tile), the filter bar (entity / ranch / rate / account / program), the lens toggle
+                (Arrays / Calendar / Map / Table, default Arrays), and the active lens region - all
+                narrowing CONSISTENTLY to the same matching meters when a filter is applied. The
+                Arrays lens (A-5) is the default data hero; Map (A-6) is live; Table (A-8) and
+                Calendar (Epic D) fill in as their stories land. The shared drawer is mounted below
+                (A-5). Switching a lens writes only the `lens` key; a filter writes only its key;
+                neither drops the other or the open `?meter=` drawer. */}
+            <SolarSurface meters={meters} nowMonth={nowMonth} />
           </Reveal>
 
           {/* The shared drill-in (A-5). Outside the Reveal stagger so a deep-linked ?meter= drawer

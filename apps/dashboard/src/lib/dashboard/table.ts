@@ -21,11 +21,16 @@ export type SortKey =
 
 export type SortDir = "asc" | "desc";
 
-/** The active filter (the nuqs entity/ranch/rate keys). An absent/empty key is a no-op. */
+/** The active filter (the nuqs entity/ranch/rate/account/program keys). An absent/empty key is a
+ *  no-op. `account` matches `MeterView.accountNumber` (the PG&E account number, FR1); `program`
+ *  matches `MeterView.nemType` (the net-metering program token straight off the meter - the same
+ *  field A-4's resolveProgramCode labels, never an inferred code). Both are A-7 (FR1/UX5). */
 export type MeterFilter = {
   entity?: string | null;
   ranch?: string | null;
   rate?: string | null;
+  account?: string | null;
+  program?: string | null;
 };
 
 export type MeterRow = {
@@ -83,12 +88,16 @@ export function filterMeters(meters: readonly MeterView[], filter: MeterFilter):
   const entity = filter.entity?.trim() || null;
   const ranch = filter.ranch?.trim() || null;
   const rate = filter.rate?.trim() || null;
+  const account = filter.account?.trim() || null;
+  const program = filter.program?.trim() || null;
   const eq = (field: string | null, want: string) => field !== null && field.trim() === want;
   return meters.filter(
     (m) =>
       (entity === null || eq(m.entityName, entity)) &&
       (ranch === null || eq(m.ranchName, ranch)) &&
-      (rate === null || eq(m.rateSchedule, rate)),
+      (rate === null || eq(m.rateSchedule, rate)) &&
+      (account === null || eq(m.accountNumber, account)) &&
+      (program === null || eq(m.nemType, program)),
   );
 }
 

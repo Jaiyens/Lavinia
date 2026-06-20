@@ -63,7 +63,34 @@ describe("filterOptions", () => {
     expect(opts.rates).toEqual(["AGA2"]);
   });
 
+  it("returns distinct sorted account numbers (A-7)", () => {
+    const opts = filterOptions([
+      meter({ id: "a", accountNumber: "9001" }),
+      meter({ id: "b", accountNumber: "8002" }),
+      meter({ id: "c", accountNumber: "9001" }),
+      meter({ id: "d", accountNumber: null }),
+    ]);
+    expect(opts.accounts).toEqual(["8002", "9001"]);
+  });
+
+  it("returns distinct net-metering program tokens, empty on a non-solar farm (A-7)", () => {
+    const solar = filterOptions([
+      meter({ id: "a", nemType: "nem2_agg" }),
+      meter({ id: "b", nemType: "nem2" }),
+      meter({ id: "c", nemType: "nem2_agg" }),
+    ]);
+    expect(solar.programs).toEqual(["nem2", "nem2_agg"]);
+    // A farm with no NEM token on any meter renders no program control.
+    expect(filterOptions([meter({ id: "x" }), meter({ id: "y" })]).programs).toEqual([]);
+  });
+
   it("handles an empty farm", () => {
-    expect(filterOptions([])).toEqual({ entities: [], ranches: [], rates: [] });
+    expect(filterOptions([])).toEqual({
+      entities: [],
+      ranches: [],
+      rates: [],
+      accounts: [],
+      programs: [],
+    });
   });
 });

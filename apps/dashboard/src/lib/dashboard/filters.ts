@@ -8,6 +8,11 @@ export type FilterOptions = {
   entities: string[];
   ranches: string[];
   rates: string[];
+  /** Distinct PG&E account numbers on this farm (A-7, FR1). Empty renders no account control. */
+  accounts: string[];
+  /** Distinct net-metering program tokens (MeterView.nemType) on this farm (A-7, FR1/UX5). On a
+   *  non-solar farm this is empty, so the program control renders only where solar meters exist. */
+  programs: string[];
 };
 
 function distinctSorted(values: (string | null)[]): string[] {
@@ -24,5 +29,7 @@ export function filterOptions(meters: readonly MeterView[]): FilterOptions {
     entities: distinctSorted(meters.map((m) => m.entityName)),
     ranches: distinctSorted(meters.map((m) => m.ranchName)),
     rates: distinctSorted(meters.map((m) => m.rateSchedule)),
+    accounts: distinctSorted(meters.map((m) => m.accountNumber)),
+    programs: distinctSorted(meters.map((m) => m.nemType)),
   };
 }

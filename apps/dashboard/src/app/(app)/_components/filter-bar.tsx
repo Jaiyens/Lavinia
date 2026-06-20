@@ -10,7 +10,13 @@ import { SURFACE } from "@/lib/dashboard/surface";
 // The filter controls (Story 2.6, FR-11): one labeled select per dimension that actually has
 // values on this farm (an empty dimension renders no control - never a dead dropdown), writing
 // the canonical nuqs entity/ranch/rate keys that the KPI strip, the table, and later lenses all
-// read. "Show whole farm" clears exactly those three keys; lens and meter are never touched.
+// read. "Show whole farm" clears exactly the keys it owns; lens and meter are never touched.
+//
+// The Solar tab (A-7, FR1/UX5) opts into two more dimensions via `showAccount` / `showProgram`:
+// `account` (the PG&E account number) and `program` (the net-metering program token). They are
+// off by default so the energy dashboard is byte-for-byte unchanged; when on, they render only
+// when the farm actually carries those values (the same honest empty-dimension rule), and the
+// clear affordance clears them too.
 
 const t = en.shell.filter;
 
@@ -61,16 +67,40 @@ export function isActiveFilterValue(v: string | null): boolean {
   return v !== null && v.trim() !== "";
 }
 
-export function FilterBar({ meters }: { meters: MeterView[] }) {
+export function FilterBar({
+  meters,
+  showAccount = false,
+  showProgram = false,
+}: {
+  meters: MeterView[];
+  /** Render the PG&E-account filter (the Solar tab; A-7). Off keeps the energy dashboard unchanged. */
+  showAccount?: boolean;
+  /** Render the net-metering-program filter (the Solar tab; A-7). */
+  showProgram?: boolean;
+}) {
   const [entity, setEntity] = useQueryState(SURFACE.entity);
   const [ranch, setRanch] = useQueryState(SURFACE.ranch);
   const [rate, setRate] = useQueryState(SURFACE.rate);
+  const [account, setAccount] = useQueryState(SURFACE.account);
+  const [program, setProgram] = useQueryState(SURFACE.program);
 
   const options = useMemo(() => filterOptions(meters), [meters]);
+  const showAccountControl = showAccount && options.accounts.length > 0;
+  const showProgramControl = showProgram && options.programs.length > 0;
   const hasAnyControl =
-    options.entities.length > 0 || options.ranches.length > 0 || options.rates.length > 0;
+    options.entities.length > 0 ||
+    options.ranches.length > 0 ||
+    options.rates.length > 0 ||
+    showAccountControl ||
+    showProgramControl;
+  // Only count a dimension this bar actually owns toward the clear affordance, so a stale account
+  // deep link on the energy dashboard (which never shows the control) does not light a dead button.
   const hasActiveFilter =
-    isActiveFilterValue(entity) || isActiveFilterValue(ranch) || isActiveFilterValue(rate);
+    isActiveFilterValue(entity) ||
+    isActiveFilterValue(ranch) ||
+    isActiveFilterValue(rate) ||
+    (showAccount && isActiveFilterValue(account)) ||
+    (showProgram && isActiveFilterValue(program));
 
   // A farm with nothing to filter by shows no bar at all - unless a stale deep link carries an
   // active key, in which case the clear affordance must still be reachable.
@@ -80,6 +110,8 @@ export function FilterBar({ meters }: { meters: MeterView[] }) {
     void setEntity(null);
     void setRanch(null);
     void setRate(null);
+    if (showAccount) void setAccount(null);
+    if (showProgram) void setProgram(null);
   };
 
   return (
@@ -112,6 +144,26 @@ export function FilterBar({ meters }: { meters: MeterView[] }) {
           options={options.rates}
           value={rate}
           onChange={(v) => void setRate(v)}
+        />
+      )}
+      {showAccountControl && (
+        <FilterSelect
+          id="filter-account"
+          label={t.account}
+          allLabel={t.allAccounts}
+          options={options.accounts}
+          value={account}
+          onChange={(v) => void setAccount(v)}
+        />
+      )}
+      {showProgramControl && (
+        <FilterSelect
+          id="filter-program"
+          label={t.program}
+          allLabel={t.allPrograms}
+          options={options.programs}
+          value={program}
+          onChange={(v) => void setProgram(v)}
         />
       )}
       {hasActiveFilter && (

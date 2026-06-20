@@ -142,6 +142,85 @@ describe("filterMeters", () => {
   it("trims whitespace-only keys to a no-op", () => {
     expect(filterMeters(meters, { rate: "   " }).length).toBe(3);
   });
+
+  // A-7: the two net-new Solar filter dimensions (account -> accountNumber, program -> nemType).
+  const solarMeters = [
+    meter({ id: "a", coverageState: "reconciled", accountNumber: "9001", nemType: "nem2_agg" }),
+    meter({ id: "b", coverageState: "reconciled", accountNumber: "9001", nemType: "nem2" }),
+    meter({ id: "c", coverageState: "reconciled", accountNumber: "8002", nemType: "nem2_agg" }),
+    meter({ id: "d", coverageState: "no_bill", accountNumber: "8002", nemType: null }),
+  ];
+
+  it("filters by an exact account match (A-7)", () => {
+    expect(filterMeters(solarMeters, { account: "9001" }).map((m) => m.id)).toEqual(["a", "b"]);
+  });
+
+  it("filters by an exact program (nemType) match (A-7)", () => {
+    expect(filterMeters(solarMeters, { program: "nem2_agg" }).map((m) => m.id)).toEqual(["a", "c"]);
+  });
+
+  it("narrows by account AND program together, consistent with the row count (A-7)", () => {
+    const narrowed = filterMeters(solarMeters, { account: "8002", program: "nem2_agg" });
+    expect(narrowed.map((m) => m.id)).toEqual(["c"]);
+    expect(narrowed.length).toBe(1);
+  });
+
+  it("narrows by account AND entity AND ranch AND rate AND program together (A-7)", () => {
+    const wide = [
+      meter({
+        id: "hit",
+        coverageState: "reconciled",
+        accountNumber: "9001",
+        nemType: "nem2_agg",
+        entityName: "E1",
+        ranchName: "West",
+        rateSchedule: "AGC",
+      }),
+      meter({
+        id: "miss-account",
+        coverageState: "reconciled",
+        accountNumber: "9002",
+        nemType: "nem2_agg",
+        entityName: "E1",
+        ranchName: "West",
+        rateSchedule: "AGC",
+      }),
+    ];
+    expect(
+      filterMeters(wide, {
+        entity: "E1",
+        ranch: "West",
+        rate: "AGC",
+        account: "9001",
+        program: "nem2_agg",
+      }).map((m) => m.id),
+    ).toEqual(["hit"]);
+  });
+
+  it("narrows a 183-meter fixture by program/account, the count matching the subset (A-7, NFR4 scale)", () => {
+    // Three accounts x two programs across 183 meters; an unset key is a no-op (whole fleet).
+    const fleet = Array.from({ length: 183 }, (_, i) =>
+      meter({
+        id: `m${i}`,
+        coverageState: "reconciled",
+        accountNumber: `acct-${i % 3}`,
+        nemType: i % 2 === 0 ? "nem2_agg" : "nem2",
+      }),
+    );
+    expect(filterMeters(fleet, {}).length).toBe(183);
+    // 61 meters carry acct-0 (indices 0,3,...,180).
+    const byAccount = filterMeters(fleet, { account: "acct-0" });
+    expect(byAccount.length).toBe(61);
+    expect(byAccount.every((m) => m.accountNumber === "acct-0")).toBe(true);
+    // 92 meters are nem2_agg (the even indices 0,2,...,182).
+    const byProgram = filterMeters(fleet, { program: "nem2_agg" });
+    expect(byProgram.length).toBe(92);
+    expect(byProgram.every((m) => m.nemType === "nem2_agg")).toBe(true);
+    // acct-0 AND nem2_agg is the intersection: acct-0 even-index meters.
+    const both = filterMeters(fleet, { account: "acct-0", program: "nem2_agg" });
+    expect(both.every((m) => m.accountNumber === "acct-0" && m.nemType === "nem2_agg")).toBe(true);
+    expect(both.length).toBe(byAccount.filter((m) => m.nemType === "nem2_agg").length);
+  });
 });
 
 describe("sortRows", () => {

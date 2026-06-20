@@ -1157,9 +1157,13 @@ export const en = {
       entity: "Entity",
       ranch: "Ranch",
       rate: "Rate",
+      account: "Account",
+      program: "Program",
       allEntities: "All entities",
       allRanches: "All ranches",
       allRates: "All rates",
+      allAccounts: "All accounts",
+      allPrograms: "All programs",
       clear: "Show whole farm",
     },
     // The meter drawer (Story 2.5): the one shared drill-in, opened from any table row
