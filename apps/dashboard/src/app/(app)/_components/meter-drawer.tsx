@@ -488,7 +488,7 @@ export function MeterDrawer({
                       billing group explicitly, so this labeled block can never be read as a composite
                       "solar saved you X" with the net-metering rows. No color (money owed, not at
                       risk). */}
-                  <div className="mt-7 flex items-center gap-2">
+                  <div className="mb-2 mt-7 flex items-center gap-2">
                     <h3 className="type-label-caps text-on-surface-variant">
                       {en.solar.insight.floorHeading}
                     </h3>

@@ -8,6 +8,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { compareFindings } from "@/lib/recommendations/top-finding";
 import type { RecStatus, Severity } from "@/lib/recommendations/types";
+import { SOLAR_TOOL } from "@/lib/energy/solar-nem";
 
 /** The least a stored Recommendation row needs to become a FindingView. Structural over
  *  the Prisma row so the pure mapping never imports Prisma types. `action`/`result` are
@@ -35,6 +36,11 @@ export type FindingView = {
   /** The action's farmer-facing label; null when the stored action is unreadable
    *  (the card renders the /copy fallback, never a blank). */
   actionLabel: string | null;
+  /** The grounded machine verb off the stored action (action.kind, e.g. "switch_rate",
+   *  "review_solar_demand", "track_trueup"); null when the action is unreadable. Read HERE
+   *  (the single tested narrowing place) so a consumer discriminates on the persisted kind,
+   *  never on severity or the farmer-facing label. Powers the G-2 billing-finding gate. */
+  actionKind: string | null;
   /** Legacy float DOLLARS as stored on the row (not cents); render via the shared
    *  formatter rounded to whole dollars, never cent precision. */
   impactUsd: number | null;
@@ -90,16 +96,19 @@ function readAction(action: unknown): {
   label: string | null;
   meterId: string | null;
   rateSwitchTo: string | null;
+  actionKind: string | null;
 } {
-  if (!isObject(action)) return { label: null, meterId: null, rateSwitchTo: null };
+  if (!isObject(action))
+    return { label: null, meterId: null, rateSwitchTo: null, actionKind: null };
   const label = nonEmpty(action.label);
   const params = isObject(action.params) ? action.params : null;
   const meterId = params !== null ? nonEmpty(params.pumpId) : null;
+  const actionKind = nonEmpty(action.kind);
   const rateSwitchTo =
     action.kind === "switch_rate" && params !== null
       ? (nonEmpty(params.toSchedule) ?? nonEmpty(params.to))
       : null;
-  return { label, meterId, rateSwitchTo };
+  return { label, meterId, rateSwitchTo, actionKind };
 }
 
 /** Narrow the stored result Json to the note v1 renders (4.2 owns the full diff). */
@@ -127,12 +136,13 @@ export function toFindingViews(
       // a card with a blank narrative line (same honesty law as the impact filter).
       const situation = nonEmpty(row.situation);
       if (situation === null) return null;
-      const { label, meterId, rateSwitchTo } = readAction(row.action);
+      const { label, meterId, rateSwitchTo, actionKind } = readAction(row.action);
       return {
         id: row.id,
         tool: row.tool,
         situation,
         actionLabel: label,
+        actionKind,
         impactUsd,
         impactNote,
         severity: toSeverity(row.severity),
@@ -152,6 +162,25 @@ export function toFindingViews(
  *  must not deflate the "dollars at stake" figure. */
 export function findingsAtRiskUsd(findings: readonly FindingView[]): number {
   return findings.reduce((sum, f) => sum + Math.max(0, f.impactUsd ?? 0), 0);
+}
+
+/**
+ * G-2 (FR23, UX-DR11) the honest-dollar separation guard, as a tested pure predicate. A solar
+ * finding may carry exactly ONE honest dollar in its `impactNote`: the F2 demand-charge gap (a
+ * charge already printed on the bill, money owed, not a net-metering credit). When that note
+ * renders beside the Solar tab's honest-blank credit cells the card fronts it with the "On your
+ * bill" chip so the layout can never be read as a composite "solar saved you X".
+ *
+ * The discriminator is the F2 SHAPE EXACTLY: `tool === SOLAR_TOOL` AND the grounded
+ * `actionKind === "review_solar_demand"`. It is NOT `severity === "info"`: the legacy
+ * `solarNemChecks` `track_trueup` emitter also persists a SOLAR_TOOL info finding (it still runs on
+ * the demo/seed farm and the public Tour, B-1/ADR-S05), but its note is a NET-METERING true-up
+ * message - stamping the billing chip over it would invert the very honesty contract this guard
+ * exists to protect. Gating on the unique action kind excludes it, and excludes every watch-severity
+ * solar finding (F1/F3) and every non-solar tool, by construction.
+ */
+export function isSolarBillingFinding(finding: FindingView): boolean {
+  return finding.tool === SOLAR_TOOL && finding.actionKind === "review_solar_demand";
 }
 
 /** Load the farm's pending findings as the view shape. Takes an explicit PrismaClient. */

@@ -78,6 +78,7 @@ function finding(over: Partial<FindingView> = {}): FindingView {
     tool: over.tool ?? "rate-optimization",
     situation: over.situation ?? "This meter looks mis-rated",
     actionLabel: "actionLabel" in over ? (over.actionLabel ?? null) : "Move to AG-A1",
+    actionKind: "actionKind" in over ? (over.actionKind ?? null) : "switch_rate",
     impactUsd: "impactUsd" in over ? (over.impactUsd ?? null) : 4_322,
     impactNote: "impactNote" in over ? (over.impactNote ?? null) : null,
     severity: over.severity ?? "act",

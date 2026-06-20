@@ -6,9 +6,8 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { SeverityBadge, cardClass } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
-import type { FindingView } from "@/lib/dashboard/findings";
+import { isSolarBillingFinding, type FindingView } from "@/lib/dashboard/findings";
 import { SURFACE } from "@/lib/dashboard/surface";
-import { SOLAR_TOOL } from "@/lib/energy/solar-nem";
 import { resolveFinding, type FindingResponse } from "../actions";
 
 // The finding card (Story 3.1, FR-13 / UX-DR14): the recommendation grammar rendered
@@ -64,15 +63,16 @@ export function FindingCard({
     finding.impactUsd !== null ? formatUsdWhole(centsFromDollars(finding.impactUsd)) : null;
 
   // G-2 (FR23, UX-DR11) the honest-dollar separation guard: a solar finding may carry exactly ONE
-  // honest dollar - a charge already printed on the bill (the F2 demand-charge gap, severity info,
-  // whose dollar rides in impactNote, never impactUsd). It is NOT a net-metering credit, which stays
-  // honest-blank until a statement settles it. So when this billing dollar renders beside the solar
-  // tab's honest-blank credit cells, label it explicitly "On your bill" so the layout can never be
-  // read as a composite "solar saved you X". The discriminator is the F2 shape exactly: the sole
-  // solar (tool === SOLAR_TOOL) info finding, all other solar findings are watch and dollarless. The
-  // energy card path is untouched (energy findings carry a different tool). The chip never colors the
-  // card (NFR6: red is reserved for money at stake; this is money owed, not at risk).
-  const isSolarBillingFinding = finding.tool === SOLAR_TOOL && finding.severity === "info";
+  // honest dollar - a charge already printed on the bill (the F2 demand-charge gap, whose dollar
+  // rides in impactNote, never impactUsd). It is NOT a net-metering credit, which stays honest-blank
+  // until a statement settles it. So when this billing dollar renders beside the solar tab's
+  // honest-blank credit cells, label it explicitly "On your bill" so the layout can never be read as
+  // a composite "solar saved you X". The discriminator is the pure, tested predicate gating on the
+  // F2 action kind (review_solar_demand) - NOT severity:info, which the legacy track_trueup NEM2
+  // true-up note (still live on the demo farm and the public Tour) also carries and would invert the
+  // honesty contract. The energy card path is untouched (energy findings carry a different tool). The
+  // chip never colors the card (NFR6: red is reserved for money at stake; this is money owed).
+  const showBillingChip = isSolarBillingFinding(finding);
 
   return (
     <article
@@ -96,7 +96,7 @@ export function FindingCard({
 
       <p className="type-body-md mt-3 text-on-surface">{finding.situation}</p>
       {finding.impactNote !== null &&
-        (isSolarBillingFinding ? (
+        (showBillingChip ? (
           // The honest billing dollar (the F2 demand-charge gap) lives in impactNote. Front it with
           // the "On your bill" chip and set it off in its own bordered block so the charge is read as
           // a billing charge, never netted with the net-metering credit (which is honest-blank).

@@ -20,6 +20,7 @@ function finding(over: Partial<FindingView>): FindingView {
     tool: "rate-optimization",
     situation: "This meter looks mis-rated",
     actionLabel: "Move it to AG-C",
+    actionKind: "switch_rate",
     impactUsd: null,
     impactNote: null,
     severity: "act",

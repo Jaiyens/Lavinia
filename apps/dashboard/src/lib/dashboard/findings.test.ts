@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { findingsAtRiskUsd, toFindingViews, type FindingRow } from "./findings";
+import {
+  findingsAtRiskUsd,
+  isSolarBillingFinding,
+  toFindingViews,
+  type FindingRow,
+  type FindingView,
+} from "./findings";
+import { SOLAR_TOOL } from "@/lib/energy/solar-nem";
 
 const METERS = [
   { id: "pump-1", name: "Lateral 3 Booster" },
@@ -45,6 +52,13 @@ describe("toFindingViews", () => {
     expect(view?.meterId).toBe("pump-1");
     expect(view?.meterName).toBe("Lateral 3 Booster");
     expect(view?.actionLabel).toBe("Move it to AG-A");
+  });
+
+  it("surfaces the grounded action kind off the persisted action, null when unreadable", () => {
+    const [view] = toFindingViews([row({})], METERS);
+    expect(view?.actionKind).toBe("switch_rate");
+    const [junk] = toFindingViews([row({ id: "junk", action: "not an object" })], METERS);
+    expect(junk?.actionKind).toBeNull();
   });
 
   it("surfaces the rate-switch target from action.kind/params.toSchedule (the grounded read, not the label)", () => {
@@ -176,5 +190,83 @@ describe("findingsAtRiskUsd", () => {
       METERS,
     );
     expect(findingsAtRiskUsd(views)).toBe(1000);
+  });
+});
+
+describe("isSolarBillingFinding (G-2 honest-dollar separation guard)", () => {
+  // Build each candidate through the real toFindingViews path so the predicate is exercised against
+  // persisted-shape rows (the actionKind narrowing included), not a hand-mocked FindingView.
+  function view(overrides: Partial<FindingRow>): FindingView {
+    const [v] = toFindingViews([row(overrides)], METERS);
+    if (v === undefined) throw new Error("row produced no view");
+    return v;
+  }
+
+  it("stamps the billing chip on the F2 demand-charge finding (SOLAR_TOOL + review_solar_demand)", () => {
+    // The shape run-solar-insight.ts persists for F2: SOLAR_TOOL, severity info, the demand dollar in
+    // impactNote (never impactUsd), action.kind review_solar_demand.
+    const f2 = view({
+      tool: SOLAR_TOOL,
+      severity: "info",
+      impactUsd: null,
+      impactNote: "About $2,400 of its bills on file is the demand charge, which solar cannot reduce.",
+      action: {
+        kind: "review_solar_demand",
+        label: "See its evening demand",
+        params: { pumpId: "pump-1", demandOwedCents: 240000 },
+      },
+    });
+    expect(isSolarBillingFinding(f2)).toBe(true);
+  });
+
+  it("does NOT stamp the chip on the legacy track_trueup SOLAR_TOOL info finding (the inverted-honesty regression)", () => {
+    // The legacy solarNemChecks track_trueup emitter (still live on the demo farm + the public Tour,
+    // B-1/ADR-S05) shares the SOLAR_TOOL + severity:info shape, but its note is a NET-METERING true-up
+    // message. Stamping "On your bill / this is a charge, not a solar credit" over it would invert the
+    // honesty contract this guard exists to protect. The unique action kind excludes it.
+    const trueUp = view({
+      tool: SOLAR_TOOL,
+      severity: "info",
+      impactUsd: null,
+      impactNote:
+        "This is a NEM2 account, so the credits and charges net out at the April true-up. Watch the running balance so that bill is not a surprise.",
+      action: {
+        kind: "track_trueup",
+        label: "Track the April true-up",
+        params: { pumpId: "pump-1", nemType: "nem2", trueUpMonth: 4 },
+      },
+    });
+    expect(isSolarBillingFinding(trueUp)).toBe(false);
+  });
+
+  it("does NOT stamp the chip on watch-severity solar findings (F1 rate-legibility, F3 aggregation)", () => {
+    const f1 = view({
+      tool: SOLAR_TOOL,
+      severity: "watch",
+      impactUsd: null,
+      impactNote: "Worth verifying this schedule.",
+      action: { kind: "verify_solar_schedule", label: "Verify the schedule", params: { pumpId: "pump-1" } },
+    });
+    const f3 = view({
+      tool: SOLAR_TOOL,
+      severity: "watch",
+      impactUsd: null,
+      impactNote: "Check which array it belongs to.",
+      action: { kind: "verify_aggregation", label: "Verify the aggregation", params: { pumpId: "pump-1", arrayId: null } },
+    });
+    expect(isSolarBillingFinding(f1)).toBe(false);
+    expect(isSolarBillingFinding(f3)).toBe(false);
+  });
+
+  it("does NOT stamp the chip on a non-solar tool, even an info finding with a review_solar_demand-looking kind", () => {
+    // The energy card path must stay untouched: a different tool never qualifies, regardless of kind.
+    const energyInfo = view({
+      tool: "pump-timing",
+      severity: "info",
+      impactUsd: null,
+      impactNote: "These cycles reconciled within a dollar of the estimate.",
+      action: { kind: "review_solar_demand", label: "Look", params: { pumpId: "pump-1" } },
+    });
+    expect(isSolarBillingFinding(energyInfo)).toBe(false);
   });
 });
