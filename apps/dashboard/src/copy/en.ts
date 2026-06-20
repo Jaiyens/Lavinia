@@ -852,6 +852,18 @@ export const en = {
             // Shown when the file was kept in the grower's Reports (owner-only persistence, Story
             // 8.6), so they know it is safe to fetch again later. Absent for an unsaved export.
             savedToReports: "Saved to your Reports",
+            // Preview-first: the card opens a scrollable overlay of the file (a PDF, or an .xlsx
+            // rendered as a table) with the download on top, so a grower sees the file before saving
+            // it. Plain operator words, no exclamation marks.
+            preview: "Preview",
+            // Short download label for the preview overlay's top button (the card itself uses the
+            // longer, kind-specific labels above).
+            downloadShort: "Download",
+            previewAria: (fileName: string): string => `Preview ${fileName}`,
+            previewTitle: (fileName: string): string => `Preview of ${fileName}`,
+            closePreview: "Close preview",
+            previewLoading: "Loading preview",
+            previewUnavailable: "This file cannot be previewed here. Download it to view.",
           },
           // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
           // partial file). Calm operator English, offers a retry path by re-asking.

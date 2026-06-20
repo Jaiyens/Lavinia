@@ -1,8 +1,12 @@
 "use client";
 
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { useState } from "react";
+import { AnimatePresence } from "motion/react";
+import { Download, Eye, FileSpreadsheet, FileText } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { downloadReportFile, isPdfFile } from "./report-file";
+import { AlmondFilePreview } from "./almond-file-preview";
 
 /**
  * One file Almond made this turn (a spreadsheet export, Story 8.5, or a PDF report, Story 9.3),
@@ -21,103 +25,82 @@ export type AlmondReportCard = {
 
 const t = en.shell.almond.export.skill.card;
 
-// A clean PDF red for the PDF card's icon + button; the spreadsheet card stays Terra green. Literal
-// so the document type reads at a glance (red PDF, green sheet) without a new palette token.
+// A clean PDF red for the PDF card's icon; the spreadsheet card stays Terra green. Literal so the
+// document type reads at a glance (red PDF, green sheet) without a new palette token.
 const PDF_RED = "#D33A2C";
 
-/** Decode the base64 payload into a fresh ArrayBuffer (the server encoded it with Buffer). Returns the
- *  backing ArrayBuffer so it slots into a Blob with no SharedArrayBuffer ambiguity. */
-function decodeBase64(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const buffer = new ArrayBuffer(binary.length);
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return buffer;
-}
-
-/** Whether this card carries a PDF (vs a spreadsheet), by its content type or file extension. */
-function isPdf(card: AlmondReportCard): boolean {
-  return card.contentType === "application/pdf" || card.fileName.toLowerCase().endsWith(".pdf");
-}
-
 /**
- * The download card the panel renders for a file Almond made. The bytes arrive base64 in the transient
- * stream part; the download is built AT CLICK TIME — decode to a Blob, create an object URL, click a
- * temporary anchor, then revoke the URL on a timer. The previous version created the URL on mount and
- * revoked it on unmount, so a re-render (the chat re-renders constantly while streaming) could revoke
- * the URL out from under the link and Chrome failed the download with a "check internet connection"
- * network error. Creating-and-revoking around the click removes that whole class of timing bug.
+ * The card the panel renders for a file Almond made — now PREVIEW-FIRST. Clicking the file opens a
+ * scrollable overlay of it (a PDF in the native viewer, an .xlsx as a table) with the download on
+ * top, so a grower sees the file before saving it. The download button stays on the card as a quick
+ * action; both paths share the decode/download logic in `report-file.ts`. The bytes arrive base64 in
+ * the transient stream part and are decoded to a Blob at click time (creating-and-revoking around the
+ * click avoids the re-render race that previously failed the download).
  *
- * The card labels and icons itself by the file it carries: a green spreadsheet icon + "Download
- * spreadsheet" for an xlsx, a red document icon + "Download PDF" for a PDF report.
+ * The card labels and icons itself by the file it carries: a green spreadsheet icon for an xlsx, a
+ * red document icon for a PDF report.
  */
 export function AlmondDownloadCard({ card }: { card: AlmondReportCard }) {
-  const pdf = isPdf(card);
+  const pdf = isPdfFile(card);
   const Icon = pdf ? FileText : FileSpreadsheet;
-  const label = pdf ? t.downloadPdf : t.download;
-
-  function download() {
-    let url: string | null = null;
-    try {
-      const blob = new Blob([decodeBase64(card.base64)], { type: card.contentType });
-      url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = card.fileName;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch {
-      // A malformed payload (should not happen — the server encodes it) simply does nothing on click,
-      // so the conversation never breaks on a bad frame.
-    } finally {
-      // Revoke only AFTER the browser has started reading the blob; revoking synchronously is exactly
-      // what made the download fail. A few seconds is ample for the download to kick off.
-      if (url !== null) {
-        const toRevoke = url;
-        window.setTimeout(() => URL.revokeObjectURL(toRevoke), 4000);
-      }
-    }
-  }
+  const downloadLabel = pdf ? t.downloadPdf : t.download;
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
-    <div className="mt-2 flex items-center gap-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low px-3 py-2">
-      <Icon
-        size={22}
-        className={cn("shrink-0", !pdf && "text-primary")}
-        style={pdf ? { color: PDF_RED } : undefined}
-        aria-hidden
-      />
-      <div className="min-w-0 flex-1">
-        <p className="type-body-md truncate font-medium text-on-surface">{card.fileName}</p>
-        {card.saved ? (
-          <p className="type-body-sm truncate text-on-surface-variant">{t.savedToReports}</p>
-        ) : null}
+    <>
+      <div className="mt-2 flex items-center gap-2 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low px-3 py-2">
+        {/* The file area opens the preview (preview-first). A button, not a wrapping div, so the
+            download button beside it is never a nested interactive. */}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          aria-label={t.previewAria(card.fileName)}
+          className="group flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] py-1 text-left transition-colors"
+        >
+          <Icon
+            size={22}
+            className={cn("shrink-0", !pdf && "text-primary")}
+            style={pdf ? { color: PDF_RED } : undefined}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="type-body-md truncate font-medium text-on-surface group-hover:text-primary">
+              {card.fileName}
+            </p>
+            <p className="flex items-center gap-1 type-body-sm truncate text-on-surface-variant">
+              <Eye size={12} aria-hidden className="shrink-0" />
+              <span>{card.saved ? `${t.preview} · ${t.savedToReports}` : t.preview}</span>
+            </p>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadReportFile(card)}
+          aria-label={t.downloadAria(card.fileName)}
+          className={cn(
+            "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 type-label-caps transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+            !pdf &&
+              "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 focus-visible:outline-primary",
+          )}
+          style={
+            pdf
+              ? {
+                  color: PDF_RED,
+                  borderColor: `${PDF_RED}66`,
+                  backgroundColor: `${PDF_RED}0d`,
+                  outlineColor: PDF_RED,
+                }
+              : undefined
+          }
+        >
+          <Download size={14} aria-hidden />
+          <span>{downloadLabel}</span>
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={download}
-        aria-label={t.downloadAria(card.fileName)}
-        className={cn(
-          "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 type-label-caps transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-          !pdf &&
-            "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 focus-visible:outline-primary",
-        )}
-        style={
-          pdf
-            ? {
-                color: PDF_RED,
-                borderColor: `${PDF_RED}66`,
-                backgroundColor: `${PDF_RED}0d`,
-                outlineColor: PDF_RED,
-              }
-            : undefined
-        }
-      >
-        <Download size={14} aria-hidden />
-        <span>{label}</span>
-      </button>
-    </div>
+
+      <AnimatePresence>
+        {previewOpen && <AlmondFilePreview file={card} onClose={() => setPreviewOpen(false)} />}
+      </AnimatePresence>
+    </>
   );
 }
