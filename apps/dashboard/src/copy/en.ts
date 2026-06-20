@@ -202,6 +202,12 @@ export const en = {
     // The lock toggle (top right) that turns drag-to-rearrange on/off, so a tile is never moved by
     // accident. Locked by default; the lock icon shows the state.
     editLayout: "Edit tabs",
+    // The Home "parcels" tile: a non-interactive satellite preview of the operation's land that
+    // links through to the full Parcels surface.
+    parcelsPreview: {
+      caption: "Your parcels",
+      cta: "Open the parcels map",
+    },
     // The summary card row across the top of Home (mirrors the mockup's stat cards).
     kpi: {
       meters: "Meters",

@@ -124,15 +124,21 @@ export function BentoGrid({ items, editing }: { items: BentoItem[]; editing: boo
     });
   };
 
+  // The composition is FIXED across form factors: the 6-column x 4-row bento never reflows to a
+  // single column on smaller laptops. A fixed-width design canvas holds the grid at every width;
+  // when the viewport is narrower than the canvas, the board scrolls horizontally instead of
+  // collapsing, so Home looks like the full desktop bento on a 13-inch screen too.
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={order} strategy={rectSortingStrategy}>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-6 lg:grid-rows-4">
-          {ordered.map((it) => (
-            <SortableCell key={it.id} id={it.id} className={it.className} editing={editing}>
-              {it.node}
-            </SortableCell>
-          ))}
+        <div className="min-h-0 flex-1 overflow-x-auto">
+          <div className="grid h-full min-w-[1100px] grid-cols-6 grid-rows-4 gap-3">
+            {ordered.map((it) => (
+              <SortableCell key={it.id} id={it.id} className={it.className} editing={editing}>
+                {it.node}
+              </SortableCell>
+            ))}
+          </div>
         </div>
       </SortableContext>
     </DndContext>
