@@ -127,6 +127,60 @@ export type UtilityApiSource = {
   authUids?: string[];
 };
 
+/** Max per-meter Green Button fetches in flight at once. A 183-meter farm must not open
+ *  183 sockets at once (UtilityAPI rate-limits and the runtime would exhaust connections);
+ *  a small pool keeps the pull bounded while still fanning out. */
+const GREEN_BUTTON_CONCURRENCY = 6;
+/** Retries per meter's Green Button fetch (1 initial try + this many) before giving up on
+ *  that one meter and falling back to identity-only (the normalizer fills the gap from the
+ *  /meters JSON, so the meter still lands, just without its interval/billing history). */
+const GREEN_BUTTON_RETRIES = 2;
+
+/** Fetch one meter's Green Button XML with a few retries; returns null if every attempt
+ *  fails, so the caller can drop just that meter rather than abort the whole pull. */
+async function fetchGreenButtonForMeter(uid: string): Promise<string | null> {
+  for (let attempt = 0; attempt <= GREEN_BUTTON_RETRIES; attempt += 1) {
+    try {
+      return await getUtilityApiGreenButton(uid);
+    } catch (err) {
+      if (attempt === GREEN_BUTTON_RETRIES) {
+        // Final failure for this meter: log the uid only (never grower data) and let the
+        // caller fall back to identity-only for it. One meter must never sink the batch.
+        console.error(
+          `fetchUtilityApi: Green Button fetch for meter ${uid} failed after retries`,
+          err instanceof Error ? err.message : err,
+        );
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+/** Run `fn` over `items` with at most `limit` in flight at once (bounded fan-out). */
+async function boundedMap<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index] as T);
+    }
+  }
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(limit, items.length)) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 /**
  * Fetch a farm's UtilityAPI data: the native /meters body and a Green Button export per
  * meter. With authorization uids and a token (UTILITYAPI_TOKEN), this does the real v2
@@ -135,6 +189,11 @@ export type UtilityApiSource = {
  * identical, so normalizeUtilityApi / importUtilityApi are unchanged. The async
  * create-form / await-authorization steps live in the connect flow
  * (src/lib/onboarding/farm.ts); by the time this runs the data is ready to GET.
+ *
+ * The per-meter Green Button pull runs with BOUNDED concurrency and per-meter retries
+ * (not an unbounded Promise.all that one rejection kills): a meter whose export cannot be
+ * fetched is dropped from the XML list and the normalizer falls back to identity-only for
+ * it, so a single flaky meter never aborts the whole 183-meter import.
  */
 export async function fetchUtilityApi(
   source: UtilityApiSource = {},
@@ -143,9 +202,14 @@ export async function fetchUtilityApi(
   if (authUids.length > 0 && utilityApiConfigured()) {
     const meters = await getUtilityApiMetersRaw(authUids);
     const meterUids = meterUidsFromRaw(meters);
-    const greenButtonXml = await Promise.all(
-      meterUids.map((uid) => getUtilityApiGreenButton(uid)),
+    const fetched = await boundedMap(
+      meterUids,
+      GREEN_BUTTON_CONCURRENCY,
+      (uid) => fetchGreenButtonForMeter(uid),
     );
+    // Drop the meters whose export failed; the normalizer correlates the rest by service
+    // id (order-independent) and lands the dropped ones identity-only from the JSON.
+    const greenButtonXml = fetched.filter((xml): xml is string => xml !== null);
     return { meters, greenButtonXml };
   }
   return loadSampleUtilityApi();

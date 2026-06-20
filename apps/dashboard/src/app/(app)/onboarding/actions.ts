@@ -34,6 +34,26 @@ function field(formData: FormData, key: string): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
+/**
+ * Run the recommendation engines but never let a failure strand the farmer: a throw here
+ * (a bad meter the per-meter guard in runEngines did not catch, a DB hiccup on the bulk
+ * insert) must not abort the confirm/sample action, or the farmer would see an error
+ * instead of their freshly connected dashboard. The findings simply land empty and a later
+ * re-run (the dashboard's refresh action) regenerates them. Logged, never surfaced. Must
+ * wrap ONLY runEngines, never the redirect() below it (redirect signals via a thrown
+ * sentinel that has to propagate).
+ */
+async function safeRunEngines(farmId: string): Promise<void> {
+  try {
+    await runEngines(prisma, farmId);
+  } catch (err) {
+    console.error(
+      `onboarding: runEngines failed for farm ${farmId}; landing the farmer on the dashboard anyway`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 /** Identify the farm (name + contact) and open the source picker. Creates the farm up
  *  front so sources accumulate into one farm and it is owned by the operator. */
 export async function identifyFarmAction(formData: FormData): Promise<void> {
@@ -151,7 +171,7 @@ export async function connectSampleAction(formData: FormData): Promise<void> {
     where: { farmId, type: "pge_smd" },
     data: { status: "active", authorizedAt: new Date() },
   });
-  await runEngines(prisma, farmId);
+  await safeRunEngines(farmId);
   redirect("/");
 }
 
@@ -248,6 +268,6 @@ export async function saveConfirmationAction(formData: FormData): Promise<void> 
   // owner/manager role for that exact farm, never trust the id.
   if (!(await canManageFarm(payload.farmId, userId))) redirect("/login");
   const { farmId, alreadyFinalized } = await saveConfirmation(prisma, payload);
-  if (!alreadyFinalized) await runEngines(prisma, farmId);
+  if (!alreadyFinalized) await safeRunEngines(farmId);
   redirect("/");
 }

@@ -118,10 +118,22 @@ export function sizeClassFor(peakKw: number, card: RateCard): SizeClass {
   return peakKw > card.sizeBreakKw ? "large" : "small";
 }
 
-/** Normalize a stored rate schedule to its family: "AG-C2"/"AG-C1"/"AG-C" → "AG-C". */
+/**
+ * Normalize a stored rate schedule to its family:
+ *  - current ag: "AG-C2"/"AG-C1"/"AG-C" → "AG-C" (a trailing size digit);
+ *  - legacy ag: "AG-4B"/"AG-4"/"AG-5C"/"AG-5" → "AG-4"/"AG-5" (a trailing tier letter).
+ * The legacy schedules print as AG-4A..AG-4E and AG-5A..AG-5E (and bare AG-4/AG-5); they
+ * MUST fold to the "AG-4"/"AG-5" families so the runner's LEGACY_FAMILIES set classifies a
+ * real meter on a closed rate, instead of leaving e.g. AG-4B unmatched and finding-less.
+ * Anything else returns its own trimmed uppercase label unchanged.
+ */
 export function familyOf(schedule: string): string {
-  const m = schedule.trim().toUpperCase().match(/^(AG-[ABC])\d?$/);
-  return m?.[1] ?? schedule.trim().toUpperCase();
+  const s = schedule.trim().toUpperCase();
+  const current = s.match(/^(AG-[ABC])\d?$/);
+  if (current) return current[1] as string;
+  const legacy = s.match(/^(AG-[45])[A-E]?$/);
+  if (legacy) return legacy[1] as string;
+  return s;
 }
 
 /** The plan for a family + size class, or null if the card does not carry it. */
