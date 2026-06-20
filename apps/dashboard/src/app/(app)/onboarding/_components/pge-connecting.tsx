@@ -14,23 +14,29 @@ import { finishPgeConnectAction, pgeRevealAction } from "../actions";
 import type { RevealCounts } from "@/lib/onboarding/farm";
 
 const t = en.connect.connecting;
+// Poll fast for the first minute (most connects land quickly), then back off so a large
+// first pull (Batth runs ~183 meters, which PG&E can take a long time to assemble) does not
+// hammer the server with hundreds of rapid polls while it works.
 const POLL_MS = 2500;
-// Cap the poll so a hung or never-finished PG&E connect cannot strand the grower forever.
-// ~3.5 minutes at the poll interval; after this we show a calm, recoverable error state.
-const MAX_POLL_MS = 210_000;
-const MAX_ATTEMPTS = Math.ceil(MAX_POLL_MS / POLL_MS);
+const SLOW_POLL_MS = 15_000;
+const FAST_WINDOW_MS = 60_000;
+// Only after ~30 minutes of no "ready" do we show the calm, recoverable state. A big first
+// pull can legitimately take much longer, so that screen lets the grower keep waiting,
+// continue with what has landed, or leave and come back (the pull resumes server-side).
+const MAX_POLL_MS = 1_800_000;
 
 // Local copy for the timeout / network error state. Kept here (not in the shared copy file)
 // to stay within this file's scope; plain operator English, no em dashes, no exclamation
 // marks, matching the connecting block.
 const errorCopy = {
-  timeoutTitle: "This is taking longer than expected",
+  timeoutTitle: "This is taking a while",
   timeoutBody:
-    "We have not heard back from PG&E yet. Make sure you finished signing in and chose the accounts to share, then try again.",
+    "A large account with many meters can take PG&E a long time to assemble, sometimes much longer. Your progress is saved. You can keep waiting, continue with what has landed so far, or leave and come back later to pick up where this left off. If you have not finished signing in to PG&E, do that and try again.",
   networkTitle: "We hit a snag",
   networkBody:
     "Something went wrong while pulling your data. Your progress is safe. You can try again.",
   retry: "Try again",
+  keepWaiting: "Keep waiting",
 };
 
 export function PgeConnecting({ farmId }: { farmId: string }) {
@@ -72,7 +78,7 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
   useEffect(() => {
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
-    let attempts = 0;
+    const start = Date.now();
     async function tick() {
       // Read the stashed form url for the "reopen sign-in" link on the first pass. Done
       // here (client only) so server and first client render agree, with no sessionStorage
@@ -101,15 +107,16 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
         setErrorKind("network");
         return;
       }
-      attempts += 1;
-      if (attempts >= MAX_ATTEMPTS) {
-        // The connect never reported ready within the cap. Stop and let the grower retry
-        // or go back, rather than spinning indefinitely.
+      const elapsed = Date.now() - start;
+      if (elapsed >= MAX_POLL_MS) {
+        // No "ready" within the cap. Show the calm, recoverable state where the grower can
+        // keep waiting, continue with what landed, or leave and resume later.
         if (!alive) return;
         setErrorKind("timeout");
         return;
       }
-      timer = setTimeout(tick, POLL_MS);
+      // Fast for the first minute, then back off so a long pull is not polled to death.
+      timer = setTimeout(tick, elapsed < FAST_WINDOW_MS ? POLL_MS : SLOW_POLL_MS);
     }
     void tick();
     return () => {
@@ -120,14 +127,30 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
 
   const retry = useCallback(() => {
     // Clear the error and restart the poll loop from scratch via the retryKey dependency.
+    // For the timeout state this is "keep waiting": the poll resumes from the top.
     finished.current = false;
     setErrorKind(null);
     setFinishing(false);
     setRetryKey((k) => k + 1);
   }, []);
 
+  const continueReady = useCallback(() => {
+    // From the timeout state: import whatever has landed so far rather than wait longer.
+    setErrorKind(null);
+    void finish(true);
+  }, [finish]);
+
   if (errorKind) {
-    return <ConnectError kind={errorKind} farmId={farmId} reopenUrl={reopenUrl} onRetry={retry} />;
+    return (
+      <ConnectError
+        kind={errorKind}
+        farmId={farmId}
+        reopenUrl={reopenUrl}
+        counts={counts}
+        onRetry={retry}
+        onContinue={continueReady}
+      />
+    );
   }
 
   const accounts = counts?.accounts ?? 0;
@@ -192,15 +215,24 @@ function ConnectError({
   kind,
   farmId,
   reopenUrl,
+  counts,
   onRetry,
+  onContinue,
 }: {
   kind: "timeout" | "network";
   farmId: string;
   reopenUrl: string | null;
+  counts: RevealCounts | null;
   onRetry: () => void;
+  onContinue: () => void;
 }) {
   const title = kind === "timeout" ? errorCopy.timeoutTitle : errorCopy.networkTitle;
   const body = kind === "timeout" ? errorCopy.timeoutBody : errorCopy.networkBody;
+  // On a timeout where something already landed, let the grower import what is ready rather
+  // than discard a near-complete pull (a large Batth connect may cross the cap with most
+  // meters in hand).
+  const landed = (counts?.accounts ?? 0) > 0 || (counts?.electricMeters ?? 0) > 0;
+  const showContinue = kind === "timeout" && landed;
   return (
     <div className="flex flex-col items-center gap-7 text-center">
       <span className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -213,12 +245,27 @@ function ConnectError({
       </div>
 
       <div className="flex w-full flex-col items-center gap-3">
+        {showContinue ? (
+          <button
+            type="button"
+            onClick={onContinue}
+            className="press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          >
+            {t.continueReady}
+          </button>
+        ) : null}
+
         <button
           type="button"
           onClick={onRetry}
-          className="press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          className={cn(
+            "press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] px-6 font-semibold transition-colors",
+            showContinue
+              ? "border border-outline-variant text-on-surface hover:bg-surface-container"
+              : "bg-primary text-on-primary hover:bg-primary/90",
+          )}
         >
-          {errorCopy.retry}
+          {kind === "timeout" ? errorCopy.keepWaiting : errorCopy.retry}
         </button>
 
         {reopenUrl ? (

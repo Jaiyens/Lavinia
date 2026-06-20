@@ -17,6 +17,9 @@ import { saveConfirmationAction } from "../actions";
 // double-check (AC4: only what we could not read, never blank-faked). The save action is
 // the (app) flow's own, which lands on the dashboard with findings (not the legacy /done).
 export const dynamic = "force-dynamic";
+// Confirm runs the recommendation engines over every meter; give a large farm room so the
+// finalize server action is not killed mid-run.
+export const maxDuration = 300;
 
 // Below this the classifier is unsure enough that the farmer should look twice.
 const UNSURE_BELOW = 0.7;

@@ -7,6 +7,10 @@ import { PgeConnecting } from "../_components/pge-connecting";
 // The live PG&E connecting screen (step 2, mid-flight). The grower has opened PG&E's hosted
 // sign-in; this page polls the pull and imports it into the farm, then moves on to review.
 export const dynamic = "force-dynamic";
+// A first import for a large farm (Batth runs ~183 meters) does the live pull + per-meter
+// persistence inside finishPgeConnectAction, which can take minutes; raise the function
+// ceiling so the platform does not kill it mid-import. Ordinary connects finish in seconds.
+export const maxDuration = 300;
 
 export default async function OnboardingConnectingPage({
   searchParams,
