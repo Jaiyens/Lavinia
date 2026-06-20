@@ -1,6 +1,4 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { sessionUserId } from "@/lib/auth";
-import { activeFarmId } from "@/lib/auth/active-farm";
 import {
   sanitizeHistoryMessages,
   deriveTitle,
@@ -15,22 +13,10 @@ import {
 // farm's) thread structurally unreachable — a forged or guessed id finds no row, exactly like the
 // report-download IDOR gate, never a 200 with someone else's chat.
 
-/** The tenant scope a history call runs under: a user and the farm the thread belongs to. */
+/** The tenant scope a history call runs under: a user and the farm the thread belongs to.
+ *  `resolveHistoryScope` (which derives this from the session + active farm) lives in
+ *  ./history-scope so this module stays an auth-free DB edge (testable without next-auth). */
 export type HistoryScope = { userId: string; farmId: string };
-
-/**
- * The active history scope for this request, or null when there is none (no session, or a member of
- * no farm). `activeFarmId` re-validates the active-farm cookie against live membership on every call,
- * so the farmId here is always one the user may access. The public Tour resolves null and persists
- * nothing — demo chats are ephemeral, exactly as before.
- */
-export async function resolveHistoryScope(): Promise<HistoryScope | null> {
-  const userId = await sessionUserId();
-  if (!userId) return null;
-  const farmId = await activeFarmId(userId);
-  if (!farmId) return null;
-  return { userId, farmId };
-}
 
 /** A user's own threads for the active farm, newest-first (summaries only, no message bodies). */
 export async function listConversations(

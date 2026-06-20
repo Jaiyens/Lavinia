@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/db";
 import {
-  resolveHistoryScope,
   getConversation,
   updateConversation,
   deleteConversation,
 } from "@/lib/almond/conversation-store";
+import { resolveHistoryScope } from "@/lib/almond/history-scope";
 
 /**
  * Almond saved-history single-thread endpoint (per-user, per-farm).
