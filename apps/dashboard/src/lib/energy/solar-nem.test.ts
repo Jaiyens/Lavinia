@@ -65,6 +65,7 @@ describe("solarNemChecks", () => {
 
 import {
   NET_ZERO_FLOOR_KWH,
+  demandUncoveredShare,
   nemDemandInsight,
   summarizeNemMonths,
   type NemDemandInsightInput,
@@ -228,5 +229,62 @@ describe("summarizeNemMonths positions", () => {
 
   it("returns null for an empty series", () => {
     expect(summarizeNemMonths([])).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story E-1 (FR21): demandUncoveredShare.
+// ---------------------------------------------------------------------------
+
+describe("demandUncoveredShare (FR21: the uncovered share)", () => {
+  it("returns the demand-vs-total share from honest billed figures", () => {
+    // demand 369, offsettable 369 -> half the bill is the unoffset demand.
+    expect(demandUncoveredShare({ demandOwedCents: 369, offsettableCents: 369 })).toBeCloseTo(0.5);
+    // demand 600, offsettable 400 -> 60% of the bill solar does not cover.
+    expect(demandUncoveredShare({ demandOwedCents: 600, offsettableCents: 400 })).toBeCloseTo(0.6);
+  });
+
+  it("is 1 when nothing is solar-offsettable (the whole bill is the demand charge)", () => {
+    expect(demandUncoveredShare({ demandOwedCents: 500, offsettableCents: 0 })).toBe(1);
+  });
+
+  it("is 0 when the demand charge is zero", () => {
+    expect(demandUncoveredShare({ demandOwedCents: 0, offsettableCents: 800 })).toBe(0);
+  });
+
+  it("returns null when the offsettable portion is not on file (fail closed)", () => {
+    expect(demandUncoveredShare({ demandOwedCents: 369, offsettableCents: null })).toBeNull();
+  });
+
+  it("returns null when the denominator is non-positive (no divide-by-zero)", () => {
+    expect(demandUncoveredShare({ demandOwedCents: 0, offsettableCents: 0 })).toBeNull();
+  });
+
+  it("returns null for a negative figure (not a quotable ratio)", () => {
+    expect(demandUncoveredShare({ demandOwedCents: -100, offsettableCents: 500 })).toBeNull();
+    expect(demandUncoveredShare({ demandOwedCents: 500, offsettableCents: -100 })).toBeNull();
+  });
+
+  it("carries no dollar: the return is a bare ratio, never a percentage times a dollar", () => {
+    const share = demandUncoveredShare({ demandOwedCents: 250, offsettableCents: 750 });
+    expect(typeof share).toBe("number");
+    expect(share).toBeCloseTo(0.25);
+    // A share is a pure ratio; multiplying it back by a dollar is the forbidden
+    // FR10 move, so the function must never itself surface a dollar value (> 1
+    // would betray a cents figure leaking through).
+    expect(share).toBeLessThanOrEqual(1);
+  });
+
+  it("never produces a value outside [0,1] across a sweep of honest inputs", () => {
+    const demands = [0, 1, 50, 369, 1000, 99999];
+    const offsets = [0, 1, 50, 369, 1000, 99999];
+    for (const demandOwedCents of demands) {
+      for (const offsettableCents of offsets) {
+        const share = demandUncoveredShare({ demandOwedCents, offsettableCents });
+        if (share === null) continue;
+        expect(share).toBeGreaterThanOrEqual(0);
+        expect(share).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

@@ -250,3 +250,43 @@ export function nemDemandInsight(input: NemDemandInsightInput): NemDemandInsight
     monthsCounted: summary.monthsCounted,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Story E-1 (FR21): the demand-uncovered share, a pure sibling of nemDemandInsight.
+// ---------------------------------------------------------------------------
+
+/**
+ * FR21. The share of the billed demand charge that solar does NOT offset, in
+ * [0,1]. Solar never reduces the demand charge (it is set in the evening peak
+ * when the panels are nearly off), so this is structurally the demand-vs-total
+ * ratio for the qualifying meter:
+ *
+ *   demandOwedCents / (demandOwedCents + offsettableCents)
+ *
+ * computed only from honest billed figures already on the insight plus the
+ * cycle line items. Carries NO dollar - it is a ratio rendered as a percentage
+ * (tnum) beside the demand dollar, never a savings claim and never a percentage
+ * multiplied into a dollar to imply a credit (FR10/FR23).
+ *
+ * Returns null when the share is not quotable - the same fail-closed posture as
+ * nemDemandInsight: the offsettable portion is not on file, a figure is
+ * negative, or the denominator is non-positive (no divide-by-zero, no guess).
+ * nemDemandInsight is reused UNCHANGED (FR22/FR27); this is a separate function.
+ */
+export function demandUncoveredShare(args: {
+  demandOwedCents: number;
+  /** The solar-offsettable energy portion of the bill, integer cents; null = not on file. */
+  offsettableCents: number | null;
+}): number | null {
+  const { demandOwedCents, offsettableCents } = args;
+  if (offsettableCents === null) return null;
+  // Honest billed figures only: a negative demand or a negative offsettable
+  // portion is not a quotable ratio, so fail closed rather than guess.
+  if (demandOwedCents < 0 || offsettableCents < 0) return null;
+  const total = demandOwedCents + offsettableCents;
+  if (total <= 0) return null;
+  const share = demandOwedCents / total;
+  // Structurally in [0,1] given the non-negative guards above; clamp defensively
+  // so a floating-point edge can never surface a value outside the bound.
+  return Math.min(1, Math.max(0, share));
+}
