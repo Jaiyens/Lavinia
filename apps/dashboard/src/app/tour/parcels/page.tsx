@@ -1,12 +1,10 @@
-import { ParcelsWorkspace } from "@/app/(app)/_components/parcels-workspace";
-import { loadRepresentativeFarm } from "@/lib/parcel/farm/seed";
+import { ParcelsGis } from "@/app/(app)/_components/parcels-gis/parcels-gis";
 
-// The public Tour's Parcels tab: the same map-first farm OS on the seeded representative operation,
-// available without signing in (it reads only public records + free public layers).
+// The public Tour's Parcels tab: the same full-screen GIS land-mapping surface as the signed-in
+// app, on placeholder data (it reads only public records + free public layers). Renders the same
+// self-contained full-bleed map + floating panels, so the tour and the product look identical.
 export const dynamic = "force-dynamic";
 
 export default function TourParcelsPage() {
-  const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
-  const farm = loadRepresentativeFarm(todayIso);
-  return <ParcelsWorkspace farm={farm} year={Number(todayIso.slice(0, 4))} demo />;
+  return <ParcelsGis />;
 }
