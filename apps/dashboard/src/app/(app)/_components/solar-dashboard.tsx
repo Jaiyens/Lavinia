@@ -83,14 +83,15 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
 
             {/* The solar KPI strip (A-3): four calm tiles (solar meters | arrays | next true-up |
                 needs review) above the lens set, no dollar tile. Then the solar lens set (A-2): the
-                toggle (Arrays / Calendar / Map / Table, default Arrays) over the lens region. The
-                filter bar and the drawer arrive in later stories; each lens view fills in across
-                A-5/A-6/A-8/Epic D. Switching a lens writes only the `lens` key and swaps the region
+                toggle (Arrays / Calendar / Map / Table, default Arrays) over the lens region, which
+                renders the Arrays lens (A-5) as the default data hero; Map (A-6), Table (A-8), and
+                Calendar (Epic D) fill in as their stories land. The filter bar and the drawer arrive
+                in later stories. Switching a lens writes only the `lens` key and swaps the region
                 below, never a crash or a blank shell. */}
             <div className="space-y-5">
               <SolarKpiStrip kpis={solar.kpis} />
               <SolarLensToggle />
-              <SolarLensRegion />
+              <SolarLensRegion dataset={solar} />
             </div>
           </Reveal>
         </div>

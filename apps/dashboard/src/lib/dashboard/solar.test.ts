@@ -223,3 +223,58 @@ describe("buildSolarDataset - honest-blank discipline (FR10)", () => {
     expect(ds.meters).toHaveLength(1);
   });
 });
+
+describe("buildSolarDataset - Arrays-lens array-group shape (A-5, FR3/FR7)", () => {
+  it("exposes the array header fields the Arrays-lens card renders (name, nameplate, true-up)", () => {
+    const west = array({ id: "West Array", name: "West Array", nameplateKw: 840, trueUpMonth: 9 });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      1,
+    );
+    const group = ds.arrays[0];
+    if (!group) throw new Error("missing array group");
+    // The nameplate the card says in plain words ("840 kW solar") is the ARRAY nameplate, never
+    // derived from a code (FR3).
+    expect(group.name).toBe("West Array");
+    expect(group.nameplateKw).toBe(840);
+    expect(group.trueUpMonth).toBe(9);
+  });
+
+  it("a meter row's nameplate is null when not on file, never inferred from an array code (FR3)", () => {
+    const west = array({ id: "West", nameplateKw: 840 });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, solarKw: null, benefitingArrays: [west] })],
+      1,
+    );
+    const row = ds.arrays[0]?.meters[0];
+    if (!row) throw new Error("missing row");
+    // The ROW's own nameplate stays null even though the ARRAY has an 840 kW nameplate.
+    expect(row.solarKw).toBeNull();
+  });
+
+  it("cross-entity meters appear under the same array card (FR7, display-only grouping)", () => {
+    const west = array({ id: "West" });
+    const ds = buildSolarDataset(
+      [
+        meter({ id: "p1", isSolar: true, entityName: "Batth LLC", benefitingArrays: [west] }),
+        meter({ id: "p2", isSolar: true, entityName: "Sandhu LLC", benefitingArrays: [west] }),
+      ],
+      1,
+    );
+    expect(ds.arrays).toHaveLength(1);
+    expect(ds.arrays[0]?.meters.map((m) => m.pumpId).sort()).toEqual(["p1", "p2"]);
+  });
+
+  it("the array-group meter row carries NO share and NO credit key for the lens (honest-blank, FR10)", () => {
+    const west = array({ id: "West" });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      1,
+    );
+    const row = ds.arrays[0]?.meters[0];
+    if (!row) throw new Error("missing row");
+    // The Arrays lens renders the share/credit honest-blank; the dataset feeds it no value to
+    // multiply into a dollar (FR10). The row is structure only.
+    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "solarKw"]);
+  });
+});

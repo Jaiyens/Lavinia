@@ -1506,6 +1506,44 @@ export const en = {
       trueUpAria: "See the true-up calendar",
       reviewAria: "Show meters that need review",
     },
+    // The Arrays lens (A-5, UX-DR4): the default data hero. One array-group card per SolarArray,
+    // header with the array name + nameplate said in plain words + true-up month, and the benefiting
+    // meters as rows with a program-code chip and a share row. The share and the credit DOLLAR render
+    // HONEST-BLANK until Epic C/G fill them - never a fabricated zero, never a percent-times-dollar
+    // credit. Plain operator English, no kW/interval jargon, no exclamation marks, no em dashes.
+    arrays: {
+      // The array-group card.
+      nameplate: (kw: number): string => `${num(kw)} kW solar`,
+      // The array's true-up month said in plain words ("Settles in September"); null reads honest.
+      trueUpMonth: (month: number): string => `Settles in ${MONTHS[month - 1] ?? ""}`,
+      trueUpNone: "No true-up month on file",
+      // The unnamed-array fallback (the populator wrote no name).
+      unnamed: "Array",
+      // The "N meters" sub-line under the array header.
+      meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      // The benefiting-meter rows section heading inside each card.
+      metersHeading: "Meters this array credits",
+      // The meter row's nameplate said in plain words; null reads not-on-file (never inferred).
+      meterNameplate: (kw: number): string => `${num(kw)} kW`,
+      // The program-code chip for the generic token, and the not-on-file granular note. A-5 renders
+      // the raw NEM token quietly; A-4's program-code component refines the plain-English meaning.
+      programGeneric: "NEM2",
+      programNotOnFile: "Program not on file",
+      // The share row label and the honest-blank share/credit cells (G-0 primitive lands in Epic G;
+      // A-5 renders the not-on-file state inline until then). The share % arrives in Epic C.
+      shareLabel: "Share of this array",
+      shareNotOnFile: "Not computed yet",
+      creditLabel: "Credit",
+      creditNotOnFile: "Not on file",
+      // Open the drawer on a meter row.
+      openMeter: (name: string): string => `Open ${name}`,
+      // Empty + no-array states (never a crash or a blank region).
+      noArrays: "No arrays linked to your solar meters yet.",
+      // A solar meter that lists no array (counted in needs-review): listed here so it is never
+      // silently dropped from the Arrays lens.
+      unlinkedHeading: "Solar meters not yet linked to an array",
+      unlinkedNote: "We could not match these to an array. Check them against your records.",
+    },
     demandPeak: {
       situation: (pump: string): string =>
         `${pump} has solar, but its bill peak is set after 4pm.`,

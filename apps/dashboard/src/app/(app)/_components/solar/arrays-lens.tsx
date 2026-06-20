@@ -1,0 +1,183 @@
+"use client";
+
+import { useQueryState } from "nuqs";
+import { cn } from "@/lib/cn";
+import { en } from "@/copy/en";
+import { cardClass } from "@/components/ui";
+import { SURFACE } from "@/lib/dashboard/surface";
+import type { SolarArrayGroup, SolarMeterView } from "@/lib/dashboard/solar";
+import { AllocationBar } from "./allocation-bar";
+
+// The Arrays lens (A-5, UX-DR4): the DEFAULT solar data hero. One array-group card per SolarArray,
+// header carrying the array name in plain words, its nameplate said as "840 kW solar" (from the
+// array's nameplateKw, NEVER derived from a code, FR3), and its true-up month. Inside each card the
+// benefiting meters render as rows with the meter name, a quiet program-code chip, and a share row.
+//
+// HONEST-BLANK discipline (FR10, the one law): the usage-proportional share arrives in Epic C and the
+// credit DOLLAR is settled only by a true-up statement (Epic G). Until then the share bar renders its
+// empty honest-blank rail and the credit cell reads not-on-file - never a fabricated zero, never a
+// percentage multiplied into a dollar. The inline honest-blank cells below are the A-5 consumption
+// point; G-0's shared <HonestBlank> primitive (solar/honest-blank.tsx) replaces them when it lands,
+// and A-4's <ProgramCode> component (solar/program-code.tsx) refines the program chip's plain meaning.
+//
+// FR7: every meter the populator linked to an array appears under that array, including meters under
+// different legal entities - the grouping is display-only, no render-time eligibility rule, no
+// exception thrown. Solar meters with no array link are surfaced in a needs-review tray, never
+// silently dropped. Tapping any meter row opens the shared drawer (`?meter=`) to that meter's solar
+// section, matching the meter-table/map-lens open pattern.
+
+const t = en.solar.arrays;
+
+/** The quiet program-code chip (A-5 inline; A-4's <ProgramCode> refines the plain meaning). A generic
+ *  NEM2 token reads as the generic program; an absent/unrecognized token reads not-on-file, never a
+ *  guessed granular code (FR2/FR5). */
+function ProgramChip({ nemType }: { nemType: string | null }) {
+  const generic = nemType !== null && nemType.toLowerCase().startsWith("nem2");
+  const text = generic ? t.programGeneric : t.programNotOnFile;
+  return (
+    <span
+      className={cn(
+        "type-label-caps inline-flex items-center rounded-[var(--radius-control)] px-2 py-0.5",
+        generic
+          ? "bg-surface-container-high text-on-surface-variant"
+          : "text-on-surface-variant",
+      )}
+    >
+      {text}
+    </span>
+  );
+}
+
+function MeterRow({
+  meter,
+  onOpen,
+}: {
+  meter: SolarArrayGroup["meters"][number];
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <li className="border-t border-outline-variant first:border-t-0">
+      <button
+        type="button"
+        onClick={() => onOpen(meter.pumpId)}
+        aria-label={t.openMeter(meter.meterName)}
+        className="flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="type-body-md text-on-surface">{meter.meterName}</span>
+          <ProgramChip nemType={meter.nemType} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="type-caption text-on-surface-variant">
+            {/* The meter's own paired nameplate; null reads not-on-file (never inferred, FR3). */}
+            {meter.solarKw !== null ? t.meterNameplate(meter.solarKw) : en.shell.drawer.notOnFile}
+          </span>
+          {/* The credit DOLLAR is honest-blank until a statement settles it (FR10). */}
+          <span className="type-caption text-on-surface-variant">
+            {t.creditLabel}: <span className="tnum">{t.creditNotOnFile}</span>
+          </span>
+        </div>
+        {/* The share row: the bar's honest-blank rail (share null at A-5) plus the not-computed note.
+            The real usage-proportional % arrives in Epic C; A-5 never fabricates one. */}
+        <div className="flex items-center gap-3">
+          <AllocationBar share={null} label={t.shareLabel} />
+          <span className="type-caption shrink-0 text-on-surface-variant">{t.shareNotOnFile}</span>
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function ArrayCard({
+  group,
+  onOpen,
+}: {
+  group: SolarArrayGroup;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <article className={cardClass({ className: "overflow-hidden" })}>
+      <header className="border-b border-outline-variant p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="type-title text-on-surface">{group.name ?? t.unnamed}</h3>
+          <span className="type-body-md tnum text-on-surface-variant">
+            {t.nameplate(group.nameplateKw)}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <span className="type-caption text-on-surface-variant">{t.meterCount(group.meters.length)}</span>
+          <span className="type-caption text-on-surface-variant">
+            {group.trueUpMonth !== null ? t.trueUpMonth(group.trueUpMonth) : t.trueUpNone}
+          </span>
+        </div>
+      </header>
+
+      <div className="px-4 pt-3">
+        <p className="type-label-caps text-on-surface-variant">{t.metersHeading}</p>
+      </div>
+      <ul>
+        {group.meters.map((m) => (
+          <MeterRow key={`${group.id}:${m.pumpId}`} meter={m} onOpen={onOpen} />
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+export function ArraysLens({
+  arrays,
+  meters,
+}: {
+  arrays: SolarArrayGroup[];
+  meters: SolarMeterView[];
+}) {
+  const [, setMeter] = useQueryState(SURFACE.meter);
+  const open = (id: string) => void setMeter(id);
+
+  // Solar meters with no array link - never silently dropped (FR7 honesty + needs-review surfacing).
+  const unlinked = meters.filter((m) => !m.hasArray);
+
+  if (arrays.length === 0 && unlinked.length === 0) {
+    return (
+      <section
+        id="solar-lens"
+        aria-label={en.solar.lens.arrays}
+        className="flex min-h-[16rem] scroll-mt-6 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8 text-center"
+      >
+        <p className="type-body-md text-on-surface-variant">{t.noArrays}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section id="solar-lens" aria-label={en.solar.lens.arrays} className="scroll-mt-6 space-y-4">
+      {arrays.map((group) => (
+        <ArrayCard key={group.id} group={group} onOpen={open} />
+      ))}
+
+      {unlinked.length > 0 && (
+        <article className={cardClass({ className: "overflow-hidden" })}>
+          <header className="border-b border-outline-variant p-4">
+            <h3 className="type-title text-on-surface">{t.unlinkedHeading}</h3>
+            <p className="type-caption mt-1 text-on-surface-variant">{t.unlinkedNote}</p>
+          </header>
+          <ul>
+            {unlinked.map((m) => (
+              <li key={m.id} className="border-t border-outline-variant first:border-t-0">
+                <button
+                  type="button"
+                  onClick={() => open(m.id)}
+                  aria-label={t.openMeter(m.name)}
+                  className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span className="type-body-md text-on-surface">{m.name}</span>
+                  <ProgramChip nemType={m.nemType} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
+    </section>
+  );
+}
