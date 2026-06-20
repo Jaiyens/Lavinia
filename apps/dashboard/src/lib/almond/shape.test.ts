@@ -14,6 +14,7 @@ import {
   summarizeMeters,
   summarizeReconciliation,
 } from "./shape";
+import { solarCreditState, withSolarCredit } from "./tools";
 
 // Spread (not `??`) so an explicit `null` override is honored for nullable fields.
 function makeMeter(over: Partial<MeterView> = {}): MeterView {
@@ -392,5 +393,56 @@ describe("summarizeMeters solar field", () => {
     const n1 = r.meters.find((m) => m.id === "n1");
     expect(s1?.solar?.sharePct).toBe(25);
     expect(n1?.solar).toBeNull();
+  });
+});
+
+// H-2 (FR31): Almond's honest-blank discipline. No true-up statement is on file at launch, so a
+// net-metering CREDIT dollar is never on file. Almond states the credit as not on file and points to
+// the upload path (FR37); it never invents a credit number. The discipline is carried as DATA on the
+// solar tool output (the `creditState`), so there is no credit figure for the model to fill - the only
+// credit words it reads are the honest-blank state and the upload path.
+describe("solarCreditState (H-2, FR31 honest-blank credit)", () => {
+  it("is never on file, carries the not-on-file phrasing, and never states a credit dollar", () => {
+    const credit = solarCreditState();
+    expect(credit.onFile).toBe(false);
+    expect(credit.status).toBe(en.solar.almond.creditNotOnFile);
+    // No net-metering credit number anywhere in what Almond reads about the credit (honest-blank).
+    expect(credit.status).not.toMatch(/\$/);
+    expect(credit.status).not.toMatch(/\d/);
+  });
+
+  it("points to the upload path (FR37) so the grower can settle the credit, never a sales pitch", () => {
+    const credit = solarCreditState();
+    expect(credit.uploadPath).toBe(en.solar.almond.creditUploadPath);
+    // The path names the upload, carries no number, and is not an exclamation.
+    expect(credit.uploadPath.toLowerCase()).toContain("upload");
+    expect(credit.uploadPath).not.toMatch(/\$/);
+    expect(credit.uploadPath).not.toContain("!");
+  });
+
+  it("attaches the honest-blank credit to a solar tool row and never to a non-solar row", () => {
+    // The tools edge merges the credit state onto a solar meter's `solar` shape; a non-solar row
+    // (solar === null) is returned untouched, so no credit cell is ever invented for a non-solar meter.
+    const solarRow = withSolarCredit({
+      solar: { program: "on NEM2 net metering" } as Record<string, unknown>,
+    });
+    const nonSolarRow = withSolarCredit({ solar: null });
+    expect(solarRow.solar?.creditState).toEqual(solarCreditState());
+    expect(nonSolarRow.solar).toBeNull();
+  });
+
+  it("never carries a net-metering credit dollar across the whole solar answer surface", () => {
+    // The full solar shape (H-1) plus the H-2 credit state: the only dollar Almond may state is a
+    // BILLED demand charge (in demandReality); no field is a net-metering credit number.
+    const solar = summarizeMeterSolar(
+      makeMeter({ isSolar: true, nemType: "nem2", benefitingArrays: [arrayView()] }),
+      { sharePct: 0.5, demandOwedCents: 100_00, uncoveredShare: 0.4 },
+    );
+    const credit = solarCreditState();
+    // The credit words carry no dollar; the rest of the solar answer carries no credit.
+    expect(credit.status).not.toMatch(/\$/);
+    expect(credit.uploadPath).not.toMatch(/\$/);
+    expect(solar.share).not.toMatch(/\$/);
+    expect(solar.demandReality.toLowerCase()).not.toContain("credit");
   });
 });

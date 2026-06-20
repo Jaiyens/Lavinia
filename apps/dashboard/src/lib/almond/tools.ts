@@ -109,6 +109,35 @@ function nowMonthOf(asOf: string): number {
   return Number.isFinite(month) ? month : 1;
 }
 
+/**
+ * The net-metering credit honest-blank state (H-2, FR31). The one law: program structure and timing
+ * are on file; net-metering DOLLAR credits are not, until a true-up statement is uploaded (Epic G).
+ * So Almond never states a true-up credit number it cannot trace to a real statement: it says the
+ * credit is "not on file yet" and points to the upload path (FR37). This is carried as DATA on every
+ * solar meter's tool output, not left to instruction alone, so the discipline is structural - there is
+ * no credit field for the model to fill, and the only credit words it reads are the honest-blank state
+ * and the upload path. Pure (reads only `en` copy): unit-testable, no Prisma, no I/O.
+ *
+ * `onFile` is always false at launch (no statement-settled path is wired yet); when Epic G's settle
+ * flip (FR28) lands, the SETTLED branch is the single place a real credit value would attach here.
+ */
+export type SolarCreditState = {
+  /** A net-metering credit dollar is on file (a true-up statement settled it). False until Epic G. */
+  onFile: false;
+  /** The honest-blank credit, in plain words ("its true-up credit is not on file yet"). No number. */
+  status: string;
+  /** The non-salesy path to settle the credit (FR37): upload the statement on the Solar tab. */
+  uploadPath: string;
+};
+
+export function solarCreditState(): SolarCreditState {
+  return {
+    onFile: false,
+    status: en.solar.almond.creditNotOnFile,
+    uploadPath: en.solar.almond.creditUploadPath,
+  };
+}
+
 export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMeter {
   const byMeter: SolarContextByMeter = new Map();
   const solarMeters = meters.filter((m) => m.isSolar);
@@ -167,9 +196,22 @@ export async function farmOverview(deps: AlmondToolDeps) {
   return summarizeFarmOverview(deps.farmName, meters, computeKpiStrip(meters));
 }
 
+/**
+ * Attach the honest-blank net-metering credit state (H-2, FR31) to a solar meter's summary. A
+ * non-solar meter's `solar` shape is null and is returned untouched. The credit state carries NO
+ * number - it is the not-on-file phrasing plus the upload path - so Almond states the credit as not on
+ * file and points to the upload path, never an invented dollar. Generic over the two shape types
+ * (`MeterSummary`, `MeterDetail`), which both carry `solar: MeterSolarView | null`.
+ */
+export function withSolarCredit<T extends { solar: { [k: string]: unknown } | null }>(row: T): T {
+  if (row.solar === null) return row;
+  return { ...row, solar: { ...row.solar, creditState: solarCreditState() } };
+}
+
 export async function meterList(deps: AlmondToolDeps, filters: MeterFilters = {}) {
   const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
-  return summarizeMeters(meters, filters, buildSolarContextByMeter(meters));
+  const summary = summarizeMeters(meters, filters, buildSolarContextByMeter(meters));
+  return { ...summary, meters: summary.meters.map(withSolarCredit) };
 }
 
 export async function meterDetail(deps: AlmondToolDeps, query: string) {
@@ -181,7 +223,10 @@ export async function meterDetail(deps: AlmondToolDeps, query: string) {
     const solarCtx = match.meter.isSolar
       ? buildSolarContextByMeter(meters).get(match.meter.id)
       : undefined;
-    return { found: true as const, meter: summarizeMeterDetail(match.meter, solarCtx) };
+    return {
+      found: true as const,
+      meter: withSolarCredit(summarizeMeterDetail(match.meter, solarCtx)),
+    };
   }
   if (match.kind === "ambiguous") {
     // Several meters match by name; ask the grower to pick rather than guess one.
@@ -378,7 +423,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     listMeters: tool({
       description:
-        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality). Optionally filter by rate schedule, entity, or ranch (case-insensitive contains).",
+        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality) plus its credit state. A net-metering true-up credit is NOT on file until the grower uploads a true-up statement: never state a credit dollar; say the credit is not on file yet and point to the upload path the credit state names.",
       inputSchema: z.object({
         rate: z.string().optional().describe("Filter by rate schedule, e.g. AG-A1"),
         entity: z.string().optional().describe("Filter by legal billing entity name"),
@@ -396,7 +441,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     getMeter: tool({
       description:
-        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, and how solar relates to its demand charge. Quote those facts verbatim; never state a net-metering credit dollar that is not on file.",
+        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, how solar relates to its demand charge, and its credit state. Quote those facts verbatim. A net-metering true-up credit is NEVER on file until the grower uploads a true-up statement: if asked for the credit, say it is not on file yet and point to the upload path the credit state names; never invent or estimate a credit dollar.",
       inputSchema: z.object({
         query: z.string().describe("The meter name, SA id, or id to look up"),
       }),

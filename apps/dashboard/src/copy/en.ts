@@ -1902,6 +1902,14 @@ export const en = {
       demandRealityWithShare: (demandUsd: string, uncoveredPct: number): string =>
         `solar does not lower its demand charge of about ${demandUsd}, about ${uncoveredPct}% of the bill solar does not cover, set in the evening when the panels are nearly off`,
       demandNotOnFile: "its demand-charge reality is not on file yet",
+      // The net-metering credit honest-blank (H-2, FR31). A true-up credit is a dollar Terra cannot
+      // trace to a real statement, so Almond states it as not on file rather than inventing a number,
+      // and names the upload path (FR37) the grower can use to settle it. NEVER a credit figure.
+      creditNotOnFile: "its true-up credit is not on file yet",
+      // The plain way to fill the gap (FR37): upload the true-up statement on the Solar tab to settle
+      // the credit. Stated only as the path Almond points to, never as a sales pitch.
+      creditUploadPath:
+        "to see the credit, upload the true-up statement on the Solar tab and it will settle",
     },
   },
 
