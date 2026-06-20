@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { checkCodeRequest } from "@/lib/auth/login-rate-limit";
 import { Button, Input } from "@/components/ui";
 import { LogoMark } from "@/components/logo";
 import { en } from "@/copy/en";
@@ -42,6 +43,15 @@ async function requestCode(formData: FormData) {
   if (!email || !email.includes("@")) {
     redirect("/login?error=1");
   }
+  // Per-email send throttle (lib/auth/login-rate-limit.ts): bounds mailbombing and stops the
+  // "Send a new code" loop from minting unlimited fresh codes to brute-force against. Over
+  // budget, keep the operator on the code step and point them at the latest code they already
+  // have. Counts every request, including resends.
+  if (!checkCodeRequest(email).allowed) {
+    redirect(
+      `/login?step=code&email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent(callbackUrl)}&error=throttled`,
+    );
+  }
   let sent = true;
   try {
     await signIn("email", { email, redirect: false });
@@ -65,6 +75,16 @@ export default async function LoginPage({
   const t = en.auth;
   const callbackUrl = safeCallback(params.callbackUrl ?? null);
   const onCodeStep = params.step === "code" && typeof params.email === "string" && params.email.length > 0;
+  // One calm error line, chosen by cause. "locked" (verify budget spent, code invalidated) lands
+  // on the email step; "throttled" (too many codes requested) lands on the code step; any other
+  // error (a wrong/expired code, a bad email, a send failure) shows the generic retry line.
+  const errorMessage = params.error
+    ? params.error === "locked"
+      ? t.code.tooManyAttempts
+      : params.error === "throttled"
+        ? t.code.tooManyRequests
+        : t.error
+    : null;
 
   return (
     <div className="reveal flex w-full max-w-sm flex-col items-center gap-9">
@@ -83,9 +103,9 @@ export default async function LoginPage({
         </div>
       </div>
 
-      {params.error ? (
+      {errorMessage ? (
         <p className="type-body-md w-full rounded-[var(--radius-control)] bg-alert-container px-4 py-3 text-center font-medium text-on-alert-container">
-          {t.error}
+          {errorMessage}
         </p>
       ) : null}
 

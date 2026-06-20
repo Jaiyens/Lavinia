@@ -1,4 +1,3 @@
-import { randomInt } from "node:crypto";
 import NextAuth from "next-auth";
 import type { EmailConfig } from "@auth/core/providers/email";
 import { prisma } from "@/lib/db";
@@ -7,19 +6,18 @@ import { terraPrismaAdapter } from "@/lib/auth-adapter";
 import { normalizeEmail } from "@/lib/email-normalize";
 import { isStaticallyAllowed } from "@/lib/auth/allowlist";
 import { claimInvitesForUser, emailHasFarmAccess } from "@/lib/auth/invite";
+import { generateLoginCode } from "@/lib/auth/login-code";
 import { sendLoginCode } from "@/lib/email";
 
 // How long a sign-in code stays valid. Short on purpose: a 6-digit code is brute-forceable
-// (1,000,000 combinations), so the verification window is the main limiter. The code is also
-// single-use (Auth.js deletes the VerificationToken row on a correct guess). For higher
-// assurance, add a rate limit / Vercel BotID on /api/auth/callback/email (see the redesign
-// note). 10 minutes balances "didn't arrive yet" against the brute-force window.
+// (1,000,000 combinations), so the verification window is one of the limiters. The defense in
+// depth is: (1) this 10-min expiry, (2) the per-email VERIFY budget that invalidates the code
+// after 5 wrong tries, and (3) the per-email REQUEST budget that bounds resends - both in
+// lib/auth/login-rate-limit.ts, enforced at the email callback route and the requestCode action.
+// Vercel BotID at the edge is the complementary durable layer. The code is also single-use
+// (Auth.js deletes the VerificationToken row on a correct guess), and minting a new code deletes
+// any prior one (lib/auth-adapter.ts). 10 minutes balances "didn't arrive yet" against the window.
 const CODE_TTL_SECONDS = 10 * 60;
-
-/** A cryptographically-uniform 6-digit code, zero-padded ("000000"-"999999"). */
-function generateLoginCode(): string {
-  return randomInt(0, 1_000_000).toString().padStart(6, "0");
-}
 
 // Passwordless email sign-in via a typed 6-digit CODE (not a magic link). Built as a plain
 // `type: "email"` provider object rather than the Nodemailer factory on purpose: that factory

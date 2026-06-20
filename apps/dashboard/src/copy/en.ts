@@ -106,6 +106,11 @@ export const en = {
       verify: "Verify and sign in",
       resend: "Send a new code",
       differentEmail: "Use a different email",
+      // Shown when the verify budget is spent (5 wrong tries): the code is cleared for safety
+      // and they need a fresh one. Lands on the email step.
+      tooManyAttempts: "Too many tries. For your safety we cleared that code. Enter your email to get a new one.",
+      // Shown when too many codes were requested for one email in a short window.
+      tooManyRequests: "You have asked for several codes. Use the most recent one, or wait a few minutes.",
     },
     // The code email itself (real sender). The code is rendered large in the body.
     email: {

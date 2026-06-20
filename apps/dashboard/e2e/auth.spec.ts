@@ -26,6 +26,27 @@ test("the energy route is also gated", async ({ page }) => {
   await expect(page).toHaveURL(/\/login(\?|$)/);
 });
 
+// The 6-digit code flow stays on ONE screen: entering an email swaps the email form for the
+// code-entry step in place (no magic link, no new tab). RESEND_API_KEY is unset in the e2e env,
+// so the code is "sent" via the offline stub (no network) while the VerificationToken is written
+// to the throwaway db, exactly as in production minus the email transport.
+test("entering an email advances to the in-place 6-digit code step", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email address").fill("grower@example.com");
+  await page.getByRole("button", { name: "Email me a code" }).click();
+
+  // Same screen, step two: the code-entry form, with the email carried through.
+  await expect(page).toHaveURL(/[?&]step=code/);
+  await expect(page).toHaveURL(/grower%40example\.com/);
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  await expect(page.getByLabel("6-digit code")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Verify and sign in" })).toBeVisible();
+
+  // Recover without leaving the screen: resend a fresh code, or change the email.
+  await expect(page.getByRole("button", { name: "Send a new code" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Use a different email" })).toBeVisible();
+});
+
 // Story 5.3: "Tour a sample" is PUBLIC (zero commitment, no sign-in), unlike the gated
 // dashboard. The login page links to it. (The empty e2e db has no demo seed, so the page
 // shows the no-farm state rather than the badge; the badge + demo-pinning are covered by
