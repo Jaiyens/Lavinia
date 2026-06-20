@@ -16,6 +16,7 @@ import { DashboardTile } from "./dashboard-tile";
 import { ExpandablePanel } from "./expandable-panel";
 import { type BentoItem } from "./bento-grid";
 import { HomeBoard } from "./home-board";
+import { ScaleToFit } from "./scale-to-fit";
 import { BillingClosesCard } from "./billing-closes-card";
 import { RateFixCard } from "./rate-fix-card";
 import { BillsCard } from "./bills-card";
@@ -85,7 +86,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   const bentoItems: BentoItem[] = [
     {
       id: "calendar",
-      className: "min-h-0 overflow-hidden md:col-span-2 2xl:col-span-2 2xl:row-span-4",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-4",
       node: (
         <ExpandablePanel
           label={en.shell.calendar.heading}
@@ -98,7 +99,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "map",
-      className: "min-h-0 md:col-span-2 2xl:col-span-2 2xl:row-span-2",
+      className: "min-h-0 lg:col-span-2 lg:row-span-2",
       node: (
         <ExpandablePanel
           label={en.shell.map.caption}
@@ -112,7 +113,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
           <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-3" })}>
             <h2 className="type-label-caps mb-2 px-1 text-on-surface-variant">{en.shell.map.caption}</h2>
             <div className="min-h-0 flex-1 overflow-hidden rounded-[var(--radius-control)]">
-              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-[260px] 2xl:h-full" />
+              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-[260px] lg:h-full" />
             </div>
           </section>
         </ExpandablePanel>
@@ -120,7 +121,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "spend",
-      className: "min-h-0 overflow-hidden md:col-span-2 2xl:col-span-2 2xl:row-span-2",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
       node: (
         <ExpandablePanel
           label={en.home.spendHero.title}
@@ -145,7 +146,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "findings",
-      className: "min-h-0 overflow-hidden md:col-span-2 2xl:col-span-2 2xl:row-span-2",
+      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
       node: (
         <ExpandablePanel
           label={en.home.findingsTitle}
@@ -162,7 +163,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "closes",
-      className: "2xl:col-span-1 2xl:row-span-1",
+      className: "lg:col-span-1 lg:row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -184,7 +185,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "fix",
-      className: "2xl:col-span-1 2xl:row-span-1",
+      className: "lg:col-span-1 lg:row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -210,7 +211,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "bills",
-      className: "2xl:col-span-1 2xl:row-span-1",
+      className: "lg:col-span-1 lg:row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -230,7 +231,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "savings",
-      className: "2xl:col-span-1 2xl:row-span-1",
+      className: "lg:col-span-1 lg:row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -250,10 +251,15 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
-    <div className="flex flex-col gap-3 p-3 lg:p-4 2xl:h-[calc(100dvh-7.5rem)] 2xl:overflow-hidden">
-      {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
-          the viewport (minus the tour banner) so the whole farm stays on one screen. */}
-      <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
+    <div className="p-3 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden lg:p-4">
+      {/* The whole farm stays on ONE screen at any window size: the board is authored at a fixed design
+          size and uniformly scaled to fit (ScaleToFit), so a smaller laptop shrinks it proportionally
+          instead of crunching the tiles. Below lg the scaler is off and the bento stacks + scrolls. */}
+      <ScaleToFit designWidth={1440} designHeight={820}>
+        <div className="flex h-full w-full flex-col gap-3">
+          <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
+        </div>
+      </ScaleToFit>
     </div>
   );
 }
