@@ -16,7 +16,6 @@ import { DashboardTile } from "./dashboard-tile";
 import { ExpandablePanel } from "./expandable-panel";
 import { type BentoItem } from "./bento-grid";
 import { HomeBoard } from "./home-board";
-import { ScaleToFit } from "./scale-to-fit";
 import { BillingClosesCard } from "./billing-closes-card";
 import { RateFixCard } from "./rate-fix-card";
 import { BillsCard } from "./bills-card";
@@ -251,15 +250,13 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
-    <div className="p-3 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden lg:p-4">
-      {/* The whole farm stays on ONE screen at any window size: the board is authored at a fixed design
-          size and uniformly scaled to fit (ScaleToFit), so a smaller laptop shrinks it proportionally
-          instead of crunching the tiles. Below lg the scaler is off and the bento stacks + scrolls. */}
-      <ScaleToFit designWidth={1440} designHeight={820}>
-        <div className="flex h-full w-full flex-col gap-3">
-          <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
-        </div>
-      </ScaleToFit>
+    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-56px)] lg:overflow-hidden lg:p-4">
+      {/* The whole farm stays on ONE screen at desktop widths: the board fills the viewport and the
+          ROOT font size scales fluidly with it (see the fluid-scaling block in globals.css), so the
+          numbers, labels, and spacing grow and shrink TOGETHER with the cards - the same density on a
+          13" laptop or a 27" monitor, while the map and chart render crisp at native resolution (no
+          transform blur). Below lg the bento stacks + scrolls. */}
+      <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
     </div>
   );
 }
