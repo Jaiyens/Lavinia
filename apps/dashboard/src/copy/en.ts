@@ -1464,6 +1464,28 @@ export const en = {
 
   // Lever 4: solar / NEM. Solar offsets daytime energy, not the evening demand peak.
   solar: {
+    // The honest-blank / honest-unknown primitive (G-0). ONE shared set of words for "not on file
+    // yet", rendered identically everywhere via <HonestBlank>, so every later net-metering dollar cell
+    // imports it instead of re-inventing the phrasing and the grower learns the state once. The one
+    // law: program structure and timing are on file; net-metering dollar credits are not - so a credit
+    // cell with no statement reads as a deliberate, settled absence (with the non-salesy upload path),
+    // never an error, a guess, a zero, or a bare dash. Plain operator English, no exclamation marks,
+    // no em dashes.
+    honestBlank: {
+      // The dollar honest-BLANK label: a net-metering credit with no backing statement on file.
+      blank: "Not on file yet",
+      // The non-salesy path that turns the blank into a settled value (the upload-to-settle action).
+      // Plain and optional - never a sales pitch, just the way to fill the gap when the grower has it.
+      uploadToSettle: "Upload the true-up statement to settle this",
+      // The structural honest-UNKNOWN label: a non-dollar datum (a nameplate, a true-up month, an
+      // array link) genuinely absent. Distinct from the dollar blank - there is nothing to upload to
+      // settle a missing structural fact, so it carries no upload path.
+      unknown: "Not on file",
+      // The accessible announcement for each absence, so a screen reader reads the state as content
+      // ("Not on file yet"), never an empty cell it skips. Includes what the absent thing is.
+      blankAria: (what: string): string => `${what}: not on file yet`,
+      unknownAria: (what: string): string => `${what}: not on file`,
+    },
     // The Solar tab shell (A-1). Eyebrow over the farm name on /solar, and the
     // empty-but-structured placeholder shown before the lenses arrive (A-2 onward).
     tab: {
