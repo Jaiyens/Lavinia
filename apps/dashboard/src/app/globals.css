@@ -593,6 +593,25 @@ html {
   will-change: transform;
 }
 
+/* Auth / onboarding ambient glow (AuthBackdrop): the corner glows breathe and drift very
+   slowly so the sign-in "front door" feels alive, never busy. Long duration, soft ease, no
+   bounce. Frozen by the prefers-reduced-motion block below. */
+@keyframes terra-auth-glow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate3d(0, -1.5rem, 0) scale(1.06);
+    opacity: 1;
+  }
+}
+.auth-glow {
+  animation: terra-auth-glow 18s var(--ease-standard) infinite;
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -607,7 +626,8 @@ html {
   .pulse-once,
   .drawer-in,
   .skeleton,
-  .chart-bar-grow {
+  .chart-bar-grow,
+  .auth-glow {
     animation: none !important;
     animation-delay: 0ms !important;
   }

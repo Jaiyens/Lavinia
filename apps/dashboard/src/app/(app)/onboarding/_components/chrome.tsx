@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { LogoMark } from "@/components/logo";
+import { AuthBackdrop } from "@/components/auth-backdrop";
 
-// Shared onboarding chrome (identify -> connect -> review). A calm warm-paper canvas with a
-// faint grain wash, a slim Terra wordmark, and a three-segment progress bar so the grower
-// always knows how far they are. Content is centered in a single column; `wide` widens it
-// for the source picker's stacked cards. Mobile-first: the bar wraps under the wordmark on
-// the narrowest screens via the flex header.
+// Shared onboarding chrome (identify -> connect -> review). The same premium "front door"
+// vibe as the sign-in screen: the shared AuthBackdrop (soft green glows on a calm cool-grey
+// canvas), a logo-chip wordmark, and a three-segment progress bar so the grower always
+// knows how far they are. Content is centered in a single column; `wide` widens it for the
+// source picker's stacked cards. Mobile-first: the bar wraps under the wordmark on the
+// narrowest screens via the flex header.
 export function OnboardingShell({
   step,
   children,
@@ -16,9 +20,19 @@ export function OnboardingShell({
   wide?: boolean;
 }) {
   return (
-    <main className="grain relative flex min-h-dvh w-full flex-col bg-surface text-on-surface">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-5">
-        <span className="font-display text-lg font-semibold tracking-tight">Terra</span>
+    <main className="relative flex min-h-dvh w-full flex-col text-on-surface">
+      <AuthBackdrop />
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6">
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-2.5"
+          aria-label="Terra home"
+        >
+          <span className="flex size-9 items-center justify-center rounded-[0.7rem] border border-outline-variant bg-surface-bright shadow-e1">
+            <LogoMark className="size-5 text-primary transition-transform duration-200 ease-out group-hover:rotate-6" />
+          </span>
+          <span className="font-display text-lg leading-none">Terra</span>
+        </Link>
         <Stepper step={step} />
       </header>
       <div
@@ -27,7 +41,7 @@ export function OnboardingShell({
           wide ? "max-w-xl" : "max-w-md",
         )}
       >
-        {children}
+        <div className="reveal">{children}</div>
       </div>
     </main>
   );
