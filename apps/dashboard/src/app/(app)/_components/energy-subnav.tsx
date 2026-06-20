@@ -2,41 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MapPin, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 
 // The sub-tab strip under the Energy agent: the meter dashboard (basePath) and the public-records
-// Parcel lookup (basePath/parcel). Mirrors the lens toggle's underline-tab styling, but these are
-// real routes (the user chose a route segment over a lens), so they are <Link>s with the active
-// tab derived from the pathname. basePath is "/energy" signed-in, "/tour/energy" on the Tour.
+// Parcel lookup (basePath/parcel). The user chose a route segment over a lens, so these are real
+// <Link>s with the active tab derived from the pathname. basePath is "/energy" signed-in,
+// "/tour/energy" on the Tour.
+//
+// Rendered as a LOUD segmented pill control (icons + readable labels + a filled green active
+// pill), not the quiet caps-underline of the lens toggle: this is cross-route navigation a grower
+// has to be able to find, so it earns more visual weight than an in-view lens switch.
 export function EnergySubnav({ basePath = "/energy" }: { basePath?: string }) {
   const pathname = usePathname();
   const parcelHref = `${basePath}/parcel`;
   const tabs = [
-    { href: basePath, label: en.shell.agents.energy, active: pathname === basePath },
-    { href: parcelHref, label: en.parcel.navTab, active: pathname.startsWith(parcelHref) },
+    { href: basePath, label: en.shell.agents.energy, Icon: Zap, active: pathname === basePath },
+    { href: parcelHref, label: en.parcel.navTab, Icon: MapPin, active: pathname.startsWith(parcelHref) },
   ];
 
   return (
     <div
       role="tablist"
       aria-label={en.parcel.subnavLabel}
-      className="flex items-center gap-1 border-b border-outline-variant px-5 lg:px-12"
+      className="flex items-center gap-2 border-b border-outline-variant px-5 py-3 lg:px-12"
     >
-      {tabs.map((tab) => (
+      {tabs.map(({ href, label, Icon, active }) => (
         <Link
-          key={tab.href}
-          href={tab.href}
+          key={href}
+          href={href}
           role="tab"
-          aria-selected={tab.active}
+          aria-selected={active}
+          aria-current={active ? "page" : undefined}
           className={cn(
-            "-mb-px flex h-11 items-center border-b-2 px-3 type-label-caps transition-colors",
-            tab.active
-              ? "border-primary font-semibold text-primary"
-              : "border-transparent text-on-surface-variant hover:text-on-surface",
+            "inline-flex h-10 items-center gap-2 rounded-[var(--radius-control)] px-4 type-body-md font-semibold transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            active
+              ? "bg-primary text-on-primary shadow-e1"
+              : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
           )}
         >
-          {tab.label}
+          <Icon className="h-4 w-4" aria-hidden="true" />
+          {label}
         </Link>
       ))}
     </div>
