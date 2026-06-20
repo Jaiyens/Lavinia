@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { en } from "@/copy/en";
+import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { dashboardFarm } from "@/lib/onboarding/farm";
 import { DashboardChrome } from "../../_components/dashboard-chrome";
 import { loadRecDetail } from "../../_components/rec-detail-data";
 import { RecDetail } from "../../_components/rec-detail";
@@ -15,7 +17,12 @@ export const metadata: Metadata = {
 
 export default async function RecPage({ params }: { params: Promise<{ recId: string }> }) {
   const { recId } = await params;
-  const data = await loadRecDetail(prisma, recId);
+  // Resolve only the caller's own farm, then scope the rec to it. The route is sign-in
+  // gated; this second check stops one authed member reading another farm's finding by id.
+  const userId = await sessionUserId();
+  const resolved = await dashboardFarm(prisma, userId);
+  if (!resolved) notFound();
+  const data = await loadRecDetail(prisma, recId, resolved.farm.id);
   if (!data) notFound();
 
   return (

@@ -216,11 +216,11 @@ export async function loadMetersForFarm(
  */
 export async function loadDashboard(
   prisma: PrismaClient,
-  opts: { demoOnly?: boolean; userId?: string | null } = {},
+  opts: { demoOnly?: boolean; userId?: string | null; activeFarmId?: string | null } = {},
 ): Promise<DashboardData | null> {
   const resolved = opts.demoOnly
     ? await demoFarm(prisma)
-    : await dashboardFarm(prisma, opts.userId);
+    : await dashboardFarm(prisma, opts.userId, opts.activeFarmId);
   if (!resolved) return null;
   const meters = await loadMetersForFarm(prisma, resolved.farm.id);
   return {

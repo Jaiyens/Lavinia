@@ -16,6 +16,8 @@ import {
   type MeterFilters,
 } from "./shape";
 import { checkGenerationThrottle } from "./rate-limit";
+import { hasGatewayKey } from "@/lib/ai/gateway";
+import { isCodegenExportAvailable } from "./codegen/flags";
 import { navigateInputSchema, resolveNavigate, type NavigateInput } from "./skills/navigate";
 import {
   exportSpreadsheetInputSchema,
@@ -29,6 +31,12 @@ import {
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
+import {
+  codegenExportInputSchema,
+  runCodegenExport,
+  type CodegenExportInput,
+  type CodegenExportResult,
+} from "./skills/codegen-export";
 
 /**
  * The read-only, farm-scoped data Almond can read. Each executor takes the SAME `deps` (a
@@ -179,6 +187,24 @@ export function generateReportSkill(
 }
 
 /**
+ * The `codegenExport` skill executor (code-gen export POC). Builds the canonical snapshot, has the model
+ * WRITE the report markup, renders it in a Vercel Sandbox, and verifies it fail-closed (falling back to
+ * the deterministic report on any failure). Far heavier than the deterministic file skills, so it passes
+ * through the SAME per-farm generation throttle (Story 10.3) before any model/sandbox work. The chat
+ * tool-call's `abortSignal` is threaded so a closed tab cancels the model loop and the microVM.
+ */
+export function codegenExportSkill(
+  deps: AlmondToolDeps,
+  input: CodegenExportInput,
+  signal?: AbortSignal,
+): Promise<CodegenExportResult> {
+  if (!checkGenerationThrottle(deps.farmId).allowed) {
+    return Promise.resolve({ kind: "error", message: throttledMessage() });
+  }
+  return runCodegenExport(deps, input, signal);
+}
+
+/**
  * The file-building skills, handed to the model only when the caller `canExport` (an authed owner OR
  * the demo/Tour viewer — see `AlmondActor`). The single place a file capability is added; gated by
  * OMISSION in `buildAlmondSkills` so the model can never call a skill it was not given. As of Story
@@ -219,6 +245,35 @@ function fileSkills(deps: AlmondToolDeps) {
       toModelOutput: ({ output }) => {
         if (output.kind === "file") {
           return { type: "text", value: `Made ${output.fileName} covering ${output.meterCount} meters.` };
+        }
+        return { type: "text", value: output.message };
+      },
+    }),
+  } as const;
+}
+
+/**
+ * The code-gen export skill (POC), spread in ONLY when every dependency is present (the flag + a gateway
+ * key + sandbox creds + a built snapshot id — see codegen/flags.ts) AND the caller is an authed OWNER.
+ * Owner-only and availability-gated by OMISSION: in dev/CI (no key, no creds) the skill is never
+ * registered, so the "zero external calls" law holds and the model is never handed a skill it cannot
+ * fulfil. The model is steered (description) to use it ONLY for novel/custom report asks; the instant
+ * deterministic `generateReport` still serves ordinary "make me a PDF" requests.
+ */
+function codegenSkills(deps: AlmondToolDeps) {
+  return {
+    codegenExport: tool({
+      description:
+        "Build a CUSTOM, one-off PDF report by writing its layout from the farm's data — use this ONLY for a bespoke report request that the standard generateReport sections do not cover (an unusual shape, framing, or selection the grower describes). For an ordinary farm summary, savings, or meter-table PDF, use generateReport instead (it is instant). Every figure is verified against the farm's real numbers before the file is handed over; you choose only the request, never any value.",
+      inputSchema: codegenExportInputSchema,
+      // The chat tool-call options carry the abort signal; thread it so a closed tab cancels the nested
+      // model loop and stops the Vercel Sandbox microVM rather than leaking a running render.
+      execute: (input, { abortSignal }) => codegenExportSkill(deps, input, abortSignal),
+      // Keep the PDF bytes OUT of the model's context — the bytes reach the grower via the responder's
+      // `data-report` card, not the prompt window.
+      toModelOutput: ({ output }) => {
+        if (output.kind === "file") {
+          return { type: "text", value: `Made ${output.fileName}.` };
         }
         return { type: "text", value: output.message };
       },
@@ -297,9 +352,15 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
   // never handed a skill it must not call. `canExport` now includes the demo/Tour viewer (so a guest
   // can pull a report of the demo farm); persistence stays owner-only, gated separately in the
   // responder. A caller without `canExport` gets only the read-safe set — files withheld by OMISSION.
+  // The code-gen export POC is OWNER-ONLY (heavier + experimental) and only offered when every external
+  // dependency is configured (flag + gateway key + sandbox creds + a built snapshot id). When any is
+  // absent it is withheld by omission, so the deterministic file skills above still serve the grower and
+  // dev/CI never even sees a skill that would touch the gateway or a sandbox.
+  const codegenOn = actor.authedOwner && isCodegenExportAvailable(hasGatewayKey());
   return {
     ...readTools,
     ...(actor.canExport ? fileSkills(deps) : {}),
+    ...(codegenOn ? codegenSkills(deps) : {}),
   };
 }
 

@@ -24,9 +24,11 @@ import { newReportBlobKey, putPrivateBlob, XLSX_CONTENT_TYPE } from "@/lib/stora
 
 /** The persisted report shapes, mirrored by GeneratedReport.kind (a String in the schema). The two
  *  spreadsheet shapes match the exportSpreadsheet skill's EXPORT_TABLES so a persisted kind
- *  round-trips to the same builder; `"report"` is the generateReport skill's PDF (Story 9.3). The
- *  column stays a free String, so storing a new kind needs no migration. */
-export const GENERATED_REPORT_KINDS = ["meters", "billDue", "report"] as const;
+ *  round-trips to the same builder; `"report"` is the generateReport skill's PDF (Story 9.3);
+ *  `"codegen"` is the model-authored bespoke PDF from the code-gen export POC (rendered in a Vercel
+ *  Sandbox, verified fail-closed) — a distinct kind so Reports history can tell a custom report from a
+ *  deterministic one. The column stays a free String, so storing a new kind needs no migration. */
+export const GENERATED_REPORT_KINDS = ["meters", "billDue", "report", "codegen"] as const;
 export type GeneratedReportKind = (typeof GENERATED_REPORT_KINDS)[number];
 
 /** The deps the store closes over: a Prisma client, the resolved farm scope, and (optionally) the

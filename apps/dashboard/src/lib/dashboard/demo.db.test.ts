@@ -7,9 +7,9 @@ import { loadDashboard } from "./load";
 // Two guarantees proven here against a throwaway Postgres db (never dev.db):
 //   - Story 5.3 AC2: the public Tour is pinned to the DEMO farm, so a real grower's data
 //     never leaks to an unauthenticated visitor even when a real connected farm exists.
-//   - C2 (multi-tenant ownership): dashboardFarm is owner-scoped on Farm.userId, so it
-//     resolves a real farm ONLY for the user who owns it - never for another user, and
-//     never for an un-owned (no userId) request.
+//   - C2 (multi-tenant ownership): dashboardFarm is membership-scoped, so it resolves a real
+//     farm ONLY for a user with an active FarmMembership on it - never for another user, and
+//     never for a non-member (no userId) request.
 
 let db: TestDb;
 let prisma: PrismaClient;
@@ -30,12 +30,14 @@ beforeAll(async () => {
 
   const demo = await prisma.farm.create({ data: { name: "Demo Farm", isDemo: true } });
   demoId = demo.id;
-  // A real connected farm owned by `owner`: not demo, ACTIVE pge_smd connection, userId set.
+  // A real connected farm owned by `owner`: not demo, ACTIVE pge_smd connection, with an owner
+  // FarmMembership (the access gate is now membership, not Farm.userId).
   const real = await prisma.farm.create({
     data: {
       name: "Real Farm",
       isDemo: false,
       userId: ownerId,
+      memberships: { create: [{ role: "owner", status: "active", user: { connect: { id: ownerId } } }] },
       connections: { create: [{ type: "pge_smd", status: "active" }] },
     },
   });

@@ -1,0 +1,2 @@
+psql:prisma/migrations/20260619120000_farm_membership/migration.sql:22: ERROR:  email case-collision: two User rows share a lowercased email; merge them before migrating
+CONTEXT:  PL/pgSQL function inline_code_block line 8 at RAISE

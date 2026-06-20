@@ -24,15 +24,19 @@ function pumpIdOf(params: Params): string | null {
   return null;
 }
 
-export async function loadRecDetail(prisma: PrismaClient, recId: string) {
-  const rec = await prisma.recommendation.findUnique({ where: { id: recId } });
+export async function loadRecDetail(prisma: PrismaClient, recId: string, farmId: string) {
+  // Farm-scoped: the rec id arrives in the URL, so re-check it belongs to the CALLER'S own
+  // farm. Never findUnique by bare id - that let any rec (and, via the pump second-hop
+  // below, any farm's meter / PG&E account / billing) leak cross-farm. The pump is loaded
+  // the same farm-scoped way so the second hop cannot pivot into another farm's meter.
+  const rec = await prisma.recommendation.findFirst({ where: { id: recId, farmId } });
   if (!rec) return null;
 
   const params = paramsOf(rec.action);
   const pumpId = pumpIdOf(params);
   const pump = pumpId
-    ? await prisma.pump.findUnique({
-        where: { id: pumpId },
+    ? await prisma.pump.findFirst({
+        where: { id: pumpId, farmId },
         include: {
           account: true,
           blocks: { select: { id: true, name: true } },

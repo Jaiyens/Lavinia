@@ -38,6 +38,7 @@ import {
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
+import { type CodegenExportResult } from "./skills/codegen-export";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import {
   buildAlmondSkills,
@@ -211,6 +212,24 @@ function reportFile(result: GenerateReportResult): StreamableFile | null {
   };
 }
 
+/** Normalize a clean code-gen export result into the common streamable-file shape, or null for
+ *  empty/error. Persisted under the distinct `"codegen"` kind so Reports history can tell a model-
+ *  authored custom report from a deterministic one. The stream/card path is identical (content-type
+ *  driven), so the download card needs no change. */
+function codegenFile(result: CodegenExportResult): StreamableFile | null {
+  if (result.kind !== "file") return null;
+  return {
+    kind: "codegen",
+    preview: result.preview,
+    fileName: result.fileName,
+    contentType: result.contentType,
+    bytes: result.bytes,
+    meterCount: result.meterCount,
+    coverageAsOf: result.coverageAsOf,
+    params: result.params,
+  };
+}
+
 /**
  * Persist a generated file to the owner's Reports (8.6) when the caller is an authed owner, then write
  * the bytes onto the stream as a transient `data-report` download card. Serves BOTH the spreadsheet
@@ -280,6 +299,14 @@ function isReportResult(output: unknown): output is GenerateReportResult {
   return kind === "file" || kind === "empty" || kind === "error";
 }
 
+/** Narrow an unknown tool output to a code-gen export result. Same `file`/`empty`/`error` outcome shape
+ *  as the other file skills (the codegen skill mirrors it so this persist-and-stream path serves it). */
+function isCodegenResult(output: unknown): output is CodegenExportResult {
+  if (typeof output !== "object" || output === null || !("kind" in output)) return false;
+  const kind = (output as { kind: unknown }).kind;
+  return kind === "file" || kind === "empty" || kind === "error";
+}
+
 /** Stream Almond's answer through a real LanguageModel with the farm-scoped tools. Works with
  *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same.
  *  Wrapped in `createUIMessageStream` so a clean `navigate` tool result is lifted onto the stream as
@@ -343,6 +370,17 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                 // bytes as a download card. Empty/error outcomes write no card (text carries them).
                 if (tr.toolName === "generateReport" && isReportResult(tr.output)) {
                   const file = reportFile(tr.output);
+                  if (file && !writtenFiles.has(file.fileName)) {
+                    writtenFiles.add(file.fileName);
+                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                  }
+                }
+                // A clean code-gen export (POC) follows the SAME path: a verified, model-authored PDF is
+                // persisted (kind "codegen") and streamed as a download card. A verification reject /
+                // error already fell back to the deterministic template inside the skill, so whatever
+                // arrives here is a real file or a typed empty/error (which writes no card).
+                if (tr.toolName === "codegenExport" && isCodegenResult(tr.output)) {
+                  const file = codegenFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);

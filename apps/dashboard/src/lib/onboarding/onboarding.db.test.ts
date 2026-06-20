@@ -155,13 +155,19 @@ describe("saveConfirmation, persisting the farmer's edits", () => {
     expect(conn.status).toBe("active");
     expect(conn.authorizedAt).not.toBeNull();
 
-    // currentFarm is owner-scoped (C2): the activated farm resolves for its owner only.
-    // Onboarding sets Farm.userId at identify; mirror that here, then resolve as the owner.
+    // currentFarm is membership-scoped (C2): the activated farm resolves for its members only.
+    // Onboarding attaches an owner membership at identify; mirror that here, then resolve as owner.
     const owner = await prisma.user.create({ data: { email: "olsen@example.com" } });
-    await prisma.farm.update({ where: { id: connect.farmId }, data: { userId: owner.id } });
+    await prisma.farm.update({
+      where: { id: connect.farmId },
+      data: {
+        userId: owner.id,
+        memberships: { create: [{ role: "owner", status: "active", user: { connect: { id: owner.id } } }] },
+      },
+    });
     const current = await currentFarm(prisma, owner.id);
     expect(current?.id).toBe(connect.farmId);
-    // And it stays hidden from a different signed-in user.
+    // And it stays hidden from a different signed-in user (no membership).
     const stranger = await prisma.user.create({ data: { email: "stranger@example.com" } });
     expect(await currentFarm(prisma, stranger.id)).toBeNull();
   });

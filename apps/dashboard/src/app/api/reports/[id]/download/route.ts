@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
+import { activeFarmId } from "@/lib/auth/active-farm";
 import { currentFarm } from "@/lib/onboarding/farm";
 import { loadReportForFarm } from "@/lib/almond/reports/store";
 import { getPrivateBlob } from "@/lib/storage/blob";
@@ -32,9 +33,11 @@ export async function GET(
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // The caller's OWN connected farm (owner-scoped on Farm.userId). A signed-in grower with no farm
-  // of their own resolves null here, so they can fetch nothing — exactly the dashboardFarm law.
-  const farm = await currentFarm(prisma, userId);
+  // The caller's active farm, membership-scoped. A signed-in grower who is a member of no farm
+  // resolves null here, so they can fetch nothing. loadReportForFarm below is additionally scoped
+  // by farmId, so a report on a farm the caller is not a member of is structurally unreachable.
+  const activeId = await activeFarmId(userId);
+  const farm = await currentFarm(prisma, userId, activeId);
   if (!farm) {
     return Response.json({ error: "not found" }, { status: 404 });
   }

@@ -6,16 +6,15 @@ import { expect, test } from "@playwright/test";
 // source-edge DB-integration test (src/lib/onboarding/sources.db.test.ts) and a live
 // dev.db check, since establishing a JWT session in headless Playwright is out of
 // proportion here. This spec pins the routing: the new flow is protected, and the legacy
-// /dashboard onboarding stays public (dormant) so nothing 5.1 relied on broke.
+// /dashboard tree is now ALSO protected (it previously leaked any farm's findings).
 test("the new connect-a-source onboarding is auth-gated", async ({ page }) => {
   await page.goto("/onboarding");
   await expect(page).toHaveURL(/\/login(\?|$)/);
 });
 
-test("the legacy onboarding stays public and renders", async ({ page }) => {
+test("the legacy /dashboard tree is no longer public (now sign-in gated)", async ({ page }) => {
+  // Removed from isPublicPath: an unauthenticated visit redirects to sign-in instead of
+  // rendering the dormant legacy onboarding (which sat in front of the cross-farm leak).
   await page.goto("/dashboard/pump-timing");
-  await expect(page).toHaveURL(/\/dashboard\/pump-timing\/onboarding$/);
-  await expect(
-    page.getByRole("heading", { name: /See what your power is actually costing you/ }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/login(\?|$)/);
 });

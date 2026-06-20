@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { normalizeEmail } from "@/lib/email-normalize";
 import { Button, Input } from "@/components/ui";
 import { Wordmark } from "@/components/logo";
 import { en } from "@/copy/en";
@@ -29,14 +30,16 @@ async function signInWithGoogle(formData: FormData) {
 
 async function signInWithEmail(formData: FormData) {
   "use server";
-  const email = formData.get("email");
-  if (typeof email !== "string" || email.trim().length === 0) {
+  const raw = formData.get("email");
+  if (typeof raw !== "string" || raw.trim().length === 0) {
     redirect("/login?error=1");
   }
+  // Normalize before the magic link is minted so the verification-token identifier and the
+  // User row that gets created/looked up share one canonical form (case/Unicode-insensitive).
   // Sends the magic link (stubbed sender logs the URL) then redirects to the
   // verifyRequest page configured in auth.config.ts (/login?sent=email).
   await signIn("email", {
-    email: email.trim(),
+    email: normalizeEmail(raw),
     redirectTo: safeCallback(formData.get("callbackUrl")),
   });
 }

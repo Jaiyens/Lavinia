@@ -7,6 +7,8 @@
 
 import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
+import { canAccessFarm, requireRole } from "@/lib/auth/access";
+import { normalizeEmail } from "@/lib/email-normalize";
 import { prisma } from "@/lib/db";
 import {
   type RevealCounts,
@@ -39,12 +41,17 @@ export async function identifyFarmAction(formData: FormData): Promise<void> {
   if (!userId) redirect("/login");
   const name = field(formData, "farmName");
   const ownerName = field(formData, "ownerName");
-  const ownerEmail = field(formData, "ownerEmail");
+  const rawEmail = field(formData, "ownerEmail");
+  // Store the owner's contact email in the same canonical form as the User identity, so the
+  // Person row later bridges to a membership by a clean email match.
+  const ownerEmail = rawEmail ? normalizeEmail(rawEmail) : null;
+  // Create the farm already owned (userId + owner membership in one insert), so an interrupted
+  // identify can never leave an owner-less real farm.
   const { farmId } = await createFarmFromConnection(prisma, {
     name: name ?? undefined,
     ownerName: ownerName ?? undefined,
+    userId,
   });
-  await prisma.farm.update({ where: { id: farmId }, data: { userId } });
   if (ownerEmail) {
     // createFarmFromConnection makes the owner Person only when a name was given. If the
     // operator gave an email but no name, that update would match nothing and the email
@@ -62,10 +69,11 @@ export async function identifyFarmAction(formData: FormData): Promise<void> {
   redirect(`${CONNECT}?farm=${farmId}`);
 }
 
-/** Confirm the operator owns the in-progress farm before mutating it. */
-async function ownsFarm(farmId: string, userId: string): Promise<boolean> {
-  const farm = await prisma.farm.findFirst({ where: { id: farmId, userId } });
-  return farm !== null;
+// Onboarding mutations require the caller to be an owner/manager of the farm; the read-only poll
+// requires any membership. Both go through the shared gate (src/lib/auth/access.ts), which keys on
+// an active FarmMembership - never Farm.userId. A null userId fails both (farmRole returns null).
+async function canManageFarm(farmId: string, userId: string | null): Promise<boolean> {
+  return requireRole(prisma, farmId, userId, "manager");
 }
 
 export type ConnectState = { error?: string };
@@ -85,7 +93,7 @@ export type StartPgeState =
  *  a missing token) so the picker can surface it instead of a generic message. */
 export async function startPgeConnectAction(farmId: string): Promise<StartPgeState> {
   const userId = await sessionUserId();
-  if (!userId || !(await ownsFarm(farmId, userId))) {
+  if (!(await canManageFarm(farmId, userId))) {
     return { ok: false, error: "Your session expired. Sign in again to connect." };
   }
   try {
@@ -102,7 +110,8 @@ export async function startPgeConnectAction(farmId: string): Promise<StartPgeSta
 /** Poll how the live PG&E pull is progressing for the connecting screen (read-only). */
 export async function pgeRevealAction(farmId: string): Promise<RevealCounts | null> {
   const userId = await sessionUserId();
-  if (!userId || !(await ownsFarm(farmId, userId))) return null;
+  // Read-only poll: any active member may watch the pull. (canAccessFarm handles a null userId.)
+  if (!(await canAccessFarm(prisma, farmId, userId))) return null;
   try {
     return await pgeReveal(prisma, farmId);
   } catch {
@@ -119,7 +128,7 @@ export async function finishPgeConnectAction(
   opts?: { force?: boolean },
 ): Promise<boolean> {
   const userId = await sessionUserId();
-  if (!userId || !(await ownsFarm(farmId, userId))) return false;
+  if (!(await canManageFarm(farmId, userId))) return false;
   const result = await importUtilityApiIntoFarm(
     prisma,
     farmId,
@@ -136,7 +145,7 @@ export async function finishPgeConnectAction(
 export async function connectSampleAction(formData: FormData): Promise<void> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
-  if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
+  if (!farmId || !(await canManageFarm(farmId, userId))) redirect("/login");
   await addPgeFeed(prisma, farmId);
   await prisma.connection.updateMany({
     where: { farmId, type: "pge_smd" },
@@ -155,7 +164,7 @@ export async function uploadGreenButtonAction(
   const farmId = field(formData, "farmId");
   // A lost/expired session redirects to sign-in rather than failing silently (the
   // useActionState form cannot otherwise surface an auth failure).
-  if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
+  if (!farmId || !(await canManageFarm(farmId, userId))) redirect("/login");
   const files = formData
     .getAll("files")
     .filter((f): f is File => f instanceof File && f.size > 0);
@@ -180,7 +189,7 @@ export async function uploadSpreadsheetAction(
 ): Promise<ConnectState> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
-  if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
+  if (!farmId || !(await canManageFarm(farmId, userId))) redirect("/login");
   const file = formData
     .getAll("sheet")
     .find((f): f is File => f instanceof File && f.size > 0);
@@ -208,7 +217,7 @@ export async function uploadBillAction(
 ): Promise<ConnectState> {
   const userId = await sessionUserId();
   const farmId = field(formData, "farmId");
-  if (!userId || !farmId || !(await ownsFarm(farmId, userId))) redirect("/login");
+  if (!farmId || !(await canManageFarm(farmId, userId))) redirect("/login");
   // Require an actual file: without this guard a click with no file selected (or a
   // double-click) would re-run the import on nothing.
   const file = formData
@@ -235,7 +244,9 @@ export async function saveConfirmationAction(formData: FormData): Promise<void> 
   const raw = formData.get("payload");
   if (typeof raw !== "string") throw new Error("Missing confirmation payload");
   const payload = parseConfirmationPayload(JSON.parse(raw));
-  if (!(await ownsFarm(payload.farmId, userId))) redirect("/login");
+  // The farmId is fully client-supplied here (a JSON body field), so this MUST gate on the
+  // owner/manager role for that exact farm, never trust the id.
+  if (!(await canManageFarm(payload.farmId, userId))) redirect("/login");
   const { farmId, alreadyFinalized } = await saveConfirmation(prisma, payload);
   if (!alreadyFinalized) await runEngines(prisma, farmId);
   redirect("/");

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { activeFarmId } from "@/lib/auth/active-farm";
 import { currentFarm } from "@/lib/onboarding/farm";
 import { listReportsForFarm } from "@/lib/almond/reports/store";
 import { toReportListItem } from "@/lib/almond/reports/view";
@@ -28,10 +29,11 @@ export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
   const userId = await sessionUserId();
-  // Owner-scoped: the caller's own connected farm, or null when they have none yet. A farmless
-  // grower is routed to onboarding (the dashboardFarm law) rather than shown an empty Reports list
-  // for a farm they do not have.
-  const farm = await currentFarm(prisma, userId);
+  // Membership-scoped: the active farm the caller is a member of, or null when they belong to none
+  // yet. A farmless grower is routed to onboarding rather than shown an empty Reports list for a
+  // farm they do not have.
+  const activeId = await activeFarmId(userId);
+  const farm = await currentFarm(prisma, userId, activeId);
   if (!farm) redirect("/onboarding");
 
   const rows = await listReportsForFarm(prisma, farm.id);

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { isPublicPath } from "./auth.config";
 
 // The middleware gate's allowlist (Story 5.1, AC3). Route groups are invisible in the
-// URL, so the gate works off real paths: public = /login, /api/auth/*, and the legacy
-// /dashboard/* tree; everything else is protected.
+// URL, so the gate works off real paths: public = /login, /tour/*, and /api/auth/*;
+// everything else (including the now-gated legacy /dashboard/* tree) is protected.
 describe("isPublicPath", () => {
   it("treats the sign-in page as public", () => {
     expect(isPublicPath("/login")).toBe(true);
@@ -19,10 +19,10 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/auth")).toBe(true);
   });
 
-  it("keeps the legacy /dashboard onboarding tree public (Story 5.2 replaces it)", () => {
-    expect(isPublicPath("/dashboard")).toBe(true);
-    expect(isPublicPath("/dashboard/pump-timing")).toBe(true);
-    expect(isPublicPath("/dashboard/pump-timing/onboarding")).toBe(true);
+  it("gates the legacy /dashboard tree (it used to leak any farm's findings cross-tenant)", () => {
+    expect(isPublicPath("/dashboard")).toBe(false);
+    expect(isPublicPath("/dashboard/pump-timing")).toBe(false);
+    expect(isPublicPath("/dashboard/pump-timing/onboarding")).toBe(false);
   });
 
   it("protects the (app) routes (path-invisible group)", () => {

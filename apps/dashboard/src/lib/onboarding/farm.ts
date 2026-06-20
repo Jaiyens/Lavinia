@@ -55,6 +55,13 @@ export type NewFarmInput = {
   ownerName?: string;
   /** Provider-side authorization reference for the Connection. */
   externalRef?: string | null;
+  /**
+   * The signed-in operator who owns this farm. When set, the farm is created already owned -
+   * the advisory Farm.userId pointer AND the owner FarmMembership are written in the same
+   * insert, so there is no crash window that could strand an owner-less real farm. Omitted by
+   * the legacy/demo helpers, which create unowned farms exactly as before.
+   */
+  userId?: string;
 };
 
 /**
@@ -69,6 +76,19 @@ export async function createFarmFromConnection(
   const farm = await prisma.farm.create({
     data: {
       name: input.name?.trim() || "My Farm",
+      // Owned atomically when the operator is known: the advisory primary-owner pointer AND the
+      // owner FarmMembership land in the SAME insert (the access gate reads membership, so a
+      // crash between two separate writes must never leave a real farm with no owner).
+      ...(input.userId
+        ? {
+            userId: input.userId,
+            memberships: {
+              create: [
+                { role: "owner", status: "active", user: { connect: { id: input.userId } } },
+              ],
+            },
+          }
+        : {}),
       people: input.ownerName?.trim()
         ? { create: [{ name: input.ownerName.trim(), role: "owner", language: "en" }] }
         : undefined,
@@ -1605,24 +1625,63 @@ const FARM_INCLUDE = {
 } as const;
 
 /**
- * The farm the tool operates on: the SIGNED-IN OPERATOR'S real (non-demo) farm with an
- * authorized PG&E connection. Owner-scoped on `Farm.userId` (set at onboarding), so one
- * grower can never resolve another grower's account - the multi-tenant isolation gate.
- * Seed/fixture demo farms (isDemo) are skipped, so a fresh install sends the grower to
- * onboarding to connect their own account instead of landing on the Batth demo.
- *
- * Without a `userId` (an unauthenticated or legacy caller) there is NO real farm to
- * resolve: the function returns null and the caller falls back to the badged
- * representative demo, so a real grower's data never surfaces on an un-owned request.
+ * Every farm the signed-in user can OPEN: a farm they are an active member of (non-demo),
+ * newest membership first. The farm-switcher list and the source for the default active farm.
+ * Lightweight (id + name only). Returns [] for a signed-out caller.
  */
-export async function currentFarm(prisma: PrismaClient, userId?: string | null) {
+export async function accessibleFarms(
+  prisma: PrismaClient,
+  userId?: string | null,
+): Promise<{ id: string; name: string }[]> {
+  if (!userId) return [];
+  const memberships = await prisma.farmMembership.findMany({
+    where: { userId, status: "active", farm: { isDemo: false } },
+    orderBy: { createdAt: "desc" },
+    select: { farm: { select: { id: true, name: true } } },
+  });
+  return memberships.map((m) => m.farm);
+}
+
+/**
+ * The farm the tool operates on for the signed-in operator. TWO gates, both hard ANDs:
+ *  - ACCESS: an active FarmMembership (NOT Farm.userId), so a teammate added to the farm sees
+ *    it and a removed member loses it on their very next request. This is the tenant isolation
+ *    gate - one user can never resolve a farm they are not a member of.
+ *  - READY: an active pge_smd connection (every finalized onboarding ends with one, whatever
+ *    the source), so a farm still mid-onboarding resolves null and the caller routes to
+ *    onboarding. The pge_smd filter is ANDed with membership, never OR'd - relaxing it would
+ *    leak every connected farm or render an empty mid-onboarding farm.
+ *
+ * `activeFarmId` (validated upstream by activeFarmId(), and re-checked here by the membership
+ * predicate) selects WHICH accessible+ready farm to open when the user belongs to several;
+ * when it does not point at a ready farm, the newest ready farm is used. Capability (can this
+ * user persist/attach) is derived from ROLE at the call site, never from this resolution.
+ *
+ * Without a `userId` (an unauthenticated or legacy caller) there is no farm to resolve: returns
+ * null and the caller falls back to the badged representative demo.
+ */
+export async function currentFarm(
+  prisma: PrismaClient,
+  userId?: string | null,
+  activeFarmId?: string | null,
+) {
   if (!userId) return null;
+  const base = {
+    isDemo: false,
+    memberships: { some: { userId, status: "active" as const } },
+    connections: { some: { type: PGE_SMD, status: "active" } },
+  };
+  // Honor the selected active farm when it is one the user can access AND it is ready.
+  if (activeFarmId) {
+    const chosen = await prisma.farm.findFirst({
+      where: { ...base, id: activeFarmId },
+      include: FARM_INCLUDE,
+    });
+    if (chosen) return chosen;
+  }
+  // Default: the newest accessible + ready farm.
   return prisma.farm.findFirst({
-    where: {
-      isDemo: false,
-      userId,
-      connections: { some: { type: PGE_SMD, status: "active" } },
-    },
+    where: base,
     orderBy: { createdAt: "desc" },
     include: FARM_INCLUDE,
   });
@@ -1684,10 +1743,11 @@ export type DashboardFarm = {
 export async function dashboardFarm(
   prisma: PrismaClient,
   userId?: string | null,
+  activeFarmId?: string | null,
 ): Promise<DashboardFarm | null> {
-  const real = await currentFarm(prisma, userId);
+  const real = await currentFarm(prisma, userId, activeFarmId);
   if (real) return { farm: real, dataKind: "real" };
-  // Authenticated caller with no farm of their own: no demo fallback -> caller routes to
+  // Authenticated caller with no accessible+ready farm: no demo fallback -> caller routes to
   // onboarding. Only the un-owned (no userId) legacy/public path falls back to the demo.
   if (userId) return null;
   return demoFarm(prisma);

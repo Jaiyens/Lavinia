@@ -25,13 +25,16 @@ model Farm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // The signed-in grower who owns this farm (Auth.js User). Nullable: demo/seed
-  // farms and any pre-auth farm own no user. Story 5.1 adds the column; Story 5.2
-  // attaches connected farms to the user and filters the dashboard by ownership.
-  // dashboardFarm()/currentFarm() do NOT yet filter on userId (see farm.ts).
+  // Advisory denormalized "primary owner" pointer (the original creator / last-owner hint).
+  // NEVER the access gate any more: all access goes through FarmMembership (a farm can have
+  // many member users, and a user many farms). Nullable: demo/seed farms own no user. Kept so
+  // the migration backfill and the last-owner logic have a cheap pointer; reads gate on
+  // membership via src/lib/auth/access.ts, not on this column.
   userId String?
 
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  memberships     FarmMembership[]
+  invites         FarmInvite[]
   blocks          Block[]
   ranches         Ranch[]
   pumps           Pump[]
@@ -44,6 +47,72 @@ model Farm {
   generatedReports GeneratedReport[]
 
   @@index([userId])
+}
+
+// --- Team membership (many users <-> one farm) --------------------------------
+// The multi-tenant access model. A FarmMembership is the ONLY thing that grants a user access
+// to a farm (Farm.userId is advisory, never the gate). A user may belong to several farms; a
+// farm may have several members. Access is gated DB-side on every request (the JWT carries
+// only the user id), so removing a member takes effect on their next navigation.
+enum FarmRole {
+  owner
+  manager
+  viewer
+}
+
+enum MembershipStatus {
+  active
+  removed
+}
+
+model FarmMembership {
+  id          String           @id @default(cuid())
+  farmId      String
+  // The accepted member. Set only when an invited person signs in as the invited email
+  // (the verified-email claim in lib/auth.ts), never at invite time.
+  userId      String
+  role        FarmRole         @default(manager)
+  status      MembershipStatus @default(active)
+  // Who added them (audit / "added by" provenance). SetNull so a deleted inviter never
+  // cascades the membership away.
+  invitedById String?
+  createdAt   DateTime         @default(now())
+  removedAt   DateTime?
+
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  // Restrict (NOT Cascade): deleting a user must not silently orphan a farm to zero owners.
+  // The deleteUser hook in auth-adapter refuses-or-reassigns a sole owner first.
+  user      User  @relation("FarmMemberships", fields: [userId], references: [id], onDelete: Restrict)
+  invitedBy User? @relation("SentFarmInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([farmId, userId]) // a user is a member of a farm at most once
+  @@index([userId]) // "all my farms" (the switcher) - hot read
+  @@index([farmId]) // "all members of this farm" (settings)
+}
+
+model FarmInvite {
+  id               String   @id @default(cuid())
+  farmId           String
+  // ALWAYS stored via normalizeEmail() (lowercased) so the sign-in claim matches reliably; the
+  // partial unique index in the migration keeps one live invite per email per farm.
+  invitedEmail     String
+  role             FarmRole @default(manager)
+  // pending | accepted | revoked | declined. A revoke is TERMINAL (a re-grant is a new row).
+  status           String   @default("pending")
+  invitedById      String?
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime // createdAt + 14d; the claim filters on this
+  acceptedAt       DateTime?
+  acceptedByUserId String?
+
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("InviteInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  // Note: a partial unique index (farmId, invitedEmail) WHERE status='pending' is added in the
+  // migration SQL (Prisma's DSL cannot express it) so there is at most ONE live invite per
+  // email per farm and a revoke is genuinely final.
+  @@index([invitedEmail]) // the claim lookup at sign-in (hot)
+  @@index([farmId]) // the pending list in settings
 }
 
 // A legal billing entity. Batth runs ~6 of these; each owns several PG&E accounts.
@@ -458,17 +527,24 @@ model GeneratedReport {
 // completeness and a possible future switch to database sessions.
 model User {
   id            String    @id @default(cuid())
-  name          String?
+  // All writes go through normalizeEmail (the adapter wrapper lowercases createUser/updateUser),
+  // so this @unique is effectively case-insensitive in practice. The migration ALSO adds a
+  // functional UNIQUE INDEX on lower(email) as defense-in-depth against any write path that
+  // skips the wrapper (e.g. a raw seed), so two casings can never become two users.
   email         String?   @unique
+  name          String?
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts         AuthAccount[]
-  sessions         Session[]
-  farms            Farm[]
-  generatedReports GeneratedReport[]
+  accounts           AuthAccount[]
+  sessions           Session[]
+  farms              Farm[]
+  generatedReports   GeneratedReport[]
+  farmMemberships    FarmMembership[] @relation("FarmMemberships")
+  invitedMemberships FarmMembership[] @relation("SentFarmInvites")
+  sentInvites        FarmInvite[]     @relation("InviteInviter")
 }
 
 // OAuth account link (renamed from the adapter's default `Account` to avoid colliding

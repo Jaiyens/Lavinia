@@ -64,4 +64,24 @@ describe("terraPrismaAdapter", () => {
     const pgeAccounts = await prisma.account.count();
     expect(pgeAccounts).toBe(0);
   });
+
+  it("normalizes email so two casings are ONE user (createUser stores + getUserByEmail finds)", async () => {
+    const adapter = terraPrismaAdapter(prisma);
+    const created = await adapter.createUser!({
+      id: "u_case",
+      email: "Bob@Farm.COM",
+      emailVerified: null,
+      name: "Bob",
+      image: null,
+    });
+    // Stored in the one canonical (lowercased) form, never the typed casing.
+    expect(created.email).toBe("bob@farm.com");
+
+    // Every casing resolves to the SAME row, so a person can never split into two users
+    // (and an invite can never be claimed by the wrong identity).
+    const lower = await adapter.getUserByEmail!("bob@farm.com");
+    const upper = await adapter.getUserByEmail!("BOB@FARM.COM");
+    expect(lower?.id).toBe(created.id);
+    expect(upper?.id).toBe(created.id);
+  });
 });

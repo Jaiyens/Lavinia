@@ -1,6 +1,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { PrismaClient } from "@prisma/client";
 import type { Adapter } from "next-auth/adapters";
+import { normalizeEmail } from "@/lib/email-normalize";
 
 // The collision-safe Prisma adapter for Auth.js v5 (Story 5.1). Pulled out of lib/auth.ts
 // so it can be unit-tested with a throwaway PrismaClient without importing NextAuth.
@@ -20,7 +21,29 @@ export function authAccountClient(prisma: PrismaClient): PrismaClient {
   }) as PrismaClient;
 }
 
-/** The Auth.js adapter wired to Terra's renamed `AuthAccount` model. */
+/**
+ * The Auth.js adapter wired to Terra's renamed `AuthAccount` model, with email normalization
+ * forced at the persistence boundary. createUser / getUserByEmail / updateUser all run their
+ * email through normalizeEmail, so however a provider casts the address (a typed magic-link,
+ * a Google `email` claim), there is exactly ONE stored form. That is what makes `Bob@x.com`
+ * and `bob@x.com` the same person instead of two User rows, and what lets invites match by
+ * email reliably. (Belt-and-suspenders with the `@db.Citext` column added in the membership
+ * migration; the column protects any future write path that skips this wrapper.)
+ */
 export function terraPrismaAdapter(prisma: PrismaClient): Adapter {
-  return PrismaAdapter(authAccountClient(prisma));
+  const base = PrismaAdapter(authAccountClient(prisma));
+  return {
+    ...base,
+    createUser(user) {
+      const email = user.email ? normalizeEmail(user.email) : user.email;
+      return base.createUser!({ ...user, email });
+    },
+    getUserByEmail(email) {
+      return base.getUserByEmail!(normalizeEmail(email));
+    },
+    updateUser(user) {
+      const email = user.email ? normalizeEmail(user.email) : user.email;
+      return base.updateUser!({ ...user, email });
+    },
+  };
 }

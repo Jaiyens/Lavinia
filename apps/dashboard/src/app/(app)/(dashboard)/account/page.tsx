@@ -4,7 +4,7 @@ import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
 import { signOutAction } from "../../actions";
-import { resolveFarm } from "../_data";
+import { resolveActiveFarmId, resolveFarm } from "../_data";
 
 // The account / profile page (#3). The signed-in operator's own details, the farm, and the
 // connected data sources, plus a path to connect another account (#6) and sign out. Lives
@@ -16,7 +16,8 @@ export default async function AccountPage() {
   const userId = await sessionUserId();
   // resolveFarm is request-cached and the layout already redirected a farmless user to
   // onboarding, so a farm is present. dataKind is "real" for a connected grower.
-  const resolved = await resolveFarm(userId, false);
+  const activeId = await resolveActiveFarmId(userId);
+  const resolved = await resolveFarm(userId, activeId, false);
   const farm = resolved?.farm ?? null;
 
   const connections = farm

@@ -63,7 +63,8 @@ let farmAReportId: string;
 
 const PGE_SMD = "pge_smd";
 
-/** Create a user + their own connected (active PG&E) farm, so currentFarm resolves it. */
+/** Create a user + their own connected (active PG&E) farm with an owner membership, so
+ *  currentFarm (now membership-scoped) resolves it. */
 async function seedOwnedFarm(name: string): Promise<{ userId: string; farmId: string }> {
   const user = await prisma.user.create({ data: { email: `${name}@example.com` } });
   const farm = await prisma.farm.create({
@@ -71,6 +72,7 @@ async function seedOwnedFarm(name: string): Promise<{ userId: string; farmId: st
       name,
       isDemo: false,
       userId: user.id,
+      memberships: { create: [{ role: "owner", status: "active", user: { connect: { id: user.id } } }] },
       connections: { create: [{ type: PGE_SMD, status: "active", authorizedAt: new Date() }] },
     },
   });

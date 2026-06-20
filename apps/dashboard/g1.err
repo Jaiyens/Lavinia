@@ -1,0 +1,2 @@
+psql:prisma/migrations/20260619120000_farm_membership/migration.sql:43: ERROR:  orphan real farms with null userId exist; attach an owner before backfill
+CONTEXT:  PL/pgSQL function inline_code_block line 3 at RAISE

@@ -1,6 +1,8 @@
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
+import { farmRole } from "@/lib/auth/access";
+import { activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
@@ -30,6 +32,13 @@ import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
  */
 export const runtime = "nodejs";
 
+// The code-gen export POC can run a nested model loop + boot a Vercel Sandbox to render a PDF within a
+// single turn (≈20–60s from the pre-built WeasyPrint snapshot — no per-request install). The platform
+// default would 504 mid-render, so raise the ceiling. This is a CEILING, not a floor: ordinary
+// read-only turns and the deterministic file skills return in well under a second. (Confirm the Vercel
+// plan permits 300s; lower it to the plan's max otherwise.)
+export const maxDuration = 300;
+
 export async function POST(req: Request): Promise<Response> {
   // Per-IP rate limit FIRST (Story 10.3): a blocked request must cost no DB read and no Gateway spend,
   // so this short-circuits before the farm is resolved or the body is parsed. 429 + Retry-After lets a
@@ -43,9 +52,11 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const userId = await sessionUserId();
-  // Signed-in: their own farm. Public Tour (no session): the demo farm, read-only — Almond is
-  // part of the full tour now, never a leak (demoFarm is isDemo-only, never real data).
-  const resolved = userId ? await dashboardFarm(prisma, userId) : await demoFarm(prisma);
+  // Signed-in: a farm they are an active member of, selected by the validated active-farm
+  // cookie. Public Tour (no session): the demo farm, read-only — Almond is part of the full tour
+  // now, never a leak (demoFarm is isDemo-only, never real data).
+  const activeId = await activeFarmId(userId);
+  const resolved = userId ? await dashboardFarm(prisma, userId, activeId) : await demoFarm(prisma);
   if (!resolved) {
     return Response.json({ error: "no farm" }, { status: 400 });
   }
@@ -71,19 +82,20 @@ export async function POST(req: Request): Promise<Response> {
   const farm = resolved.farm;
   // Never present a nameless farm: fall back if the name is blank/whitespace.
   const farmName = farm.name.trim() || "your farm";
-  // Capability is a SERVER property, never from the request body (ADR-A08): an authed owner is
-  // a signed-in grower on their OWN connected farm (dataKind "real"); the public Tour resolves
-  // the badged demo farm ("representative") and is NOT an owner. `authedOwner` gates PERSISTENCE
-  // (keeping an export in the owner's Reports). `canExport` is broader — it lets the demo/Tour
-  // viewer build a downloadable report of the demo farm too (a guest export, streamed but never
-  // stored). The factory uses `canExport` to gate which file skills the model is handed.
-  const authedOwner = resolved.dataKind === "real";
-  const canExport = true; // every resolved farm (real owner OR demo) may pull a downloadable file
-  // Attachments are an owner-only context channel (capability parity with the export/report skills):
-  // an authed owner's spreadsheet/CSV is parsed to text and PDFs/images pass through to the model's
-  // native reading; a non-owner (public Tour) has any file parts stripped, so an untrusted caller can
-  // never push file bytes into the model. Read-only: attachments are context, never a data write.
-  const preparedMessages = authedOwner
+  // Capability is a SERVER property, never from the request body (ADR-A08), and now derived from
+  // the caller's ROLE rather than dataKind: an owner or manager may PERSIST (keep an export in
+  // Reports) and push attachments; a VIEWER of a real farm — and the public Tour's demo viewer —
+  // may not. `canExport` stays broader: every resolved farm (incl. a viewer or the demo) may pull
+  // a downloadable file (streamed, never stored). Resolution guarantees `userId` is an active
+  // member of `farm`, so role is non-null for an authed caller.
+  const role = userId ? await farmRole(prisma, farm.id, userId) : null;
+  const canPersist = role === "owner" || role === "manager";
+  const canExport = true; // every resolved farm (any member OR demo) may pull a downloadable file
+  // Attachments are a write-capable context channel, so they are gated on canPersist: an owner/
+  // manager's spreadsheet/CSV is parsed to text and PDFs/images pass through; a viewer or the
+  // public Tour has any file parts stripped, so an untrusted (or read-only) caller can never push
+  // file bytes into the model. Read-only otherwise: attachments are context, never a data write.
+  const preparedMessages = canPersist
     ? await parseSpreadsheetAttachments(uiMessages)
     : stripFileAttachments(uiMessages);
   // Validate the requested model against the allowlist (a bad/forged value falls back to Opus 4.8) so
@@ -94,9 +106,11 @@ export async function POST(req: Request): Promise<Response> {
       uiMessages: preparedMessages,
       system: buildSystemPrompt(farmName),
       deps: { prisma, farmId: farm.id, farmName },
-      // userId rides on the actor so an owner-only side effect (persisting an export to Reports,
-      // Story 8.6) can record who asked. Only ever the owner's own id; null for the public Tour.
-      actor: { authedOwner, canExport, userId: authedOwner ? userId : null },
+      // `authedOwner` is the persistence capability (now owner OR manager via canPersist). userId
+      // rides along so a persisted export (Story 8.6) records who asked; null when the caller
+      // cannot persist (a viewer or the public Tour), so a read-only caller is never recorded as
+      // an author.
+      actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null },
     });
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a

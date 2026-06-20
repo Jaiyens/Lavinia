@@ -10,7 +10,7 @@ import { closeDateShort } from "@/lib/format/date";
 import { scanBills } from "@/lib/dashboard/bills";
 import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
-import { resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
+import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
 import { CalendarLens } from "./calendar-lens";
 import { DashboardTile } from "./dashboard-tile";
 import { ExpandablePanel } from "./expandable-panel";
@@ -31,7 +31,8 @@ const LA_TZ = "America/Los_Angeles";
 
 export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } = {}) {
   const userId = demoOnly ? null : await sessionUserId();
-  const resolved = await resolveFarm(userId, demoOnly);
+  const activeId = demoOnly ? null : await resolveActiveFarmId(userId);
+  const resolved = await resolveFarm(userId, activeId, demoOnly);
   if (!resolved) {
     return (
       <div className="mx-auto max-w-md px-5 py-24 text-center lg:px-12">

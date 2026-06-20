@@ -41,9 +41,13 @@ const sessionCookieName = `${useSecureCookies ? "__Secure-" : ""}authjs.session-
  * "(app)" prefix:
  *  - /login                the sign-in page itself ((auth) group)
  *  - /api/auth/*           the Auth.js HTTP handler (sign-in/callback/verify)
- *  - /dashboard/*          the legacy pre-rebuild onboarding tree (Story 5.2 replaces it;
- *                          it must keep working and its e2e must stay green - do not gate)
  * Next internals and static assets are excluded by the middleware matcher, not here.
+ *
+ * The legacy `/dashboard/*` tree was public; it is NOW sign-in gated. It exposed a
+ * cross-farm leak (an unauthenticated read of any recommendation by id, and an
+ * unauthenticated write that flipped any farm's findings). Gating it closes both vectors;
+ * loadRecDetail + resolveRecommendation are additionally farm-scoped so no authed member
+ * can read or mutate another farm's rows either.
  */
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
@@ -53,7 +57,6 @@ export function isPublicPath(pathname: string): boolean {
   // public too.
   if (pathname === "/tour" || pathname.startsWith("/tour/")) return true;
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return true;
   return false;
 }
 

@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { sessionUserId } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { farmRole } from "@/lib/auth/access";
 import type { FindingView } from "@/lib/dashboard/findings";
-import { resolveFarm, resolveFindings } from "./_data";
+import { resolveActiveFarmId, resolveFarm, resolveFindings } from "./_data";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
@@ -28,11 +30,18 @@ const CONNECT_SOURCE_PATH = "/onboarding";
 // (dashboard)), so a farm-less user can render the onboarding flow without this layout's
 // no-data redirect bouncing them - which is what avoids the redirect loop.
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  // Owner-scope on the signed-in operator: they resolve their OWN farm, or the badged demo
-  // when they own none (never another grower's farm). Auth itself is enforced by the parent
-  // (app) layout; this passes the id along so the shell renders the right farm.
-  const resolved = await resolveFarm(await sessionUserId(), false);
+  // Membership-scope on the signed-in operator: they resolve a farm they are an active member
+  // of (their own or one they were invited to), selected by the validated active-farm cookie.
+  // Auth itself is enforced by the parent (app) layout; a member of no ready farm gets null.
+  const userId = await sessionUserId();
+  const activeId = await resolveActiveFarmId(userId);
+  const resolved = await resolveFarm(userId, activeId, false);
   if (resolved === null) redirect(CONNECT_SOURCE_PATH);
+  // Capability is derived from the caller's ROLE, never from dataKind: a viewer of a real farm
+  // is read-only (can stream/download an export, but never attach files or persist), while an
+  // owner/manager can attach. The Almond chat route applies the same role-derived gate.
+  const role = userId ? await farmRole(prisma, resolved.farm.id, userId) : null;
+  const canAttach = role === "owner" || role === "manager";
   // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
   // mockup, with findings shown in-content). The Energy surface renders its own findings rail.
   // We still resolve the count here for Almond's opening prompt (request-cached, so no extra query).
@@ -56,9 +65,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           // (true for both). Owner exports persist to Reports; demo exports are streamed, never stored.
           canExport: true,
         })}
-        // Attachments stay owner-only (capability parity with the chat route's attachment handling):
-        // a connected owner can attach bills/exports; the demo fallback cannot push file bytes in.
-        canAttach={resolved.dataKind === "real"}
+        // Attachments are role-gated (owner/manager only), in parity with the chat route: a viewer
+        // (or the demo fallback) cannot push file bytes in, but can still stream/download exports.
+        canAttach={canAttach}
       >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">

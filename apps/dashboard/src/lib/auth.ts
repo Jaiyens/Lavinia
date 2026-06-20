@@ -3,6 +3,8 @@ import type { EmailConfig } from "@auth/core/providers/email";
 import { prisma } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
 import { terraPrismaAdapter } from "@/lib/auth-adapter";
+import { normalizeEmail } from "@/lib/email-normalize";
+import { isStaticallyAllowed } from "@/lib/auth/allowlist";
 import { sendMagicLink } from "@/lib/email";
 
 // Email magic link (no passwords). Built as a plain `type: "email"` provider object rather
@@ -51,6 +53,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // re-authenticates (cookie cleared on close), and even a tab left open all day expires
   // after 4h. Short on purpose - this is the grower's private PG&E data.
   session: { strategy: "jwt", maxAge: 4 * 60 * 60 },
+  callbacks: {
+    // Keep the edge-safe gate/jwt/session callbacks from authConfig, and add the Node-only
+    // sign-in DENY hook here (it needs the email + the OIDC profile, and later prisma). It runs
+    // on the /api/auth route handler, never on the edge middleware (which uses authConfig
+    // directly and has no signIn callback).
+    ...authConfig.callbacks,
+    async signIn({ user, account, profile }) {
+      // 1) Email control. A Google sign-in MUST carry a verified email - otherwise "a verified
+      //    email IS the person" (the basis for the allowlist and for invite claims in Phase 3)
+      //    is forgeable by anyone who controls an OIDC tenant. Magic-link sign-ins prove inbox
+      //    control by definition, so they are exempt.
+      if (account?.provider === "google") {
+        const emailVerified = (profile as { email_verified?: boolean } | undefined)?.email_verified;
+        if (emailVerified !== true) return false;
+      }
+      // 2) Pre-launch lockdown. Off unless ACCESS_ALLOWLIST is set. When on, only listed emails
+      //    may sign in. Uniform `false` on any denial so the gate cannot be used to enumerate.
+      const email = user?.email ? normalizeEmail(user.email) : null;
+      if (!isStaticallyAllowed(email)) {
+        // Phase 3 extension point: before denying, also allow an active FarmMembership or a
+        // pending, non-expired FarmInvite for this email, so an invited teammate can sign in
+        // during lockdown (the user's chosen behavior). Those tables land in the membership
+        // migration; until then the static allowlist is the only gate.
+        return false;
+      }
+      return true;
+    },
+  },
 });
 
 /**

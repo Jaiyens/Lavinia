@@ -82,12 +82,18 @@ async function main(): Promise<void> {
     console.log("[fixture-import] persisted from committed fixture (zero external calls):", counts);
 
     // Owner the imported real account so it resolves on the authed dashboard. dashboardFarm
-    // is now owner-scoped (Farm.userId), so an un-owned real farm shows to nobody. Attach it
-    // to the most recently created User (the operator who just signed in). If no user exists
-    // yet, leave it un-owned and say so: sign in once, then re-run `npm run db:import-fixture`.
+    // is now membership-scoped, so an un-owned real farm shows to nobody. Attach it (and an owner
+    // FarmMembership, the actual access gate) to the most recently created User (the operator who
+    // just signed in). If no user exists yet, leave it un-owned and say so: sign in once, then
+    // re-run `npm run db:import-fixture`.
     const owner = await prisma.user.findFirst({ orderBy: { createdAt: "desc" } });
     if (owner) {
       await prisma.farm.update({ where: { id: farmId }, data: { userId: owner.id } });
+      await prisma.farmMembership.upsert({
+        where: { farmId_userId: { farmId, userId: owner.id } },
+        update: { status: "active", role: "owner" },
+        create: { farmId, userId: owner.id, role: "owner", status: "active" },
+      });
       console.log(`[fixture-import] assigned real account to user ${owner.email ?? owner.id}`);
     } else {
       console.log(

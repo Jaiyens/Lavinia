@@ -22,8 +22,9 @@ import { en } from "@/copy/en";
 export const dynamic = "force-dynamic";
 
 export default async function TourLayout({ children }: { children: ReactNode }) {
-  // Pin to the demo farm (resolveFarm(_, demoOnly=true)); never a real connected farm.
-  const resolved = await resolveFarm(null, true);
+  // Pin to the demo farm (resolveFarm with demoOnly=true); never a real connected farm. No user
+  // and no active-farm selection on the public tour.
+  const resolved = await resolveFarm(null, null, true);
   const findings: FindingView[] = resolved ? await resolveFindings(resolved.farm.id) : [];
   return (
     <NuqsAdapter>

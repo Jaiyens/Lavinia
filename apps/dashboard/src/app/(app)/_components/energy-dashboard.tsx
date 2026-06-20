@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
-import { resolveFarm, resolveMeters, resolveFindings } from "../(dashboard)/_data";
+import { resolveActiveFarmId, resolveFarm, resolveMeters, resolveFindings } from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
 import { KpiStrip } from "./kpi-strip";
 import { LensToggle } from "./lens-toggle";
@@ -31,10 +31,11 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   // Otherwise owner-scope on the signed-in operator so they see their OWN farm (never
   // another grower's). The Tour skips the session read entirely - it is a public surface.
   const userId = demoOnly ? null : await sessionUserId();
+  const activeId = demoOnly ? null : await resolveActiveFarmId(userId);
   // Request-cached resolvers (shared with the (dashboard) layout): on a real navigation the
   // farm/meters/findings are fetched once for the whole request, not re-queried per component
   // against the remote database (part of the Home<->Energy latency fix).
-  const resolved = await resolveFarm(userId, demoOnly);
+  const resolved = await resolveFarm(userId, activeId, demoOnly);
 
   if (!resolved) {
     return (

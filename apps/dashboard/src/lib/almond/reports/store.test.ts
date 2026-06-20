@@ -55,8 +55,8 @@ beforeEach(() => {
 });
 
 describe("GENERATED_REPORT_KINDS", () => {
-  it("carries the export tables plus the PDF report kind (Story 9.3)", () => {
-    expect([...GENERATED_REPORT_KINDS]).toEqual(["meters", "billDue", "report"]);
+  it("carries the export tables, the PDF report kind (Story 9.3), and the code-gen export kind", () => {
+    expect([...GENERATED_REPORT_KINDS]).toEqual(["meters", "billDue", "report", "codegen"]);
   });
 });
 
