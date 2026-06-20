@@ -1759,6 +1759,21 @@ export const en = {
       // A negative printed amount is a credit to the grower; say so in words.
       creditValue: (usd: string): string => `${usd} credit`,
     },
+    // G-2 (FR23, UX-DR11): the honest-dollar separation guard. The ONE honest dollar a solar finding
+    // is allowed to carry is a BILLING charge already printed on the bill (the F2 demand-charge gap,
+    // and later any rate-fit dollar) - never a net-metering credit, which stays honest-blank until a
+    // statement settles it. Wherever such a billing dollar renders beside a net-metering honest-blank,
+    // it carries this explicit chip so the two can never be read as one composite "solar saved you X"
+    // figure: the chip names it a charge on the bill, separated from the credit story. Plain operator
+    // English, no exclamation marks, no em dashes.
+    findingLabel: {
+      // The chip over the F2 demand-charge dollar (a real charge on the bill, never a credit).
+      billing: "On your bill",
+      // The chip over a staged priced rate-fit dollar (forward-compatible; v1 F1 is dollarless).
+      rate: "Rate finding",
+      // The screen-reader-first clarification that the dollar is a charge, never a solar credit.
+      billingAria: "This is a charge on your bill, not a solar credit",
+    },
     // C-4 (FR9): the allocation audit finding (F3). Two honest gaps to verify with PG&E - a meter
     // dropped from an array it lists, or a recorded share that diverges from the load-implied share -
     // each a "check this" signal, never a dollar (the credit stays honest-blank, FR10). Severity is

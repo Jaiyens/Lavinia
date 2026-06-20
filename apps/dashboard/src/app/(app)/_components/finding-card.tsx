@@ -8,6 +8,7 @@ import { SeverityBadge, cardClass } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { SURFACE } from "@/lib/dashboard/surface";
+import { SOLAR_TOOL } from "@/lib/energy/solar-nem";
 import { resolveFinding, type FindingResponse } from "../actions";
 
 // The finding card (Story 3.1, FR-13 / UX-DR14): the recommendation grammar rendered
@@ -62,6 +63,17 @@ export function FindingCard({
   const impact =
     finding.impactUsd !== null ? formatUsdWhole(centsFromDollars(finding.impactUsd)) : null;
 
+  // G-2 (FR23, UX-DR11) the honest-dollar separation guard: a solar finding may carry exactly ONE
+  // honest dollar - a charge already printed on the bill (the F2 demand-charge gap, severity info,
+  // whose dollar rides in impactNote, never impactUsd). It is NOT a net-metering credit, which stays
+  // honest-blank until a statement settles it. So when this billing dollar renders beside the solar
+  // tab's honest-blank credit cells, label it explicitly "On your bill" so the layout can never be
+  // read as a composite "solar saved you X". The discriminator is the F2 shape exactly: the sole
+  // solar (tool === SOLAR_TOOL) info finding, all other solar findings are watch and dollarless. The
+  // energy card path is untouched (energy findings carry a different tool). The chip never colors the
+  // card (NFR6: red is reserved for money at stake; this is money owed, not at risk).
+  const isSolarBillingFinding = finding.tool === SOLAR_TOOL && finding.severity === "info";
+
   return (
     <article
       aria-busy={isPending}
@@ -83,9 +95,21 @@ export function FindingCard({
       </div>
 
       <p className="type-body-md mt-3 text-on-surface">{finding.situation}</p>
-      {finding.impactNote !== null && (
-        <p className="type-caption mt-1 text-on-surface-variant">{finding.impactNote}</p>
-      )}
+      {finding.impactNote !== null &&
+        (isSolarBillingFinding ? (
+          // The honest billing dollar (the F2 demand-charge gap) lives in impactNote. Front it with
+          // the "On your bill" chip and set it off in its own bordered block so the charge is read as
+          // a billing charge, never netted with the net-metering credit (which is honest-blank).
+          <div className="mt-2 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low px-3 py-2">
+            <span className="type-label-caps inline-flex items-center rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
+              <span className="sr-only">{en.solar.findingLabel.billingAria}</span>
+              {en.solar.findingLabel.billing}
+            </span>
+            <p className="type-caption mt-1.5 text-on-surface-variant">{finding.impactNote}</p>
+          </div>
+        ) : (
+          <p className="type-caption mt-1 text-on-surface-variant">{finding.impactNote}</p>
+        ))}
 
       {/* The one concrete action (displayed today, executable later). */}
       <p className="type-body-md mt-2 font-medium text-on-surface">

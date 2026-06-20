@@ -482,7 +482,21 @@ export function MeterDrawer({
                   quotable (reconciled solar meter that owes demand). */}
               {d.solar.floor !== null && (
                 <>
-                  <SectionHeader>{en.solar.insight.floorHeading}</SectionHeader>
+                  {/* G-2 (FR23, UX-DR11) the honest-dollar separation guard: the floor is a group of
+                      charges already printed on the bill, NOT a net-metering credit (the credit rows
+                      above are honest-blank). The "On your bill" chip beside the heading names it a
+                      billing group explicitly, so this labeled block can never be read as a composite
+                      "solar saved you X" with the net-metering rows. No color (money owed, not at
+                      risk). */}
+                  <div className="mt-7 flex items-center gap-2">
+                    <h3 className="type-label-caps text-on-surface-variant">
+                      {en.solar.insight.floorHeading}
+                    </h3>
+                    <span className="type-label-caps inline-flex items-center rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
+                      <span className="sr-only">{en.solar.findingLabel.billingAria}</span>
+                      {en.solar.findingLabel.billing}
+                    </span>
+                  </div>
                   <dl>
                     <MoneyRow
                       label={en.solar.insight.floorDemand}
