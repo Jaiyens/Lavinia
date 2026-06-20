@@ -6,6 +6,7 @@ import { en } from "@/copy/en";
 import { cardClass } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
 import type { SolarArrayGroup, SolarNeedsReview } from "@/lib/dashboard/solar";
+import { classifyProgramType } from "@/lib/energy/solar-allocation";
 import { AllocationBar } from "./allocation-bar";
 
 // The Arrays lens (A-5, UX-DR4): the DEFAULT solar data hero. One array-group card per SolarArray,
@@ -119,8 +120,19 @@ function ArrayCard({
             {t.nameplateUnverified}
           </p>
         )}
+        {/* C-3 (FR11): the array's program type said in plain operator English (single-meter solar /
+            aggregation across N meters / virtual NEM), classified from the benefiting-meter count and
+            the array's nemType token, never the raw token. The "nema" label already names the count. */}
         <div className="mt-1 flex items-center justify-between gap-3">
-          <span className="type-caption text-on-surface-variant">{t.meterCount(group.meters.length)}</span>
+          <span className="type-caption text-on-surface-variant">
+            {t.programType(
+              classifyProgramType({
+                benefitingMeterCount: group.meters.length,
+                nemType: group.nemType,
+              }),
+              group.meters.length,
+            )}
+          </span>
           <span className="type-caption text-on-surface-variant">
             {group.trueUpMonth !== null ? t.trueUpMonth(group.trueUpMonth) : t.trueUpNone}
           </span>

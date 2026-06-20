@@ -1569,6 +1569,15 @@ export const en = {
       unnamed: "Array",
       // The "N meters" sub-line under the array header.
       meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      // C-3 (FR11): the array's program type said in plain operator English (never the raw token).
+      // "nem" is single-meter solar (the array credits its own meter); "nema" is aggregation (one
+      // array's credits spread across N meters, so you control the split); "vnem" is virtual NEM
+      // (PG&E controls the allocation). VNEM is forward-compatible with no launch instance.
+      programType: (kind: "nem" | "nema" | "vnem", meterCount: number): string => {
+        if (kind === "vnem") return "Virtual NEM (PG&E sets the split)";
+        if (kind === "nema") return `Aggregation across ${meterCount} meters`;
+        return "Single-meter solar";
+      },
       // The benefiting-meter rows section heading inside each card.
       metersHeading: "Meters this array credits",
       // The meter row's nameplate said in plain words; null reads not-on-file (never inferred).

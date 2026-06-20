@@ -386,7 +386,7 @@ model SolarArray {
   id          String   @id @default(cuid())
   name        String?
   nameplateKw Float // array nameplate, e.g. 840 or 1092
-  nemType     String? // "nem2" | "nem2_agg"
+  nemType     String? // "nem2" | "nem2_agg" | "vnem"   (DM3: "vnem" widened in, forward-compatible, no launch instance)
   trueUpMonth Int? // per-array annual true-up month (1-12)
   saId        String? // the generating meter's SA ID (the array's own service)
   farmId      String

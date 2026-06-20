@@ -86,3 +86,49 @@ export function allocateArray(
 
   return { arrayId, arrayName, shares, notOnFilePumpIds };
 }
+
+// Program-type classification (C-3, FR11). PURE: a plain { benefitingMeterCount, nemType } in, a
+// closed string-literal token out. It answers the grower's real question - "do I or PG&E control
+// the allocation?" - by naming the array's net-metering program type in one word the copy layer
+// turns into plain operator English (never the raw token on the surface, NFR8).
+//
+// The classification:
+//   - one benefiting meter            -> "nem"   (single-meter solar; the array credits its own meter)
+//   - two or more benefiting meters   -> "nema"  (aggregation; one array's credits spread across meters)
+//   - the explicit "vnem" token (DM3) -> "vnem"  (virtual NEM; PG&E controls the allocation)
+//
+// DM3 widens SolarArray.nemType's allowed values to admit "vnem" (documented inline in schema.prisma,
+// mirrored in src/lib/recommendations/types.ts). VNEM is FORWARD-COMPATIBLE: there is no launch
+// instance (the Batth cohort is NEM2 / NEMA), so the branch is proven only by a synthetic unit test.
+// The explicit token wins over the meter count: a "vnem" array is VNEM even with a single meter on
+// file, because the program type is a tariff fact, not an inference from how many meters happen to be
+// linked today. Fail-closed: an absent / unrecognized token NEVER fabricates "vnem"; it falls back to
+// the honest count-based classification (nem / nema), never a guessed program.
+
+/** An array's net-metering program type, in plain tokens the copy layer renders in operator English. */
+export type SolarProgramType = "nem" | "nema" | "vnem";
+
+/** The one VNEM token DM3 widened SolarArray.nemType to admit (lower-cased before the comparison). */
+const VNEM_TOKEN = "vnem";
+
+/**
+ * FR11. Classify an array's program type from its benefiting-meter count and its nemType token.
+ * The explicit "vnem" token (DM3, case-insensitive) classifies as "vnem" regardless of count
+ * (forward-compatible, no launch instance). Otherwise: one benefiting meter -> "nem"; two or more ->
+ * "nema". A null / unrecognized token never fabricates "vnem" (fail-closed) - it defers to the honest
+ * count. The surface renders a plain-English label via copy, never the raw token (NFR8).
+ */
+export function classifyProgramType(args: {
+  benefitingMeterCount: number;
+  nemType: string | null;
+}): SolarProgramType {
+  // The explicit VNEM token is a tariff fact, so it wins over the meter count (a VNEM array with a
+  // single linked meter is still VNEM). Compared case-insensitively; nothing else fabricates it.
+  if (args.nemType !== null && args.nemType.trim().toLowerCase() === VNEM_TOKEN) {
+    return "vnem";
+  }
+  // Honest count-based classification for the NEM2 cohort: aggregation needs two-plus benefiting
+  // meters; anything less is single-meter solar (a zero/negative count is honest single-meter solar,
+  // never a fabricated aggregation).
+  return args.benefitingMeterCount >= 2 ? "nema" : "nem";
+}

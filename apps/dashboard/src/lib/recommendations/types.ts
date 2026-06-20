@@ -17,6 +17,13 @@ export type PowerSource = "electric" | "diesel" | "gas";
 // BAD is the flagged health signal; no efficiency number is ever derived from it.
 export type PumpStatus = "GOOD" | "BAD" | "NEW WELL" | "OLD";
 
+// An array's net-metering program type (Solar tab, C-3/FR11). Single-meter solar ("nem"),
+// aggregation across two-plus meters ("nema"), or virtual NEM ("vnem"). Mirrors the
+// `SolarProgramType` union in src/lib/energy/solar-allocation.ts so a typo'd token is a compile
+// error; mirrored by the DM3-widened SolarArray.nemType Prisma String ("nem2" | "nem2_agg" |
+// "vnem"). VNEM is forward-compatible (no launch instance in the Batth cohort).
+export type SolarProgramType = "nem" | "nema" | "vnem";
+
 // Billing coverage for a Meter/Account (FR-6). One union, one render treatment
 // everywhere (table cell, drawer, map pin, rollup, CSV) per AR-15; mirrored as a Prisma
 // String column. A figure renders only when "reconciled"; otherwise the cell shows the

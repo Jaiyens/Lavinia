@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALLOCATION_TOLERANCE_PP,
   allocateArray,
+  classifyProgramType,
   type AllocationMeterInput,
 } from "./solar-allocation";
 
@@ -100,5 +101,50 @@ describe("allocateArray", () => {
 describe("ALLOCATION_TOLERANCE_PP", () => {
   it("is the single documented audit tolerance constant, in percentage points", () => {
     expect(ALLOCATION_TOLERANCE_PP).toBe(5);
+  });
+});
+
+// C-3 (FR11, DM3): the array program-type classification. One benefiting meter is single-meter solar
+// ("nem"); two or more is aggregation ("nema"); the explicit "vnem" token (forward-compatible, no
+// launch instance in the Batth cohort) is VNEM, proven only by a synthetic input. A null/unrecognized
+// token never fabricates "vnem" - it defers to the honest count (fail-closed).
+describe("classifyProgramType", () => {
+  it("classifies one benefiting meter as single-meter solar (nem)", () => {
+    expect(classifyProgramType({ benefitingMeterCount: 1, nemType: "nem2" })).toBe("nem");
+  });
+
+  it("classifies two or more benefiting meters as aggregation (nema)", () => {
+    expect(classifyProgramType({ benefitingMeterCount: 2, nemType: "nem2_agg" })).toBe("nema");
+    expect(classifyProgramType({ benefitingMeterCount: 17, nemType: "nem2" })).toBe("nema");
+  });
+
+  it("classifies the explicit vnem token as vnem (synthetic input, no launch instance)", () => {
+    // VNEM has no Batth-cohort instance, so it is proven only here with a synthetic nemType.
+    expect(classifyProgramType({ benefitingMeterCount: 5, nemType: "vnem" })).toBe("vnem");
+  });
+
+  it("treats the vnem token as a tariff fact that wins over the meter count", () => {
+    // A VNEM array with a single linked meter is still VNEM (the program type is a tariff fact, not
+    // an inference from how many meters happen to be linked today).
+    expect(classifyProgramType({ benefitingMeterCount: 1, nemType: "vnem" })).toBe("vnem");
+  });
+
+  it("matches the vnem token case-insensitively and trims surrounding whitespace", () => {
+    expect(classifyProgramType({ benefitingMeterCount: 3, nemType: "VNEM" })).toBe("vnem");
+    expect(classifyProgramType({ benefitingMeterCount: 3, nemType: "  vnem  " })).toBe("vnem");
+  });
+
+  it("never fabricates vnem from a null or unrecognized token (fail-closed to the count)", () => {
+    // A null token defers to the honest count, never a guessed program.
+    expect(classifyProgramType({ benefitingMeterCount: 1, nemType: null })).toBe("nem");
+    expect(classifyProgramType({ benefitingMeterCount: 4, nemType: null })).toBe("nema");
+    // A token that merely contains "vnem" as a substring (not the exact token) is not VNEM.
+    expect(classifyProgramType({ benefitingMeterCount: 1, nemType: "vnem2" })).toBe("nem");
+    expect(classifyProgramType({ benefitingMeterCount: 3, nemType: "not_a_program" })).toBe("nema");
+  });
+
+  it("treats a zero or negative meter count as honest single-meter solar, never aggregation", () => {
+    expect(classifyProgramType({ benefitingMeterCount: 0, nemType: "nem2" })).toBe("nem");
+    expect(classifyProgramType({ benefitingMeterCount: -1, nemType: "nem2" })).toBe("nem");
   });
 });
