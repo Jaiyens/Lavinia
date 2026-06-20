@@ -733,6 +733,13 @@ export type RevealCounts = {
   bills: BayouBillCounts | null;
   /** Both data sets ready: safe to import (the machine then calls finish). */
   ready: boolean;
+  /**
+   * PG&E accounts the grower declined or that errored on the hosted form (multi-account
+   * UtilityAPI only; Bayou is single-account so it is omitted there). > 0 means the reveal
+   * counts cover fewer accounts than the grower attempted, so the connect can warn that an
+   * account was not shared rather than presenting the succeeded subset as the whole farm.
+   */
+  failedAccounts?: number;
 };
 
 /** Count distinct accounts and meters-by-fuel off a normalized meter list. */
@@ -860,18 +867,28 @@ export async function finishBayouConnection(
 }
 
 /**
- * The most recent in-progress live Bayou connection, so a grower who navigated away
- * from the pending screen can resume instead of starting over. "In progress" means a
- * pending PG&E connection to a live Bayou customer (numeric externalRef) who has
- * already signed in (or whose data is partly ready). Returns null when there is none,
- * so onboarding only offers "resume" when there is something real to resume. If Bayou
- * is unreachable, it still allows resuming (better a re-poll than a dead end).
+ * The signed-in operator's most recent in-progress live Bayou connection, so a grower who
+ * navigated away from the pending screen can resume instead of starting over. "In progress"
+ * means a pending PG&E connection to a live Bayou customer (numeric externalRef) who has
+ * already signed in (or whose data is partly ready). Returns null when there is none, so
+ * onboarding only offers "resume" when there is something real to resume. If Bayou is
+ * unreachable, it still allows resuming (better a re-poll than a dead end).
+ *
+ * OWNER-SCOPED (fail-closed): like resumableUtilityApiFarm, the candidate connection is
+ * constrained to a farm the caller is an active member of, so a signed-out caller (no userId)
+ * gets null and never another tenant's in-flight onboarding farmId.
  */
 export async function resumableBayouFarm(
   prisma: PrismaClient,
+  userId?: string | null,
 ): Promise<{ farmId: string } | null> {
+  if (!userId) return null;
   const conn = await prisma.connection.findFirst({
-    where: { type: PGE_SMD, status: "pending" },
+    where: {
+      type: PGE_SMD,
+      status: "pending",
+      farm: { memberships: { some: { userId, status: "active" } } },
+    },
     orderBy: { createdAt: "desc" },
     select: { farmId: true, externalRef: true },
   });
@@ -927,6 +944,32 @@ export async function startUtilityApiConnection(
   return { farmId, formUid: form.uid, formUrl: form.url };
 }
 
+/**
+ * UtilityAPI authorization statuses that mean the account never shared its data: the grower
+ * either declined the form for that account, or the collection errored. Such authorizations
+ * return no meters, so they silently vanish from the counts unless we inspect them directly.
+ */
+const FAILED_AUTH_STATUSES = new Set(["errored", "declined"]);
+
+/**
+ * Split a form's authorizations into the ones we should pull (pending/updated) and the ones
+ * that failed (errored/declined). The /meters body only ever returns meters for the usable
+ * authorizations, so a declined or errored account is otherwise invisible: this is the one
+ * place the per-account status is read so the connect can surface "1 of N accounts was not
+ * shared" instead of silently presenting the succeeded subset as the whole farm.
+ */
+function classifyAuthorizations(
+  auths: { uid: string; status: string }[],
+): { usableUids: string[]; failedAccounts: number } {
+  let failedAccounts = 0;
+  const usableUids: string[] = [];
+  for (const a of auths) {
+    if (FAILED_AUTH_STATUSES.has(a.status)) failedAccounts += 1;
+    else usableUids.push(a.uid);
+  }
+  return { usableUids, failedAccounts };
+}
+
 /** Where a farm's UtilityAPI pull stands. Returns the same shape as bayouReadiness, so
  * the poller is provider-agnostic. */
 export async function utilityApiReadiness(
@@ -956,7 +999,10 @@ export async function utilityApiReadiness(
       bills: null,
     };
   }
-  const raw = await getUtilityApiMetersRaw(auths.map((a) => a.uid));
+  // Only poll readiness over the usable authorizations: a declined/errored account returns
+  // no meters, so including it would never let ready === total fire (a perpetual wait).
+  const { usableUids } = classifyAuthorizations(auths);
+  const raw = await getUtilityApiMetersRaw(usableUids);
   const { total, ready } = readyCountsFromRaw(raw);
   const dataReady = total > 0 && ready === total;
   return {
@@ -1013,7 +1059,10 @@ export async function utilityApiReveal(
       ready: false,
     };
   }
-  const raw = await getUtilityApiMetersRaw(auths.map((a) => a.uid));
+  // Count only the usable accounts, and report how many were declined/errored so the
+  // connecting screen can warn the grower instead of silently dropping the missing account.
+  const { usableUids, failedAccounts } = classifyAuthorizations(auths);
+  const raw = await getUtilityApiMetersRaw(usableUids);
   const { accounts, electricMeters, gasMeters } = countUtilityApiMeters(raw);
   const { total, ready } = readyCountsFromRaw(raw);
   const dataReady = total > 0 && ready === total;
@@ -1027,6 +1076,7 @@ export async function utilityApiReveal(
     intervalsReady: dataReady,
     bills: total > 0 ? { total, usable: ready, unparsed: total - ready } : null,
     ready: dataReady,
+    failedAccounts,
   };
 }
 
@@ -1051,7 +1101,8 @@ export async function finishUtilityApiConnection(
   let authUids: string[] = [];
   if (live && formUid) {
     const auths = await getUtilityApiAuthorizations(formUid);
-    authUids = auths.map((a) => a.uid);
+    // Pull only the usable authorizations; a declined/errored account carries no data.
+    authUids = classifyAuthorizations(auths).usableUids;
     if (!opts.force) {
       const raw = await getUtilityApiMetersRaw(authUids);
       const { total, ready } = readyCountsFromRaw(raw);
@@ -1105,27 +1156,55 @@ export async function startUtilityApiForFarm(
 }
 
 /**
+ * The outcome of a live import into an in-progress farm: the meter count PLUS the silent
+ * degradations the connect should surface rather than swallow. A pull that completes with
+ * `failedAccounts > 0` (a declined/errored PG&E account), `greenButtonFailed > 0` (a meter
+ * whose export could not be fetched, landed identity-only), or `metersFailed > 0` (a meter
+ * whose DB commit threw) is NOT the whole farm; the caller can warn the grower instead of
+ * presenting the succeeded subset as complete. `historyLanded` is false when nothing usable
+ * collected, so a force on a not-yet-collected pull does not look like a successful connect.
+ */
+export type ImportUtilityApiIntoFarmResult = {
+  pumps: number;
+  /** PG&E accounts the grower declined / that errored on the form (no data shared). */
+  failedAccounts: number;
+  /** Meters whose Green Button export could not be fetched (landed identity-only). */
+  greenButtonFailed: number;
+  /** Meters whose per-meter DB commit threw and were skipped (the batch continued). */
+  metersFailed: number;
+  /** Whether any meter actually landed billing or interval history (not just identity). */
+  historyLanded: boolean;
+};
+
+/**
  * Import a live UtilityAPI pull into an EXISTING farm WITHOUT finalizing the connection.
  * The connect-a-source contract is that sources accumulate and the connection flips to
  * "active" only at the confirm step, so this mirrors finishUtilityApiConnection's import
  * (pull -> importUtilityApi -> classify) but leaves status "pending" and records the SMD
- * provenance. Returns the meter count, or null when the live data is not ready yet (and not
- * forced), so the connecting screen keeps polling. Idempotent on re-run.
+ * provenance. Returns the meter count plus the degradation tallies (failed accounts, dropped
+ * exports, failed commits), or null when the live data is not ready yet (and not forced) OR
+ * when a forced pull landed no usable history at all, so the connecting screen keeps polling
+ * instead of advancing to an empty confirm. Idempotent on re-run.
  */
 export async function importUtilityApiIntoFarm(
   prisma: PrismaClient,
   farmId: string,
   opts: { force?: boolean } = {},
-): Promise<{ pumps: number } | null> {
+): Promise<ImportUtilityApiIntoFarmResult | null> {
   const conn = await pgeConnection(prisma, farmId);
   if (!conn) throw new Error(`no PG&E connection for farm ${farmId}`);
   const formUid = liveFormUid(conn.externalRef);
   const live = Boolean(formUid && utilityApiConfigured());
   let authUids: string[] = [];
+  let failedAccounts = 0;
   if (live && formUid) {
     const auths = await getUtilityApiAuthorizations(formUid);
-    authUids = auths.map((a) => a.uid);
-    if (authUids.length === 0) return null; // grower has not finished the hosted form yet
+    // Inspect per-account status: only pull the usable (pending/updated) authorizations and
+    // count the declined/errored ones so the connect can report the missing accounts.
+    const classified = classifyAuthorizations(auths);
+    authUids = classified.usableUids;
+    failedAccounts = classified.failedAccounts;
+    if (authUids.length === 0) return null; // grower has not shared any usable account yet
     if (!opts.force) {
       const raw = await getUtilityApiMetersRaw(authUids);
       const { total, ready } = readyCountsFromRaw(raw);
@@ -1133,7 +1212,12 @@ export async function importUtilityApiIntoFarm(
     }
   }
   const pull = await fetchUtilityApi(live ? { authUids } : {});
-  await importUtilityApi(prisma, { pull, farmId });
+  const imported = await importUtilityApi(prisma, { pull, farmId });
+  // Did any meter actually carry usable history (billing or interval rows), or did the pull
+  // only ever land identity-only meters? A force on a still-collecting pull lands the latter,
+  // which would otherwise advance the grower to an empty confirm and bounce them back.
+  const historyLanded = imported.billingPeriods > 0 || imported.intervals > 0;
+  if (live && opts.force && !historyLanded) return null;
   await classifyFarmPumps(prisma, farmId);
   // A real signed Share-My-Data authorization (C4 provenance). Status stays pending: the
   // farmer finalizes the connection at the confirm step (saveConfirmation).
@@ -1142,20 +1226,38 @@ export async function importUtilityApiIntoFarm(
     data: { source: "smd", authorizedAt: new Date() },
   });
   const summary = await summarize(prisma, farmId);
-  return { pumps: summary.pumps };
+  return {
+    pumps: summary.pumps,
+    failedAccounts,
+    greenButtonFailed: pull.greenButtonFailed,
+    metersFailed: imported.metersFailed,
+    historyLanded,
+  };
 }
 
 /**
- * The most recent in-progress live UtilityAPI connection, so a grower who navigated away
- * from the reveal can resume. "In progress" means a pending PG&E connection to a live
- * form (non-sentinel externalRef) that has at least one authorization. Returns null when
- * there is none. If UtilityAPI is unreachable, it still allows resuming.
+ * The signed-in operator's most recent in-progress live UtilityAPI connection, so a grower
+ * who navigated away from the reveal can resume. "In progress" means a pending PG&E
+ * connection to a live form (non-sentinel externalRef) that has at least one authorization.
+ *
+ * OWNER-SCOPED (fail-closed): the candidate connection is constrained to a farm the caller is
+ * an active member of, so a signed-out caller (no userId) gets null and never another tenant's
+ * in-flight onboarding farmId. Without this scope the unqualified "newest pending PG&E
+ * connection" could hand one operator a farmId belonging to a different operator who is
+ * concurrently mid-connect (a cross-tenant resume). If UtilityAPI is unreachable, it still
+ * allows resuming the caller's OWN farm (better a re-poll than a dead end).
  */
 export async function resumableUtilityApiFarm(
   prisma: PrismaClient,
+  userId?: string | null,
 ): Promise<{ farmId: string } | null> {
+  if (!userId) return null;
   const conn = await prisma.connection.findFirst({
-    where: { type: PGE_SMD, status: "pending" },
+    where: {
+      type: PGE_SMD,
+      status: "pending",
+      farm: { memberships: { some: { userId, status: "active" } } },
+    },
     orderBy: { createdAt: "desc" },
     select: { farmId: true, externalRef: true },
   });
@@ -1238,13 +1340,19 @@ export async function finishPgeConnection(
     : finishUtilityApiConnection(prisma, farmId, opts);
 }
 
-/** The most recent resumable in-progress connection with the configured provider. */
+/**
+ * The most recent resumable in-progress connection with the configured provider. OWNER-SCOPED
+ * and fail-closed: pass the signed-in operator's userId. A missing userId returns null (never
+ * another tenant's in-flight onboarding farmId), so the legacy/unauthenticated caller gets no
+ * cross-farm resume offer.
+ */
 export async function resumablePgeFarm(
   prisma: PrismaClient,
+  userId?: string | null,
 ): Promise<{ farmId: string } | null> {
   return pgeProvider() === "bayou"
-    ? resumableBayouFarm(prisma)
-    : resumableUtilityApiFarm(prisma);
+    ? resumableBayouFarm(prisma, userId)
+    : resumableUtilityApiFarm(prisma, userId);
 }
 
 /**

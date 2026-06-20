@@ -127,6 +127,18 @@ export type UtilityApiSource = {
   authUids?: string[];
 };
 
+/**
+ * What `fetchUtilityApi` returns: the pull the normalizer/importer consume, plus a count of
+ * meters whose Green Button export could not be fetched (and so degraded to identity-only).
+ * It is a superset of UtilityApiResponses, so it passes straight to normalizeUtilityApi /
+ * importUtilityApi unchanged; callers that need to surface a degraded pull read
+ * `greenButtonFailed`. Sample/offline pulls always report 0 (the fixture never fails).
+ */
+export type UtilityApiPull = UtilityApiResponses & {
+  /** Meters whose per-meter Green Button fetch failed after retries (dropped to identity-only). */
+  greenButtonFailed: number;
+};
+
 /** Max per-meter Green Button fetches in flight at once. A 183-meter farm must not open
  *  183 sockets at once (UtilityAPI rate-limits and the runtime would exhaust connections);
  *  a small pool keeps the pull bounded while still fanning out. */
@@ -193,11 +205,13 @@ async function boundedMap<T, R>(
  * The per-meter Green Button pull runs with BOUNDED concurrency and per-meter retries
  * (not an unbounded Promise.all that one rejection kills): a meter whose export cannot be
  * fetched is dropped from the XML list and the normalizer falls back to identity-only for
- * it, so a single flaky meter never aborts the whole 183-meter import.
+ * it, so a single flaky meter never aborts the whole 183-meter import. The count of dropped
+ * meters is returned as `greenButtonFailed` so the caller can tell a clean pull from a
+ * mostly-degraded one (and refuse to silently finalize a connect that landed no history).
  */
 export async function fetchUtilityApi(
   source: UtilityApiSource = {},
-): Promise<UtilityApiResponses> {
+): Promise<UtilityApiPull> {
   const authUids = source.authUids ?? [];
   if (authUids.length > 0 && utilityApiConfigured()) {
     const meters = await getUtilityApiMetersRaw(authUids);
@@ -210,7 +224,8 @@ export async function fetchUtilityApi(
     // Drop the meters whose export failed; the normalizer correlates the rest by service
     // id (order-independent) and lands the dropped ones identity-only from the JSON.
     const greenButtonXml = fetched.filter((xml): xml is string => xml !== null);
-    return { meters, greenButtonXml };
+    return { meters, greenButtonXml, greenButtonFailed: meterUids.length - greenButtonXml.length };
   }
-  return loadSampleUtilityApi();
+  // Sample/offline pull: the committed fixture never fails, so nothing degraded.
+  return { ...loadSampleUtilityApi(), greenButtonFailed: 0 };
 }

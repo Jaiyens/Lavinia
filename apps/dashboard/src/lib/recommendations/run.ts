@@ -174,10 +174,14 @@ export async function runEngines(
         legacyWithoutFinding.push(pump.id);
       }
 
-      // Demand-charge exposure: a single mistimed peak day that drove a cycle's demand
-      // charge. Metered, non-solar pumps only (solar speaks through the solar checks).
-      // The pure lever emits one rec per demand cycle; we keep only the actionable
-      // outliers (a clear avoidable spike) and re-tag them to the demand-charge category.
+      // Demand-charge exposure: a cycle that paid a demand charge. Metered, non-solar pumps
+      // only (solar speaks through the solar checks). The pure lever emits one rec per demand
+      // cycle, severity "act" for an avoidable single-day spike (peakDay set) and "info" for a
+      // flat or interval-sparse cycle (peakDay null). We keep BOTH, re-tagged to the
+      // demand-charge category: an outlier is money at risk now, and a flat cycle is still an
+      // honest "this month paid a $X demand charge" heads-up. Dropping the flat ones (the old
+      // behavior) silently swallowed every demand cycle that lacked a clear avoidable spike,
+      // so a real demand-charged month with sparse interval coverage produced no finding at all.
       if (intervals.length > 0 && pump.solarKw === null) {
         const demandRecs = retrospective({
           farmId,
@@ -190,8 +194,6 @@ export async function runEngines(
           outlierSeverity: "act",
         });
         for (const rec of demandRecs) {
-          const peakDay = (rec.action.params as { peakDay?: unknown } | undefined)?.peakDay;
-          if (typeof peakDay !== "string") continue; // no outlier: a flat demand month, skip
           drafts.push({ ...rec, tool: DEMAND_CHARGE_TOOL });
         }
       }
