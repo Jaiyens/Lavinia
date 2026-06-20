@@ -1872,6 +1872,37 @@ export const en = {
         return `${name}: ${meters} and ${arrays} settling`;
       },
     },
+    // Almond's solar legibility words (H-1, FR29). The read-tool shapes carry the SAME solar facts the
+    // Solar tab renders, said in plain operator English so the model quotes them verbatim rather than
+    // paraphrasing a number. Every phrase here describes STRUCTURE or TIMING already on file - never a
+    // net-metering credit dollar (the credit stays honest-blank, named by `honestBlank` above, and
+    // Almond points to the upload path in H-2). No exclamation marks, no em dashes.
+    almond: {
+      // The program meaning Almond states for a meter's net-metering token. The generic NEM2 token has
+      // no granular program on file (A-4 is data-gated to the generic token at launch), so Almond says
+      // the generic program and that the granular code is not on file - never a guessed NEM2-family code.
+      programGeneric: "on NEM2 net metering",
+      programGranular: (code: string): string => `on the ${code} net-metering program`,
+      programNotOnFile: "with no net-metering program on file",
+      // Array membership said in plain words. A single array is "credited by", several read as a count.
+      arrayMembership: (count: number): string =>
+        count === 1 ? "credited by 1 solar array" : `credited by ${count} solar arrays`,
+      arrayNone: "not linked to any solar array yet",
+      // The usage-proportional share of an array (C-2), said as a whole percent (never a credit dollar).
+      sharePercent: (pct: number): string => `about ${pct}% of that array's credits by usage`,
+      shareNotOnFile: "no usage on file to compute a share",
+      // The grandfather position (FR16, data-gated on the interconnection date DM1, not on file at
+      // launch): Almond says it is not on file rather than estimating a vintage or an expiry.
+      grandfatherNotOnFile: "its interconnection date is not on file, so its grandfather position is not known",
+      // The demand-charge reality (E-1/E-2, FR21/FR23): solar does not lower the demand charge, said
+      // honestly. The dollar is the demand charge already PRINTED on the bill, never a net-metering
+      // credit; the uncovered share is a percentage of the bill, never a credit multiplied from a share.
+      demandReality: (demandUsd: string): string =>
+        `solar does not lower its demand charge of about ${demandUsd}, which is set in the evening when the panels are nearly off`,
+      demandRealityWithShare: (demandUsd: string, uncoveredPct: number): string =>
+        `solar does not lower its demand charge of about ${demandUsd}, about ${uncoveredPct}% of the bill solar does not cover, set in the evening when the panels are nearly off`,
+      demandNotOnFile: "its demand-charge reality is not on file yet",
+    },
   },
 
   // The rebuilt dashboard: a ranked feed of moves, with charts one tap down. Plain

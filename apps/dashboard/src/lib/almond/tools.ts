@@ -2,9 +2,16 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
-import { loadMetersForFarm } from "@/lib/dashboard/load";
+import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
+import { buildSolarDataset } from "@/lib/dashboard/solar";
+import {
+  demandUncoveredShare,
+  nemDemandInsight,
+  solarBillFloor,
+} from "@/lib/energy/solar-nem";
+import { loadRateCard } from "@/lib/pge/rate-card";
 import {
   rateSchedulesByFrequency,
   resolveMeterQuery,
@@ -14,6 +21,8 @@ import {
   summarizeMeters,
   summarizeReconciliation,
   type MeterFilters,
+  type MeterSolarContext,
+  type SolarContextByMeter,
 } from "./shape";
 import { checkGenerationThrottle } from "./rate-limit";
 import { hasGatewayKey } from "@/lib/ai/gateway";
@@ -81,6 +90,78 @@ export type AlmondActor = {
   userId: string | null;
 };
 
+/**
+ * Assemble each solar meter's solar context (H-1, FR29): the usage-proportional array share and the
+ * demand-charge reality the Solar tab renders, keyed by pump id so the pure `summarizeMeterSolar`
+ * shape can read it. The shares come from the SAME `buildSolarDataset` derivation the Solar tab uses
+ * (so Almond and the tab never disagree); the demand reality comes from the SAME fail-closed
+ * `nemDemandInsight` + bill floor the F2 emitter uses (so Almond never states a demand reality the tab
+ * would not show). The credit DOLLAR is never assembled here - it stays honest-blank (Epic G), and H-2
+ * makes Almond point to the upload path. A non-solar meter is omitted from the map.
+ *
+ * `nowMonth` is the calendar month of an injected `asOf` (no clock read in the pure layer), matching
+ * `run-solar-insight`'s convention; it only seeds the dataset's next-true-up KPI, not any share.
+ */
+const SOLAR_CONTEXT_AS_OF = "2026-06-09T12:00:00.000Z";
+
+function nowMonthOf(asOf: string): number {
+  const month = new Date(asOf).getUTCMonth() + 1;
+  return Number.isFinite(month) ? month : 1;
+}
+
+export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMeter {
+  const byMeter: SolarContextByMeter = new Map();
+  const solarMeters = meters.filter((m) => m.isSolar);
+  if (solarMeters.length === 0) return byMeter;
+
+  // Shares: build the farm's solar dataset once (the same derivation the Solar tab renders) and take
+  // each meter's LARGEST array share across the arrays it benefits from. A meter with no usage on file
+  // has a null share in the dataset, which stays null here (not-on-file, never a fabricated zero).
+  const dataset = buildSolarDataset(meters, nowMonthOf(SOLAR_CONTEXT_AS_OF));
+  const largestShareByPump = new Map<string, number>();
+  for (const group of dataset.arrays) {
+    for (const row of group.meters) {
+      if (row.share === null) continue;
+      const prev = largestShareByPump.get(row.pumpId);
+      if (prev === undefined || row.share > prev) largestShareByPump.set(row.pumpId, row.share);
+    }
+  }
+
+  // Demand reality: the same fail-closed gate the F2 emitter rides. Renders only for a meter that is
+  // NEM solar on the AG-C family, reconciled, and actually owes a demand charge; everything else fails
+  // closed (the context carries no demand fields, so the shape reads honest not-on-file).
+  const card = loadRateCard();
+  for (const m of solarMeters) {
+    const ctx: MeterSolarContext = { sharePct: largestShareByPump.get(m.id) ?? null };
+
+    const insight = nemDemandInsight({
+      isSolar: m.isSolar,
+      scheduleLabel: m.rateSchedule,
+      coverageState: m.coverageState,
+      nemMonths: m.nemPeriods.map((p) => ({
+        start: p.start,
+        netKwh: p.netKwh,
+        amountCents: p.amountCents,
+      })),
+      cycleDemandCents: m.periods.map((p) => p.demandCents),
+      trueUpAmountCents: m.trueUpAmountCents,
+      card,
+    });
+    if (insight !== null) {
+      const floor = solarBillFloor(m.periods.flatMap((p) => p.lineItems));
+      ctx.demandOwedCents = insight.demandOwedCents;
+      ctx.uncoveredShare = demandUncoveredShare({
+        demandOwedCents: insight.demandOwedCents,
+        offsettableCents: floor.offsettableCents,
+      });
+    }
+
+    byMeter.set(m.id, ctx);
+  }
+
+  return byMeter;
+}
+
 export async function farmOverview(deps: AlmondToolDeps) {
   const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
   return summarizeFarmOverview(deps.farmName, meters, computeKpiStrip(meters));
@@ -88,14 +169,19 @@ export async function farmOverview(deps: AlmondToolDeps) {
 
 export async function meterList(deps: AlmondToolDeps, filters: MeterFilters = {}) {
   const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
-  return summarizeMeters(meters, filters);
+  return summarizeMeters(meters, filters, buildSolarContextByMeter(meters));
 }
 
 export async function meterDetail(deps: AlmondToolDeps, query: string) {
   const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
   const match = resolveMeterQuery(meters, query);
   if (match.kind === "found") {
-    return { found: true as const, meter: summarizeMeterDetail(match.meter) };
+    // Only a solar meter carries solar context; building it for one meter reuses the farm dataset so
+    // the share matches the tab. A non-solar meter gets an empty context (its solar shape stays null).
+    const solarCtx = match.meter.isSolar
+      ? buildSolarContextByMeter(meters).get(match.meter.id)
+      : undefined;
+    return { found: true as const, meter: summarizeMeterDetail(match.meter, solarCtx) };
   }
   if (match.kind === "ambiguous") {
     // Several meters match by name; ask the grower to pick rather than guess one.
@@ -292,7 +378,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     listMeters: tool({
       description:
-        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. Optionally filter by rate schedule, entity, or ranch (case-insensitive contains).",
+        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality). Optionally filter by rate schedule, entity, or ranch (case-insensitive contains).",
       inputSchema: z.object({
         rate: z.string().optional().describe("Filter by rate schedule, e.g. AG-A1"),
         entity: z.string().optional().describe("Filter by legal billing entity name"),
@@ -310,7 +396,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     getMeter: tool({
       description:
-        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id.",
+        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, and how solar relates to its demand charge. Quote those facts verbatim; never state a net-metering credit dollar that is not on file.",
       inputSchema: z.object({
         query: z.string().describe("The meter name, SA id, or id to look up"),
       }),

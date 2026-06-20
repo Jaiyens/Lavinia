@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MeterView } from "@/lib/dashboard/load";
 import type { KpiStrip } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
+import { en } from "@/copy/en";
 import {
   findMeter,
   rateSchedulesByFrequency,
@@ -9,6 +10,7 @@ import {
   summarizeFarmOverview,
   summarizeFindings,
   summarizeMeterDetail,
+  summarizeMeterSolar,
   summarizeMeters,
   summarizeReconciliation,
 } from "./shape";
@@ -278,5 +280,117 @@ describe("summarizeFindings", () => {
   it("treats a sub-dollar impact as no dollar figure (never headline an opportunity worth $0)", () => {
     const s = summarizeFindings([finding({ impactUsd: 0.4 })]);
     expect(s[0]?.impact).toBeNull();
+  });
+});
+
+// H-1 (FR29): Almond's solar legibility on the meter shapes. Every figure must trace to a fact on the
+// Solar tab, scoped to the farm by the tools edge (not tested here, which is the pure shape), and a
+// net-metering credit dollar must never appear (the credit stays honest-blank).
+function arrayView(
+  over: Partial<MeterView["benefitingArrays"][number]> = {},
+): MeterView["benefitingArrays"][number] {
+  return { id: "arr-1", name: "West Array", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, ...over };
+}
+
+describe("summarizeMeterSolar", () => {
+  const c = en.solar.almond;
+
+  it("reads the generic NEM2 token as the generic program, never a guessed granular code", () => {
+    const s = summarizeMeterSolar(makeMeter({ isSolar: true, nemType: "nem2" }));
+    expect(s.program).toBe(c.programGeneric);
+    // No NEM2-family granular code (NEM2AA, NEM2AG, ...) is ever fabricated from the generic token.
+    expect(s.program).not.toMatch(/NEM2A/i);
+  });
+
+  it("reads a granular token verbatim and an absent token as not on file", () => {
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true, nemType: "NEM2AA" })).program).toBe(
+      c.programGranular("NEM2AA"),
+    );
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true, nemType: null })).program).toBe(
+      c.programNotOnFile,
+    );
+  });
+
+  it("states array membership in plain words from the meter's benefiting arrays", () => {
+    expect(
+      summarizeMeterSolar(makeMeter({ isSolar: true, benefitingArrays: [arrayView()] })).arrayCount,
+    ).toBe(1);
+    expect(
+      summarizeMeterSolar(makeMeter({ isSolar: true, benefitingArrays: [arrayView()] }))
+        .arrayMembership,
+    ).toBe(c.arrayMembership(1));
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true })).arrayMembership).toBe(c.arrayNone);
+  });
+
+  it("states the usage share as a whole percent from the injected context, not on file when absent", () => {
+    const withShare = summarizeMeterSolar(makeMeter({ isSolar: true }), { sharePct: 0.754 });
+    expect(withShare.sharePct).toBe(75);
+    expect(withShare.share).toBe(c.sharePercent(75));
+    // Absent / null share reads not on file (never a fabricated zero).
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true }), { sharePct: null }).sharePct).toBeNull();
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true })).share).toBe(c.shareNotOnFile);
+  });
+
+  it("keeps the grandfather position honest-unknown (the interconnection date is data-gated)", () => {
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true })).grandfather).toBe(
+      c.grandfatherNotOnFile,
+    );
+  });
+
+  it("states the demand reality from billed cents, with and without the uncovered share", () => {
+    const withShare = summarizeMeterSolar(makeMeter({ isSolar: true }), {
+      demandOwedCents: 340_00,
+      uncoveredShare: 0.62,
+    });
+    expect(withShare.demandReality).toBe(c.demandRealityWithShare("$340", 62));
+    const noShare = summarizeMeterSolar(makeMeter({ isSolar: true }), {
+      demandOwedCents: 340_00,
+      uncoveredShare: null,
+    });
+    expect(noShare.demandReality).toBe(c.demandReality("$340"));
+    // No demand insight on file (fail-closed gate) reads honest not on file.
+    expect(summarizeMeterSolar(makeMeter({ isSolar: true })).demandReality).toBe(c.demandNotOnFile);
+  });
+
+  it("never states a net-metering credit dollar anywhere in the solar shape", () => {
+    const s = summarizeMeterSolar(
+      makeMeter({ isSolar: true, nemType: "nem2", benefitingArrays: [arrayView()] }),
+      { sharePct: 0.5, demandOwedCents: 100_00, uncoveredShare: 0.4 },
+    );
+    // The only dollar Almond may state is a billed demand charge (in demandReality); no other field
+    // carries a dollar, and none is a net-metering credit (honest-blank, owned by Epic G).
+    expect(s.program).not.toMatch(/\$/);
+    expect(s.arrayMembership).not.toMatch(/\$/);
+    expect(s.share).not.toMatch(/\$/);
+    expect(s.grandfather).not.toMatch(/\$/);
+    // demandReality may name the billed demand charge, but never a "credit".
+    expect(s.demandReality.toLowerCase()).not.toContain("credit");
+  });
+});
+
+describe("summarizeMeterDetail solar field", () => {
+  it("carries solar legibility only for a solar meter (null for a non-solar meter)", () => {
+    expect(summarizeMeterDetail(makeMeter({ isSolar: false })).solar).toBeNull();
+    const d = summarizeMeterDetail(makeMeter({ isSolar: true, nemType: "nem2" }), {
+      sharePct: 0.5,
+    });
+    expect(d.solar).not.toBeNull();
+    expect(d.solar?.program).toBe(en.solar.almond.programGeneric);
+    expect(d.solar?.sharePct).toBe(50);
+  });
+});
+
+describe("summarizeMeters solar field", () => {
+  it("carries each solar meter's context from the keyed map; non-solar carries null", () => {
+    const meters = [
+      makeMeter({ id: "s1", isSolar: true, nemType: "nem2" }),
+      makeMeter({ id: "n1", isSolar: false }),
+    ];
+    const ctx = new Map([["s1", { sharePct: 0.25 }]]);
+    const r = summarizeMeters(meters, {}, ctx);
+    const s1 = r.meters.find((m) => m.id === "s1");
+    const n1 = r.meters.find((m) => m.id === "n1");
+    expect(s1?.solar?.sharePct).toBe(25);
+    expect(n1?.solar).toBeNull();
   });
 });

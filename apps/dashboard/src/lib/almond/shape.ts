@@ -2,6 +2,7 @@ import type { MeterView } from "@/lib/dashboard/load";
 import type { KpiStrip } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { formatUsdWhole } from "@/lib/format/money";
+import { en } from "@/copy/en";
 
 /**
  * Pure shaping for the Almond tool layer. Tools (src/lib/almond/tools.ts) load the farm's
@@ -79,6 +80,108 @@ export function summarizeFarmOverview(
   };
 }
 
+// ---------------------------------------------------------------------------
+// H-1 (FR29): the solar legibility Almond can read about one meter.
+// ---------------------------------------------------------------------------
+
+/**
+ * The solar facts Almond states for a meter, carried verbatim from what the Solar tab renders so
+ * every figure the model quotes is one the grower can see (FR29). STRUCTURE and TIMING only - never a
+ * net-metering credit dollar (the credit stays honest-blank; H-2 makes Almond point to the upload
+ * path). Each field is a PLAIN-ENGLISH phrase, not a raw token, so the model reads it without
+ * paraphrasing a number; the structured `arrayCount` / `sharePct` ride alongside for precision.
+ *
+ * The data-gated dimensions are surfaced HONESTLY, never fabricated: the granular program code (A-4)
+ * is gated to the generic NEM2 token at launch, the grandfather position (FR16) needs an
+ * interconnection date that is not on file, and the demand-charge reality (E-1/E-2) renders only when
+ * the fail-closed demand insight is on file. Where the input is absent the phrase says "not on file",
+ * matching the honest-blank contract, so Almond never states a vintage, expiry, or credit it cannot
+ * trace.
+ */
+export type MeterSolarView = {
+  /** The net-metering program meaning, in plain words ("on NEM2 net metering"). Never a guessed code. */
+  program: string;
+  /** Array membership said in plain words; the count rides alongside for precision. */
+  arrayMembership: string;
+  /** How many arrays credit this meter. */
+  arrayCount: number;
+  /** This meter's usage-proportional share across its arrays, in plain words; null when no usage. */
+  share: string;
+  /** The single largest usage-proportional share as a whole percent, when on file; else null. */
+  sharePct: number | null;
+  /** The grandfather position, in plain words; honest "not on file" until the interconnection date lands. */
+  grandfather: string;
+  /** The demand-charge reality, in plain words; honest "not on file" when the demand insight fails closed. */
+  demandReality: string;
+};
+
+/**
+ * The pre-derived solar inputs the shape needs that do not live on a single MeterView: the
+ * per-meter usage-proportional shares (computed across the whole farm by `buildSolarDataset`) and the
+ * demand-charge reality (computed in the tools edge from the fail-closed `nemDemandInsight` + the bill
+ * floor, which need the rate card). The shape stays PURE (NFR1) by taking these as plain arguments;
+ * the tools layer assembles them farm-scoped. Both optional: a meter with neither gets the honest
+ * not-on-file phrasing, never a fabricated value.
+ */
+export type MeterSolarContext = {
+  /** The meter's largest usage-proportional array share, in [0,1]; null/absent = no usage on file. */
+  sharePct?: number | null;
+  /** The billed demand charge solar does not cover, integer cents; absent = no demand insight on file. */
+  demandOwedCents?: number | null;
+  /** The portion of the bill solar does not cover, in [0,1]; absent = not quotable beside the dollar. */
+  uncoveredShare?: number | null;
+};
+
+/**
+ * Shape one solar meter's legibility for Almond (H-1). Pure: derives every phrase from the meter's own
+ * fields plus the pre-derived `MeterSolarContext`. Honest-blank by construction: the program reads the
+ * generic NEM2 meaning for the generic token (never a guessed granular code), the grandfather position
+ * reads "not on file" (the interconnection date is data-gated, DM1), and the demand reality renders
+ * only when the demand charge is on file. No net-metering credit dollar is ever stated here.
+ */
+export function summarizeMeterSolar(m: MeterView, ctx: MeterSolarContext = {}): MeterSolarView {
+  const c = en.solar.almond;
+
+  // Program meaning. A-4's granular six-code resolution is data-gated to the generic NEM2 token at
+  // launch, so a present token reads as the generic program; an absent token reads not-on-file. Never
+  // a guessed NEM2-family code.
+  const token = m.nemType?.trim() ?? "";
+  const program =
+    token.length === 0
+      ? c.programNotOnFile
+      : token.toLowerCase() === "nem2"
+        ? c.programGeneric
+        : c.programGranular(token);
+
+  // Array membership, in plain words.
+  const arrayCount = m.benefitingArrays.length;
+  const arrayMembership = arrayCount === 0 ? c.arrayNone : c.arrayMembership(arrayCount);
+
+  // Usage-proportional share. The structured percent comes from the tools edge (computed across the
+  // whole farm by buildSolarDataset); absent => no usage on file (never a fabricated zero).
+  const sharePct =
+    ctx.sharePct === null || ctx.sharePct === undefined ? null : Math.round(ctx.sharePct * 100);
+  const share = sharePct === null ? c.shareNotOnFile : c.sharePercent(sharePct);
+
+  // Grandfather position (FR16): data-gated on the interconnection date (DM1), not on file at launch,
+  // so always honest not-on-file. Never an estimated vintage or expiry.
+  const grandfather = c.grandfatherNotOnFile;
+
+  // Demand-charge reality (E-1/E-2): renders only when the fail-closed demand insight is on file (a
+  // billed demand charge, never a net-metering credit). Honest not-on-file otherwise.
+  const demandReality =
+    ctx.demandOwedCents === null || ctx.demandOwedCents === undefined
+      ? c.demandNotOnFile
+      : ctx.uncoveredShare === null || ctx.uncoveredShare === undefined
+        ? c.demandReality(formatUsdWhole(ctx.demandOwedCents))
+        : c.demandRealityWithShare(
+            formatUsdWhole(ctx.demandOwedCents),
+            Math.round(ctx.uncoveredShare * 100),
+          );
+
+  return { program, arrayMembership, arrayCount, share, sharePct, grandfather, demandReality };
+}
+
 export type MeterSummary = {
   id: string;
   name: string;
@@ -90,6 +193,8 @@ export type MeterSummary = {
   isSolar: boolean;
   status: string | null;
   latestBill: MoneyView | null;
+  /** H-1 (FR29): the solar legibility, present only for a solar meter; null for a non-solar meter. */
+  solar: MeterSolarView | null;
 };
 
 export type MeterFilters = {
@@ -107,7 +212,13 @@ function latestPrintedCents(m: MeterView): number | null {
   return null;
 }
 
-function toMeterSummary(m: MeterView): MeterSummary {
+/**
+ * Per-meter solar context keyed by pump id, assembled farm-scoped in the tools edge (H-1). A meter
+ * absent from the map (or a non-solar meter) gets no solar shape; the map only carries solar meters.
+ */
+export type SolarContextByMeter = Map<string, MeterSolarContext>;
+
+function toMeterSummary(m: MeterView, solarCtx?: SolarContextByMeter): MeterSummary {
   const latest = latestPrintedCents(m);
   return {
     id: m.id,
@@ -120,6 +231,8 @@ function toMeterSummary(m: MeterView): MeterSummary {
     isSolar: m.isSolar,
     status: m.status,
     latestBill: latest === null ? null : money(latest),
+    // H-1: a solar meter carries the same solar facts the Solar tab shows; non-solar meters carry none.
+    solar: m.isSolar ? summarizeMeterSolar(m, solarCtx?.get(m.id) ?? {}) : null,
   };
 }
 
@@ -130,7 +243,11 @@ function matches(value: string | null, filter: string | undefined): boolean {
   return value.toLowerCase().includes(filter.toLowerCase());
 }
 
-export function summarizeMeters(meters: MeterView[], filters: MeterFilters = {}): {
+export function summarizeMeters(
+  meters: MeterView[],
+  filters: MeterFilters = {},
+  solarCtx?: SolarContextByMeter,
+): {
   total: number;
   shown: number;
   meters: MeterSummary[];
@@ -145,7 +262,7 @@ export function summarizeMeters(meters: MeterView[], filters: MeterFilters = {})
   return {
     total: filtered.length,
     shown: Math.min(filtered.length, limit),
-    meters: filtered.slice(0, limit).map(toMeterSummary),
+    meters: filtered.slice(0, limit).map((m) => toMeterSummary(m, solarCtx)),
   };
 }
 
@@ -211,9 +328,11 @@ export type MeterDetail = {
     peakKw: number | null;
     tariff: string | null;
   }[];
+  /** H-1 (FR29): the solar legibility, present only for a solar meter; null for a non-solar meter. */
+  solar: MeterSolarView | null;
 };
 
-export function summarizeMeterDetail(m: MeterView): MeterDetail {
+export function summarizeMeterDetail(m: MeterView, solarCtx?: MeterSolarContext): MeterDetail {
   const recent = m.periods.slice(-6).map((p) => ({
     start: p.start,
     close: p.close,
@@ -238,6 +357,8 @@ export function summarizeMeterDetail(m: MeterView): MeterDetail {
     gpm: m.gpm,
     status: m.status,
     recentBills: recent,
+    // H-1: a solar meter carries the same solar facts the Solar tab shows; non-solar meters carry none.
+    solar: m.isSolar ? summarizeMeterSolar(m, solarCtx ?? {}) : null,
   };
 }
 
