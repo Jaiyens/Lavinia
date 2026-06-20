@@ -419,6 +419,30 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ------------------------------------------------------------------------
+   Fluid desktop scaling. The desktop dashboard is a fixed one-screen canvas:
+   the bento board fills the viewport (height-capped, overflow-hidden) and its
+   card boxes stretch with the screen - but everything INSIDE the cards (every
+   type-* role, padding, gap, and radius) is rem-anchored to the root font
+   size. With a fixed 16px root that content stays one size while the boxes
+   grow and shrink, so a big monitor reads sparse and a small laptop reads
+   cramped: the same layout at a different "scale". Driving the ROOT font size
+   off the viewport makes the whole rem-based UI grow and shrink together with
+   the canvas, so density looks the same from a 13" laptop to a 27" monitor.
+   This is the fluid approach products use (Linear/Vercel/Stripe), not a zoom:
+   text stays pixel-crisp, and the map + drag-to-rearrange keep working
+   natively. Mobile (< lg) keeps the fixed 16px root so body copy stays legible
+   in a truck. Height is weighted over width because the board is height-bound
+   (it must fit one screen). The clamp bounds are in rem, so on the root these
+   resolve against the grower's own browser default font size - their text-size
+   preference still moves the floor and ceiling (accessibility). Browser zoom
+   scales the viewport, so it keeps working too. lg breakpoint = 1024px. */
+@media (min-width: 1024px) {
+  :root {
+    font-size: clamp(0.8125rem, calc(0.42vw + 1.11vh), 1.1875rem);
+  }
+}
+
 @keyframes terra-spin {
   to {
     transform: rotate(360deg);

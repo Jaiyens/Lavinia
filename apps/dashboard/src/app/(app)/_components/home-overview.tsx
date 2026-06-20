@@ -258,7 +258,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
-    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-7.5rem)] lg:overflow-hidden lg:p-4">
+    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-120px)] lg:overflow-hidden lg:p-4">
       {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
           the viewport (minus the tour banner) so the whole farm stays on one screen. */}
       <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
