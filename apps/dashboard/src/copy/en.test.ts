@@ -148,9 +148,9 @@ describe("almond surfacing copy (the FR-21 / FR-22 / FR-20 voice law)", () => {
   const all = [a.railLabel, a.nudge.title, a.nudge.body, a.nudge.cta, a.nudge.dismiss].join(" ");
 
   it("phrases the rail entry and the first-run nudge in plain words", () => {
-    expect(a.railLabel).toBe("Ask Almond");
-    expect(a.nudge.title).toBe("Meet Almond");
-    expect(a.nudge.body).toBe("Ask Almond to show you your most expensive meter.");
+    expect(a.railLabel).toBe("Ask Almondo");
+    expect(a.nudge.title).toBe("Meet Almondo");
+    expect(a.nudge.body).toBe("Ask Almondo to show you your most expensive meter.");
     expect(a.nudge.cta).toBe("Show me");
   });
 

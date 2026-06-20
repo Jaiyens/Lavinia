@@ -49,7 +49,7 @@ export function AlmondAvatar({
   const leafBack = onDark ? "#3E7A52" : "#274E37";
   const leafFront = onDark ? "#4E9A63" : "#1F3D2B";
   const label =
-    state === "thinking" ? "Almond, thinking" : state === "done" ? "Almond, done" : "Almond";
+    state === "thinking" ? "Almondo, thinking" : state === "done" ? "Almondo, done" : "Almondo";
 
   const svgRef = useRef<SVGSVGElement>(null);
   const pupilsRef = useRef<SVGGElement>(null);

@@ -472,9 +472,9 @@ export const en = {
     // Left-rail / nav label and the page chrome.
     navLabel: "Reports",
     eyebrow: "Reports",
-    title: "Reports Almond made",
+    title: "Reports Almondo made",
     // One-line lede under the title, stating what this area is.
-    lede: "Every spreadsheet Almond has made you, newest first. Open any one to download it again.",
+    lede: "Every spreadsheet Almondo has made you, newest first. Open any one to download it again.",
     // Per-row labels. The kind label itself comes from the export skill's plain-name map.
     madeOnLabel: "Made",
     requestLabel: "You asked",
@@ -484,7 +484,7 @@ export const en = {
     // Calm empty state, in Almond's voice, inviting the first artifact. No exclamation, no em dash.
     empty: {
       title: "No reports yet",
-      body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
+      body: "Ask Almondo for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
     },
   },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
@@ -507,7 +507,7 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
-      almond: "Almond",
+      almond: "Almondo",
       water: "Water",
       labor: "Labor",
     },
@@ -607,14 +607,14 @@ export const en = {
     // Plain operator English, no exclamation marks, no kW/jargon on the surface.
     almond: {
       // Launcher button (the corner affordance that opens the panel).
-      launcherLabel: "Ask Almond",
-      openLabel: "Open Almond",
-      closeLabel: "Close Almond",
+      launcherLabel: "Ask Almondo",
+      openLabel: "Open Almondo",
+      closeLabel: "Close Almondo",
       // Rail entry (Story 10.2, UX-DR4): the clear, persistent way to find Almond in the OS-shell rail,
       // alongside the floating launcher. Opens the same panel. Plain operator words, no exclamation mark.
-      railLabel: "Ask Almond",
+      railLabel: "Ask Almondo",
       // Panel header.
-      name: "Almond",
+      name: "Almondo",
       tagline: "Your farm assistant",
       // Composer.
       placeholder: "Ask anything about your farm",
@@ -646,7 +646,7 @@ export const en = {
       // Shown beside the spinning thinking ring before any answer arrives, and again while Almond is
       // still building a file. Plain and calm, not farm-flavored. No exclamation marks, no em dashes.
       thinking: "Thinking",
-      streaming: "Almond is answering",
+      streaming: "Almondo is answering",
       working: "Working on that",
       error: "That did not work.",
       retry: "Try again",
@@ -660,7 +660,7 @@ export const en = {
       editSave: "Update",
       editCancel: "Cancel",
       regenerate: "Try again",
-      regenerateAria: "Ask Almond to answer again",
+      regenerateAria: "Ask Almondo to answer again",
       // Collapsible disclosure that reveals the model's reasoning when it streamed any (best-effort).
       thoughtLabel: "Thought",
       // Per-farm generation throttle (Story 10.3, AR16): shown by both file skills when one farm has
@@ -668,7 +668,7 @@ export const en = {
       // hard error. Plain operator English, no exclamation mark.
       busy: "You have made several files in a row. Give it a minute and ask again.",
       // Accessible label for the live conversation region.
-      conversationLabel: "Conversation with Almond",
+      conversationLabel: "Conversation with Almondo",
       // Saved history (per-user, per-farm): a new-chat affordance and the list of past threads.
       // Each grower sees only their OWN chats. Plain operator English, no exclamation marks.
       newChat: "New chat",
@@ -707,8 +707,8 @@ export const en = {
       // operator English, no exclamation mark, no em dash. Shown only to a real owner on Home (gated
       // server-side); never on the public Tour. `dismiss` is the X button's accessible label.
       nudge: {
-        title: "Meet Almond",
-        body: "Ask Almond to show you your most expensive meter.",
+        title: "Meet Almondo",
+        body: "Ask Almondo to show you your most expensive meter.",
         cta: "Show me",
         dismiss: "Dismiss",
       },
