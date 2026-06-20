@@ -32,7 +32,15 @@ export function parseAllowlist(raw: string | undefined): Set<string> {
   );
 }
 
-/** Whether the lockdown is active (i.e. an allowlist is configured). */
+/**
+ * Whether a static allowlist is CONFIGURED. This is a config predicate, NOT an access decision.
+ *
+ * It does NOT mean "access is open when false". Since the fail-closed change, an unset/empty
+ * allowlist still DENIES sign-in in production (see isStaticallyAllowed). So `isLockdownOn() ===
+ * false` only tells you no list was supplied; in prod that means everyone is locked out, in
+ * dev/test it means everyone is let in. Never branch on this to infer who may sign in - call
+ * isStaticallyAllowed(email) (which is production-aware) for the actual access decision.
+ */
 export function isLockdownOn(raw: string | undefined = process.env.ACCESS_ALLOWLIST): boolean {
   return parseAllowlist(raw).size > 0;
 }
