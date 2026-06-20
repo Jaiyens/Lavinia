@@ -1,6 +1,6 @@
 "use client";
 
-import { History, SquarePen, Trash2, X } from "lucide-react";
+import { History, PanelLeftClose, SquarePen, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { useAlmondChat } from "./almond-launcher-provider";
@@ -117,8 +117,13 @@ export function AlmondHistoryList({
   );
 }
 
-/** The page's persistent history rail (desktop only). Mirrors a ChatGPT/Claude-style left column. */
-export function AlmondHistorySidebar() {
+/**
+ * The page's persistent history rail (desktop only). Mirrors a ChatGPT/Claude-style left column,
+ * and is COLLAPSIBLE (Perplexity-style): a clearly labeled "Chats" header carries an obvious close
+ * control at the top, so a grower new to AI can see they can hide it; `onClose` collapses the rail
+ * and the page shows a "Chats" reopen pill in its place. "New chat" sits just under the header.
+ */
+export function AlmondHistorySidebar({ onClose }: { onClose?: () => void }) {
   const { historyEnabled } = useAlmondChat();
   if (!historyEnabled) return null;
   return (
@@ -126,14 +131,51 @@ export function AlmondHistorySidebar() {
       aria-label={t.historyAria}
       className="hidden w-64 shrink-0 flex-col border-r border-outline-variant bg-surface-container-lowest/60 lg:flex lg:sticky lg:top-0 lg:h-[calc(100dvh-4rem)] lg:self-start"
     >
-      <div className="p-3">
+      {/* Header with the obvious collapse control (the close affordance farmers can find). */}
+      <div className="flex items-center justify-between px-3 pb-2 pt-3">
+        <span className="eyebrow text-on-surface-variant">{t.chatsHeading}</span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.closeHistory}
+            title={t.closeHistory}
+            className="press grid h-8 w-8 place-items-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-tint hover:text-on-surface"
+          >
+            <PanelLeftClose size={18} aria-hidden />
+          </button>
+        )}
+      </div>
+      {/* New chat, moved just below the collapse header. */}
+      <div className="px-3 pb-2">
         <AlmondNewChatButton withLabel />
       </div>
-      <p className="eyebrow px-4 pb-1 text-on-surface-variant">{t.chatsHeading}</p>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         <AlmondHistoryList />
       </div>
     </aside>
+  );
+}
+
+/** The "Chats" reopen pill shown in the page when the rail is collapsed. Labeled (not just an icon)
+ *  so a grower new to AI knows what it opens. Desktop only; the rail is the home of saved chats. */
+export function AlmondHistoryReopen({ onClick, className }: { onClick: () => void; className?: string }) {
+  const { historyEnabled } = useAlmondChat();
+  if (!historyEnabled) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t.historyAria}
+      title={t.historyAria}
+      className={cn(
+        "press inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-3.5 py-1.5 type-label-caps text-on-surface-variant shadow-[var(--shadow-soft)] transition-colors hover:border-primary hover:text-primary",
+        className,
+      )}
+    >
+      <PanelLeftClose size={15} aria-hidden className="rotate-180" />
+      {t.chatsHeading}
+    </button>
   );
 }
 

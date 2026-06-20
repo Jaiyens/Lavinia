@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { en } from "@/copy/en";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
 import { AlmondComposer } from "./almond-composer";
 import {
   AlmondHistoryButton,
+  AlmondHistoryReopen,
   AlmondHistorySheet,
   AlmondHistorySidebar,
   AlmondNewChatButton,
@@ -39,11 +40,12 @@ export function AlmondPage() {
   } = useAlmondChat();
   const empty = messages.length === 0;
   const [showHistory, setShowHistory] = useState(false);
+  const [railOpen, setRailOpen] = useState(true);
 
   return (
     <div className="relative flex min-h-[calc(100dvh-4rem)]">
-      {/* Saved-chats rail (desktop). Self-hides when history is disabled (the public Tour). */}
-      <AlmondHistorySidebar />
+      {/* Saved-chats rail (desktop), collapsible. Self-hides when history is disabled (the Tour). */}
+      {railOpen && <AlmondHistorySidebar onClose={() => setRailOpen(false)} />}
 
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Mobile history controls: New chat + open the saved-chats overlay. Desktop uses the rail. */}
@@ -51,6 +53,12 @@ export function AlmondPage() {
           <div className="flex items-center justify-between gap-2 border-b border-outline-variant px-4 py-2 lg:hidden">
             <AlmondHistoryButton onClick={() => setShowHistory(true)} />
             <AlmondNewChatButton />
+          </div>
+        )}
+        {/* Desktop: when the rail is collapsed, a labeled "Chats" pill brings it back. */}
+        {historyEnabled && !railOpen && (
+          <div className="hidden items-center px-4 py-3 lg:flex">
+            <AlmondHistoryReopen onClick={() => setRailOpen(true)} />
           </div>
         )}
 
@@ -66,18 +74,27 @@ export function AlmondPage() {
             </div>
 
             {starters.length > 0 && (
-              <div className="mt-8 w-full max-w-2xl text-left">
-                <p className="eyebrow mb-2 text-on-surface-variant">{t.suggestedLabel}</p>
-                <div className="flex flex-col gap-1.5">
+              <div className="mt-9 w-full max-w-2xl text-left">
+                <p className="eyebrow mb-3 text-on-surface-variant">{t.suggestedLabel}</p>
+                <div className="grid gap-2.5 sm:grid-cols-2">
                   {starters.map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => send(q)}
-                      className="flex items-center gap-2.5 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3.5 py-2.5 text-left type-body-md text-on-surface transition-colors hover:border-primary hover:text-primary"
+                      className="lift group flex items-center gap-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest px-4 py-3.5 text-left shadow-e1 transition-colors hover:border-primary/40"
                     >
-                      <Sparkles size={15} aria-hidden className="shrink-0 text-primary" />
-                      <span>{q}</span>
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-on-primary">
+                        <Sparkles size={15} aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1 type-body-md font-medium leading-snug text-on-surface">
+                        {q}
+                      </span>
+                      <ArrowRight
+                        size={16}
+                        aria-hidden
+                        className="shrink-0 -translate-x-1 text-on-surface-variant opacity-0 transition-all group-hover:translate-x-0 group-hover:text-primary group-hover:opacity-100"
+                      />
                     </button>
                   ))}
                 </div>
