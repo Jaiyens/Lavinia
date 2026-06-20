@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutGrid, Zap, Sparkles } from "lucide-react";
+import { LayoutGrid, Zap, Sparkles, Sun } from "lucide-react";
 import { en } from "@/copy/en";
 
 // The agent rail lists AGENTS, not features (EXPERIENCE.md). Almond (the farm assistant) sits right
 // under Home as the second item — its own mascot glyph marks it out (rendered in AgentRail), and the
 // floating launcher still offers the same assistant from anywhere. Unbuilt domains (Water/Labor) are
 // not shown at all.
-export type AgentKey = "home" | "almond" | "energy";
+export type AgentKey = "home" | "almond" | "energy" | "solar";
 
 export type AgentItem = {
   key: AgentKey;
@@ -23,6 +23,9 @@ export const AGENTS: readonly AgentItem[] = [
   // there); `icon` is only a sensible lucide fallback.
   { key: "almond", label: en.shell.agents.almond, href: "/almond", icon: Sparkles, live: true },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true },
+  // Solar is a first-class rail entry (the grower thinks "show me my solar", not "switch a lens
+  // inside Energy"). It opens the /solar tab on the same shell as Energy, scoped to the active farm.
+  { key: "solar", label: en.shell.agents.solar, href: "/solar", icon: Sun, live: true },
 ] as const;
 
 // The public Tour renders the SAME shell as the signed-in app, but its routes live under
@@ -32,6 +35,7 @@ const TOUR_HREF: Partial<Record<AgentKey, string>> = {
   home: "/tour",
   almond: "/tour/almond",
   energy: "/tour/energy",
+  solar: "/tour/solar",
 };
 
 /** The destination for an agent, under the tour shell (demo) or the real app. */

@@ -508,6 +508,7 @@ export const en = {
       home: "Home",
       energy: "Energy",
       almond: "Almond",
+      solar: "Solar",
       water: "Water",
       labor: "Labor",
     },
@@ -1443,6 +1444,16 @@ export const en = {
 
   // Lever 4: solar / NEM. Solar offsets daytime energy, not the evening demand peak.
   solar: {
+    // The Solar tab shell (A-1). Eyebrow over the farm name on /solar, and the
+    // empty-but-structured placeholder shown before the lenses arrive (A-2 onward).
+    tab: {
+      eyebrow: "Your solar",
+      // Shown in the data hero until the lens set ships (A-2 onward). Never a crash
+      // or a blank shell; a calm line that the surface is assembling.
+      placeholderTitle: "Your solar fleet, coming into view",
+      placeholderBody:
+        "Your arrays, true-up dates, and meter-by-meter solar are assembling here.",
+    },
     demandPeak: {
       situation: (pump: string): string =>
         `${pump} has solar, but its bill peak is set after 4pm.`,

@@ -13,6 +13,8 @@ export default tseslint.config(
       "node_modules/**",
       "prisma/migrations/**",
       "next-env.d.ts",
+      // BMAD planning/workflow output (git-ignored scaffold, not application source).
+      "_bmad-output/**",
     ],
   },
   ...tseslint.configs.recommended,
