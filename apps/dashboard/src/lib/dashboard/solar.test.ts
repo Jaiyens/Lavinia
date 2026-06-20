@@ -17,6 +17,20 @@ function array(over: Partial<MeterArrayView> & { id: string }): MeterArrayView {
   return { name: over.id, nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: null, ...over };
 }
 
+/** A per-cycle summary carrying just the totalKwh the allocation share reads (C-2, NFR4). */
+function period(totalKwh: number | null): MeterView["periods"][number] {
+  return {
+    start: "2025-01-01T00:00:00.000Z",
+    close: "2025-02-01T00:00:00.000Z",
+    printedTotalCents: null,
+    demandCents: null,
+    totalKwh,
+    peakKw: null,
+    tariff: null,
+    lineItems: [],
+  };
+}
+
 function meter(over: Partial<MeterView> & { id: string; isSolar: boolean }): MeterView {
   return {
     name: over.id,
@@ -254,7 +268,7 @@ describe("isTrueUpSoon - the Map lens true-up-soon signal (FR35)", () => {
 });
 
 describe("buildSolarDataset - honest-blank discipline (FR10)", () => {
-  it("never produces a credit dollar or a share on a meter row", () => {
+  it("carries the C-2 usage share but NEVER a credit dollar on a meter row", () => {
     const west = array({ id: "West" });
     const ds = buildSolarDataset(
       [meter({ id: "p1", isSolar: true, trueUpAmountCents: -713031, benefitingArrays: [west] })],
@@ -262,8 +276,8 @@ describe("buildSolarDataset - honest-blank discipline (FR10)", () => {
     );
     const row = ds.arrays[0]?.meters[0];
     if (!row) throw new Error("missing row");
-    // The dataset carries only structure: no credit, no share keys exist on the row at all.
-    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "solarKw"]);
+    // The row carries STRUCTURE plus the usage-proportional share (C-2): never a credit dollar key.
+    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "share", "solarKw"]);
     // And the KPI summary carries no dollar tile of any kind.
     expect(Object.keys(ds.kpis).sort()).toEqual([
       "arrayCount",
@@ -322,17 +336,18 @@ describe("buildSolarDataset - Arrays-lens array-group shape (A-5, FR3/FR7)", () 
     expect(ds.arrays[0]?.meters.map((m) => m.pumpId).sort()).toEqual(["p1", "p2"]);
   });
 
-  it("the array-group meter row carries NO share and NO credit key for the lens (honest-blank, FR10)", () => {
+  it("the array-group meter row carries the C-2 share but NO credit key (honest-blank, FR10)", () => {
     const west = array({ id: "West" });
     const ds = buildSolarDataset(
-      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west], periods: [period(100)] })],
       1,
     );
     const row = ds.arrays[0]?.meters[0];
     if (!row) throw new Error("missing row");
-    // The Arrays lens renders the share/credit honest-blank; the dataset feeds it no value to
-    // multiply into a dollar (FR10). The row is structure only.
-    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "solarKw"]);
+    // C-2 adds the usage-proportional share; the credit DOLLAR stays honest-blank, so the dataset
+    // feeds the lens no value to multiply into a dollar (FR10). The row carries structure + share.
+    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "share", "solarKw"]);
+    expect(row.share).toBe(1);
   });
 
   // A-5 fix (review finding): tapping any Arrays-lens meter row writes ?meter=<pumpId> via the
@@ -440,5 +455,82 @@ describe("buildSolarDataset - needs-review surfacing (C-1, FR6)", () => {
     expect(ds.needsReview.unlinkedMeters).toEqual([]);
     expect(ds.needsReview.unlinkedCodes).toEqual([]);
     expect(ds.kpis.needsReviewCount).toBe(0);
+  });
+});
+
+describe("buildSolarDataset - usage-proportional allocation share (C-2, FR8)", () => {
+  it("splits an array's meters by their cumulative totalKwh: A/(A+B), B/(A+B), summing to 1", () => {
+    const west = array({ id: "West", name: "West" });
+    const ds = buildSolarDataset(
+      [
+        // p1: 12 + 18 = 30 kWh; p2: 10 kWh -> 0.75 / 0.25
+        meter({ id: "p1", isSolar: true, benefitingArrays: [west], periods: [period(12), period(18)] }),
+        meter({ id: "p2", isSolar: true, benefitingArrays: [west], periods: [period(10)] }),
+      ],
+      1,
+    );
+    const rows = ds.arrays[0]?.meters ?? [];
+    expect(rows.find((r) => r.pumpId === "p1")?.share).toBe(0.75);
+    expect(rows.find((r) => r.pumpId === "p2")?.share).toBe(0.25);
+    const sum = rows.reduce((acc, r) => acc + (r.share ?? 0), 0);
+    expect(sum).toBeCloseTo(1, 10);
+  });
+
+  it("a meter with no billed usage on file is not-on-file (share null), never a fabricated zero", () => {
+    const west = array({ id: "West", name: "West" });
+    const ds = buildSolarDataset(
+      [
+        meter({ id: "p1", isSolar: true, benefitingArrays: [west], periods: [period(40)] }),
+        // no periods => cumulativeKwh null => excluded from the denominator, share null
+        meter({ id: "p2", isSolar: true, benefitingArrays: [west], periods: [] }),
+      ],
+      1,
+    );
+    const rows = ds.arrays[0]?.meters ?? [];
+    expect(rows.find((r) => r.pumpId === "p1")?.share).toBe(1);
+    expect(rows.find((r) => r.pumpId === "p2")?.share).toBeNull();
+  });
+
+  it("computes each array's share independently when a meter sits under two arrays", () => {
+    const west = array({ id: "West", name: "West" });
+    const east = array({ id: "East", name: "East" });
+    const ds = buildSolarDataset(
+      [
+        // p1 (60) is under both; p2 (40) under West only; p3 (60) under East only.
+        meter({ id: "p1", isSolar: true, benefitingArrays: [west, east], periods: [period(60)] }),
+        meter({ id: "p2", isSolar: true, benefitingArrays: [west], periods: [period(40)] }),
+        meter({ id: "p3", isSolar: true, benefitingArrays: [east], periods: [period(60)] }),
+      ],
+      1,
+    );
+    const westGroup = ds.arrays.find((g) => g.id === "West");
+    const eastGroup = ds.arrays.find((g) => g.id === "East");
+    // West: p1 60 / (60 + 40) = 0.6, p2 = 0.4.
+    expect(westGroup?.meters.find((r) => r.pumpId === "p1")?.share).toBe(0.6);
+    expect(westGroup?.meters.find((r) => r.pumpId === "p2")?.share).toBe(0.4);
+    // East: p1 60 / (60 + 60) = 0.5, p3 = 0.5.
+    expect(eastGroup?.meters.find((r) => r.pumpId === "p1")?.share).toBe(0.5);
+    expect(eastGroup?.meters.find((r) => r.pumpId === "p3")?.share).toBe(0.5);
+  });
+
+  it("never multiplies a share by a dollar: a meter with a true-up credit still carries no credit key", () => {
+    const west = array({ id: "West", name: "West" });
+    const ds = buildSolarDataset(
+      [
+        meter({
+          id: "p1",
+          isSolar: true,
+          trueUpAmountCents: -713031,
+          benefitingArrays: [west],
+          periods: [period(100)],
+        }),
+      ],
+      1,
+    );
+    const row = ds.arrays[0]?.meters[0];
+    if (!row) throw new Error("missing row");
+    expect(row.share).toBe(1);
+    // The row exposes the share, never a credit/dollar value derived from it (FR10).
+    expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "share", "solarKw"]);
   });
 });

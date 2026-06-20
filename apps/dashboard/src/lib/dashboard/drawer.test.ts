@@ -218,6 +218,48 @@ describe("toDrawerDetail", () => {
     expect(empty.solar.arrays).toEqual([]);
   });
 
+  it("computes the real allocation share when the fleet is supplied and the meter is under one array (C-2)", () => {
+    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
+    const m1 = meter({
+      id: "m1",
+      coverageState: "reconciled",
+      isSolar: true,
+      benefitingArrays: [arr],
+      periods: [period({ totalKwh: 30 })],
+    });
+    const m2 = meter({
+      id: "m2",
+      coverageState: "reconciled",
+      isSolar: true,
+      benefitingArrays: [arr],
+      periods: [period({ totalKwh: 10 })],
+    });
+    // With the fleet, m1's share of West is 30 / (30 + 10) = 0.75.
+    const d = toDrawerDetail(m1, [m1, m2]);
+    expect(d.solar.allocationShare).toBe(0.75);
+    // Without the fleet (the Energy drawer) the share stays honest-blank.
+    expect(toDrawerDetail(m1).solar.allocationShare).toBeNull();
+  });
+
+  it("stays honest-blank when the meter is under more than one array (never guesses which split)", () => {
+    const west = { id: "w", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
+    const east = { id: "e", name: "East", nameplateKw: 1092, nemType: "nem2_agg", trueUpMonth: 9 };
+    const m1 = meter({
+      id: "m1",
+      coverageState: "reconciled",
+      isSolar: true,
+      benefitingArrays: [west, east],
+      periods: [period({ totalKwh: 30 })],
+    });
+    expect(toDrawerDetail(m1, [m1]).solar.allocationShare).toBeNull();
+  });
+
+  it("a meter with no billed usage stays not-on-file (share null), never a fabricated zero (C-2/FR10)", () => {
+    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
+    const m1 = meter({ id: "m1", coverageState: "no_bill", isSolar: true, benefitingArrays: [arr], periods: [] });
+    expect(toDrawerDetail(m1, [m1]).solar.allocationShare).toBeNull();
+  });
+
   it("is pure: does not mutate the input meter", () => {
     const m = meter({
       id: "m1",

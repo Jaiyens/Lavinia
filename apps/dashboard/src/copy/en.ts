@@ -1229,10 +1229,12 @@ export const en = {
       arrays: "Arrays crediting this meter",
       arrayUnnamed: "Array",
       allocation: "Credit allocation",
-      // The allocation share + credit dollar render HONEST-BLANK in the drawer (A-9, FR10): the real
-      // usage-proportional share arrives in Epic C and the credit settles only with a true-up
-      // statement (Epic G). Until then both read not-on-file, never a fabricated zero or a credit.
-      allocationNotOnFile: "Not computed yet",
+      // The allocation share (C-2, FR8): the meter's usage-proportional share of its array, said as a
+      // whole percent (tnum). null reads not-on-file (no billed usage, or under more than one array).
+      // The credit DOLLAR beside it stays HONEST-BLANK (settled only by a true-up statement, Epic G);
+      // never a fabricated zero, never a percent multiplied into a credit.
+      allocationValue: (share: number): string => `${Math.round(share * 100)}% of this array`,
+      allocationNotOnFile: "No usage on file",
       credit: "Credit",
       creditNotOnFile: "Not on file",
       // DR enrollment shown as plain information (Story 3.7, FR-18). The event
@@ -1575,10 +1577,13 @@ export const en = {
       // the raw NEM token quietly; A-4's program-code component refines the plain-English meaning.
       programGeneric: "NEM2",
       programNotOnFile: "Program not on file",
-      // The share row label and the honest-blank share/credit cells (G-0 primitive lands in Epic G;
-      // A-5 renders the not-on-file state inline until then). The share % arrives in Epic C.
+      // The share row label and the share/credit cells. C-2 computes the usage-proportional share %
+      // from billed usage; a meter with no billed usage on file reads not-on-file (never a zero that
+      // would read as dropped). The credit DOLLAR stays honest-blank until a statement settles it.
       shareLabel: "Share of this array",
-      shareNotOnFile: "Not computed yet",
+      // The usage-proportional share said as a whole percent (tnum), e.g. "75% of this array".
+      sharePercent: (share: number): string => `${Math.round(share * 100)}% of this array`,
+      shareNotOnFile: "No usage on file",
       creditLabel: "Credit",
       creditNotOnFile: "Not on file",
       // Open the drawer on a meter row.

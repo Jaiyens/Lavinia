@@ -11,8 +11,47 @@ import {
   summarizeNemMonths,
   type NemEnergyPosition,
 } from "@/lib/energy/solar-nem";
+import { allocateArray } from "@/lib/energy/solar-allocation";
 import type { RateCard } from "@/lib/energy/rates";
 import type { MeterView } from "./load";
+
+/**
+ * Sum a meter's per-cycle `totalKwh` SUMMARIES into one cumulative usage basis (C-2, NFR4). null when
+ * no cycle carries a totalKwh (not-on-file), never a fabricated zero. Never reads the interval series.
+ */
+function cumulativeKwhFor(meter: MeterView): number | null {
+  let seen = false;
+  let sum = 0;
+  for (const p of meter.periods) {
+    if (p.totalKwh !== null && Number.isFinite(p.totalKwh)) {
+      seen = true;
+      sum += p.totalKwh;
+    }
+  }
+  return seen ? sum : null;
+}
+
+/**
+ * The drilled-in meter's usage-proportional allocation share for the drawer (C-2, FR8). Honest by
+ * construction: it is quotable only when the meter benefits from EXACTLY ONE array (the Batth cohort
+ * - a single-array meter), so "share of this array" is unambiguous; a meter under multiple arrays
+ * stays honest-blank (null) rather than guess which array's split to show. Computed by the pure
+ * `allocateArray` over that array's benefiting meters' cumulative usage (summaries only, NFR4). null
+ * when the fleet is not supplied (the Energy drawer), when there is not exactly one array, or when
+ * this meter has no billed usage (not-on-file). NO credit dollar is computed.
+ */
+function drawerAllocationShare(meter: MeterView, allMeters: MeterView[] | undefined): number | null {
+  if (allMeters === undefined) return null;
+  if (meter.benefitingArrays.length !== 1) return null;
+  const array = meter.benefitingArrays[0];
+  if (array === undefined) return null;
+  // The array's benefiting meters are exactly those whose benefitingArrays list this array id.
+  const basis = allMeters
+    .filter((m) => m.benefitingArrays.some((a) => a.id === array.id))
+    .map((m) => ({ pumpId: m.id, meterName: m.name, cumulativeKwh: cumulativeKwhFor(m) }));
+  const allocation = allocateArray(array.id, array.name, basis);
+  return allocation.shares.find((s) => s.pumpId === meter.id)?.share ?? null;
+}
 
 export type DrawerTouRow = {
   /** The printed TOU period label as extracted (e.g. "Peak", "Off-Peak"); null when unlabeled. */
@@ -102,8 +141,9 @@ export type DrawerSolar = {
   trueUpMonth: number | null;
   /** Paired array nameplate kW carried on the meter; null when not on file. */
   solarKw: number | null;
-  /** Usage-proportional allocation share in [0,1]; ALWAYS null at A-9 - the real value arrives in
-   *  C-2 and the row renders honest-blank until then, never a fabricated zero (FR10). */
+  /** Usage-proportional allocation share in [0,1] (C-2, FR8); null = not-on-file (no billed usage,
+   *  not exactly one array, or the fleet not supplied). The credit DOLLAR beside it stays honest-blank
+   *  until a statement settles it - never a fabricated zero, never a percent multiplied into a dollar. */
   allocationShare: number | null;
   arrays: { id: string; name: string | null; nameplateKw: number }[];
   /** Energy position from the printed NEM months; null when none on file (Story 3.4). */
@@ -170,7 +210,13 @@ export function verificationFor(
   return verifyBill({ scheduleLabel: meter.rateSchedule, period: latest }, card);
 }
 
-export function toDrawerDetail(meter: MeterView): DrawerDetail {
+/**
+ * Project one canonical MeterView into the drawer render model. `allMeters` (the active farm's
+ * fleet) is OPTIONAL: when supplied (the Solar drawer), the solar section's allocation row carries
+ * the real usage-proportional share (C-2); when omitted (the Energy drawer), the share stays
+ * honest-blank. Everything else is unchanged.
+ */
+export function toDrawerDetail(meter: MeterView, allMeters?: MeterView[]): DrawerDetail {
   const isCovered = meter.coverageState === "reconciled";
 
   let latest: DrawerLatest | null = null;
@@ -234,9 +280,10 @@ export function toDrawerDetail(meter: MeterView): DrawerDetail {
       program: resolveDrawerProgram(meter.nemType),
       trueUpMonth: meter.trueUpMonth,
       solarKw: meter.solarKw,
-      // A-9 (FR10): the allocation row renders HONEST-BLANK; the real usage-proportional share is
-      // computed in C-2. Never a fabricated zero, never a percent multiplied into a credit dollar.
-      allocationShare: null,
+      // C-2 (FR8/FR10): the real usage-proportional share when the fleet is supplied and the meter
+      // sits under exactly one array; honest-blank otherwise. The credit dollar stays honest-blank
+      // regardless - never a fabricated zero, never a percent multiplied into a credit dollar.
+      allocationShare: drawerAllocationShare(meter, allMeters),
       arrays: meter.benefitingArrays.map((a) => ({
         id: a.id,
         name: a.name,

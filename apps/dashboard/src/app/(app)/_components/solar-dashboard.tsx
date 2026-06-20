@@ -140,6 +140,7 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             verifications={verifications}
             trackedResults={trackedResults}
             readOnly={demoOnly}
+            solar
           />
         </div>
 

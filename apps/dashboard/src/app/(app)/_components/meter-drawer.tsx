@@ -107,6 +107,7 @@ export function MeterDrawer({
   verifications,
   trackedResults,
   readOnly = false,
+  solar = false,
 }: {
   meters: MeterView[];
   findings: FindingView[];
@@ -116,6 +117,9 @@ export function MeterDrawer({
   trackedResults: Record<string, ResultView[]>;
   /** The public Tour (Story 5.3) renders findings display-only (no authed response buttons). */
   readOnly?: boolean;
+  /** On the Solar tab (C-2): feed the fleet to toDrawerDetail so the solar section's allocation row
+   *  carries the real usage-proportional share. Off (the Energy drawer) leaves it honest-blank. */
+  solar?: boolean;
 }) {
   const [meterId, setMeter] = useQueryState(SURFACE.meter);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -164,7 +168,9 @@ export function MeterDrawer({
   const meter = meters.find((m) => m.id === meterId);
   if (meter === undefined) return null; // unreachable after the `open` gate; narrows the type
 
-  const d = toDrawerDetail(meter);
+  // On the Solar tab, hand the fleet to the derivation so a single-array meter's allocation row
+  // shows its real usage-proportional share (C-2); the Energy drawer leaves it honest-blank.
+  const d = toDrawerDetail(meter, solar ? meters : undefined);
   // Bill-accuracy verification (Story 4.1): render the badge only on a positive
   // match. A miss (verified:false) and an uncheckable bill (null) both render
   // nothing - fail closed, no negative claim about PG&E.
@@ -426,14 +432,18 @@ export function MeterDrawer({
                       : null
                   }
                 />
-                {/* NEM allocation + credit: HONEST-BLANK (A-9, FR10). The real usage-proportional
-                    share arrives in C-2 and the credit settles only with a true-up statement (Epic
-                    G); until then both read their not-on-file state - never a fabricated split, never
-                    a percentage multiplied into a credit dollar. d.solar.allocationShare is always
-                    null at A-9, so the explicit honest-blank copy renders, not a guessed value. */}
+                {/* NEM allocation (C-2, FR8): the meter's usage-proportional share of its array, said
+                    as a whole percent; null reads not-on-file (no billed usage, or under more than one
+                    array). The credit DOLLAR below stays HONEST-BLANK (settled only with a true-up
+                    statement, Epic G) - never a fabricated split, never a percent multiplied into a
+                    credit dollar. */}
                 <FieldRow
                   label={t.allocation}
-                  value={d.solar.allocationShare === null ? t.allocationNotOnFile : null}
+                  value={
+                    d.solar.allocationShare !== null
+                      ? t.allocationValue(d.solar.allocationShare)
+                      : t.allocationNotOnFile
+                  }
                 />
                 <FieldRow label={t.credit} value={t.creditNotOnFile} />
                 {/* Story 3.4: the printed NEM facts. Position/charges come from the persisted

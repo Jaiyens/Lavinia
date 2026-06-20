@@ -77,11 +77,14 @@ function MeterRow({
             {t.creditLabel}: <span className="tnum">{t.creditNotOnFile}</span>
           </span>
         </div>
-        {/* The share row: the bar's honest-blank rail (share null at A-5) plus the not-computed note.
-            The real usage-proportional % arrives in Epic C; A-5 never fabricates one. */}
+        {/* The share row (C-2, FR8): the bar fills to the meter's usage-proportional share and the
+            percentage reads beside it (tnum). A meter with no billed usage on file reads not-on-file
+            (the bar stays an empty rail) - never a fabricated zero, never a percent times a dollar. */}
         <div className="flex items-center gap-3">
-          <AllocationBar share={null} label={t.shareLabel} />
-          <span className="type-caption shrink-0 text-on-surface-variant">{t.shareNotOnFile}</span>
+          <AllocationBar share={meter.share} label={t.shareLabel} />
+          <span className="type-caption tnum shrink-0 text-on-surface-variant">
+            {meter.share !== null ? t.sharePercent(meter.share) : t.shareNotOnFile}
+          </span>
         </div>
       </button>
     </li>

@@ -7,11 +7,21 @@
 //
 // HONEST-BLANK discipline (the one law): this dataset carries program STRUCTURE and TIMING (which is
 // in Terra's data today) and NEVER a net-metering credit dollar. The allocation PERCENTAGE arrives
-// in Epic C; the credit DOLLAR stays honest-blank until a true-up statement is on file (Epic G). So
-// the array-group meter rows expose structure (name, nameplate, program token) and deliberately
-// carry NO share and NO credit value at this story - those cells render through the honest-blank
-// primitive (G-0) until the real value lands. No percentage is ever multiplied into a dollar here.
+// in Epic C (C-2: computed below from per-cycle usage summaries); the credit DOLLAR stays
+// honest-blank until a true-up statement is on file (Epic G). So the array-group meter rows expose
+// structure (name, nameplate, program token) PLUS the usage-proportional SHARE, but deliberately
+// carry NO credit value - that cell renders through the honest-blank primitive until a statement
+// lands. No percentage is ever multiplied into a dollar here.
+//
+// C-2 (FR8, NFR4): the share is computed by the pure `allocateArray` over each benefiting meter's
+// cumulative billed usage (summed `BillingPeriod.totalKwh` summaries already projected onto
+// MeterView - NEVER the 15-minute interval series, which MeterView does not even carry). A meter
+// with no billed usage on file gets a null share (not-on-file), never a fabricated zero.
 
+import {
+  allocateArray,
+  type AllocationMeterInput,
+} from "@/lib/energy/solar-allocation";
 import type { MeterView } from "./load";
 
 /** One solar-flagged meter, projected to the legibility fields the Solar tab renders (FR1, FR3). */
@@ -31,9 +41,9 @@ export type SolarMeterView = {
   hasArray: boolean;
 };
 
-/** One benefiting-meter row inside an array group. Structure only at A-3; the usage-proportional
- *  share (Epic C) and the credit dollar (Epic G) are intentionally absent - they render honest-blank
- *  until their real values land, never a fabricated zero, never a percent-times-dollar credit. */
+/** One benefiting-meter row inside an array group. Carries structure PLUS the C-2 usage-proportional
+ *  share; the credit DOLLAR (Epic G) stays honest-blank until a statement lands, never a fabricated
+ *  zero, never a percent-times-dollar credit. */
 export type ArrayGroupMeterRow = {
   pumpId: string;
   meterName: string;
@@ -41,6 +51,10 @@ export type ArrayGroupMeterRow = {
   solarKw: number | null;
   /** The meter's NEM token (resolved to a program-code label in A-4). */
   nemType: string | null;
+  /** C-2 (FR8): this meter's usage-weighted share of THIS array's credits, in [0,1]; null = no billed
+   *  usage on file (not-on-file, never a fabricated zero). Computed from per-cycle totalKwh summaries
+   *  (NFR4), never the interval series. The credit DOLLAR is separate and stays honest-blank. */
+  share: number | null;
 };
 
 /** One array and the meters its credits offset (FR7: display-only, cross-entity grouping). */
@@ -142,6 +156,24 @@ function isMonth(m: number | null): m is number {
 }
 
 /**
+ * Sum a meter's per-cycle `totalKwh` SUMMARIES into one cumulative usage basis for allocation (C-2,
+ * NFR4). Returns null when NO cycle carries a totalKwh (honest absence -> not-on-file in the share),
+ * never a fabricated zero. Reads only the summary already on MeterView; the 15-minute interval series
+ * is never touched (it is not even projected onto MeterView).
+ */
+function cumulativeKwhFor(meter: MeterView): number | null {
+  let seen = false;
+  let sum = 0;
+  for (const p of meter.periods) {
+    if (p.totalKwh !== null && Number.isFinite(p.totalKwh)) {
+      seen = true;
+      sum += p.totalKwh;
+    }
+  }
+  return seen ? sum : null;
+}
+
+/**
  * How near a true-up has to be (in whole months ahead, inclusive of the current month) to count as
  * "true-up soon". A single documented constant so the Map lens (the true-up-soon pin signal, FR35)
  * and any future surface share one window, the same way `nextTrueUpAcross` shares `isMonth`. Three
@@ -214,33 +246,61 @@ export function buildSolarDataset(
   // credits offset it; we invert that into array -> meters. Keyed by array id so a re-listed array
   // is one group (idempotent). Meters already arrive in name order from the loader, so pushing in
   // iteration order keeps each group's meter rows name-sorted.
-  const groupsById = new Map<string, SolarArrayGroup>();
+  //
+  // C-2: alongside each group we collect the benefiting meters' cumulative usage so the
+  // usage-proportional SHARE can be computed per array (over all benefiting meters together), then
+  // merged back onto each row. Building the group rows first and the shares second keeps the share a
+  // function of the WHOLE array's usage, not of iteration order.
+  type DraftGroup = {
+    group: SolarArrayGroup;
+    basis: AllocationMeterInput[];
+  };
+  const draftsById = new Map<string, DraftGroup>();
   for (const m of solar) {
+    const cumulativeKwh = cumulativeKwhFor(m);
     for (const arr of m.benefitingArrays) {
-      let group = groupsById.get(arr.id);
-      if (!group) {
-        group = {
-          id: arr.id,
-          name: arr.name,
-          nameplateKw: arr.nameplateKw,
-          nemType: arr.nemType,
-          trueUpMonth: arr.trueUpMonth,
-          meters: [],
+      let draft = draftsById.get(arr.id);
+      if (!draft) {
+        draft = {
+          group: {
+            id: arr.id,
+            name: arr.name,
+            nameplateKw: arr.nameplateKw,
+            nemType: arr.nemType,
+            trueUpMonth: arr.trueUpMonth,
+            meters: [],
+          },
+          basis: [],
         };
-        groupsById.set(arr.id, group);
+        draftsById.set(arr.id, draft);
       }
-      group.meters.push({
+      draft.group.meters.push({
         pumpId: m.id,
         meterName: m.name,
         solarKw: m.solarKw,
         nemType: m.nemType,
+        // Filled below once the array's allocation is computed over all its benefiting meters.
+        share: null,
       });
+      draft.basis.push({ pumpId: m.id, meterName: m.name, cumulativeKwh });
     }
   }
+
+  // Compute each array's usage-proportional shares (C-2, FR8) and merge the share onto its rows. The
+  // pure `allocateArray` excludes a no-usage meter from the denominator and returns it as not-on-file
+  // (share null), never a fabricated zero, never a divide-by-zero. NO credit dollar is computed here.
+  for (const { group, basis } of draftsById.values()) {
+    const allocation = allocateArray(group.id, group.name, basis);
+    const shareByPump = new Map(allocation.shares.map((s) => [s.pumpId, s.share]));
+    for (const row of group.meters) {
+      row.share = shareByPump.get(row.pumpId) ?? null;
+    }
+  }
+
   // Stable array order by name (nulls last), so the Arrays lens renders deterministically.
-  const arrays = [...groupsById.values()].sort((a, b) =>
-    (a.name ?? "").localeCompare(b.name ?? ""),
-  );
+  const arrays = [...draftsById.values()]
+    .map((d) => d.group)
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
   // Needs-review (C-1, FR6): two honest gaps surfaced rather than dropped. (1) Solar meters with no
   // array link - the populator could not match them to any generating meter. (2) NEMA codes meters
