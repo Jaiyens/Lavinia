@@ -1466,6 +1466,22 @@ export const en = {
     // Honest placeholder shown for a solar lens whose view has not shipped yet (A-2 scaffolds the
     // toggle and the lens region; the Arrays, Map, Table, and Calendar views arrive in later stories).
     lensComing: "This view is on the way.",
+    // The Map lens (A-6, FR35, UX-DR6): the solar fleet placed geographically, reusing the shared
+    // maplibre map. Launch-data pins only (coverage state, that the meter is on solar, true-up soon),
+    // a plain-word legend, NO array-health pin (no backing field at launch), and an honest tray for
+    // any solar meter with no resolvable location (listed, never placed at a guessed point). No dollar
+    // floats above a solar pin (a true-up credit is honest-blank until a statement is on file).
+    map: {
+      // Plain-word legend, paired with each pin color.
+      legendLabel: "Pin colors",
+      attention: "Needs a look",
+      calm: "Looks calm",
+      // Disclosure summary for solar meters without a resolvable location (listed, not placed).
+      traySummary: (n: number): string =>
+        n === 1 ? "1 solar meter with no location yet" : `${n} solar meters with no location yet`,
+      // Shown when no solar meter has a location and none is listed (never a crash or a blank region).
+      emptyView: "No solar meters to place on the map yet.",
+    },
     // The solar KPI strip (A-3, UX-DR2): four calm tiles - solar meters, arrays, next true-up,
     // needs review. NO dollar tile (money is never the hero here). Counts count up once
     // (reduced-motion-safe); the needs-review tile is plain typography with no color.

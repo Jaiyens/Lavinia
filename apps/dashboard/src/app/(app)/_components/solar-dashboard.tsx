@@ -116,7 +116,7 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             <div className="space-y-5">
               <SolarKpiStrip kpis={solar.kpis} />
               <SolarLensToggle />
-              <SolarLensRegion dataset={solar} />
+              <SolarLensRegion dataset={solar} meters={meters} />
             </div>
           </Reveal>
 
