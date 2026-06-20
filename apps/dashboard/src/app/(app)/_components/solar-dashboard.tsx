@@ -7,6 +7,8 @@ import { resolveActiveFarmId, resolveFarm, resolveFindings } from "../(dashboard
 import { Reveal } from "./shell/reveal";
 import { FindingsRail } from "./shell/findings-rail";
 import { FindingsSheet } from "./shell/findings-sheet";
+import { SolarLensToggle } from "./solar/solar-lens-toggle";
+import { SolarLensRegion } from "./solar/solar-lens-region";
 
 // The Solar tab data hero (A-1). A composition SIBLING of EnergyDashboard, not a fork: it renders
 // the same three-zone OS shell (the agent rail / mobile bottom tabs come from the surrounding
@@ -69,14 +71,13 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
               <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
             </header>
 
-            {/* Empty-but-structured data hero. The lens set (Arrays / Calendar / Map / Table),
-                the KPI strip, the filter bar, and the drawer arrive in A-2 onward; until then a
-                calm placeholder holds the shape, never a crash or a blank shell. */}
-            <div className="rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low px-6 py-10 text-center">
-              <h2 className="type-title text-on-surface">{en.solar.tab.placeholderTitle}</h2>
-              <p className="type-body-md mx-auto mt-2 max-w-md text-on-surface-variant">
-                {en.solar.tab.placeholderBody}
-              </p>
+            {/* The solar lens set (A-2): the toggle (Arrays / Calendar / Map / Table, default
+                Arrays) over the lens region. The KPI strip, the filter bar, and the drawer arrive in
+                A-3 onward; each lens view fills in across A-5/A-6/A-8/Epic D. Switching a lens writes
+                only the `lens` key and swaps the region below, never a crash or a blank shell. */}
+            <div className="space-y-5">
+              <SolarLensToggle />
+              <SolarLensRegion />
             </div>
           </Reveal>
         </div>

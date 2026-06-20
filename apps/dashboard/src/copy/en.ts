@@ -1454,6 +1454,18 @@ export const en = {
       placeholderBody:
         "Your arrays, true-up dates, and meter-by-meter solar are assembling here.",
     },
+    // The solar lens toggle (A-2): Arrays . Calendar . Map . Table, defaulting to Arrays
+    // (the aggregation map is the at-a-glance win). One solar dataset, one lens at a time.
+    lensLabel: "View",
+    lens: {
+      arrays: "Arrays",
+      calendar: "Calendar",
+      map: "Map",
+      table: "Table",
+    },
+    // Honest placeholder shown for a solar lens whose view has not shipped yet (A-2 scaffolds the
+    // toggle and the lens region; the Arrays, Map, Table, and Calendar views arrive in later stories).
+    lensComing: "This view is on the way.",
     demandPeak: {
       situation: (pump: string): string =>
         `${pump} has solar, but its bill peak is set after 4pm.`,
