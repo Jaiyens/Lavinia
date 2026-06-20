@@ -27,4 +27,17 @@ describe("showPendingPullBanner", () => {
   it("does not show without a pending pge_smd connection", () => {
     expect(showPendingPullBanner({ dataKind: "real", connections: [], hasBills: true })).toBe(false);
   });
+
+  it("does not show on a finalized farm with an add-another-account pull pending alongside an active one", () => {
+    // The "connect another account" path creates a SECOND pending pge_smd connection on a farm
+    // that is already finalized (has an active one). The banner must stay hidden, or an
+    // abandoned add-account leaves it stuck on the dashboard forever.
+    const activePlusPending = [
+      { type: "pge_smd", status: "active" },
+      { type: "pge_smd", status: "pending" },
+    ];
+    expect(
+      showPendingPullBanner({ dataKind: "real", connections: activePlusPending, hasBills: true }),
+    ).toBe(false);
+  });
 });

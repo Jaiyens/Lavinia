@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { canAccessFarm } from "@/lib/auth/access";
 import { prisma } from "@/lib/db";
+import { farmHasLivePgeForm } from "@/lib/onboarding/farm";
 import { OnboardingShell } from "../_components/chrome";
 import { PgeConnecting } from "../_components/pge-connecting";
 
@@ -22,12 +24,16 @@ export default async function OnboardingConnectingPage({
   const { farm: farmId } = await searchParams;
   if (!farmId) notFound();
 
-  // Ownership-scoped: never poll/import another operator's farm from a URL-supplied id.
-  const farm = await prisma.farm.findFirst({
-    where: { id: farmId, userId: session.user.id },
-    select: { id: true },
-  });
-  if (!farm) notFound();
+  // Membership-scoped: never poll/import another operator's farm from a URL-supplied id.
+  if (!(await canAccessFarm(prisma, farmId, session.user.id))) notFound();
+
+  // Only the LIVE PG&E connect belongs on the poller. A bill-only farm (no authorization
+  // form) or a stale/back-button visit has nothing to pull, so send it back to connect
+  // rather than spin on a poll that can never land. (The import edge also refuses to land
+  // the committed sample into such a farm, so this never fabricates meters either.)
+  if (!(await farmHasLivePgeForm(prisma, farmId))) {
+    redirect(`/onboarding/connect?farm=${farmId}`);
+  }
 
   return (
     <OnboardingShell step={2}>

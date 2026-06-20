@@ -1079,7 +1079,8 @@ export const en = {
       // A reconciled meter that carries no demand charge this cycle (honest absence).
       none: "None",
       // A null inventory field (ranch / entity / status / rate not on file). Never fabricated.
-      emptyShort: "—",
+      // En dash (not an em dash): user-facing copy must never carry an em dash.
+      emptyShort: "–",
       noMatch: "No meters match",
       // A farm with no meters at all yet (distinct from a filter that excluded everyone).
       emptyFarm: "No meters on this account yet",

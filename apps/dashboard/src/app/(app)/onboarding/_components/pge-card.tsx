@@ -20,9 +20,14 @@ export function PgeCard({ farmId }: { farmId: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Set when the browser blocked BOTH the pre-opened tab and the fallback window (common on
+  // mobile Safari). We then show an inline link the grower taps within their own gesture
+  // instead of pushing them to a polling screen with no sign-in window open.
+  const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
 
   function connect() {
     setError(null);
+    setBlockedUrl(null);
     // Open the tab inside the user gesture so it is not blocked; we set its url once the
     // form exists. Not noopener: we need the handle to navigate it.
     const tab = window.open("about:blank", "_blank");
@@ -33,20 +38,30 @@ export function PgeCard({ farmId }: { farmId: string }) {
         setError(res.error);
         return;
       }
-      if (tab) {
-        tab.opener = null;
-        tab.location.href = res.formUrl;
-      } else {
-        window.open(res.formUrl, "_blank", "noopener,noreferrer");
-      }
-      // Stash the form url so the connecting screen can reopen the sign-in if the grower
-      // lost the tab, without minting a fresh form (which would orphan a started auth).
+      // Stash the form url so the connecting screen (or the inline link below) can reopen the
+      // sign-in without minting a fresh form (which would orphan a started auth).
       try {
         sessionStorage.setItem(`pge-form-${farmId}`, res.formUrl);
       } catch {
         // sessionStorage can throw in private mode; the reopen link just won't show.
       }
-      router.push(`/onboarding/connecting?farm=${farmId}`);
+      let opened = false;
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = res.formUrl;
+        opened = true;
+      } else {
+        // The synchronous about:blank was blocked; try a direct open of the real url.
+        opened = Boolean(window.open(res.formUrl, "_blank", "noopener,noreferrer"));
+      }
+      if (opened) {
+        router.push(`/onboarding/connecting?farm=${farmId}`);
+      } else {
+        // Both opens were blocked: do NOT navigate to the connecting screen, or the grower
+        // waits on a spinner whose copy says to sign in to a tab that never opened. Show an
+        // inline link instead; tapping it is a fresh gesture the browser will allow.
+        setBlockedUrl(res.formUrl);
+      }
     });
   }
 
@@ -86,6 +101,24 @@ export function PgeCard({ farmId }: { farmId: string }) {
       <p className="type-caption mt-3 flex items-start gap-1.5 text-on-surface-variant">
         <LockIcon /> <span>{t.pgeSecure}</span>
       </p>
+
+      {blockedUrl ? (
+        <div className="mt-3 flex flex-col gap-2 rounded-[var(--radius-control)] bg-surface-container px-3 py-2.5">
+          <p className="type-caption text-on-surface-variant">
+            Your browser blocked the PG&amp;E sign-in window. Tap below to open it, then come back
+            here.
+          </p>
+          <a
+            href={blockedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => router.push(`/onboarding/connecting?farm=${farmId}`)}
+            className="press inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-5 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          >
+            Open PG&amp;E sign in <ArrowIcon />
+          </a>
+        </div>
+      ) : null}
 
       {error ? (
         <p className="type-caption mt-3 rounded-[var(--radius-control)] bg-alert-container px-3 py-2 font-medium text-on-alert-container">

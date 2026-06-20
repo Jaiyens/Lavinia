@@ -11,6 +11,7 @@ import { canAccessFarm, requireRole } from "@/lib/auth/access";
 import { normalizeEmail } from "@/lib/email-normalize";
 import { prisma } from "@/lib/db";
 import {
+  type ImportUtilityApiIntoFarmResult,
   type RevealCounts,
   createFarmFromConnection,
   importUtilityApiIntoFarm,
@@ -30,9 +31,20 @@ import { runSolarInsight } from "@/lib/recommendations/run-solar-insight";
 
 const CONNECT = "/onboarding/connect";
 
+// Friendly per-upload size ceiling, kept comfortably under the Server Action body cap set in
+// next.config.ts (25 MB). A real Green Button export or bill PDF is well under this; a file
+// over it gets a plain, recoverable message instead of an opaque framework body-limit error.
+// `accept` on the inputs is only a client hint, so the size check lives here on the server.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 function field(formData: FormData, key: string): string | null {
   const v = formData.get(key);
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+/** Total bytes across some uploaded files. */
+function totalBytes(files: File[]): number {
+  return files.reduce((sum, f) => sum + f.size, 0);
 }
 
 /**
@@ -148,22 +160,61 @@ export async function pgeRevealAction(farmId: string): Promise<RevealCounts | nu
   }
 }
 
+/**
+ * The outcome of finishing a PG&E pull: whether meters landed, plus an optional plain-English
+ * note when the connect was PARTIAL (an account was not shared, or a meter came in without
+ * usage history, or a meter could not be saved). The connecting screen stashes the note so the
+ * confirm step can be honest about a partial Batth-scale connect instead of presenting the
+ * succeeded subset as the whole farm.
+ */
+export type FinishPgeResult = { ok: boolean; note: string | null };
+
+/** Build a plain, em-dash-free note from the import degradation tallies, or null when the
+ *  pull was clean (nothing declined, dropped, or failed to save). */
+function partialConnectNote(r: ImportUtilityApiIntoFarmResult): string | null {
+  const parts: string[] = [];
+  if (r.failedAccounts > 0) {
+    parts.push(
+      r.failedAccounts === 1
+        ? "1 PG&E account was not shared"
+        : `${r.failedAccounts} PG&E accounts were not shared`,
+    );
+  }
+  if (r.greenButtonFailed > 0) {
+    parts.push(
+      r.greenButtonFailed === 1
+        ? "1 meter came in without usage history"
+        : `${r.greenButtonFailed} meters came in without usage history`,
+    );
+  }
+  if (r.metersFailed > 0) {
+    parts.push(
+      r.metersFailed === 1
+        ? "1 meter could not be saved"
+        : `${r.metersFailed} meters could not be saved`,
+    );
+  }
+  if (parts.length === 0) return null;
+  return `Connected, with a few items to know about: ${parts.join("; ")}.`;
+}
+
 /** Import whatever the live PG&E pull has so far into the in-progress farm (the connection
- *  stays pending until the confirm step). Returns true once meters landed, false while the
- *  pull is still collecting. `force` imports a partial pull so a slow account does not
- *  strand the grower on the connecting screen. */
+ *  stays pending until the confirm step). Returns ok=true once usable history landed, ok=false
+ *  while the pull is still collecting (the poller keeps waiting). `force` imports a partial
+ *  pull so a slow account does not strand the grower on the connecting screen. */
 export async function finishPgeConnectAction(
   farmId: string,
   opts?: { force?: boolean },
-): Promise<boolean> {
+): Promise<FinishPgeResult> {
   const userId = await sessionUserId();
-  if (!(await canManageFarm(farmId, userId))) return false;
+  if (!(await canManageFarm(farmId, userId))) return { ok: false, note: null };
   const result = await importUtilityApiIntoFarm(
     prisma,
     farmId,
     opts?.force ? { force: true } : {},
   );
-  return result !== null;
+  if (!result) return { ok: false, note: null };
+  return { ok: true, note: partialConnectNote(result) };
 }
 
 /** Explore with sample data: pull the committed Green Button sample into the farm AND
@@ -198,6 +249,9 @@ export async function uploadGreenButtonAction(
     .getAll("files")
     .filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: "Add at least one PG&E export (.xml) file." };
+  if (totalBytes(files) > MAX_UPLOAD_BYTES) {
+    return { error: "Those files are too large to upload at once. Add them a few accounts at a time." };
+  }
   let imported: number;
   try {
     const xmls = await Promise.all(files.map((f) => f.text()));
@@ -223,6 +277,9 @@ export async function uploadSpreadsheetAction(
     .getAll("sheet")
     .find((f): f is File => f instanceof File && f.size > 0);
   if (!file) return { error: "Add your meter list as a CSV file." };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: "That file is too large. Export just the meter list as a CSV and try again." };
+  }
   try {
     const csv = await file.text();
     const added = await addSpreadsheet(prisma, farmId, csv);
@@ -253,6 +310,9 @@ export async function uploadBillAction(
     .getAll("bill")
     .find((f): f is File => f instanceof File && f.size > 0);
   if (!file) return { error: "Choose a bill photo or PDF first." };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: "That file is too large. Try a single bill as a photo or PDF." };
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
   try {
     // The onboarding edge owns the source boundary: real extraction when a Gateway key is

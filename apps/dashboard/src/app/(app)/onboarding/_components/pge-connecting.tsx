@@ -49,27 +49,41 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
   const finished = useRef(false);
   const reopenLoaded = useRef(false);
 
+  // Returns true when the connection finalized and we navigated away; false when the pull is
+  // not actually ready yet (so the caller resumes polling) or the import failed.
   const finish = useCallback(
-    async (force: boolean) => {
-      if (finished.current) return;
+    async (force: boolean): Promise<boolean> => {
+      if (finished.current) return false;
       finished.current = true;
       setFinishing(true);
       try {
-        const ok = await finishPgeConnectAction(farmId, force ? { force: true } : undefined);
-        if (ok) {
+        const res = await finishPgeConnectAction(farmId, force ? { force: true } : undefined);
+        if (res.ok) {
+          // Stash any partial-connect note (an account not shared, a meter without history) so
+          // the confirm step can be honest about it rather than presenting the subset as whole.
+          if (res.note) {
+            try {
+              sessionStorage.setItem(`pge-note-${farmId}`, res.note);
+            } catch {
+              // sessionStorage unavailable (private mode); the note just won't show.
+            }
+          }
           router.push(`/onboarding/confirm?farm=${farmId}`);
           router.refresh();
-        } else {
-          // Not ready after all: resume polling.
-          finished.current = false;
-          setFinishing(false);
+          return true;
         }
+        // Readiness reported ready but no usable history landed yet (e.g. the per-meter Green
+        // Button exports have not arrived): release the latch so the poll loop keeps waiting.
+        finished.current = false;
+        setFinishing(false);
+        return false;
       } catch {
         // The import call failed (network or server error). Surface the calm error state
         // instead of crashing or hanging; the grower can retry.
         finished.current = false;
         setFinishing(false);
         setErrorKind("network");
+        return false;
       }
     },
     [farmId, router],
@@ -97,8 +111,13 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
         if (!alive) return;
         if (c) setCounts(c);
         if (c?.ready && !finished.current) {
-          void finish(false);
-          return;
+          // Try to finalize. If it navigates away we are done; if it comes back false the pull
+          // is not truly ready yet, so fall through and schedule the next poll (the retry is
+          // throttled to the poll cadence, and `start` is preserved so the cap still fires).
+          // This is the fix for the dead-stop where a not-ready finish skipped the setTimeout
+          // and polling never resumed.
+          const done = await finish(false);
+          if (!alive || done) return;
         }
       } catch {
         // A poll fetch failed (network blip or server error). Stop polling and show the
@@ -159,18 +178,26 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
   const phase = finishing ? "finishing" : landed ? "working" : "waiting";
 
   return (
-    <div className="flex flex-col items-center gap-7 text-center">
+    <div className="flex flex-col items-center gap-7 text-center" aria-busy={phase === "finishing"}>
       <PulseRing active={phase !== "finishing"} done={finishing} />
 
       <div className="flex flex-col gap-2">
         <h1 className="type-display-lg">{t.title}</h1>
-        <p className="type-body-md mx-auto max-w-sm text-on-surface-variant">
+        {/* Live region: a screen reader hears the status change (waiting -> working ->
+            finishing) and the running account/meter counts as the pull lands, instead of a
+            silent spinner. */}
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="type-body-md mx-auto max-w-sm text-on-surface-variant"
+        >
           {phase === "finishing" ? t.finishing : landed ? t.working : t.waiting}
         </p>
       </div>
 
       {landed ? (
-        <div className="flex items-stretch gap-3">
+        <div className="flex items-stretch gap-3" aria-live="polite" aria-atomic="true">
           <Stat value={accounts} label={accounts === 1 ? "account" : "accounts"} />
           <Stat value={meters} label={meters === 1 ? "meter" : "meters"} />
         </div>
@@ -234,7 +261,7 @@ function ConnectError({
   const landed = (counts?.accounts ?? 0) > 0 || (counts?.electricMeters ?? 0) > 0;
   const showContinue = kind === "timeout" && landed;
   return (
-    <div className="flex flex-col items-center gap-7 text-center">
+    <div className="flex flex-col items-center gap-7 text-center" role="alert">
       <span className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
         <AlertIcon />
       </span>

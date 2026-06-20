@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./fixtures/**/*"],
   },
+  experimental: {
+    serverActions: {
+      // The onboarding upload actions (Green Button XML, the master meter CSV, a bill
+      // PDF/photo) receive their file through a Server Action. Next's default request-body
+      // cap is 1 MB, which a real full-year PG&E Green Button export or a multi-page bill
+      // PDF blows past - the request would be rejected at the framework boundary BEFORE the
+      // action runs, so useActionState never sees the calm inline error and the grower hits
+      // an opaque failure. Raise the ceiling so real onboarding uploads reach the handler;
+      // the actions themselves enforce a friendly per-file size guard below this.
+      bodySizeLimit: "25mb",
+    },
+  },
 };
 
 export default nextConfig;

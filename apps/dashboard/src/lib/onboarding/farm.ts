@@ -164,6 +164,11 @@ export async function classifyFarmPumps(
       where: { id: pump.id },
       data: {
         kind: verdict.kind,
+        // Persist the classifier's confidence alongside the verdict so the confirm step can
+        // surface "look twice" pumps WITHOUT reloading every meter's interval history to
+        // re-derive it (that reload is the confirm-step OOM at 183 meters). Computed from the
+        // exact same signature the confirm page used to recompute, so the value is identical.
+        confidence: verdict.confidence,
         ...(pin ? { latitude: pin.lat, longitude: pin.lng } : {}),
       },
     });
@@ -743,6 +748,21 @@ async function pgeConnection(prisma: PrismaClient, farmId: string) {
   });
 }
 
+/**
+ * Whether a farm's PG&E connection points at a LIVE UtilityAPI authorization form (as opposed
+ * to a bill-only farm whose externalRef is null, or a sample sentinel). The connecting screen
+ * uses this to redirect a stale/back-button visit away from the live poller instead of polling
+ * a farm that has nothing to pull. (The import edge also refuses to land the sample into a
+ * non-live farm; this is the clean UX complement to that data guard.)
+ */
+export async function farmHasLivePgeForm(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<boolean> {
+  const conn = await pgeConnection(prisma, farmId);
+  return Boolean(liveFormUid(conn?.externalRef ?? null) && utilityApiConfigured());
+}
+
 /** Where a farm's Bayou pull stands. The pending screen polls this. */
 export async function bayouReadiness(
   prisma: PrismaClient,
@@ -1213,14 +1233,20 @@ export async function startUtilityApiForFarm(
   }
   const form = await createUtilityApiForm({ email: opts.email });
   const conn = await pgeConnection(prisma, farmId);
-  if (conn) {
-    // Re-point the existing pending connection at the new form so the poll finds its
+  if (conn && conn.status !== "active") {
+    // Re-point the still-pending connection at the new form so the poll finds its
     // authorizations. A fresh form each start lets a grower connect a different account.
     await prisma.connection.update({
       where: { id: conn.id },
       data: { externalRef: form.uid, status: "pending" },
     });
   } else {
+    // No connection yet, OR the existing pge_smd connection is already ACTIVE - a finalized
+    // farm using the Account page's "Connect another account" (?add=1). Create a NEW pending
+    // connection rather than downgrading the live one to pending: a downgrade would stop
+    // currentFarm resolving the farm and bounce the finalized farm off the dashboard until a
+    // fresh auth completes (and permanently if the grower abandons it). The Batth 57-account
+    // operation exercises exactly this add-another-account path.
     await prisma.connection.create({
       data: { farmId, type: PGE_SMD, status: "pending", source: null, externalRef: form.uid },
     });
@@ -1268,6 +1294,13 @@ export async function importUtilityApiIntoFarm(
   if (!conn) throw new Error(`no PG&E connection for farm ${farmId}`);
   const formUid = liveFormUid(conn.externalRef);
   const live = Boolean(formUid && utilityApiConfigured());
+  // This is the LIVE UtilityAPI connect path ONLY. A farm with no live authorization form (a
+  // bill-only farm whose externalRef is null, or a sample sentinel) must never have the
+  // committed multi-account SAMPLE imported into it and stamped source "smd" - a back-button
+  // or stale-tab visit to /onboarding/connecting would otherwise do exactly that, fabricating
+  // Olsen-Farms meters on the grower's real farm. The sample is imported only by the explicit
+  // demo path (connectSampleAction -> addPgeFeed). Return null so the poller does not advance.
+  if (!live) return null;
   let authUids: string[] = [];
   let failedAccounts = 0;
   if (live && formUid) {
@@ -1284,13 +1317,17 @@ export async function importUtilityApiIntoFarm(
       if (!(total > 0 && ready === total)) return null;
     }
   }
-  const pull = await fetchUtilityApi(live ? { authUids } : {});
+  const pull = await fetchUtilityApi({ authUids });
   const imported = await importUtilityApi(prisma, { pull, farmId });
   // Did any meter actually carry usable history (billing or interval rows), or did the pull
-  // only ever land identity-only meters? A force on a still-collecting pull lands the latter,
-  // which would otherwise advance the grower to an empty confirm and bounce them back.
+  // only ever land identity-only meters? This guards BOTH paths, not just force: the /meters
+  // readiness gate above (status "updated" with a bill/interval count) and the per-meter Green
+  // Button XML are different sources that can disagree at scale - if readiness says ready but
+  // every export fetch failed, the import lands identity-only meters with no real history.
+  // Returning null then keeps the poller waiting instead of advancing the grower to a confirm
+  // that immediately bounces back (hasRealSource is false), the connecting<->confirm loop.
   const historyLanded = imported.billingPeriods > 0 || imported.intervals > 0;
-  if (live && opts.force && !historyLanded) return null;
+  if (!historyLanded) return null;
   await classifyFarmPumps(prisma, farmId);
   // A real signed Share-My-Data authorization (C4 provenance). Status stays pending: the
   // farmer finalizes the connection at the confirm step (saveConfirmation).
@@ -1882,12 +1919,17 @@ export async function currentFarm(
 
 /**
  * The signed-in operator's most recent IN-PROGRESS onboarding farm, if any. This is the
- * exact complement of `currentFarm`: a farm they own (non-demo) that has a PG&E connection
- * (every onboarding farm gets one, pending, at identify) but none yet finalized to active.
- * Such a farm sits between the identify step and the confirm-step finalize. The connect
- * entry resumes this farm instead of creating a fresh one, so an interrupted onboarding does
- * not pile up duplicate farms. Owner-scoped: never another operator's farm. Returns null for
- * a signed-out caller or an operator whose only farms are already finalized.
+ * exact complement of `currentFarm`: a farm they are an active member of (non-demo) that has
+ * a PG&E connection (every onboarding farm gets one, pending, at identify) but none yet
+ * finalized to active. Such a farm sits between the identify step and the confirm-step
+ * finalize. The connect entry resumes this farm instead of creating a fresh one, so an
+ * interrupted onboarding does not pile up duplicate farms.
+ *
+ * MEMBERSHIP-scoped (NOT Farm.userId), to match accessibleFarms / currentFarm: gating on the
+ * advisory Farm.userId would return null for an invited owner/manager who is a FarmMembership
+ * but not the primary-owner pointer, so identify would mint a BRAND-NEW farm on every visit -
+ * exactly the duplicate-farm pile-up resume exists to prevent. Returns null for a signed-out
+ * caller or a member whose only farms are already finalized.
  */
 export async function resumableOnboardingFarm(
   prisma: PrismaClient,
@@ -1896,8 +1938,8 @@ export async function resumableOnboardingFarm(
   if (!userId) return null;
   const farm = await prisma.farm.findFirst({
     where: {
-      userId,
       isDemo: false,
+      memberships: { some: { userId, status: "active" } },
       // Created at identify (the onboarding farm always gets a pending PG&E connection)...
       connections: { some: { type: PGE_SMD } },
       // ...but not yet finalized: no active PG&E connection (the complement of currentFarm).
@@ -1962,12 +2004,10 @@ export async function demoFarm(prisma: PrismaClient): Promise<DashboardFarm | nu
   return demo ? { farm: demo, dataKind: "representative" } : null;
 }
 
-/** A specific farm with everything the confirm screen renders. The interval read is
- *  narrowed to only the three columns the confirm signature recompute reads (start,
- *  durationSec, kWh) so each row is ~40% smaller in memory; the full memory fix (not
- *  loading every pump's whole interval history to re-derive a verdict the importer already
- *  persisted as Pump.kind) needs a coordinated change in the confirm page and is tracked
- *  as a residual risk. */
+/** A specific farm with everything the confirm screen renders, INCLUDING every pump's full
+ *  interval + billing history. Heavy: only the dead legacy pump-timing confirm page (small
+ *  seeded farms) still recomputes the verdict from intervals and uses this. The LIVE
+ *  onboarding flow uses `loadConfirmFarm` below, which reads the persisted verdict instead. */
 export async function farmForConfirm(prisma: PrismaClient, farmId: string) {
   return prisma.farm.findUnique({
     where: { id: farmId },
@@ -1985,5 +2025,21 @@ export async function farmForConfirm(prisma: PrismaClient, farmId: string) {
         orderBy: { createdAt: "asc" },
       },
     },
+  });
+}
+
+/**
+ * The LIVE confirm-step farm read: the farm with its pumps' persisted classification (kind +
+ * confidence) and blocks, but WITHOUT every pump's interval/billing history. The verdict the
+ * confirm step shows was already computed and persisted by classifyFarmPumps at import time,
+ * so re-loading millions of interval rows (a 183-meter farm with ~35k intervals each) just to
+ * re-derive it would materialize the whole farm in one server-action response and OOM the
+ * finalize - the exact shape the importer was rewritten to avoid. Reading the stored verdict
+ * is O(pumps), not O(intervals).
+ */
+export async function loadConfirmFarm(prisma: PrismaClient, farmId: string) {
+  return prisma.farm.findUnique({
+    where: { id: farmId },
+    include: FARM_INCLUDE,
   });
 }
