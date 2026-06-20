@@ -7,6 +7,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sessionUserId } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/access";
 import { prisma } from "@/lib/db";
 import {
   type Readiness,
@@ -32,6 +34,14 @@ const ONBOARDING = "/dashboard/pump-timing/onboarding";
 function field(formData: FormData, key: string): string | null {
   const v = formData.get(key);
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+// Mirrors the secure twin in src/app/(app)/onboarding/actions.ts: a write on a farm requires the
+// caller to hold an active owner/manager membership of that exact farm. Goes through the shared
+// gate (src/lib/auth/access.ts), which keys on an active FarmMembership, never Farm.userId. A null
+// userId fails (farmRole returns null).
+async function canManageFarm(farmId: string, userId: string | null): Promise<boolean> {
+  return requireRole(prisma, farmId, userId, "manager");
 }
 
 /** "Connect PG&E": pull the sample feed, import, classify, go to confirm. */
@@ -306,9 +316,16 @@ export async function scanBillAction(
 
 /** Persist the confirm step (payload is JSON in a hidden field), then show done. */
 export async function saveConfirmationAction(formData: FormData): Promise<void> {
+  // This legacy action is still statically imported by the live confirm flow, so it MUST gate
+  // ownership before it finalizes/renames/mutates the farm. The farmId is fully client-supplied
+  // (a JSON body field), so trust nothing: require a session AND an active owner/manager
+  // membership on that exact farm. Mirrors the secure twin in src/app/(app)/onboarding/actions.ts.
+  const userId = await sessionUserId();
+  if (!userId) redirect("/login");
   const raw = formData.get("payload");
   if (typeof raw !== "string") throw new Error("Missing confirmation payload");
   const payload = parseConfirmationPayload(JSON.parse(raw));
+  if (!(await canManageFarm(payload.farmId, userId))) redirect("/login");
   const { farmId, alreadyFinalized } = await saveConfirmation(prisma, payload);
   // First time through, run the engines so the home screen has findings the moment
   // the farmer lands on it. A re-submit (alreadyFinalized) skips it; the home's
