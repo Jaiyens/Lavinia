@@ -122,3 +122,54 @@ describe("normalizeNem, raw NEM page -> canonical NEM reconciliation", () => {
     expect(out.coverageState).toBe("needs_review");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story G-1 (FR27): the preserved fail-closed gate. After the Solar tab work
+// (the populator harden in C-1 and every new solar derivation), normalizeNem's
+// fail-closed posture must be UNCHANGED: an unlinkable array still lands
+// needs_review with a null array and no benefiting meters, and nothing the
+// Solar tab adds may set a linked coverageState (no_bill / reconciled) without a
+// real, unambiguous SA-ID match. These are release-condition guard assertions,
+// not new behavior - if a future solar story loosens the gate, one of these
+// fails as a blocker.
+// ---------------------------------------------------------------------------
+describe("G-1: normalizeNem stays fail-closed after the solar additions (FR27)", () => {
+  it("never produces a linked coverageState (no_bill/reconciled) without an exact SA-ID match", () => {
+    // Every way an array link can fail still fails closed to needs_review: an
+    // unmatched SA, a blank SA, and an ambiguous multi-match. None may slip into
+    // a linked state that would later attach a NEM credit to a possibly-wrong array.
+    const unmatched = normalizeNem({ ...rawNem, saId: "0000000000" }, inventory);
+    const blank = normalizeNem({ ...rawNem, saId: "   " }, inventory);
+    const ambiguous = normalizeNem(rawNem, {
+      arrays: [{ ...inventory.arrays[0]! }, { ...inventory.arrays[0]!, arrayId: "dupe" }],
+    });
+    for (const out of [unmatched, blank, ambiguous]) {
+      expect(out.coverageState).toBe("needs_review");
+      // A needs_review page is NEVER promoted to a linked state by absence of evidence.
+      expect(out.coverageState).not.toBe("no_bill");
+      expect(out.coverageState).not.toBe("reconciled");
+    }
+  });
+
+  it("an unlinkable array fabricates no link: null array, no benefiting meters, months still captured", () => {
+    const orphan = normalizeNem({ ...rawNem, saId: "0000000000" }, inventory);
+    // The fabrication the gate forbids: a guessed arrayId or inherited benefiting meters.
+    expect(orphan.arrayId).toBeNull();
+    expect(orphan.arrayName).toBeNull();
+    expect(orphan.benefitingMeterSaIds).toEqual([]);
+    // The data is preserved so the needs_review allocation stays traceable (no data loss
+    // is the fail-closed posture: withhold the LINK, never the figures).
+    expect(orphan.months).toHaveLength(12);
+    expect(orphan.generatingSaId).toBe("0000000000");
+  });
+
+  it("a real, unique match is the ONLY path to a linked state, and it stays unreconciled (no_bill)", () => {
+    // The gate permits a linked state only on an exact match, and even then never
+    // jumps to "reconciled" - that promotion is the cent gate's job (reconcile.ts),
+    // never the normalizer's. So a perfect array link is no_bill, awaiting the cent reconcile.
+    const linked = normalizeNem(rawNem, inventory);
+    expect(linked.arrayId).toBe("array-840");
+    expect(linked.coverageState).toBe("no_bill");
+    expect(linked.coverageState).not.toBe("reconciled");
+  });
+});

@@ -372,3 +372,67 @@ describe("solarBillFloor (FR23: the floor solar cannot offset)", () => {
     expect(floor.offsettableCents).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story G-1 (FR27): the preserved nemDemandInsight five-condition gate. After
+// the Solar tab work - and specifically after E-1 added demandUncoveredShare and
+// E-2 added solarBillFloor in this same module - the nemDemandInsight gate must
+// be UNCHANGED: it stays silent unless ALL five conditions hold (isSolar, an
+// AG-C schedule, coverageState reconciled, a positive demand owed, and printed
+// NEM months on file), and the new siblings never quote a demand dollar where
+// the gate itself would be silent. These are release-condition guard assertions:
+// if a future solar story loosens any one condition, one of these fails as a blocker.
+// ---------------------------------------------------------------------------
+describe("G-1: nemDemandInsight stays fail-closed after the E-1/E-2 siblings (FR27)", () => {
+  it("each of the five conditions independently fails the gate closed (none loosened)", () => {
+    // The gate renders only when ALL five hold; flipping any single condition
+    // alone must return null. This pins each clause as a separate release condition.
+    expect(nemDemandInsight(insightInput())).not.toBeNull(); // all five hold
+    expect(nemDemandInsight(insightInput({ isSolar: false }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ scheduleLabel: "AGA1 Ag<35 kW Low Use" }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ coverageState: "needs_review" }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ coverageState: "no_bill" }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ cycleDemandCents: [0] }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ nemMonths: [] }))).toBeNull();
+  });
+
+  it("the demand dollar is quotable ONLY on a reconciled meter (the cent gate is not bypassed)", () => {
+    // The demand-owed dollar exists in the billing line items regardless, but the
+    // gate refuses to quote it unless the meter reconciled. A solar surface must
+    // never read the raw cycleDemandCents around the gate to show a dollar on an
+    // unreconciled meter - so an unreconciled meter yields no insight at all.
+    expect(nemDemandInsight(insightInput({ coverageState: "no_bill" }))).toBeNull();
+    expect(nemDemandInsight(insightInput({ coverageState: "needs_review" }))).toBeNull();
+    const reconciled = nemDemandInsight(insightInput({ coverageState: "reconciled" }));
+    expect(reconciled?.demandOwedCents).toBe(369);
+  });
+
+  it("the E-1/E-2 siblings fail closed too: neither fabricates a share or a floor from absence", () => {
+    // demandUncoveredShare returns null when the offsettable portion is not on file
+    // (never a fabricated 100%), and solarBillFloor reports offsettableCents=null in
+    // that same absence, so the two compose fail-closed - the gate's posture, preserved
+    // across the new code in this module.
+    const floorNoEnergy = solarBillFloor([{ kind: "demand", amountCents: 250 }]);
+    expect(floorNoEnergy.offsettableCents).toBeNull();
+    expect(
+      demandUncoveredShare({
+        demandOwedCents: floorNoEnergy.demandCents,
+        offsettableCents: floorNoEnergy.offsettableCents,
+      }),
+    ).toBeNull();
+    // And a bare share never exceeds 1 (it is a ratio, never a credit dollar) - the
+    // no-percent-times-dollar posture the gate guards.
+    const share = demandUncoveredShare({ demandOwedCents: 250, offsettableCents: 750 });
+    expect(share).not.toBeNull();
+    expect(share as number).toBeLessThanOrEqual(1);
+  });
+
+  it("does not mutate its inputs even with the siblings present (no shared-state leak)", () => {
+    const input = insightInput();
+    const snapshot = JSON.parse(JSON.stringify(input)) as unknown;
+    nemDemandInsight(input);
+    demandUncoveredShare({ demandOwedCents: 369, offsettableCents: 369 });
+    solarBillFloor([{ kind: "demand", amountCents: 250 }]);
+    expect(JSON.parse(JSON.stringify(input))).toEqual(snapshot);
+  });
+});
