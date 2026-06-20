@@ -3,6 +3,8 @@ import {
   applyNavigateAction,
   energyPathFor,
   navigateActionToQuery,
+  pathForAction,
+  solarPathFor,
   type NavigationSetters,
 } from "./use-almond-navigation";
 
@@ -18,6 +20,8 @@ function recordingSetters() {
     setEntity: (value) => calls.push({ key: "setEntity", value }),
     setRanch: (value) => calls.push({ key: "setRanch", value }),
     setRate: (value) => calls.push({ key: "setRate", value }),
+    setAccount: (value) => calls.push({ key: "setAccount", value }),
+    setProgram: (value) => calls.push({ key: "setProgram", value }),
     setMeter: (value) => calls.push({ key: "setMeter", value }),
   };
   return { setters, calls };
@@ -56,6 +60,28 @@ describe("applyNavigateAction", () => {
     applyNavigateAction(setters, {});
     expect(calls).toEqual([]);
   });
+
+  // H-3: a solar action's program/account filters drive their own setters in place (the path taken
+  // when the grower is already on /solar), exactly as the energy filters drive theirs on /energy.
+  it("drives the program/account setters when those Solar-tab filter keys are present (H-3)", () => {
+    const { setters, calls } = recordingSetters();
+    applyNavigateAction(setters, { lens: "arrays", program: "NEM2", account: "1001", surface: "solar" });
+    // `surface` selects the path, not a setter, so it drives nothing here; only the URL-state keys do.
+    expect(calls).toEqual([
+      { key: "setLens", value: "arrays" },
+      { key: "setAccount", value: "1001" },
+      { key: "setProgram", value: "NEM2" },
+    ]);
+  });
+
+  it("honors an explicit null clear on the program/account filters", () => {
+    const { setters, calls } = recordingSetters();
+    applyNavigateAction(setters, { program: null, account: null });
+    expect(calls).toEqual([
+      { key: "setAccount", value: null },
+      { key: "setProgram", value: null },
+    ]);
+  });
 });
 
 // The deep-link path (open-meter / show-map fix): when Almond drives the screen from a surface that
@@ -80,6 +106,19 @@ describe("navigateActionToQuery", () => {
     expect(navigateActionToQuery({ meter: null })).toBe("");
     expect(navigateActionToQuery({})).toBe("");
   });
+
+  // H-3: a solar deep link must carry the Solar-tab filters (program/account) so /solar's nuqs
+  // consumers narrow on mount; `surface` selects the PATH (pathForAction), never a query key.
+  it("serializes the program/account filters but never the surface selector (H-3)", () => {
+    expect(navigateActionToQuery({ lens: "arrays", surface: "solar", program: "NEM2" })).toBe(
+      "lens=arrays&program=NEM2",
+    );
+    expect(
+      navigateActionToQuery({ lens: "table", surface: "solar", account: "1001", program: "NEM2" }),
+    ).toBe("lens=table&account=1001&program=NEM2");
+    // No `surface=solar` ever leaks into the query string.
+    expect(navigateActionToQuery({ surface: "solar", program: "NEM2" })).toBe("program=NEM2");
+  });
 });
 
 describe("energyPathFor", () => {
@@ -92,5 +131,37 @@ describe("energyPathFor", () => {
     expect(energyPathFor("/")).toBe("/energy");
     expect(energyPathFor("/energy")).toBe("/energy");
     expect(energyPathFor(null)).toBe("/energy");
+  });
+});
+
+// H-3: the solar sibling of energyPathFor and the action->path resolver. These are the AC's
+// "a test asserts a solar navigate opens /solar": pathForAction on a solar action targets /solar
+// (so the bridge's router.push lands there), while an energy action stays on /energy unchanged.
+describe("solarPathFor", () => {
+  it("routes the public Tour to its own solar surface, never out of the Tour", () => {
+    expect(solarPathFor("/tour")).toBe("/tour/solar");
+    expect(solarPathFor("/tour/solar")).toBe("/tour/solar");
+  });
+
+  it("routes the live app (and an unknown/null path) to /solar", () => {
+    expect(solarPathFor("/")).toBe("/solar");
+    expect(solarPathFor("/solar")).toBe("/solar");
+    expect(solarPathFor(null)).toBe("/solar");
+  });
+});
+
+describe("pathForAction", () => {
+  it("a solar navigate opens /solar (the AC's end-to-end routing promise)", () => {
+    // {lens:"arrays", surface:"solar"} targets /solar, where parseSolarLens resolves `arrays` — not
+    // /energy, where the energy parseLens would coerce it to the Table default and strand the grower.
+    expect(pathForAction({ lens: "arrays", surface: "solar" }, "/")).toBe("/solar");
+    expect(pathForAction({ lens: "arrays", surface: "solar" }, "/energy")).toBe("/solar");
+    expect(pathForAction({ lens: "arrays", surface: "solar" }, "/tour")).toBe("/tour/solar");
+  });
+
+  it("an energy (or surface-absent) action stays on the energy surface, byte-identical to before", () => {
+    expect(pathForAction({ lens: "table" }, "/")).toBe("/energy");
+    expect(pathForAction({ lens: "table", surface: "energy" }, "/")).toBe("/energy");
+    expect(pathForAction({ meter: "m-17" }, "/tour")).toBe("/tour/energy");
   });
 });
