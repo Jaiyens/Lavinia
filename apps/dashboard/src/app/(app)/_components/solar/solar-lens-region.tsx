@@ -8,12 +8,14 @@ import type { SolarDataset } from "@/lib/dashboard/solar";
 import type { MeterView } from "@/lib/dashboard/load";
 import { ArraysLens } from "./arrays-lens";
 import { SolarMapLens } from "./solar-map-lens";
+import { SolarTableLens } from "./solar-table-lens";
 
 // The active solar-lens region (A-2 scaffold, A-5 fills the Arrays view, A-6 the Map view). Reads the
 // same nuqs `lens` key as the toggle, against the SOLAR registry, and shows one lens at a time over the
 // solar dataset: Arrays (default, the aggregation map), Calendar, Map, Table. A-5 wires the Arrays lens
-// (the default data hero); A-6 wires the Map lens (the solar fleet geographically); Table (A-8) and
-// Calendar (Epic D) still render the empty-but-structured "coming" placeholder until their stories land.
+// (the default data hero); A-6 wires the Map lens (the solar fleet geographically); A-8 wires the Table
+// lens (the Excel bridge + CSV export); Calendar (Epic D) still renders the empty-but-structured "coming"
+// placeholder until its story lands.
 // Switching the toggle swaps which view shows here, never a crash or a blank region. The Map lens reads
 // the canonical MeterView[] (it needs lat/long, which the solar dataset's legibility view does not
 // carry); it filters to solar meters itself. It is also handed the page-edge `nowMonth` so its
@@ -40,6 +42,12 @@ export function SolarLensRegion({
 
   if (active === "map") {
     return <SolarMapLens meters={meters} nowMonth={nowMonth} />;
+  }
+
+  if (active === "table") {
+    // The Table lens reads the already-filter-narrowed MeterView[] (it needs coverage state and
+    // array membership the dataset's legibility view does not carry); it filters to solar itself.
+    return <SolarTableLens meters={meters} />;
   }
 
   const label = en.solar.lens[active];

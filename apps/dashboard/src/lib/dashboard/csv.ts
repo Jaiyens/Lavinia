@@ -8,9 +8,11 @@
 
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
+import type { MeterView } from "./load";
 import type { MeterRow } from "./table";
 
 const t = en.shell.table;
+const st = en.solar.table;
 
 /** Quote a field when it carries a delimiter, quote, or newline; double inner quotes. */
 function escapeField(value: string): string {
@@ -65,4 +67,102 @@ export function metersCsv(rows: readonly MeterRow[]): string {
   // (gridCsv) carries the BOM, escaping and CRLF, so this export and the bill-due export
   // (Story 8.3) can never drift.
   return gridCsv([metersHeader(), ...rows.map(meterCells)]);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Solar tab CSV export (A-8, FR36, UX-DR7). The farm-office controller stops maintaining the
+// parallel array-to-meter spreadsheet by hand: one click writes the per-meter solar table AND the
+// array-to-meter allocation map, through the SAME gridCsv mechanism (BOM + RFC-4180 + CRLF), so the
+// solar export can never drift to a second CSV format.
+//
+// HONEST-BLANK discipline (the one law): the allocation PERCENTAGE arrives in Epic C and the credit
+// DOLLAR is settled only by a true-up statement (Epic G). Until then the allocation cell exports the
+// literal `not on file` marker (st.allocationNotOnFile) - never a blank cell that reads as zero, never
+// a fabricated %, never a percent multiplied into a dollar. The program code reads the generic NEM2
+// program for a `nem2*` token and not-on-file otherwise (FR2/FR5), never a guessed granular code.
+
+/** The program-code CSV cell: a `nem2*` token reads the generic NEM2 program; an absent or
+    unrecognized token reads not-on-file. Mirrors the Arrays-lens chip rule (FR2/FR5); A-4's
+    resolveProgramCode refines the granular label later. Pure, no inference from an adjacent meter. */
+function solarProgramCell(nemType: string | null): string {
+  if (nemType !== null && nemType.toLowerCase().startsWith("nem2")) return st.programGeneric;
+  return st.programNotOnFile;
+}
+
+/** The array-membership CSV cell: the arrays this meter sits under, in loaded order, joined; none
+    reads not-on-file. Reads `benefitingArrays[].name` (the populator's NEMA-code name), never a
+    nonexistent Pump column, never a guessed code. */
+function arrayMembershipCell(m: MeterView): string {
+  const names = m.benefitingArrays
+    .map((a) => a.name)
+    .filter((n): n is string => n !== null && n.trim() !== "");
+  return names.length > 0 ? names.join(st.arrayJoin) : st.arrayNone;
+}
+
+/** The seven solar table headers, in order. Exported so the on-screen Table lens and the CSV write
+    the SAME operator headers - one header definition, never a parallel solar spreadsheet format. */
+export function solarHeader(): string[] {
+  const c = st.columns;
+  return [c.name, c.program, c.nameplate, c.array, c.allocation, c.trueUp, c.coverage];
+}
+
+/** The seven cell STRINGS for one solar meter row, in header order: program code, nameplate (plain
+    words, not-on-file when null), array membership, the honest-blank allocation marker, true-up month,
+    and the shared coverage label. Pure. */
+export function solarMeterCells(m: MeterView): string[] {
+  return [
+    m.name,
+    solarProgramCell(m.nemType),
+    m.solarKw !== null ? st.nameplate(m.solarKw) : st.nameplateNotOnFile,
+    arrayMembershipCell(m),
+    // The usage-proportional share is honest-blank until Epic C; the dollar is honest-blank until a
+    // statement settles it (FR36): the explicit not-on-file marker, never a blank cell reading as zero.
+    st.allocationNotOnFile,
+    m.trueUpMonth !== null ? st.trueUpMonth(m.trueUpMonth) : st.trueUpNone,
+    t.coverage[m.coverageState],
+  ];
+}
+
+/** Build the array-to-meter allocation-map grid rows (FR36): a section title row, a per-array header,
+    then one indented line per benefiting meter carrying its honest-blank share. Inverts the meters'
+    benefitingArrays linkage exactly as the Arrays lens does (display-only, cross-entity grouping),
+    keyed by array id so a re-listed array appears once, ordered by array name. The credit dollar never
+    appears here; the share is the honest-blank marker until Epic C. Pure. */
+function allocationMapRows(solar: readonly MeterView[]): string[][] {
+  type Group = { name: string; nameplateKw: number; meters: string[] };
+  const groups = new Map<string, Group>();
+  for (const m of solar) {
+    for (const arr of m.benefitingArrays) {
+      let group = groups.get(arr.id);
+      if (!group) {
+        group = { name: arr.name ?? en.solar.arrays.unnamed, nameplateKw: arr.nameplateKw, meters: [] };
+        groups.set(arr.id, group);
+      }
+      group.meters.push(m.name);
+    }
+  }
+  const ordered = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const rows: string[][] = [[st.mapSectionTitle]];
+  for (const group of ordered) {
+    rows.push([st.mapArrayLabel, group.name, st.mapNameplateLabel, st.nameplate(group.nameplateKw)]);
+    rows.push([st.mapMeterLabel, st.mapShareLabel]);
+    for (const meterName of group.meters) {
+      rows.push([meterName, st.allocationNotOnFile]);
+    }
+  }
+  return rows;
+}
+
+/** The solar CSV: the per-meter solar table (one row per solar meter, in the order passed) followed by
+    the array-to-meter allocation map, all through the one gridCsv mechanism. `rows` is the exact set
+    the Table lens is showing (already filtered + sorted upstream), so the export round-trips the
+    visible table. Pure; the caller (the Table lens) only triggers the download. */
+export function solarMetersCsv(rows: readonly MeterView[]): string {
+  return gridCsv([
+    solarHeader(),
+    ...rows.map(solarMeterCells),
+    // A blank spacer row, then the allocation map, so the two sections read as distinct in Excel.
+    [""],
+    ...allocationMapRows(rows),
+  ]);
 }

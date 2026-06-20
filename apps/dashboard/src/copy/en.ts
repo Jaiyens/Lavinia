@@ -1579,6 +1579,63 @@ export const en = {
       unlinkedHeading: "Solar meters not yet linked to an array",
       unlinkedNote: "We could not match these to an array. Check them against your records.",
     },
+    // The Table lens (A-8, UX-DR7, FR36): the Excel bridge. Meters down, solar columns across,
+    // filterable and sortable, with a one-click CSV export the farm-office controller can stop
+    // maintaining the parallel array-to-meter spreadsheet by hand. The allocation % column and the
+    // credit DOLLAR are HONEST-BLANK until Epic C/G fill them, exported as the literal "not on file"
+    // marker (never a blank cell that reads as zero). Plain operator English, no kW/interval jargon.
+    table: {
+      // Accessible name for the table / mobile list.
+      caption: "Every solar meter on your account",
+      // The solar table column headers, in order. These also author the CSV header row, so the export
+      // and the on-screen table can never drift to different headers.
+      columns: {
+        name: "Meter",
+        program: "Program",
+        nameplate: "Solar size",
+        array: "Array",
+        allocation: "Share",
+        trueUp: "True-up",
+        coverage: "Coverage",
+      },
+      // The program-code cell: the generic NEM2 token reads as the generic program; an absent or
+      // unrecognized token reads not-on-file, never a guessed granular code (FR2/FR5).
+      programGeneric: "NEM2",
+      programNotOnFile: "Not on file",
+      // The nameplate cell said in plain words ("840 kW"); null reads not-on-file (never inferred, FR3).
+      nameplate: (kw: number): string => `${num(kw)} kW`,
+      nameplateNotOnFile: "Not on file",
+      // The array-membership cell: the arrays this meter sits under, joined; none reads not-on-file.
+      arrayNone: "Not on file",
+      // A meter linked to more than one array reads each name, joined with this separator.
+      arrayJoin: " · ",
+      // The allocation % cell: honest-blank until Epic C computes the usage-proportional share. The CSV
+      // exports this marker, never a blank cell that reads as zero (FR36).
+      allocationNotOnFile: "not on file",
+      // The true-up month cell said in plain words; null reads not-on-file.
+      trueUpMonth: (month: number): string => MONTHS[month - 1] ?? "",
+      trueUpNone: "Not on file",
+      // The allocation-map section that follows the per-meter rows in the CSV (FR36): one header line,
+      // then one line per array naming each benefiting meter and its honest-blank share. So the
+      // controller's exported sheet carries the same array-to-meter graph the Arrays lens shows.
+      mapSectionTitle: "Array to meter allocation",
+      mapArrayLabel: "Array",
+      mapNameplateLabel: "Solar size",
+      mapMeterLabel: "Meter",
+      mapShareLabel: "Share",
+      // One-click CSV export of the current solar view.
+      export: "Export CSV",
+      exportAria: "Download the current solar view as a CSV file",
+      rowCount: (n: number): string => (n === 1 ? "1 solar meter" : `${n} solar meters`),
+      // Empty + filtered-out states (never a crash or a blank region).
+      empty: "No solar meters on this account yet",
+      noMatch: "No solar meters match",
+      // Mobile simplified-list sort control.
+      sortLabel: "Sort by",
+      toggleDirection: "Reverse the order",
+      sortBy: (col: string): string => `Sort by ${col}`,
+      openMeter: (name: string): string => `Open meter ${name}`,
+    },
     demandPeak: {
       situation: (pump: string): string =>
         `${pump} has solar, but its bill peak is set after 4pm.`,
