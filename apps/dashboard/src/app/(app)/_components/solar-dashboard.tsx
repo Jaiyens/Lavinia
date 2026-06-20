@@ -1,11 +1,17 @@
+import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { buildSolarDataset } from "@/lib/dashboard/solar";
+import { loadTrackedResults } from "@/lib/dashboard/results";
+import { verificationFor } from "@/lib/dashboard/drawer";
+import type { BillVerification } from "@/lib/energy/bill-verify";
+import { loadRateCard } from "@/lib/pge/rate-card";
 import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
+import { MeterDrawer } from "./meter-drawer";
 import { FindingsRail } from "./shell/findings-rail";
 import { FindingsSheet } from "./shell/findings-sheet";
 import { SolarKpiStrip } from "./solar/solar-kpi-strip";
@@ -16,8 +22,9 @@ import { SolarLensRegion } from "./solar/solar-lens-region";
 // the same three-zone OS shell (the agent rail / mobile bottom tabs come from the surrounding
 // layout; this component owns the data-hero center column and the findings rail on the right),
 // scoped to the active farm via resolveActiveFarmId -> resolveFarm. At this story the data hero is
-// empty-but-structured (the four solar lenses, the KPI strip, the filter bar, and the drawer all
-// arrive in A-2 onward); it must never render a crash or a blank shell. demoOnly (the public Tour)
+// empty-but-structured (the four solar lenses, the KPI strip, and the filter bar arrive in A-2
+// onward, the shared drawer is mounted in A-5); it must never render a crash or a blank shell.
+// demoOnly (the public Tour)
 // pins the data to the demo farm, never a real connected one, so a real grower's financials can
 // never leak to an unauthenticated visitor.
 export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean } = {}) {
@@ -50,6 +57,24 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   const meters = await resolveMeters(farm.id);
   const nowMonth = new Date().getMonth() + 1;
   const solar = buildSolarDataset(meters, nowMonth);
+
+  // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
+  // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
+  // Tapping any Arrays-lens meter row (or, later, a map pin / table row) writes ?meter=<id> via the
+  // SURFACE.meter nuqs key; the drawer matches on meters.find((m) => m.id === meterId) and opens to
+  // that meter's solar section (its d.showSolar block already carries program / nameplate / array /
+  // allocation-honest-blank; A-9 extends that section, A-5 just makes the open work). The drawer is
+  // fed the request-cached MeterView[] + findings, and the same bill-accuracy verdict and tracked
+  // results the Energy drawer receives, so an opened meter behaves identically on either tab.
+  // verificationFor returns null for a solar meter (it never claims a bill match on solar), so the
+  // solar rows simply carry no verification badge, which is correct. The rate card is fs-backed
+  // (process.cwd()) and applied HERE; only the serializable verdict crosses to the client drawer.
+  const card = loadRateCard();
+  const verifications: Record<string, BillVerification | null> = {};
+  for (const meter of meters) {
+    verifications[meter.id] = verificationFor(meter, card);
+  }
+  const trackedResults = await loadTrackedResults(prisma, farm.id, meters);
 
   return (
     <>
@@ -85,15 +110,25 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
                 needs review) above the lens set, no dollar tile. Then the solar lens set (A-2): the
                 toggle (Arrays / Calendar / Map / Table, default Arrays) over the lens region, which
                 renders the Arrays lens (A-5) as the default data hero; Map (A-6), Table (A-8), and
-                Calendar (Epic D) fill in as their stories land. The filter bar and the drawer arrive
-                in later stories. Switching a lens writes only the `lens` key and swaps the region
-                below, never a crash or a blank shell. */}
+                Calendar (Epic D) fill in as their stories land. The filter bar arrives in a later
+                story; the shared drawer is mounted below (A-5). Switching a lens writes only the
+                `lens` key and swaps the region below, never a crash or a blank shell. */}
             <div className="space-y-5">
               <SolarKpiStrip kpis={solar.kpis} />
               <SolarLensToggle />
               <SolarLensRegion dataset={solar} />
             </div>
           </Reveal>
+
+          {/* The shared drill-in (A-5). Outside the Reveal stagger so a deep-linked ?meter= drawer
+              is not delayed by the entrance choreography (matches energy-dashboard.tsx). */}
+          <MeterDrawer
+            meters={meters}
+            findings={findings}
+            verifications={verifications}
+            trackedResults={trackedResults}
+            readOnly={demoOnly}
+          />
         </div>
 
         <FindingsRail findings={findings} readOnly={demoOnly} />

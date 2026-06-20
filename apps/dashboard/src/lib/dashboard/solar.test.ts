@@ -277,4 +277,33 @@ describe("buildSolarDataset - Arrays-lens array-group shape (A-5, FR3/FR7)", () 
     // multiply into a dollar (FR10). The row is structure only.
     expect(Object.keys(row).sort()).toEqual(["meterName", "nemType", "pumpId", "solarKw"]);
   });
+
+  // A-5 fix (review finding): tapping any Arrays-lens meter row writes ?meter=<pumpId> via the
+  // SURFACE.meter nuqs key, and the shared MeterDrawer (now mounted in solar-dashboard.tsx) opens
+  // by matching meters.find((m) => m.id === meterId). The open is only reachable if the id space the
+  // row writes is the SAME id space the drawer matches on: SolarArrayGroup row pumpId === the source
+  // MeterView.id. This pins that contract so the row tap -> drawer open can never silently break.
+  it("every array-group row pumpId is a real source MeterView.id (the drawer-open id contract)", () => {
+    const west = array({ id: "West" });
+    const east = array({ id: "East" });
+    const sourceMeters = [
+      meter({ id: "pump-aaa", isSolar: true, benefitingArrays: [west, east] }),
+      meter({ id: "pump-bbb", isSolar: true, benefitingArrays: [west] }),
+      meter({ id: "plain-ccc", isSolar: false }), // non-solar: never a row, never openable here
+    ];
+    const ds = buildSolarDataset(sourceMeters, 1);
+    const sourceIds = new Set(sourceMeters.map((m) => m.id));
+    const rowPumpIds = ds.arrays.flatMap((a) => a.meters.map((m) => m.pumpId));
+    expect(rowPumpIds.length).toBeGreaterThan(0);
+    // Every id a row tap would write to ?meter= resolves to a real meter the drawer can find,
+    // and is a SOLAR meter (a row never points at a non-solar meter).
+    for (const pumpId of rowPumpIds) {
+      expect(sourceIds.has(pumpId)).toBe(true);
+      expect(sourceMeters.find((m) => m.id === pumpId)?.isSolar).toBe(true);
+    }
+    // And the same holds for the flat solar-meter view the KPI/needs-review surfaces read.
+    for (const m of ds.meters) {
+      expect(sourceIds.has(m.id)).toBe(true);
+    }
+  });
 });
