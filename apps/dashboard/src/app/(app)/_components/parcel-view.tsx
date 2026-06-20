@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import type { ParcelResult } from "@/lib/parcel";
 import { ParcelMap } from "./parcel-map";
 
-// The Parcel lookup surface (Energy > Parcel). A coordinate input pre-filled with the Fresno test
-// point, a Look up action that calls /api/parcel, then the parcel boundary on the map + a card
-// with the APN (one-click copyable), acreage, centroid, and a link to the county source. Mirrors
-// the acres.com plat-map layout: a left detail column, a large map on the right.
+// The Parcels lookup surface (the top-level Parcels agent). A coordinate input pre-filled with the
+// Fresno test point, a Look up action that calls /api/parcel, then the parcel boundary on the map +
+// a card with the APN (one-click copyable), acreage, centroid, and a link to the county source.
+// Mirrors the acres.com plat-map layout: a left detail column, a large map on the right.
 
 const t = en.parcel;
 

@@ -367,13 +367,10 @@ export const en = {
     attentionEmpty: "Nothing needs you right now. We will flag it here when it does.",
     attentionViewAll: "See all in Energy",
   },
-  // Energy > Parcel: the public-records parcel lookup. Given a point, find the county parcel that
-  // contains it (APN + boundary + acreage) from free county GIS sources. Plain operator English;
-  // no em dashes; the grower's words (parcel, county, acres).
+  // Parcels: the public-records parcel lookup (a top-level agent). Given a point, find the county
+  // parcel that contains it (APN + boundary + acreage) from free county GIS sources. Plain operator
+  // English; no em dashes; the grower's words (parcel, county, acres).
   parcel: {
-    // The Energy sub-tab label (sits beside "Energy" in the sub-nav).
-    navTab: "Parcel",
-    subnavLabel: "Energy sections",
     eyebrow: "Public records",
     title: "Parcel lookup",
     intro:
@@ -447,8 +444,8 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
+      parcels: "Parcels",
       water: "Water",
-      labor: "Labor",
     },
     comingTag: "Coming",
     // Lens toggle (one meter dataset, one lens at a time).
