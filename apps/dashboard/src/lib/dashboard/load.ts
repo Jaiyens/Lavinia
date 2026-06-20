@@ -31,6 +31,9 @@ export type MeterPeriodView = {
   printedTotalCents: number | null;
   /** Demand charge in integer cents (from demand line items, else demandChargeUsd), or null. */
   demandCents: number | null;
+  /** Total metered energy for the cycle in kWh; null when not on file. The per-cycle SUMMARY
+   *  the cross-meter solar allocation reads (NFR4), never the 15-minute interval series. */
+  totalKwh: number | null;
   peakKw: number | null;
   tariff: string | null;
   lineItems: MeterLineItemView[];
@@ -192,6 +195,7 @@ export async function loadMetersForFarm(
         close: period.close.toISOString(),
         printedTotalCents: period.printedTotalCents,
         demandCents,
+        totalKwh: period.totalKwh,
         peakKw: period.peakKw,
         tariff: period.tariff,
         lineItems: period.billingLineItems.map((li) => ({

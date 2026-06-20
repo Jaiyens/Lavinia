@@ -62,6 +62,7 @@ const period = (totalCents: number | null, demandCents: number | null) => ({
   close: "2026-03-12T00:00:00.000Z",
   printedTotalCents: totalCents,
   demandCents,
+  totalKwh: null,
   peakKw: null,
   tariff: "AGC",
   lineItems: [],

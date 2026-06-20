@@ -55,6 +55,7 @@ const period = (close: string, totalCents: number | null) => ({
   close,
   printedTotalCents: totalCents,
   demandCents: null,
+  totalKwh: null,
   peakKw: null,
   tariff: "AGC",
   lineItems: [],

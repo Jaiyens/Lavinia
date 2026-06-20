@@ -3,10 +3,12 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
-import { resolveActiveFarmId, resolveFarm, resolveFindings } from "../(dashboard)/_data";
+import { buildSolarDataset } from "@/lib/dashboard/solar";
+import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
 import { FindingsRail } from "./shell/findings-rail";
 import { FindingsSheet } from "./shell/findings-sheet";
+import { SolarKpiStrip } from "./solar/solar-kpi-strip";
 import { SolarLensToggle } from "./solar/solar-lens-toggle";
 import { SolarLensRegion } from "./solar/solar-lens-region";
 
@@ -41,6 +43,14 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   // For now the rail renders the farm's findings so the three-zone shell is structurally whole.
   const findings = await resolveFindings(farm.id);
 
+  // Assemble the solar lens dataset (A-3) server-side from the request-cached MeterView[], so the
+  // KPI counts paint with the legibility surface and the allocation math (Epic C) never blocks first
+  // paint. The "now" month is read at this page edge (1-12) and INJECTED into the pure builder, which
+  // stays clock-free (NFR1). The dataset reads per-cycle summaries only, never the interval series.
+  const meters = await resolveMeters(farm.id);
+  const nowMonth = new Date().getMonth() + 1;
+  const solar = buildSolarDataset(meters, nowMonth);
+
   return (
     <>
       <div className="flex">
@@ -71,11 +81,14 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
               <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
             </header>
 
-            {/* The solar lens set (A-2): the toggle (Arrays / Calendar / Map / Table, default
-                Arrays) over the lens region. The KPI strip, the filter bar, and the drawer arrive in
-                A-3 onward; each lens view fills in across A-5/A-6/A-8/Epic D. Switching a lens writes
-                only the `lens` key and swaps the region below, never a crash or a blank shell. */}
+            {/* The solar KPI strip (A-3): four calm tiles (solar meters | arrays | next true-up |
+                needs review) above the lens set, no dollar tile. Then the solar lens set (A-2): the
+                toggle (Arrays / Calendar / Map / Table, default Arrays) over the lens region. The
+                filter bar and the drawer arrive in later stories; each lens view fills in across
+                A-5/A-6/A-8/Epic D. Switching a lens writes only the `lens` key and swaps the region
+                below, never a crash or a blank shell. */}
             <div className="space-y-5">
+              <SolarKpiStrip kpis={solar.kpis} />
               <SolarLensToggle />
               <SolarLensRegion />
             </div>

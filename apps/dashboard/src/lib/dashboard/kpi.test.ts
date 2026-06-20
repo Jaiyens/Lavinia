@@ -9,6 +9,7 @@ function period(close: string, printedTotalCents: number | null, demandCents: nu
     close,
     printedTotalCents,
     demandCents,
+    totalKwh: null,
     peakKw: null,
     tariff: "AGC",
     lineItems: [],

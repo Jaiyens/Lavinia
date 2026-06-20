@@ -82,6 +82,7 @@ const meter: MeterView = {
       close: "2026-03-12T00:00:00.000Z",
       printedTotalCents: 282622,
       demandCents: 278322,
+      totalKwh: null,
       peakKw: 244.32,
       tariff: "AGC",
       lineItems: [

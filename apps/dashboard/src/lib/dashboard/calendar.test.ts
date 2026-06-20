@@ -30,6 +30,7 @@ function period(close: string): MeterPeriodView {
     close,
     printedTotalCents: 1000,
     demandCents: null,
+    totalKwh: null,
     peakKw: null,
     tariff: "AGC",
     lineItems: [],
@@ -205,7 +206,7 @@ describe("anyResolvableSerial", () => {
 // --- Billing-cycle surface selectors (2026-06-17) -------------------------
 
 function peakPeriod(start: string, peakKw: number): MeterPeriodView {
-  return { start, close: start, printedTotalCents: null, demandCents: null, peakKw, tariff: null, lineItems: [] };
+  return { start, close: start, printedTotalCents: null, demandCents: null, totalKwh: null, peakKw, tariff: null, lineItems: [] };
 }
 function reading(start: string, kWh: number): IntervalReading {
   return { start, durationSec: 900, kWh };

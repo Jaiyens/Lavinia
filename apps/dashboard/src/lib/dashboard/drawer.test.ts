@@ -14,6 +14,7 @@ function period(over: Partial<MeterPeriodView>): MeterPeriodView {
     close: "2026-03-12T00:00:00.000Z",
     printedTotalCents: 282622,
     demandCents: null,
+    totalKwh: null,
     peakKw: null,
     tariff: "AGC",
     lineItems: [],

@@ -1466,6 +1466,46 @@ export const en = {
     // Honest placeholder shown for a solar lens whose view has not shipped yet (A-2 scaffolds the
     // toggle and the lens region; the Arrays, Map, Table, and Calendar views arrive in later stories).
     lensComing: "This view is on the way.",
+    // The solar KPI strip (A-3, UX-DR2): four calm tiles - solar meters, arrays, next true-up,
+    // needs review. NO dollar tile (money is never the hero here). Counts count up once
+    // (reduced-motion-safe); the needs-review tile is plain typography with no color.
+    kpi: {
+      // Tile labels (label-caps eyebrow over each count).
+      metersLabel: "Solar meters",
+      arraysLabel: "Arrays",
+      trueUpLabel: "Next true-up",
+      reviewLabel: "Needs review",
+      // The solar-meter sub-line under the count.
+      metersSub: (n: number): string =>
+        n === 0
+          ? "No solar meters on this farm yet"
+          : `${n === 1 ? "1 meter has" : `${n} meters have`} solar`,
+      // The arrays sub-line.
+      arraysSub: (n: number): string =>
+        n === 0 ? "No arrays linked yet" : n === 1 ? "1 array" : `${n} arrays`,
+      // Next true-up: a plain-words month plus how far out it settles. monthName is 1-12.
+      trueUpMonthName: (month: number): string => MONTHS[month - 1] ?? "",
+      trueUpValue: (month: number): string => MONTHS[month - 1] ?? "",
+      // "settling this month" / "about 6 weeks out" - plain operator words, never a clock-precise date.
+      trueUpLead: (monthsAhead: number): string => {
+        if (monthsAhead <= 0) return "Settling this month";
+        if (monthsAhead === 1) return "About 4 weeks out";
+        return `About ${monthsAhead} months out`;
+      },
+      trueUpNone: "No true-up date on file yet",
+      trueUpCount: (meterCount: number): string =>
+        meterCount === 1 ? "1 meter settles then" : `${meterCount} meters settle then`,
+      // Needs review: the count of solar meters not yet linked to an array. Zero reads as calm.
+      reviewValue: (n: number): string => (n === 0 ? "All linked" : String(n)),
+      reviewSub: (n: number): string =>
+        n === 0
+          ? "Every solar meter is linked to an array"
+          : `${n === 1 ? "1 meter is" : `${n} meters are`} not linked to an array`,
+      // Screen-reader labels for the tappable tiles (UX-DR2: tap Next true-up -> Calendar lens;
+      // tap Needs review -> filter the surface to those meters).
+      trueUpAria: "See the true-up calendar",
+      reviewAria: "Show meters that need review",
+    },
     demandPeak: {
       situation: (pump: string): string =>
         `${pump} has solar, but its bill peak is set after 4pm.`,

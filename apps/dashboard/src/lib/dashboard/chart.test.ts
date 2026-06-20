@@ -13,6 +13,7 @@ function period(close: string, lineItems: MeterLineItemView[]): MeterPeriodView 
     close,
     printedTotalCents: 1000,
     demandCents: null,
+    totalKwh: null,
     peakKw: null,
     tariff: "AGC",
     lineItems,
