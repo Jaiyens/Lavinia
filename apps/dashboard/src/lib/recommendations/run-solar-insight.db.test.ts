@@ -431,3 +431,176 @@ describe("allocation audit finding (C-4, F3)", () => {
     expect(result.created).toBe(0); // linked meter, demand-quiet schedule -> no finding at all
   });
 });
+
+// Story E-3 (FR24/FR25): the F1 rate-legibility emitter. A solar meter on the demand-charge AG-C
+// family that measures low operating hours is flagged to verify, as a NON-dollar finding (severity
+// watch, impactNote only, NEVER impactUsd - the priced rate-fit on solar is staged and the net credit
+// hides the rate). The hours come purely from the per-cycle totalKwh + peakKw summaries (NFR4). The
+// finding is sticky (a dismissal never resurrects) and idempotent, the same discipline as F2/F3.
+describe("rate-legibility finding (E-3, F1)", () => {
+  it("emits a watch verify_solar_schedule finding for a low-hours AG-C solar meter, dollar honest-blank", async () => {
+    const rlFarm = await prisma.farm.create({
+      data: { name: "Rate-Legibility Farm", isDemo: false },
+    });
+    const id = rlFarm.id;
+
+    // A solar meter on the demand-charge AG-C schedule with LOW measured hours: 1000 kWh / 50 kW = 20
+    // hours over a 30-day span, scaled to ~243 annual hours, well under the 2000-hour threshold. It is
+    // deliberately NOT reconciled, so the F2 demand insight stays silent and F1 is the only finding -
+    // proving F1 is evaluated independently of the F2 gate.
+    const lowHours = await prisma.pump.create({
+      data: {
+        name: "P305",
+        serviceId: "SA-LOWHOURS",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 200,
+        nemType: "nem2",
+        coverageState: "needs_review",
+        farmId: id,
+      },
+    });
+    await prisma.billingPeriod.create({
+      data: {
+        pumpId: lowHours.id,
+        start: new Date("2026-02-01T00:00:00.000Z"),
+        close: new Date("2026-03-03T00:00:00.000Z"),
+        totalKwh: 1000,
+        peakKw: 50,
+      },
+    });
+
+    const result = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(result.created).toBe(1);
+
+    const recs = await prisma.recommendation.findMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+    });
+    expect(recs).toHaveLength(1);
+    const rec = recs[0];
+    if (!rec) throw new Error("expected a rate-legibility finding");
+    expect(rec.severity).toBe("watch"); // a verify signal, not money at stake (no color)
+    expect(rec.impactUsd).toBeNull(); // NON-dollar (FR25) - never inflates the at-risk sum
+    expect(rec.impactNote).not.toBeNull();
+    expect(rec.situation).toContain("P305"); // traces to the named, visible meter
+    expect(rec.situation).toContain("AGC Ag35+ kW High Use"); // names the schedule
+    const action = rec.action as {
+      kind: string;
+      params?: { pumpId?: string; scheduleLabel?: string };
+    };
+    expect(action.kind).toBe("verify_solar_schedule");
+    expect(action.params?.pumpId).toBe(lowHours.id);
+    expect(action.params?.scheduleLabel).toBe("AGC Ag35+ kW High Use");
+  });
+
+  it("does not flag an AG-C solar meter that runs many hours (the schedule fits)", async () => {
+    const rlFarm = await prisma.farm.create({
+      data: { name: "Rate-Legibility High-Hours Farm", isDemo: false },
+    });
+    const id = rlFarm.id;
+
+    // 300,000 kWh / 50 kW = 6000 hours over a 30-day span scales far above the threshold, so the
+    // schedule fits and no F1 fires. (Not reconciled, so F2 is also silent: zero findings.)
+    const highHours = await prisma.pump.create({
+      data: {
+        name: "P306",
+        serviceId: "SA-HIGHHOURS",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 200,
+        nemType: "nem2",
+        coverageState: "needs_review",
+        farmId: id,
+      },
+    });
+    await prisma.billingPeriod.create({
+      data: {
+        pumpId: highHours.id,
+        start: new Date("2026-02-01T00:00:00.000Z"),
+        close: new Date("2026-03-03T00:00:00.000Z"),
+        totalKwh: 300_000,
+        peakKw: 50,
+      },
+    });
+
+    const result = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(result.created).toBe(0);
+  });
+
+  it("does not flag a low-hours solar meter off the AG-C family (non-solar lever territory)", async () => {
+    const rlFarm = await prisma.farm.create({
+      data: { name: "Rate-Legibility Non-AGC Farm", isDemo: false },
+    });
+    const id = rlFarm.id;
+
+    // Low hours but on AG-A (no demand charge): the rate-legibility flag is AG-C-only, so no F1.
+    const agA = await prisma.pump.create({
+      data: {
+        name: "P307",
+        serviceId: "SA-AGA-LOWHOURS",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 100,
+        nemType: "nem2",
+        coverageState: "needs_review",
+        farmId: id,
+      },
+    });
+    await prisma.billingPeriod.create({
+      data: {
+        pumpId: agA.id,
+        start: new Date("2026-02-01T00:00:00.000Z"),
+        close: new Date("2026-03-03T00:00:00.000Z"),
+        totalKwh: 1000,
+        peakKw: 50,
+      },
+    });
+
+    const result = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(result.created).toBe(0);
+  });
+
+  it("is idempotent and never resurrects a dismissed rate-legibility finding", async () => {
+    const rlFarm = await prisma.farm.create({
+      data: { name: "Rate-Legibility Sticky Farm", isDemo: false },
+    });
+    const id = rlFarm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P308",
+        serviceId: "SA-STICKY-LOWHOURS",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 200,
+        nemType: "nem2",
+        coverageState: "needs_review",
+        farmId: id,
+      },
+    });
+    await prisma.billingPeriod.create({
+      data: {
+        pumpId: meter.id,
+        start: new Date("2026-02-01T00:00:00.000Z"),
+        close: new Date("2026-03-03T00:00:00.000Z"),
+        totalKwh: 1000,
+        peakKw: 50,
+      },
+    });
+
+    await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(
+      await prisma.recommendation.count({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } }),
+    ).toBe(1); // idempotent
+
+    await prisma.recommendation.updateMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      data: { status: "dismissed", resolvedAt: new Date() },
+    });
+    const after = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(after.created).toBe(0); // a dismissed rate-legibility finding never comes back
+    expect(
+      await prisma.recommendation.count({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } }),
+    ).toBe(0);
+  });
+});

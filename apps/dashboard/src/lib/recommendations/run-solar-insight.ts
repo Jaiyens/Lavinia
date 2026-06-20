@@ -17,6 +17,10 @@ import {
   SOLAR_TOOL,
 } from "@/lib/energy/solar-nem";
 import { auditAllocation } from "@/lib/energy/solar-allocation";
+import {
+  measuredAnnualHours,
+  rateLegibilityFlag,
+} from "@/lib/energy/solar-rate-legibility";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { buildSolarDataset } from "@/lib/dashboard/solar";
@@ -84,6 +88,17 @@ export async function runSolarInsight(
         typeof action.params?.pumpId === "string" &&
         (action.params.arrayId === null || typeof action.params.arrayId === "string")
         ? [aggregationKey(action.params.pumpId, action.params.arrayId)]
+        : [];
+    }),
+  );
+  // F1 (E-3, verify_solar_schedule) dedupes by pumpId: a dismissed rate-legibility flag on a meter
+  // never resurrects, the same sticky-response discipline as F2/F3.
+  const resolvedSchedulePumpIds = new Set(
+    resolved.flatMap((r) => {
+      const action = r.action as { kind?: unknown; params?: { pumpId?: unknown } } | null;
+      return action?.kind === "verify_solar_schedule" &&
+        typeof action.params?.pumpId === "string"
+        ? [action.params.pumpId]
         : [];
     }),
   );
@@ -156,6 +171,51 @@ export async function runSolarInsight(
             floorServiceCents: floor.serviceCents,
             floorNbcCents: floor.nbcCents,
           },
+          execute: null,
+        },
+      }),
+    );
+  }
+
+  // F1 (E-3, FR24/FR25): the rate-legibility flag. A solar meter on the demand-charge AG-C family
+  // that measures low operating hours is a candidate for the wrong schedule, worth verifying. This is
+  // a NON-dollar finding (severity watch, impactNote only, NEVER impactUsd): the priced rate-fit on a
+  // solar meter is staged and the net credit obscures the underlying rate (FR25), so it never quotes a
+  // $/kW or $/kWh and never enters the rail's at-risk sum. Evaluated independently of the F2 demand
+  // gate: an AG-C low-hours solar meter is flag-worthy even when it carries no reconciled NEM months.
+  // The hours come purely from the per-cycle totalKwh + peakKw summaries already loaded (NFR4), never
+  // the interval series.
+  for (const meter of meters) {
+    if (resolvedSchedulePumpIds.has(meter.id)) continue;
+    const hours = measuredAnnualHours({
+      cycles: meter.periods.map((p) => ({
+        totalKwh: p.totalKwh,
+        peakKw: p.peakKw,
+        start: p.start,
+        close: p.close,
+      })),
+    });
+    const flag = rateLegibilityFlag({
+      isSolar: meter.isSolar,
+      scheduleLabel: meter.rateSchedule,
+      measuredAnnualHours: hours,
+      card,
+      pumpId: meter.id,
+      meterName: meter.name,
+    });
+    if (flag === null) continue;
+    drafts.push(
+      draftRecommendation({
+        tool: SOLAR_TOOL,
+        farmId,
+        severity: "watch",
+        createdAt: asOf,
+        situation: en.solar.rateLegibility.situation(flag.meterName, flag.scheduleLabel),
+        impactNote: en.solar.rateLegibility.note,
+        action: {
+          kind: "verify_solar_schedule",
+          label: en.solar.rateLegibility.action(),
+          params: { pumpId: flag.pumpId, scheduleLabel: flag.scheduleLabel },
           execute: null,
         },
       }),

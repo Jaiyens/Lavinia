@@ -1793,6 +1793,19 @@ export const en = {
       // The section heading above the inline audit rows on a card.
       reviewHeading: "Worth checking",
     },
+    // The F1 rate-legibility finding (E-3, FR24/FR25): a solar meter on a demand-charge AG-C schedule
+    // that measures low operating hours is a candidate for the wrong schedule, worth verifying. This
+    // is a NON-dollar flag: the priced rate-fit on a solar meter is staged, and the net credit hides
+    // the underlying rate, so the copy says exactly that and never quotes a $/kW or $/kWh. Plain
+    // operator English, no exclamation marks, no em dashes.
+    rateLegibility: {
+      // Names the meter and the schedule; says the schedule may not fit a low-hours solar meter.
+      situation: (meter: string, schedule: string): string =>
+        `${meter} runs on the ${schedule} demand-charge schedule but does not show many operating hours. That schedule fits a meter that runs a lot, so it is worth checking whether it still fits this one.`,
+      // The honest-blank dollar acknowledgement: the net credit obscures the rate, so no figure here.
+      note: "Your solar credit hides what the underlying rate is doing, so we cannot put a dollar on this yet. The schedule is still worth a look.",
+      action: (): string => "Check this schedule",
+    },
     // The Calendar lens (D-2, FR12/FR13/FR15, UX-DR5): the true-up heartbeat. A twelve-month rolling
     // grid placing each meter's and array's true-up month, with the next-upcoming pulled out above the
     // grid in plain words so the grower never does date math. The per-entry credit dollar is
