@@ -127,7 +127,9 @@ export function BentoGrid({ items, editing }: { items: BentoItem[]; editing: boo
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={order} strategy={rectSortingStrategy}>
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-6 lg:grid-rows-4">
+        {/* 1 col on phones, a roomy 2 cols on tablets/laptops (content sets row heights, page scrolls),
+            and the dense one-screen 6x4 bento only on large monitors (2xl) where it has room to breathe. */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-6 2xl:grid-rows-4">
           {ordered.map((it) => (
             <SortableCell key={it.id} id={it.id} className={it.className} editing={editing}>
               {it.node}
