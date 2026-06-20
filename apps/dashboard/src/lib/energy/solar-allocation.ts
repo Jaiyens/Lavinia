@@ -87,6 +87,114 @@ export function allocateArray(
   return { arrayId, arrayName, shares, notOnFilePumpIds };
 }
 
+// The allocation audit (C-4, FR9). PURE: it reads the C-2 allocation RESULT plus the membership the
+// populator recorded, and reports two honest gaps the grower can take to PG&E - never a guess, never a
+// dollar. A finding here is a "verify this with PG&E" signal, not a money-at-risk number: the credit
+// DOLLAR stays honest-blank (FR10) until a true-up statement settles it, so the audit carries NO
+// impactUsd. The two gaps:
+//
+//   - dropped_meter:    a meter that LISTS an array code (the master sheet links it to the array) but
+//                       is ABSENT from that array's computed allocation - the populator could not link
+//                       it to the generating meter, so its credits may be going nowhere. This is the
+//                       LIVE, buildable-now check: it reads only the membership Terra already holds.
+//
+//   - mismatched_share: a meter whose PG&E-RECORDED allocation share diverges from the load-implied
+//                       (usage-proportional) share Terra computed, by more than ALLOCATION_TOLERANCE_PP.
+//                       The recorded share comes only from a real source on file (a true-up statement
+//                       or a stated NEMA split); with none on file there is NO mismatch finding - the
+//                       audit never invents a "recorded" share to compare against (fail-closed, FR10).
+//                       It is FORWARD-COMPATIBLE: the Batth cohort has no recorded-split field yet, so
+//                       this branch is proven by a synthetic unit test, the same discipline as VNEM.
+//
+// Both branches are honest gaps to verify, never an automatic correction and never a write-back.
+
+/** A meter the master sheet links to an array, paired with its recorded (stated) allocation share,
+ *  for the C-4 mismatch audit. recordedShare is the share PG&E/the statement applied, in [0,1]; null
+ *  when no recorded share is on file (then this meter never produces a mismatch finding - the audit
+ *  never fabricates a baseline to compare against). */
+export type AllocationRecordedShare = {
+  pumpId: string;
+  /** PG&E's / the statement's recorded share for this meter, in [0,1]; null = none on file. */
+  recordedShare: number | null;
+};
+
+/** One honest gap the allocation audit found, for the F3 finding (C-4, FR9). Carries NO dollar (the
+ *  credit stays honest-blank, FR10); the percentages are usage/allocation shares, never money. */
+export type AllocationAuditFinding =
+  | { kind: "dropped_meter"; pumpId: string; arrayId: string }
+  | {
+      kind: "mismatched_share";
+      pumpId: string;
+      arrayId: string;
+      /** Terra's load-implied (usage-proportional) share as a whole percent, 0-100 (tnum on screen). */
+      computedPct: number;
+      /** The recorded (stated) share as a whole percent, 0-100. */
+      recordedPct: number;
+    };
+
+/**
+ * FR9 audit over ONE array's C-2 allocation result. Two honest gaps, never a guess, never a dollar:
+ *
+ *   1. dropped_meter - for every meter in `listedButUnlinked` whose `arrayId` matches `result.arrayId`
+ *      (it lists this array but is absent from the computed allocation): a `dropped_meter` finding. The
+ *      LIVE check; reads only recorded membership.
+ *
+ *   2. mismatched_share - for a meter present in the result with a non-null computed share AND a
+ *      non-null `recordedShare` on file, when the two diverge by MORE than `ALLOCATION_TOLERANCE_PP`
+ *      percentage points: a `mismatched_share` finding. Within tolerance -> no finding. A meter with no
+ *      recorded share, or no computed share (not-on-file usage), never produces a mismatch (fail-closed
+ *      - the audit never invents a baseline). FORWARD-COMPATIBLE (no launch instance; synthetic test).
+ *
+ * The tolerance is the single documented `ALLOCATION_TOLERANCE_PP` constant. Pure: no Prisma, no clock,
+ * no dollar. Findings preserve a stable order (dropped meters in input order, then mismatches in result
+ * order) so the emitter and the inline render are deterministic.
+ */
+export function auditAllocation(args: {
+  result: AllocationResult;
+  /** Meters that list an array code but are absent from a computed allocation (a dropped meter). */
+  listedButUnlinked: { pumpId: string; arrayId: string }[];
+  /** Recorded (stated) shares to audit the computed share against; absent => no mismatch check. */
+  recordedShares?: AllocationRecordedShare[];
+}): AllocationAuditFinding[] {
+  const { result, listedButUnlinked, recordedShares = [] } = args;
+  const findings: AllocationAuditFinding[] = [];
+
+  // 1) Dropped meters: every listed-but-unlinked meter scoped to THIS array, in input order.
+  for (const m of listedButUnlinked) {
+    if (m.arrayId === result.arrayId) {
+      findings.push({ kind: "dropped_meter", pumpId: m.pumpId, arrayId: result.arrayId });
+    }
+  }
+
+  // 2) Mismatched shares: compare the computed (load-implied) share against a recorded share on file.
+  // Tolerance is in percentage POINTS, so both sides are taken to whole-percent space before the
+  // comparison and the divergence is |computedPct - recordedPct|. A meter with no recorded share, or
+  // with a not-on-file computed share, is skipped (the audit never fabricates a baseline).
+  const recordedByPump = new Map(
+    recordedShares
+      .filter((r) => r.recordedShare !== null && Number.isFinite(r.recordedShare))
+      .map((r) => [r.pumpId, r.recordedShare as number]),
+  );
+  for (const s of result.shares) {
+    if (s.share === null) continue; // not-on-file usage: no honest baseline to mismatch against
+    const recorded = recordedByPump.get(s.pumpId);
+    if (recorded === undefined) continue; // no recorded share on file: never a fabricated mismatch
+    const computedPct = s.share * 100;
+    const recordedPct = recorded * 100;
+    if (Math.abs(computedPct - recordedPct) > ALLOCATION_TOLERANCE_PP) {
+      findings.push({
+        kind: "mismatched_share",
+        pumpId: s.pumpId,
+        arrayId: result.arrayId,
+        computedPct,
+        recordedPct,
+      });
+    }
+  }
+
+  return findings;
+}
+
 // Program-type classification (C-3, FR11). PURE: a plain { benefitingMeterCount, nemType } in, a
 // closed string-literal token out. It answers the grower's real question - "do I or PG&E control
 // the allocation?" - by naming the array's net-metering program type in one word the copy layer

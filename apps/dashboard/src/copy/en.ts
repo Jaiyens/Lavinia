@@ -1721,6 +1721,40 @@ export const en = {
       // A negative printed amount is a credit to the grower; say so in words.
       creditValue: (usd: string): string => `${usd} credit`,
     },
+    // C-4 (FR9): the allocation audit finding (F3). Two honest gaps to verify with PG&E - a meter
+    // dropped from an array it lists, or a recorded share that diverges from the load-implied share -
+    // each a "check this" signal, never a dollar (the credit stays honest-blank, FR10). Severity is
+    // watch (no color, no impactUsd). Copy names the meter and the array so the finding traces to what
+    // the grower sees on the tab. Plain operator English, no kW/interval jargon, no exclamation marks.
+    aggregation: {
+      // A meter that lists an array but is absent from that array's allocation: its credits may be
+      // going nowhere. Names the meter and the array.
+      droppedSituation: (meter: string, array: string): string =>
+        `${meter} lists the ${array} array but is not sharing in its credits. Its solar credits may be going to the wrong place.`,
+      // A solar meter that is not linked to ANY array, so no array's credits reach it. Names the meter.
+      unlinkedSituation: (meter: string): string =>
+        `${meter} is a solar meter but is not linked to any array, so it is not sharing in any solar credits. Check which array it belongs to.`,
+      // A recorded share that diverges from the usage-based share by more than the tolerance.
+      mismatchedSituation: (
+        meter: string,
+        array: string,
+        computedPct: number,
+        recordedPct: number,
+      ): string =>
+        `${meter} uses about ${Math.round(computedPct)}% of the ${array} array, but its credits are recorded at ${Math.round(recordedPct)}%. That gap is worth checking.`,
+      action: (): string => "Check this share with PG&E",
+      // The honest-blank dollar note (the credit is never quantified until a statement settles it).
+      note: "We cannot put a dollar on this until your true-up statement is on file.",
+      // The unnamed-array fallback used in the situation copy when the populator wrote no array name.
+      unnamedArray: "unnamed",
+      // The inline watch-treatment rows on the Arrays-lens array card (UX-DR4: typographic, no color).
+      // A short label for a meter row flagged by the audit, so the card echoes the finding.
+      droppedRow: (meter: string): string => `${meter} is not sharing in this array's credits`,
+      mismatchedRow: (meter: string, computedPct: number, recordedPct: number): string =>
+        `${meter} uses about ${Math.round(computedPct)}% but is credited ${Math.round(recordedPct)}%`,
+      // The section heading above the inline audit rows on a card.
+      reviewHeading: "Worth checking",
+    },
   },
 
   // The rebuilt dashboard: a ranked feed of moves, with charts one tap down. Plain

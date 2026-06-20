@@ -6,7 +6,7 @@ import { en } from "@/copy/en";
 import { cardClass } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
 import type { SolarArrayGroup, SolarNeedsReview } from "@/lib/dashboard/solar";
-import { classifyProgramType } from "@/lib/energy/solar-allocation";
+import { auditAllocation, classifyProgramType } from "@/lib/energy/solar-allocation";
 import { AllocationBar } from "./allocation-bar";
 
 // The Arrays lens (A-5, UX-DR4): the DEFAULT solar data hero. One array-group card per SolarArray,
@@ -147,7 +147,69 @@ function ArrayCard({
           <MeterRow key={`${group.id}:${m.pumpId}`} meter={m} onOpen={onOpen} />
         ))}
       </ul>
+
+      <AuditRows group={group} onOpen={onOpen} />
     </article>
+  );
+}
+
+/** C-4 (FR9, UX-DR4): the inline allocation-audit rows on a card. A dropped meter (listed but absent
+ *  from this array's allocation) or a mismatched recorded share renders as a watch-treatment row -
+ *  typographic only, NO color (NFR6: red is reserved for money at stake, and the credit here is
+ *  honest-blank). Runs the SAME pure `auditAllocation` the F3 emitter runs, so the rail and the card
+ *  show the same gaps. The launch data carries no listed-but-unlinked-within-an-array nor recorded-
+ *  split signal, so this renders nothing today - correct, not broken - and lights up when that data
+ *  lands. Dropped meters scoped to THIS array open the drawer; the no-array dropped case lives in the
+ *  needs-review tray below. */
+const a = en.solar.aggregation;
+function AuditRows({
+  group,
+  onOpen,
+}: {
+  group: SolarArrayGroup;
+  onOpen: (id: string) => void;
+}) {
+  const findings = auditAllocation({
+    result: {
+      arrayId: group.id,
+      arrayName: group.name,
+      shares: group.meters.map((m) => ({
+        pumpId: m.pumpId,
+        meterName: m.meterName,
+        share: m.share,
+      })),
+      notOnFilePumpIds: group.meters.filter((m) => m.share === null).map((m) => m.pumpId),
+    },
+    listedButUnlinked: [],
+  });
+  if (findings.length === 0) return null;
+
+  const nameByPump = new Map(group.meters.map((m) => [m.pumpId, m.meterName]));
+  return (
+    <div className="border-t border-outline-variant px-4 py-3">
+      <p className="type-label-caps text-on-surface-variant">{a.reviewHeading}</p>
+      <ul className="mt-1 space-y-1">
+        {findings.map((f) => {
+          const name = nameByPump.get(f.pumpId) ?? f.pumpId;
+          const text =
+            f.kind === "dropped_meter"
+              ? a.droppedRow(name)
+              : a.mismatchedRow(name, f.computedPct, f.recordedPct);
+          return (
+            <li key={`${f.kind}:${f.pumpId}`}>
+              <button
+                type="button"
+                onClick={() => onOpen(f.pumpId)}
+                aria-label={t.openMeter(name)}
+                className="type-caption w-full text-left text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {text}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

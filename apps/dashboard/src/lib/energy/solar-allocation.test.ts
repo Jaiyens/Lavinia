@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   ALLOCATION_TOLERANCE_PP,
   allocateArray,
+  auditAllocation,
   classifyProgramType,
   type AllocationMeterInput,
+  type AllocationResult,
 } from "./solar-allocation";
 
 // C-2 (FR8): the usage-proportional NEMA allocation share math, proven in isolation from the DB edge.
@@ -146,5 +148,130 @@ describe("classifyProgramType", () => {
   it("treats a zero or negative meter count as honest single-meter solar, never aggregation", () => {
     expect(classifyProgramType({ benefitingMeterCount: 0, nemType: "nem2" })).toBe("nem");
     expect(classifyProgramType({ benefitingMeterCount: -1, nemType: "nem2" })).toBe("nem");
+  });
+});
+
+// C-4 (FR9): the allocation audit. Two honest gaps the grower can verify with PG&E - a meter dropped
+// from an array it lists, and a recorded share that diverges from the load-implied share beyond the
+// single documented tolerance. Never a dollar (the credit stays honest-blank, FR10), never a guess (no
+// recorded share on file -> no mismatch). The dropped-meter check is the live, buildable-now signal;
+// the mismatch check is forward-compatible (no Batth-cohort recorded-split field yet) so it is proven
+// here with synthetic recorded shares.
+describe("auditAllocation", () => {
+  // A two-meter array allocated 75/25 from usage, used by several cases below.
+  const result: AllocationResult = allocateArray("arr-1", "840 kW", [
+    { pumpId: "a", meterName: "A", cumulativeKwh: 30 },
+    { pumpId: "b", meterName: "B", cumulativeKwh: 10 },
+  ]);
+
+  it("flags a meter that lists this array but is absent from its allocation as a dropped_meter", () => {
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [{ pumpId: "c", arrayId: "arr-1" }],
+    });
+    expect(findings).toEqual([{ kind: "dropped_meter", pumpId: "c", arrayId: "arr-1" }]);
+  });
+
+  it("only flags a dropped meter scoped to THIS array, never one listing a different array", () => {
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [
+        { pumpId: "c", arrayId: "arr-1" }, // this array -> flagged
+        { pumpId: "d", arrayId: "arr-OTHER" }, // a different array -> ignored here
+      ],
+    });
+    expect(findings).toEqual([{ kind: "dropped_meter", pumpId: "c", arrayId: "arr-1" }]);
+  });
+
+  it("preserves dropped meters in input order", () => {
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [
+        { pumpId: "z", arrayId: "arr-1" },
+        { pumpId: "y", arrayId: "arr-1" },
+      ],
+    });
+    expect(findings.map((f) => f.pumpId)).toEqual(["z", "y"]);
+  });
+
+  it("produces no finding when a recorded share is within the tolerance of the computed share", () => {
+    // Computed 75%; recorded 0.78 = 78%; |75 - 78| = 3pp <= 5pp tolerance -> no finding.
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [],
+      recordedShares: [{ pumpId: "a", recordedShare: 0.78 }],
+    });
+    expect(findings).toEqual([]);
+  });
+
+  it("produces no finding exactly AT the tolerance (the boundary is not a mismatch)", () => {
+    // Computed 75%; recorded 80%; |75 - 80| = 5pp == tolerance -> within tolerance, no finding.
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [],
+      recordedShares: [{ pumpId: "a", recordedShare: 0.8 }],
+    });
+    expect(findings).toEqual([]);
+  });
+
+  it("flags a recorded share that diverges from the computed share beyond the tolerance", () => {
+    // Computed 75%; recorded 0.6 = 60%; |75 - 60| = 15pp > 5pp -> mismatched_share.
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [],
+      recordedShares: [{ pumpId: "a", recordedShare: 0.6 }],
+    });
+    expect(findings).toEqual([
+      { kind: "mismatched_share", pumpId: "a", arrayId: "arr-1", computedPct: 75, recordedPct: 60 },
+    ]);
+  });
+
+  it("never flags a mismatch when no recorded share is on file (fail-closed, never a guess)", () => {
+    // The Batth-cohort reality: no recorded split field, so the audit invents no baseline to compare.
+    const findings = auditAllocation({ result, listedButUnlinked: [] });
+    expect(findings).toEqual([]);
+  });
+
+  it("skips a meter whose recorded share is null and one whose computed usage is not-on-file", () => {
+    // c has no billed usage (share null) so there is no honest computed baseline; a has a null recorded
+    // share. Neither can mismatch - the audit never fabricates either side.
+    const withNullUsage = allocateArray("arr-1", "840 kW", [
+      { pumpId: "a", meterName: "A", cumulativeKwh: 30 },
+      { pumpId: "c", meterName: "C", cumulativeKwh: null },
+    ]);
+    const findings = auditAllocation({
+      result: withNullUsage,
+      listedButUnlinked: [],
+      recordedShares: [
+        { pumpId: "a", recordedShare: null }, // null recorded -> skipped
+        { pumpId: "c", recordedShare: 0.5 }, // c has no computed share -> skipped
+      ],
+    });
+    expect(findings).toEqual([]);
+  });
+
+  it("emits both a dropped_meter and a mismatched_share, dropped first then mismatch", () => {
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [{ pumpId: "c", arrayId: "arr-1" }],
+      recordedShares: [{ pumpId: "a", recordedShare: 0.6 }],
+    });
+    expect(findings).toEqual([
+      { kind: "dropped_meter", pumpId: "c", arrayId: "arr-1" },
+      { kind: "mismatched_share", pumpId: "a", arrayId: "arr-1", computedPct: 75, recordedPct: 60 },
+    ]);
+  });
+
+  it("carries no dollar field on any finding (the credit stays honest-blank, FR10)", () => {
+    const findings = auditAllocation({
+      result,
+      listedButUnlinked: [{ pumpId: "c", arrayId: "arr-1" }],
+      recordedShares: [{ pumpId: "a", recordedShare: 0.6 }],
+    });
+    for (const f of findings) {
+      expect(f).not.toHaveProperty("impactUsd");
+      expect(f).not.toHaveProperty("amountCents");
+      expect(f).not.toHaveProperty("dollars");
+    }
   });
 });

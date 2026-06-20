@@ -256,3 +256,152 @@ describe("SOLAR_TOOL ownership reconciliation (B-1)", () => {
     expect(kinds).toContain("track_trueup"); // the legacy emitter still owns SOLAR_TOOL here
   });
 });
+
+// Story C-4 (FR9): the allocation audit emitter (F3). A solar meter linked to no array is a dropped
+// meter - its credits reach nowhere - and runSolarInsight emits a watch-severity `verify_aggregation`
+// finding with the dollar HONEST-BLANK (impactNote only, never impactUsd, so it never inflates the
+// rail's at-risk sum), traced to the named meter. The finding is sticky (a dismissal never resurrects)
+// and idempotent under the SOLAR_TOOL clear, the same discipline as F2.
+describe("allocation audit finding (C-4, F3)", () => {
+  it("emits a watch verify_aggregation finding for a solar meter linked to no array, dollar honest-blank", async () => {
+    const auditFarm = await prisma.farm.create({
+      data: { name: "Audit Farm", isDemo: false },
+    });
+    const id = auditFarm.id;
+
+    // An aggregation graph EXISTS on the farm: an array with a linked solar meter. So a SECOND solar
+    // meter left out of every array is genuinely dropped from a graph it should be part of (FR9).
+    const array = await prisma.solarArray.create({
+      data: { name: "ARR-AUDIT", nameplateKw: 840, nemType: "nem2", farmId: id },
+    });
+    await prisma.pump.create({
+      data: {
+        name: "P199",
+        serviceId: "SA-LINKED-AUDIT",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 400,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        benefitingArrays: { connect: { id: array.id } },
+      },
+    });
+
+    // A solar meter with NO benefiting array: it is not sharing in any array's credits (a dropped
+    // meter). It is deliberately NOT on a demand-carrying AG-C schedule, so the F2 demand insight
+    // stays silent and the only finding here is the F3 aggregation audit.
+    const orphan = await prisma.pump.create({
+      data: {
+        name: "P200",
+        serviceId: "SA-ORPHAN-SOLAR",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 200,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+      },
+    });
+
+    const result = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(result.created).toBe(1);
+
+    const recs = await prisma.recommendation.findMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+    });
+    expect(recs).toHaveLength(1);
+    const rec = recs[0];
+    if (!rec) throw new Error("expected an aggregation finding");
+    expect(rec.severity).toBe("watch"); // a verify signal, not money at stake (no color)
+    expect(rec.impactUsd).toBeNull(); // the credit is honest-blank (FR10) - never inflates at-risk
+    expect(rec.impactNote).not.toBeNull();
+    expect(rec.situation).toContain("P200"); // traces to the named, visible meter
+    const action = rec.action as {
+      kind: string;
+      params?: { pumpId?: string; arrayId?: unknown; reason?: string };
+    };
+    expect(action.kind).toBe("verify_aggregation");
+    expect(action.params?.pumpId).toBe(orphan.id);
+    expect(action.params?.arrayId).toBeNull(); // no array to scope the dropped meter to
+    expect(action.params?.reason).toBe("dropped_meter");
+  });
+
+  it("is idempotent and never resurrects a dismissed aggregation finding", async () => {
+    const auditFarm = await prisma.farm.create({
+      data: { name: "Audit Farm 2", isDemo: false },
+    });
+    const id = auditFarm.id;
+    // An aggregation graph exists (an array + a linked meter), so the orphan below is genuinely dropped.
+    const array = await prisma.solarArray.create({
+      data: { name: "ARR-AUDIT-2", nameplateKw: 840, nemType: "nem2", farmId: id },
+    });
+    await prisma.pump.create({
+      data: {
+        name: "P203",
+        serviceId: "SA-LINKED-2",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 400,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        benefitingArrays: { connect: { id: array.id } },
+      },
+    });
+    await prisma.pump.create({
+      data: {
+        name: "P201",
+        serviceId: "SA-ORPHAN-2",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 150,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+      },
+    });
+
+    await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(
+      await prisma.recommendation.count({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } }),
+    ).toBe(1); // idempotent
+
+    await prisma.recommendation.updateMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      data: { status: "dismissed", resolvedAt: new Date() },
+    });
+    const after = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(after.created).toBe(0); // a dismissed aggregation finding never comes back
+    expect(
+      await prisma.recommendation.count({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } }),
+    ).toBe(0);
+  });
+
+  it("does not flag a solar meter that IS linked to an array (no false aggregation finding)", async () => {
+    const auditFarm = await prisma.farm.create({
+      data: { name: "Audit Farm 3", isDemo: false },
+    });
+    const id = auditFarm.id;
+    const array = await prisma.solarArray.create({
+      data: { name: "ARR-1", nameplateKw: 840, nemType: "nem2", farmId: id },
+    });
+    await prisma.pump.create({
+      data: {
+        name: "P202",
+        serviceId: "SA-LINKED",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 300,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        benefitingArrays: { connect: { id: array.id } },
+      },
+    });
+
+    const result = await runSolarInsight(prisma, id, "2026-06-09T12:00:00.000Z");
+    expect(result.created).toBe(0); // linked meter, demand-quiet schedule -> no finding at all
+  });
+});

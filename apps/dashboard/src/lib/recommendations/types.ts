@@ -24,6 +24,22 @@ export type PumpStatus = "GOOD" | "BAD" | "NEW WELL" | "OLD";
 // "vnem"). VNEM is forward-compatible (no launch instance in the Batth cohort).
 export type SolarProgramType = "nem" | "nema" | "vnem";
 
+// The stable, lower-snake action kinds the Solar tool (SOLAR_TOOL) emits (architecture: "Finding
+// action kinds"). Shaped so a later agentic OS can EXECUTE them; v1 only displays the label. Each is
+// a string literal so a typo'd kind is a compile error and the dedupe/render paths read one set:
+//   review_solar_demand - F2, the LIVE demand-gap insight (run-solar-insight.ts), reused
+//   verify_aggregation  - F3, the C-4 dropped/mismatched-share audit (the credit honest-blank)
+//   verify_solar_schedule, protect_grandfather, investigate_array, track_trueup, enroll_demand_response
+//     are net-new emitters teed up for later solar stories (F1, F4-F7).
+export type SolarActionKind =
+  | "review_solar_demand"
+  | "verify_aggregation"
+  | "verify_solar_schedule"
+  | "protect_grandfather"
+  | "investigate_array"
+  | "track_trueup"
+  | "enroll_demand_response";
+
 // Billing coverage for a Meter/Account (FR-6). One union, one render treatment
 // everywhere (table cell, drawer, map pin, rollup, CSV) per AR-15; mirrored as a Prisma
 // String column. A figure renders only when "reconciled"; otherwise the cell shows the
