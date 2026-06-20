@@ -59,11 +59,33 @@ export async function runEngines(
   });
   const tz = farm.timezone;
 
+  // Load only the per-pump metadata + the (small) per-cycle billing periods with their
+  // line items up front, NOT every pump's 15-minute interval history at once: a 183-meter
+  // farm with a year of intervals each is millions of rows and OOMs node if loaded
+  // together. Each pump's intervals are streamed one meter at a time below, so peak memory
+  // is one meter's series, not the farm's.
   const pumps = await prisma.pump.findMany({
     where: { farmId },
-    include: {
-      billingPeriods: true,
-      intervals: { orderBy: { start: "asc" } },
+    select: {
+      id: true,
+      name: true,
+      rateSchedule: true,
+      solarKw: true,
+      nemType: true,
+      trueUpMonth: true,
+      billingPeriods: {
+        select: {
+          start: true,
+          close: true,
+          tariff: true,
+          demandChargeUsd: true,
+          peakKw: true,
+          peakAt: true,
+          totalBillUsd: true,
+          printedTotalCents: true,
+          billingLineItems: { select: { kind: true, amountCents: true } },
+        },
+      },
     },
   });
 
@@ -71,111 +93,144 @@ export async function runEngines(
   const legacyWithoutFinding: string[] = [];
 
   for (const pump of pumps) {
-    const bills: CycleBill[] = pump.billingPeriods.map((b) => ({
-      start: dateOnly(b.start),
-      close: dateOnly(b.close),
-      tariff: b.tariff,
-      demandChargeUsd: b.demandChargeUsd,
-      peakKw: b.peakKw,
-      peakAt: b.peakAt ? b.peakAt.toISOString() : null,
-      totalBillUsd: b.totalBillUsd,
-    }));
-    const intervals: IntervalReading[] = pump.intervals.map((iv) => ({
-      start: iv.start.toISOString(),
-      durationSec: iv.durationSec,
-      kWh: iv.kWh,
-    }));
-    const actualAnnualBillUsd = bills.reduce(
-      (sum, b) => sum + (b.totalBillUsd ?? 0),
-      0,
-    );
-
-    // Rate optimization: ag meters with real interval history. Solar-paired meters
-    // are excluded, their NEM economics net generation against use, which this
-    // gross-consumption model does not capture, so a rate-switch dollar claim there
-    // would be unreliable. The solar/NEM checks below speak for those meters instead.
-    let emittedRateRec = false;
-    if (
-      pump.rateSchedule &&
-      isAg(pump.rateSchedule) &&
-      intervals.length > 0 &&
-      pump.solarKw === null
-    ) {
-      const profile = bucketUsage(intervals, bills, tz, card);
-      const res = rateOptimization({
-        farmId,
-        pumpId: pump.id,
-        pumpName: pump.name,
-        currentSchedule: pump.rateSchedule,
-        profile,
-        actualAnnualBillUsd,
-        card,
-        asOf,
+    // Per-pump engines are wrapped: one meter's engine throwing (a malformed cycle, a bad
+    // tz conversion, a pricing edge) must never abort the whole run and strand the farm
+    // with zero findings. The bad meter is logged and skipped; the rest still produce recs.
+    try {
+      const bills: CycleBill[] = pump.billingPeriods.map((b) => {
+        // Money totals: a real Green Button/UtilityAPI cycle carries totalBillUsd; a
+        // bill-PDF cycle (the extractor) carries only printedTotalCents. Read either so a
+        // real farm is not left with $0 totals (every lever would then skip). Likewise the
+        // demand charge: prefer the float, else sum the cents of the demand line items.
+        const totalBillUsd =
+          b.totalBillUsd ??
+          (b.printedTotalCents != null ? b.printedTotalCents / 100 : null);
+        const demandLineCents = b.billingLineItems
+          .filter((li) => li.kind === "demand")
+          .reduce((sum, li) => sum + li.amountCents, 0);
+        const demandChargeUsd =
+          b.demandChargeUsd ?? (demandLineCents > 0 ? demandLineCents / 100 : null);
+        return {
+          start: dateOnly(b.start),
+          close: dateOnly(b.close),
+          tariff: b.tariff,
+          demandChargeUsd,
+          peakKw: b.peakKw,
+          peakAt: b.peakAt ? b.peakAt.toISOString() : null,
+          totalBillUsd,
+        };
       });
-      if (res.recommendation) {
-        drafts.push(res.recommendation);
-        emittedRateRec = true;
-      }
-    }
 
-    // A legacy meter we couldn't price precisely yet: roll into the fleet finding.
-    if (
-      pump.rateSchedule &&
-      LEGACY_FAMILIES.has(familyOf(pump.rateSchedule)) &&
-      !emittedRateRec
-    ) {
-      legacyWithoutFinding.push(pump.id);
-    }
-
-    // Demand-charge exposure: a single mistimed peak day that drove a cycle's demand
-    // charge. Metered, non-solar pumps only (solar speaks through the solar checks).
-    // The pure lever emits one rec per demand cycle; we keep only the actionable
-    // outliers (a clear avoidable spike) and re-tag them to the demand-charge category.
-    if (intervals.length > 0 && pump.solarKw === null) {
-      const demandRecs = retrospective({
-        farmId,
-        pumpId: pump.id,
-        pumpName: pump.name,
-        timezone: tz,
-        intervals,
-        bills,
-        asOf,
-        outlierSeverity: "act",
+      // Stream this one pump's interval history (the OOM source if loaded for all pumps).
+      const rawIntervals = await prisma.usageInterval.findMany({
+        where: { pumpId: pump.id },
+        orderBy: { start: "asc" },
+        select: { start: true, durationSec: true, kWh: true },
       });
-      for (const rec of demandRecs) {
-        const peakDay = (rec.action.params as { peakDay?: unknown } | undefined)?.peakDay;
-        if (typeof peakDay !== "string") continue; // no outlier: a flat demand month, skip
-        drafts.push({ ...rec, tool: DEMAND_CHARGE_TOOL });
+      const intervals: IntervalReading[] = rawIntervals.map((iv) => ({
+        start: iv.start.toISOString(),
+        durationSec: iv.durationSec,
+        kWh: iv.kWh,
+      }));
+      const actualAnnualBillUsd = bills.reduce(
+        (sum, b) => sum + (b.totalBillUsd ?? 0),
+        0,
+      );
+
+      // Rate optimization: ag meters with real interval history. Solar-paired meters
+      // are excluded, their NEM economics net generation against use, which this
+      // gross-consumption model does not capture, so a rate-switch dollar claim there
+      // would be unreliable. The solar/NEM checks below speak for those meters instead.
+      let emittedRateRec = false;
+      if (
+        pump.rateSchedule &&
+        isAg(pump.rateSchedule) &&
+        intervals.length > 0 &&
+        pump.solarKw === null
+      ) {
+        const profile = bucketUsage(intervals, bills, tz, card);
+        const res = rateOptimization({
+          farmId,
+          pumpId: pump.id,
+          pumpName: pump.name,
+          currentSchedule: pump.rateSchedule,
+          profile,
+          actualAnnualBillUsd,
+          card,
+          asOf,
+        });
+        if (res.recommendation) {
+          drafts.push(res.recommendation);
+          emittedRateRec = true;
+        }
       }
-    }
 
-    // Bill audit: a posted cycle higher than the meter's usual, with usage flat. Runs
-    // on every pump with bills; the lever's own gates keep it quiet for flat meters.
-    drafts.push(
-      ...billAudit({
-        farmId,
-        pumpId: pump.id,
-        pumpName: pump.name,
-        bills,
-        summerMonths: card.summerMonths,
-        asOf,
-      }),
-    );
+      // A legacy meter we couldn't price precisely yet: roll into the fleet finding.
+      if (
+        pump.rateSchedule &&
+        LEGACY_FAMILIES.has(familyOf(pump.rateSchedule)) &&
+        !emittedRateRec
+      ) {
+        legacyWithoutFinding.push(pump.id);
+      }
 
-    // Solar / NEM checks: solar-paired meters only.
-    if (pump.solarKw !== null) {
-      drafts.push(
-        ...solarNemChecks({
+      // Demand-charge exposure: a single mistimed peak day that drove a cycle's demand
+      // charge. Metered, non-solar pumps only (solar speaks through the solar checks).
+      // The pure lever emits one rec per demand cycle; we keep only the actionable
+      // outliers (a clear avoidable spike) and re-tag them to the demand-charge category.
+      if (intervals.length > 0 && pump.solarKw === null) {
+        const demandRecs = retrospective({
           farmId,
           pumpId: pump.id,
           pumpName: pump.name,
           timezone: tz,
-          nemType: pump.nemType,
-          trueUpMonth: pump.trueUpMonth,
-          solarKw: pump.solarKw,
+          intervals,
           bills,
           asOf,
+          outlierSeverity: "act",
+        });
+        for (const rec of demandRecs) {
+          const peakDay = (rec.action.params as { peakDay?: unknown } | undefined)?.peakDay;
+          if (typeof peakDay !== "string") continue; // no outlier: a flat demand month, skip
+          drafts.push({ ...rec, tool: DEMAND_CHARGE_TOOL });
+        }
+      }
+
+      // Bill audit: a posted cycle higher than the meter's usual, with usage flat. Runs
+      // on every pump with bills; the lever's own gates keep it quiet for flat meters.
+      drafts.push(
+        ...billAudit({
+          farmId,
+          pumpId: pump.id,
+          pumpName: pump.name,
+          bills,
+          summerMonths: card.summerMonths,
+          asOf,
         }),
+      );
+
+      // Solar / NEM checks: solar-paired meters only.
+      if (pump.solarKw !== null) {
+        drafts.push(
+          ...solarNemChecks({
+            farmId,
+            pumpId: pump.id,
+            pumpName: pump.name,
+            timezone: tz,
+            nemType: pump.nemType,
+            trueUpMonth: pump.trueUpMonth,
+            solarKw: pump.solarKw,
+            bills,
+            asOf,
+          }),
+        );
+      }
+    } catch (err) {
+      // One meter's engines failing must not lose the whole run: log (pump id only, never
+      // grower data) and continue so the farm still lands the findings from its other meters.
+      console.error(
+        `runEngines: meter ${pump.id} engines failed and were skipped`,
+        err instanceof Error ? err.message : err,
       );
     }
   }

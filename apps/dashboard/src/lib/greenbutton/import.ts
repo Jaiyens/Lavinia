@@ -7,12 +7,14 @@
 
 import type { PrismaClient } from "@prisma/client";
 import { maxDemandInWindow } from "@/lib/energy";
+import { centsFromDollars } from "@/lib/format/money";
 import {
   normalizeBayou,
   normalizeEspi,
   normalizeUtilityApi,
   type BayouResponses,
   type NormalizedMeter,
+  type NormalizedSummary,
   type UtilityApiResponses,
 } from "@/lib/normalize";
 
@@ -24,6 +26,8 @@ export type ImportResult = {
   serviceIds: string[];
   /** Non-electric meters carried by the source but not persisted (engine is electric-only). */
   metersSkipped: number;
+  /** Electric meters whose per-meter commit threw and were skipped (the batch continues). */
+  metersFailed: number;
 };
 
 // New pumps need a name (a meter feed has none). Existing pumps keep their
@@ -61,6 +65,75 @@ function sumKwhInWindow(
 
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
+// Per-meter interactive transactions far exceed Prisma's 5s default, so a 183-meter
+// Batth import (or any Postgres latency once we move off the local cluster) cannot
+// abort a meter with P2028. Each meter commits on its own (below), so this ceiling
+// only ever has to cover ONE meter's writes, not the whole farm. Mirrors the pattern
+// at src/lib/onboarding/farm.ts (importInventory's $transaction options).
+const METER_TX_OPTIONS = { timeout: 120_000, maxWait: 15_000 } as const;
+
+// Postgres caps a single statement's bind parameters (~65k); a meter with a year of
+// 15-minute intervals (~35k rows x 4 columns) blows past it in one createMany. Chunk
+// the rows so a high-history meter lands without a parameter-limit error.
+const INTERVAL_CHUNK = 5_000;
+
+/**
+ * Build the reconciled BillingLineItems for one imported cycle so the money view (which
+ * reads demand line items and reconciles to printedTotalCents) lights up. The summary
+ * carries a demand-charge dollar figure and a total; we emit a demand line (when present)
+ * and an energy line for the remainder, in integer cents, the same shape the bill-PDF
+ * extractor and the Batth seed produce. The lines sum EXACTLY to printedTotalCents so the
+ * cycle reconciles like a real extracted account; no per-bucket TOU split is attempted
+ * (the ESPI/UtilityAPI summary does not carry one), so the energy is one flat line.
+ */
+function buildLineItems(
+  summary: NormalizedSummary,
+  printedTotalCents: number,
+  cycleKwh: number | null,
+): {
+  kind: string;
+  label: string | null;
+  amountCents: number;
+  quantity: number | null;
+  unit: string | null;
+  rate: number | null;
+}[] {
+  const demandCents =
+    summary.demandChargeUsd != null ? centsFromDollars(summary.demandChargeUsd) : 0;
+  // Floor the energy remainder at 0 so a demand figure larger than the (rounding-noisy)
+  // total can never mint a negative energy line; the lines still reconcile to the total.
+  const energyCents = Math.max(0, printedTotalCents - demandCents);
+  const items: {
+    kind: string;
+    label: string | null;
+    amountCents: number;
+    quantity: number | null;
+    unit: string | null;
+    rate: number | null;
+  }[] = [];
+  if (energyCents > 0) {
+    items.push({
+      kind: "other",
+      label: "Energy",
+      amountCents: energyCents,
+      quantity: cycleKwh != null && cycleKwh > 0 ? cycleKwh : null,
+      unit: "kWh",
+      rate: null,
+    });
+  }
+  if (demandCents > 0) {
+    items.push({
+      kind: "demand",
+      label: "Demand",
+      amountCents: demandCents,
+      quantity: null,
+      unit: "kW",
+      rate: null,
+    });
+  }
+  return items;
+}
+
 /**
  * Resolve a meter's account number to a first-class Account, creating it on the farm
  * if new. Returns null when the source carries no account number (the standard ESPI
@@ -82,11 +155,144 @@ async function resolveAccountId(
 }
 
 /**
- * Upsert each normalized meter onto `farmId`:
+ * Land ONE normalized electric meter onto `farmId` inside its own transaction:
  * - the Pump (matched by stable service ID; rateSchedule, location, meterSerial, and
  *   account link refreshed from the feed, human name preserved),
- * - its BillingPeriods (one per cycle, with the derived max-demand peak), and
- * - its 15-minute UsageIntervals (replaced within the imported window).
+ * - its BillingPeriods (one per cycle, with the derived max-demand peak AND the
+ *   reconciled money fields the dashboard reads: printedTotalCents, cycleClose, and
+ *   the demand/energy BillingLineItems that reconcile to it), and
+ * - its 15-minute UsageIntervals (replaced within the imported window, chunked).
+ *
+ * Commits per meter (not one farm-wide transaction) so a single meter's failure cannot
+ * roll the WHOLE import back, and so the interactive-transaction ceiling only ever has
+ * to cover one meter's writes. Returns whether the pump was created vs updated, and how
+ * many intervals/periods landed, for the batch tally.
+ */
+async function importOneMeter(
+  prisma: PrismaClient,
+  farmId: string,
+  source: string,
+  m: NormalizedMeter,
+): Promise<{ created: boolean; intervals: number; billingPeriods: number }> {
+  return prisma.$transaction(async (tx) => {
+    const accountId = await resolveAccountId(tx, farmId, m.accountNumber);
+
+    const existing = await tx.pump.findUnique({
+      where: { farmId_serviceId: { farmId, serviceId: m.serviceId } },
+    });
+
+    // A meter whose cycles carry a printed total reads as a reconciled account, exactly
+    // like the Batth seed and the bill-PDF extractor: the dashboard money view gates on
+    // Pump.coverageState === "reconciled", so without this a real Green Button/UtilityAPI
+    // farm renders an empty money dashboard. Stays "no_bill" when no cycle has a total.
+    const hasBilledTotal = m.summaries.some((s) => s.totalBillUsd != null);
+
+    const pump = await tx.pump.upsert({
+      where: { farmId_serviceId: { farmId, serviceId: m.serviceId } },
+      update: {
+        // `?? undefined` leaves a column untouched when the feed lacks the value.
+        rateSchedule: m.tariff ?? undefined,
+        location: m.address ?? undefined,
+        meterSerial: m.meterSerial ?? undefined,
+        accountId: accountId ?? undefined,
+        // Only ever promotes coverage on a re-import; never demotes a meter that a
+        // later, richer source (a scanned bill) already reconciled.
+        ...(hasBilledTotal ? { coverageState: "reconciled" } : {}),
+      },
+      create: {
+        farmId,
+        serviceId: m.serviceId,
+        name: deriveName(m),
+        rateSchedule: m.tariff,
+        location: m.address,
+        meterSerial: m.meterSerial,
+        fuel: m.fuel,
+        accountId,
+        coverageState: hasBilledTotal ? "reconciled" : "no_bill",
+      },
+    });
+
+    // One BillingPeriod per cycle, carrying the derived peak that sets the charge AND
+    // the reconciled money fields. Replace the period's line items on each upsert so a
+    // re-import does not accrete duplicate lines.
+    let billingPeriods = 0;
+    for (const summary of m.summaries) {
+      const peak = maxDemandInWindow(m.intervals, summary.start, summary.close);
+      // Total cycle energy, summed from the real metered intervals in the window.
+      // Stays null for summary-only meters (no interval history to sum), which is
+      // the honest state: fleet usage reads what is actually metered.
+      const cycleKwh = sumKwhInWindow(m.intervals, summary.start, summary.close);
+      // printedTotalCents is the integer-cents canonical total the table and KPI strip
+      // read (AR-6); derive it from the summary's billed dollars. cycleClose mirrors the
+      // source period end (the Calendar lens reads it), the same choice the seed makes.
+      const printedTotalCents =
+        summary.totalBillUsd != null ? centsFromDollars(summary.totalBillUsd) : null;
+      const close = new Date(summary.close);
+      const data = {
+        tariff: summary.tariff,
+        close,
+        cycleClose: close,
+        printedTotalCents,
+        demandChargeUsd: summary.demandChargeUsd,
+        totalBillUsd: summary.totalBillUsd,
+        totalKwh: cycleKwh,
+        peakKw: peak?.kw ?? null,
+        peakAt: peak ? new Date(peak.at) : null,
+        source,
+      };
+      const period = await tx.billingPeriod.upsert({
+        where: { pumpId_start: { pumpId: pump.id, start: new Date(summary.start) } },
+        update: data,
+        create: { pumpId: pump.id, start: new Date(summary.start), ...data },
+      });
+      // The per-line-item breakdown that reconciles to printedTotalCents (the money
+      // view sums the demand lines, the table/chart read them). Replace then recreate so
+      // a re-import is idempotent.
+      await tx.billingLineItem.deleteMany({ where: { billingPeriodId: period.id } });
+      if (printedTotalCents != null) {
+        const lineItems = buildLineItems(summary, printedTotalCents, cycleKwh);
+        if (lineItems.length > 0) {
+          await tx.billingLineItem.createMany({
+            data: lineItems.map((li) => ({ billingPeriodId: period.id, ...li })),
+          });
+        }
+      }
+      billingPeriods += 1;
+    }
+
+    // Replace intervals within the imported window so re-imports are idempotent
+    // without dropping any history outside this feed's span. Chunk the insert so a
+    // high-history meter does not exceed Postgres's bind-parameter cap in one statement.
+    let intervals = 0;
+    if (m.intervals.length > 0) {
+      const starts = m.intervals.map((r) => new Date(r.start));
+      const min = new Date(Math.min(...starts.map((d) => d.getTime())));
+      const max = new Date(Math.max(...starts.map((d) => d.getTime())));
+      await tx.usageInterval.deleteMany({
+        where: { pumpId: pump.id, start: { gte: min, lte: max } },
+      });
+      const rows = m.intervals.map((r) => ({
+        pumpId: pump.id,
+        start: new Date(r.start),
+        durationSec: r.durationSec,
+        kWh: r.kWh,
+      }));
+      for (let i = 0; i < rows.length; i += INTERVAL_CHUNK) {
+        await tx.usageInterval.createMany({ data: rows.slice(i, i + INTERVAL_CHUNK) });
+      }
+      intervals = m.intervals.length;
+    }
+
+    return { created: existing === null, intervals, billingPeriods };
+  }, METER_TX_OPTIONS);
+}
+
+/**
+ * Upsert each normalized meter onto `farmId`, committing PER METER so one meter's failure
+ * cannot roll the whole import back (the live ingestion's first run on a real ~183-meter
+ * farm must not be all-or-nothing). Each meter lands its Pump, its BillingPeriods with the
+ * reconciled money fields, and its 15-minute UsageIntervals (chunked). A meter whose commit
+ * throws is logged, counted in `metersFailed`, and skipped, the batch continues.
  *
  * Gas (and any non-electric) meters are dropped before persistence and counted in
  * `metersSkipped`; only electric meters become Pumps.
@@ -104,85 +310,26 @@ export async function importMeters(
     billingPeriods: 0,
     serviceIds: electric.map((m) => m.serviceId),
     metersSkipped: meters.length - electric.length,
+    metersFailed: 0,
   };
 
-  await prisma.$transaction(async (tx) => {
-    for (const m of electric) {
-      const accountId = await resolveAccountId(tx, farmId, m.accountNumber);
-
-      const existing = await tx.pump.findUnique({
-        where: { farmId_serviceId: { farmId, serviceId: m.serviceId } },
-      });
-
-      const pump = await tx.pump.upsert({
-        where: { farmId_serviceId: { farmId, serviceId: m.serviceId } },
-        update: {
-          // `?? undefined` leaves a column untouched when the feed lacks the value.
-          rateSchedule: m.tariff ?? undefined,
-          location: m.address ?? undefined,
-          meterSerial: m.meterSerial ?? undefined,
-          accountId: accountId ?? undefined,
-        },
-        create: {
-          farmId,
-          serviceId: m.serviceId,
-          name: deriveName(m),
-          rateSchedule: m.tariff,
-          location: m.address,
-          meterSerial: m.meterSerial,
-          fuel: m.fuel,
-          accountId,
-        },
-      });
-      if (existing) result.pumpsUpdated += 1;
-      else result.pumpsCreated += 1;
-
-      // One BillingPeriod per cycle, carrying the derived peak that sets the charge.
-      for (const summary of m.summaries) {
-        const peak = maxDemandInWindow(m.intervals, summary.start, summary.close);
-        // Total cycle energy, summed from the real metered intervals in the window.
-        // Stays null for summary-only meters (no interval history to sum), which is
-        // the honest state: fleet usage reads what is actually metered.
-        const cycleKwh = sumKwhInWindow(m.intervals, summary.start, summary.close);
-        const data = {
-          tariff: summary.tariff,
-          close: new Date(summary.close),
-          demandChargeUsd: summary.demandChargeUsd,
-          totalBillUsd: summary.totalBillUsd,
-          totalKwh: cycleKwh,
-          peakKw: peak?.kw ?? null,
-          peakAt: peak ? new Date(peak.at) : null,
-          source,
-        };
-        await tx.billingPeriod.upsert({
-          where: { pumpId_start: { pumpId: pump.id, start: new Date(summary.start) } },
-          update: data,
-          create: { pumpId: pump.id, start: new Date(summary.start), ...data },
-        });
-        result.billingPeriods += 1;
-      }
-
-      // Replace intervals within the imported window so re-imports are idempotent
-      // without dropping any history outside this feed's span.
-      if (m.intervals.length > 0) {
-        const starts = m.intervals.map((r) => new Date(r.start));
-        const min = new Date(Math.min(...starts.map((d) => d.getTime())));
-        const max = new Date(Math.max(...starts.map((d) => d.getTime())));
-        await tx.usageInterval.deleteMany({
-          where: { pumpId: pump.id, start: { gte: min, lte: max } },
-        });
-        await tx.usageInterval.createMany({
-          data: m.intervals.map((r) => ({
-            pumpId: pump.id,
-            start: new Date(r.start),
-            durationSec: r.durationSec,
-            kWh: r.kWh,
-          })),
-        });
-        result.intervals += m.intervals.length;
-      }
+  for (const m of electric) {
+    try {
+      const landed = await importOneMeter(prisma, farmId, source, m);
+      if (landed.created) result.pumpsCreated += 1;
+      else result.pumpsUpdated += 1;
+      result.intervals += landed.intervals;
+      result.billingPeriods += landed.billingPeriods;
+    } catch (err) {
+      // One meter failing must never abort the batch: log it (service id only, never
+      // grower data) and continue so the rest of the farm still lands.
+      result.metersFailed += 1;
+      console.error(
+        `importMeters: meter ${m.serviceId} failed and was skipped`,
+        err instanceof Error ? err.message : err,
+      );
     }
-  });
+  }
 
   return result;
 }

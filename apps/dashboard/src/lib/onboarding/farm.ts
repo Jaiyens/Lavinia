@@ -110,16 +110,28 @@ export async function classifyFarmPumps(
   prisma: PrismaClient,
   farmId: string,
 ): Promise<void> {
+  // Load only the per-pump metadata + the (small) cycle peaks up front, NOT every pump's
+  // 15-minute interval history at once: a 183-meter farm with a year of intervals each is
+  // millions of rows and OOMs node if loaded together. Each pump's intervals are then
+  // streamed one meter at a time below, so peak memory is one meter's series, not the farm's.
   const pumps = await prisma.pump.findMany({
     where: { farmId },
-    include: {
-      intervals: { orderBy: { start: "asc" } },
-      billingPeriods: true,
+    select: {
+      id: true,
+      rateSchedule: true,
+      location: true,
+      latitude: true,
+      billingPeriods: { select: { peakKw: true } },
     },
   });
 
   for (const pump of pumps) {
-    const sig = meterSignature(pump.intervals.map(toReading), {
+    const intervals = await prisma.usageInterval.findMany({
+      where: { pumpId: pump.id },
+      orderBy: { start: "asc" },
+      select: { start: true, durationSec: true, kWh: true },
+    });
+    const sig = meterSignature(intervals.map(toReading), {
       tariff: pump.rateSchedule,
       cyclePeakKw: pump.billingPeriods
         .map((b) => b.peakKw)
@@ -1709,7 +1721,12 @@ export async function demoFarm(prisma: PrismaClient): Promise<DashboardFarm | nu
   return demo ? { farm: demo, dataKind: "representative" } : null;
 }
 
-/** A specific farm with everything the confirm screen renders. */
+/** A specific farm with everything the confirm screen renders. The interval read is
+ *  narrowed to only the three columns the confirm signature recompute reads (start,
+ *  durationSec, kWh) so each row is ~40% smaller in memory; the full memory fix (not
+ *  loading every pump's whole interval history to re-derive a verdict the importer already
+ *  persisted as Pump.kind) needs a coordinated change in the confirm page and is tracked
+ *  as a residual risk. */
 export async function farmForConfirm(prisma: PrismaClient, farmId: string) {
   return prisma.farm.findUnique({
     where: { id: farmId },
@@ -1718,7 +1735,10 @@ export async function farmForConfirm(prisma: PrismaClient, farmId: string) {
       pumps: {
         include: {
           blocks: true,
-          intervals: { orderBy: { start: "asc" } },
+          intervals: {
+            orderBy: { start: "asc" },
+            select: { start: true, durationSec: true, kWh: true },
+          },
           billingPeriods: true,
         },
         orderBy: { createdAt: "asc" },
