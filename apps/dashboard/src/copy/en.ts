@@ -1589,6 +1589,17 @@ export const en = {
       // silently dropped from the Arrays lens.
       unlinkedHeading: "Solar meters not yet linked to an array",
       unlinkedNote: "We could not match these to an array. Check them against your records.",
+      // C-1 (FR6): array codes meters referenced but no generating meter defined, surfaced here as
+      // needs-review rather than silently dropped. The code is shown verbatim, never a guess.
+      unlinkedCodeHeading: "Array codes with no generating meter",
+      unlinkedCodeNote:
+        "Some meters list these array codes, but no meter on file generates them. Check the codes against your records.",
+      unlinkedCode: (code: string): string => `Code ${code}`,
+      // DM4 (FR6): the populated solar nameplate is shown CAUTIOUSLY until the export's column layout
+      // is verified for this farm. Never suppressed, never presented as confirmed. Plain words.
+      nameplateUnverified: "Layout not verified yet",
+      nameplateUnverifiedNote:
+        "These solar sizes come from your import before its column layout was checked. We show them as read, not as confirmed.",
     },
     // The Table lens (A-8, UX-DR7, FR36): the Excel bridge. Meters down, solar columns across,
     // filterable and sortable, with a one-click CSV export the farm-office controller can stop

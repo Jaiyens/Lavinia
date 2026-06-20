@@ -26,10 +26,19 @@ import { SolarLensRegion } from "./solar-lens-region";
 export function SolarSurface({
   meters,
   nowMonth,
+  nameplateVerified = false,
+  unlinkedNemaCodes,
 }: {
   meters: MeterView[];
   /** The page-edge "now" month (1-12), injected so the rebuilt next-true-up KPI stays clock-free. */
   nowMonth: number;
+  /**
+   * DM4 (C-1, FR6): `Farm.solarLayoutVerifiedAt != null`, read at the server page edge and injected
+   * so the pure builder stays IO-free. Omitted/false => the cautious nameplate render (fail-closed).
+   */
+  nameplateVerified?: boolean;
+  /** importInventory's referenced-but-unlinked NEMA codes, surfaced as needs-review rows (C-1, FR6). */
+  unlinkedNemaCodes?: string[];
 }) {
   const [entity] = useQueryState(SURFACE.entity);
   const [ranch] = useQueryState(SURFACE.ranch);
@@ -41,7 +50,10 @@ export function SolarSurface({
     () => filterMeters(meters, { entity, ranch, rate, account, program }),
     [meters, entity, ranch, rate, account, program],
   );
-  const dataset = useMemo(() => buildSolarDataset(filtered, nowMonth), [filtered, nowMonth]);
+  const dataset = useMemo(
+    () => buildSolarDataset(filtered, nowMonth, { nameplateVerified, unlinkedNemaCodes }),
+    [filtered, nowMonth, nameplateVerified, unlinkedNemaCodes],
+  );
 
   return (
     <div className="space-y-5">

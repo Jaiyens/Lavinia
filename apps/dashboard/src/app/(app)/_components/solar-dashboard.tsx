@@ -55,6 +55,17 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   const meters = await resolveMeters(farm.id);
   const nowMonth = new Date().getMonth() + 1;
 
+  // DM4 (C-1, FR6): read whether this farm's inventory export column layout was verified, so the
+  // Solar tab renders the populated nameplate CAUTIOUSLY (with an "unverified layout" qualifier)
+  // until a human confirms it, never presenting an unverified figure as confirmed. Read at this
+  // server edge and injected so the pure dataset builder stays IO-free (NFR1). Fail-closed: any
+  // read issue leaves it unverified (the cautious branch).
+  const farmRow = await prisma.farm.findUnique({
+    where: { id: farm.id },
+    select: { solarLayoutVerifiedAt: true },
+  });
+  const nameplateVerified = farmRow?.solarLayoutVerifiedAt != null;
+
   // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
   // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
   // Tapping any Arrays-lens meter row (or, later, a map pin / table row) writes ?meter=<id> via the
@@ -111,7 +122,7 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
                 Calendar (Epic D) fill in as their stories land. The shared drawer is mounted below
                 (A-5). Switching a lens writes only the `lens` key; a filter writes only its key;
                 neither drops the other or the open `?meter=` drawer. */}
-            <SolarSurface meters={meters} nowMonth={nowMonth} />
+            <SolarSurface meters={meters} nowMonth={nowMonth} nameplateVerified={nameplateVerified} />
           </Reveal>
 
           {/* The shared drill-in (A-5). Outside the Reveal stagger so a deep-linked ?meter= drawer

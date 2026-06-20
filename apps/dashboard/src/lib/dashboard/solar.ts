@@ -76,8 +76,33 @@ export type SolarKpis = {
   arrayCount: number;
   /** The nearest upcoming true-up, or null when no month is on file across the fleet. */
   nextTrueUp: NextTrueUp;
-  /** Solar meters not linked to any array - the calm "needs review" count (zero = all linked). */
+  /**
+   * The calm "needs review" count (zero = all clean): solar meters not linked to any array PLUS
+   * NEMA array codes meters referenced but the populator could not link to a generating meter
+   * (C-1, FR6). Both are surfaced rather than silently dropped, so the aggregation graph is
+   * trustworthy. Never a guess - a count of honest gaps the grower can verify against PG&E.
+   */
   needsReviewCount: number;
+};
+
+/**
+ * One NEMA array code meters referenced but the populator built no SolarArray for (C-1, FR6). The
+ * importer already returns these as `importInventory().unlinkedNemaCodes` (a referenced code with
+ * no generating meter) and the referenced meters still persist - this surfaces that signal as a
+ * needs-review row rather than a silent drop. Never a guess: the code is shown verbatim so the
+ * grower can match it against their own records.
+ */
+export type UnlinkedCodeRow = {
+  /** The NEMA code, verbatim as the master sheet listed it (never inferred, never normalized). */
+  code: string;
+};
+
+/** The needs-review surfacing the Arrays lens renders below the array cards (C-1, FR6). */
+export type SolarNeedsReview = {
+  /** Solar meters with no array link (the same set the needs-review count includes). */
+  unlinkedMeters: SolarMeterView[];
+  /** NEMA codes meters referenced but no array was built for (from importInventory). */
+  unlinkedCodes: UnlinkedCodeRow[];
 };
 
 /** The assembled solar lens dataset the /solar page renders. */
@@ -85,6 +110,30 @@ export type SolarDataset = {
   meters: SolarMeterView[];
   arrays: SolarArrayGroup[];
   kpis: SolarKpis;
+  /** The needs-review surfacing (unlinked solar meters + unlinked NEMA codes), C-1/FR6. */
+  needsReview: SolarNeedsReview;
+  /**
+   * DM4 (C-1, FR6): whether this farm's inventory export column layout was verified before relying
+   * on the populated solar nameplates. False (the default, `Farm.solarLayoutVerifiedAt` null) puts
+   * every nameplate in the CAUTIOUS state - the value is shown with an "unverified layout" qualifier
+   * in copy, never suppressed and never presented as confirmed. True (a verification date on file)
+   * renders the nameplate as verified. Enforced in the render, not merely recorded.
+   */
+  nameplateVerified: boolean;
+};
+
+/**
+ * The non-meter inputs the solar dataset needs that do not live on MeterView: the DM4 verification
+ * flag and the importer's unlinked NEMA codes (C-1, FR6). Supplied by the server page edge (which
+ * reads `Farm.solarLayoutVerifiedAt` and the persisted import result); optional so a caller that
+ * has neither yet (the default) gets the honest, fail-closed state - unverified nameplates and no
+ * extra unlinked-code rows beyond the meters' own missing links.
+ */
+export type SolarDatasetContext = {
+  /** `Farm.solarLayoutVerifiedAt != null`. Omitted/false => cautious nameplate (fail-closed). */
+  nameplateVerified?: boolean;
+  /** `importInventory().unlinkedNemaCodes` - referenced codes with no generating meter. */
+  unlinkedNemaCodes?: string[];
 };
 
 /** Distinct true-up months in [1,12]; ignores anything out of range (honest, never guessed). */
@@ -142,7 +191,11 @@ export function nextTrueUpAcross(meters: SolarMeterView[], nowMonth: number): Ne
  * the next-true-up KPI so the function stays pure (NFR1). No interval series is read; no credit dollar
  * is computed (honest-blank, FR10).
  */
-export function buildSolarDataset(allMeters: MeterView[], nowMonth: number): SolarDataset {
+export function buildSolarDataset(
+  allMeters: MeterView[],
+  nowMonth: number,
+  context: SolarDatasetContext = {},
+): SolarDataset {
   const solar = allMeters.filter((m) => m.isSolar);
 
   const meters: SolarMeterView[] = solar.map((m) => ({
@@ -189,12 +242,33 @@ export function buildSolarDataset(allMeters: MeterView[], nowMonth: number): Sol
     (a.name ?? "").localeCompare(b.name ?? ""),
   );
 
+  // Needs-review (C-1, FR6): two honest gaps surfaced rather than dropped. (1) Solar meters with no
+  // array link - the populator could not match them to any generating meter. (2) NEMA codes meters
+  // referenced but the populator built no SolarArray for (a referenced code with no generating
+  // meter), passed in from importInventory's result. Dedupe + sort the codes so the surfacing is
+  // deterministic and a re-listed code is one row (never a guess, always verbatim).
+  const unlinkedMeters = meters.filter((m) => !m.hasArray);
+  const unlinkedCodes: UnlinkedCodeRow[] = [
+    ...new Set((context.unlinkedNemaCodes ?? []).filter((c) => c.trim().length > 0)),
+  ]
+    .sort()
+    .map((code) => ({ code }));
+  const needsReview: SolarNeedsReview = { unlinkedMeters, unlinkedCodes };
+
   const kpis: SolarKpis = {
     solarMeterCount: meters.length,
     arrayCount: arrays.length,
     nextTrueUp: nextTrueUpAcross(meters, nowMonth),
-    needsReviewCount: meters.filter((m) => !m.hasArray).length,
+    // Both honest gaps count toward "needs review": an unlinked solar meter AND an unlinked code.
+    needsReviewCount: unlinkedMeters.length + unlinkedCodes.length,
   };
 
-  return { meters, arrays, kpis };
+  return {
+    meters,
+    arrays,
+    kpis,
+    needsReview,
+    // DM4: fail-closed. Absent flag (undefined/false) => cautious nameplate; a date => verified.
+    nameplateVerified: context.nameplateVerified === true,
+  };
 }

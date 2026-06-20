@@ -32,6 +32,13 @@ model Farm {
   // membership via src/lib/auth/access.ts, not on this column.
   userId String?
 
+  // DM4 (Solar tab, FR6): confirms the inventory export's array-code vs nameplate column layout
+  // was verified before relying on the populated solar nameplates for this farm. Nullable; null =
+  // unverified, so the Solar tab renders the nameplate CAUTIOUSLY (shown with an "unverified
+  // layout" qualifier, never suppressed, never presented as confirmed). A date = verified.
+  // Read by dashboard/solar.ts; written by markSolarLayoutVerified once a human confirms the layout.
+  solarLayoutVerifiedAt DateTime?
+
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   memberships     FarmMembership[]
   invites         FarmInvite[]

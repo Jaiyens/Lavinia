@@ -364,3 +364,81 @@ describe("buildSolarDataset - Arrays-lens array-group shape (A-5, FR3/FR7)", () 
     }
   });
 });
+
+describe("buildSolarDataset - DM4 nameplate verification branch (C-1, FR6)", () => {
+  it("fail-closed: nameplate is UNVERIFIED with no context (the cautious default)", () => {
+    const ds = buildSolarDataset([meter({ id: "p1", isSolar: true, solarKw: 840 })], 1);
+    expect(ds.nameplateVerified).toBe(false);
+  });
+
+  it("UNVERIFIED when the farm's solarLayoutVerifiedAt flag is null/false (cautious branch)", () => {
+    const ds = buildSolarDataset([meter({ id: "p1", isSolar: true, solarKw: 840 })], 1, {
+      nameplateVerified: false,
+    });
+    expect(ds.nameplateVerified).toBe(false);
+    // The nameplate value is NEVER suppressed even when unverified - it is shown cautiously, so the
+    // meter row still carries the figure; only the render adds the "unverified layout" qualifier.
+    expect(ds.meters[0]?.solarKw).toBe(840);
+  });
+
+  it("VERIFIED when the flag carries a date (nameplateVerified=true)", () => {
+    const ds = buildSolarDataset([meter({ id: "p1", isSolar: true, solarKw: 840 })], 1, {
+      nameplateVerified: true,
+    });
+    expect(ds.nameplateVerified).toBe(true);
+    expect(ds.meters[0]?.solarKw).toBe(840);
+  });
+});
+
+describe("buildSolarDataset - needs-review surfacing (C-1, FR6)", () => {
+  it("surfaces an unlinked solar meter (no array) as a needs-review row", () => {
+    const west = array({ id: "West" });
+    const ds = buildSolarDataset(
+      [
+        meter({ id: "linked", isSolar: true, benefitingArrays: [west] }),
+        meter({ id: "orphan", isSolar: true, benefitingArrays: [] }),
+      ],
+      1,
+    );
+    expect(ds.needsReview.unlinkedMeters.map((m) => m.id)).toEqual(["orphan"]);
+    expect(ds.needsReview.unlinkedCodes).toEqual([]);
+    // The unlinked-meter set is exactly the set that drives the needs-review count.
+    expect(ds.kpis.needsReviewCount).toBe(1);
+  });
+
+  it("surfaces importInventory's unlinked NEMA codes (deduped, sorted) as needs-review rows", () => {
+    const west = array({ id: "West" });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      1,
+      { unlinkedNemaCodes: ["GHOST", "AGG-Z", "GHOST", " ", ""] },
+    );
+    // Verbatim codes, deduped, sorted; blanks dropped (never a guessed/fabricated code).
+    expect(ds.needsReview.unlinkedCodes.map((c) => c.code)).toEqual(["AGG-Z", "GHOST"]);
+    // A referenced-but-unlinked code is a needs-review gap on top of any unlinked meters.
+    expect(ds.kpis.needsReviewCount).toBe(2);
+  });
+
+  it("counts BOTH unlinked meters and unlinked codes toward needs-review (never silently dropped)", () => {
+    const ds = buildSolarDataset(
+      [meter({ id: "orphan", isSolar: true, benefitingArrays: [] })],
+      1,
+      { unlinkedNemaCodes: ["GHOST"] },
+    );
+    expect(ds.needsReview.unlinkedMeters.map((m) => m.id)).toEqual(["orphan"]);
+    expect(ds.needsReview.unlinkedCodes.map((c) => c.code)).toEqual(["GHOST"]);
+    expect(ds.kpis.needsReviewCount).toBe(2);
+  });
+
+  it("is calm (empty + zero) when every meter is linked and no code is unlinked", () => {
+    const west = array({ id: "West" });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      1,
+      { unlinkedNemaCodes: [] },
+    );
+    expect(ds.needsReview.unlinkedMeters).toEqual([]);
+    expect(ds.needsReview.unlinkedCodes).toEqual([]);
+    expect(ds.kpis.needsReviewCount).toBe(0);
+  });
+});

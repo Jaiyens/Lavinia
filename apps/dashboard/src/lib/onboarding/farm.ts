@@ -475,6 +475,16 @@ export async function importInventory(
     }
     // Group benefiting meters per array, then connect (idempotent: the m-n join pair is
     // unique, so re-connecting an already-linked meter is a no-op).
+    //
+    // Entity-boundary correctness (C-1, FR6): the link rule is keyed PURELY on the NEMA code a
+    // meter lists, NEVER on its legal entity. This is deliberate and correct - PG&E NEM aggregation
+    // routinely credits meters across several of a grower's legal entities from one array (Batth's
+    // two arrays span multiple entities), so a generating meter in one entity legitimately benefits
+    // meters in another. We must NOT add an entity filter here (that would WRONGLY drop a real
+    // cross-entity benefiting meter). The FR7 "cross-entity grouping" is a downstream render concern;
+    // the rule the populator must hold is only that no meter is linked to an array it never listed,
+    // which iterating link.codes against arrayIdByCode guarantees (a meter only ever lands under a
+    // code it actually carried). farm.db.test.ts pins this cross-entity-correct behavior.
     const benefitByArrayId = new Map<string, Set<string>>();
     for (const link of pumpArrayLinks) {
       for (const code of link.codes) {
@@ -513,6 +523,25 @@ export async function importInventory(
   }, { timeout: 120_000, maxWait: 15_000 });
 
   return result;
+}
+
+/**
+ * DM4 (C-1, FR6): record that this farm's inventory export column layout was verified, so the Solar
+ * tab can trust the populated solar nameplates for the farm (the populator never mislabels an array
+ * CODE as a capacity, so this is a verification marker, not a precondition). Sets
+ * `Farm.solarLayoutVerifiedAt`: a date (defaults to now) flips `dashboard/solar.ts`'s
+ * `nameplateVerified` to true (the verified nameplate render); passing `null` clears it back to the
+ * cautious state. Idempotent. Takes an explicit PrismaClient like every other onboarding DB edge.
+ */
+export async function markSolarLayoutVerified(
+  prisma: PrismaClient,
+  farmId: string,
+  verifiedAt: Date | null = new Date(),
+): Promise<void> {
+  await prisma.farm.update({
+    where: { id: farmId },
+    data: { solarLayoutVerifiedAt: verifiedAt },
+  });
 }
 
 /**
