@@ -15,6 +15,12 @@ import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
 import type { AlmondReportData } from "@/lib/almond/responder";
 import { DEFAULT_ALMOND_MODEL, isAllowedModel, type AlmondModelId } from "@/lib/almond/models";
+import {
+  sanitizeHistoryMessages,
+  isSaveable,
+  type StoredMessage,
+  type ConversationSummary,
+} from "@/lib/almond/history";
 import type { AlmondNavChip } from "./almond-result";
 import type { AlmondReportCard } from "./almond-download-card";
 import { useAlmondNavigation } from "./use-almond-navigation";
@@ -66,6 +72,21 @@ type AlmondChatValue = {
   reportsByMessage: Map<string, AlmondReportCard[]>;
   onReplay: (chip: AlmondNavChip) => void;
   announcement: { text: string; seq: number };
+  // --- Saved history (per-user, per-farm). Off on the public Tour (no session) -------------------
+  /** Whether saved history is available (a signed-in grower). The Tour never persists. */
+  historyEnabled: boolean;
+  /** The grower's own threads for the active farm, newest-first. */
+  conversations: ConversationSummary[];
+  /** Whether the initial history list is still loading. */
+  historyLoading: boolean;
+  /** The thread currently on screen, or null for an unsaved new chat. */
+  activeConversationId: string | null;
+  /** Clear the surface to a fresh, unsaved thread (the "New chat" affordance). */
+  newChat: () => void;
+  /** Load a saved thread by id and make it the active conversation. */
+  loadConversation: (id: string) => void;
+  /** Delete a saved thread (optimistic). Clears the surface if it was the active one. */
+  deleteConversation: (id: string) => void;
 };
 
 const AlmondChatContext = createContext<AlmondChatValue | null>(null);
@@ -120,6 +141,14 @@ function dedupeReports(reports: AlmondReportCard[]): AlmondReportCard[] {
   return out;
 }
 
+/** A cheap content fingerprint for a saved thread, so an unchanged conversation is never re-saved.
+ *  Final answer length is stable once a turn completes (we only save then), so count + last id +
+ *  last text length uniquely identifies a settled exchange. */
+function historyFingerprint(stored: StoredMessage[]): string {
+  const last = stored[stored.length - 1];
+  return `${stored.length}|${last?.id ?? ""}|${last?.parts[0]?.text.length ?? 0}`;
+}
+
 /** Read a File into a base64 Data URL (browser only; called on a user send). */
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -147,11 +176,14 @@ export function AlmondChatProvider({
   farmName,
   starters,
   canAttach,
+  historyEnabled = false,
   children,
 }: {
   farmName: string;
   starters: string[];
   canAttach: boolean;
+  /** Whether to persist + offer saved history (true for a signed-in grower, false for the Tour). */
+  historyEnabled?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -273,6 +305,168 @@ export function AlmondChatProvider({
     [applyNavigation, announce],
   );
 
+  // --- Saved history (per-user, per-farm) ----------------------------------------------------------
+  // The list lives here so BOTH surfaces (panel + page) share one set of threads, exactly like the
+  // conversation itself. The active thread is created lazily on its first completed turn (POST), then
+  // updated in place (PUT) on later turns. Off entirely when historyEnabled is false (the Tour).
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  // Start "loading" exactly when history is enabled, so the list never flashes its empty state
+  // before the first fetch lands — and so the mount effect need not call setState synchronously.
+  const [historyLoading, setHistoryLoading] = useState(historyEnabled);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  // Refs mirror the bits the async save reads, so it never closes over a stale render's value.
+  const activeConvIdRef = useRef<string | null>(null);
+  const savedFingerprintRef = useRef<string>("");
+  const savingRef = useRef(false);
+  // Holds the messages of a turn that completed WHILE a save was in flight, so it is flushed (not
+  // dropped) once the current save settles. Null when nothing is queued.
+  const pendingSaveRef = useRef<AlmondUIMessage[] | null>(null);
+  const prevStatusRef = useRef(status);
+
+  // Load the grower's threads once on mount (only when history is enabled).
+  useEffect(() => {
+    if (!historyEnabled) return;
+    let cancelled = false;
+    fetch("/api/almond/conversations")
+      .then((r) => (r.ok ? r.json() : { conversations: [] }))
+      .then((d: { conversations?: ConversationSummary[] }) => {
+        if (!cancelled) setConversations(d.conversations ?? []);
+      })
+      .catch(() => {
+        // A history fetch failure is non-fatal: the chat still works, the list just stays empty.
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [historyEnabled]);
+
+  // Persist the current thread after a completed turn. Creates the row on the first save, updates it
+  // in place after. A turn that completes WHILE a save is in flight is parked on pendingSaveRef and
+  // drained by the loop below once the current request settles, so no turn is silently dropped even
+  // when two land back-to-back (no self-recursion, which the React Compiler cannot memoize).
+  const persist = useCallback(async (msgs: AlmondUIMessage[]) => {
+    if (savingRef.current) {
+      pendingSaveRef.current = msgs; // a save is already running; queue this turn for the drain loop
+      return;
+    }
+    savingRef.current = true;
+    try {
+      let next: AlmondUIMessage[] | null = msgs;
+      while (next) {
+        const stored = sanitizeHistoryMessages(next);
+        next = null;
+        const fp = historyFingerprint(stored);
+        // Skip nothing-to-save iterations (unsaveable, or unchanged from the last write).
+        if (isSaveable(stored) && !(activeConvIdRef.current && fp === savedFingerprintRef.current)) {
+          const headers = { "Content-Type": "application/json" };
+          const body = JSON.stringify({ messages: stored });
+          const id = activeConvIdRef.current;
+          if (!id) {
+            const res = await fetch("/api/almond/conversations", { method: "POST", headers, body });
+            if (res.ok) {
+              const { conversation } = (await res.json()) as { conversation: ConversationSummary };
+              activeConvIdRef.current = conversation.id;
+              setActiveConversationId(conversation.id);
+              setConversations((prev) => [conversation, ...prev.filter((c) => c.id !== conversation.id)]);
+              savedFingerprintRef.current = fp;
+            }
+          } else {
+            const res = await fetch(`/api/almond/conversations/${id}`, { method: "PUT", headers, body });
+            if (res.status === 404) {
+              // The thread was deleted elsewhere: forget it so a later turn creates a fresh one.
+              activeConvIdRef.current = null;
+              setActiveConversationId(null);
+            } else if (res.ok) {
+              const { conversation } = (await res.json()) as { conversation: ConversationSummary };
+              // Move the just-saved thread to the top (its updatedAt is now the newest).
+              setConversations((prev) => [conversation, ...prev.filter((c) => c.id !== conversation.id)]);
+              savedFingerprintRef.current = fp;
+            }
+          }
+        }
+        // Pick up a turn that completed during this iteration's request and keep draining.
+        next = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+      }
+    } catch {
+      // Network hiccup: leave the fingerprint unsaved so the next completed turn retries the save.
+    } finally {
+      savingRef.current = false;
+    }
+  }, []);
+
+  // Edge-trigger: save when a turn just SETTLED (was working, now ready) and there is a real exchange.
+  // Tracking the status transition (not just "ready") is what makes this fire exactly once per turn,
+  // and never on a freshly loaded thread (whose status stays "ready" throughout).
+  useEffect(() => {
+    if (!historyEnabled) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+    if (status === "ready" && (prev === "streaming" || prev === "submitted")) {
+      void persist(messages);
+    }
+  }, [status, messages, historyEnabled, persist]);
+
+  // Reset the captured chips/cards and the lazy-save bookkeeping back to an empty thread.
+  const resetConversationState = useCallback(() => {
+    setNavByMessage(new Map());
+    setReportsByMessage(new Map());
+    pendingChips.current = [];
+    pendingReports.current = [];
+    savedFingerprintRef.current = "";
+  }, []);
+
+  const newChat = useCallback(() => {
+    setMessages([]);
+    resetConversationState();
+    activeConvIdRef.current = null;
+    setActiveConversationId(null);
+  }, [setMessages, resetConversationState]);
+
+  const loadConversation = useCallback(
+    (id: string) => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/almond/conversations/${id}`);
+          if (!res.ok) {
+            // A stale list entry (deleted/expired): drop it so the user is not stuck on a dead row.
+            if (res.status === 404) setConversations((prev) => prev.filter((c) => c.id !== id));
+            return;
+          }
+          const { conversation } = (await res.json()) as {
+            conversation: { id: string; title: string; messages: StoredMessage[] };
+          };
+          // The stored messages are already the text-only shape the UI renders; restore them as the
+          // live thread. Transient artifacts (chips/cards) were never persisted and stay absent.
+          setMessages(conversation.messages as unknown as AlmondUIMessage[]);
+          resetConversationState();
+          activeConvIdRef.current = conversation.id;
+          setActiveConversationId(conversation.id);
+          // Mark this exact state as already-saved so reopening it never triggers a redundant write.
+          savedFingerprintRef.current = historyFingerprint(conversation.messages);
+        } catch {
+          // Non-fatal: a failed load leaves the current thread untouched.
+        }
+      })();
+    },
+    [setMessages, resetConversationState],
+  );
+
+  const deleteConversation = useCallback(
+    (id: string) => {
+      // Optimistic: remove from the list now; if it was on screen, clear to a fresh thread.
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConvIdRef.current === id) newChat();
+      void fetch(`/api/almond/conversations/${id}`, { method: "DELETE" }).catch(() => {
+        // Best-effort: a failed delete just means the row lingers server-side until the next try.
+      });
+    },
+    [newChat],
+  );
+
   const send = useCallback(
     (text: string, files: File[] = []) => {
       const trimmed = text.trim();
@@ -326,6 +520,13 @@ export function AlmondChatProvider({
       reportsByMessage,
       onReplay,
       announcement,
+      historyEnabled,
+      conversations,
+      historyLoading,
+      activeConversationId,
+      newChat,
+      loadConversation,
+      deleteConversation,
     }),
     [
       open,
@@ -345,6 +546,13 @@ export function AlmondChatProvider({
       reportsByMessage,
       onReplay,
       announcement,
+      historyEnabled,
+      conversations,
+      historyLoading,
+      activeConversationId,
+      newChat,
+      loadConversation,
+      deleteConversation,
     ],
   );
 

@@ -71,6 +71,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         // Attachments are role-gated (owner/manager only), in parity with the chat route: a viewer
         // (or the demo fallback) cannot push file bytes in, but can still stream/download exports.
         canAttach={canAttach}
+        // Saved history is per-user: any signed-in member (even a viewer) keeps their own threads,
+        // scoped to this farm. The parent (app) layout already enforces auth, so userId is non-null.
+        historyEnabled={userId != null}
       >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
