@@ -1777,6 +1777,57 @@ export const en = {
       // The section heading above the inline audit rows on a card.
       reviewHeading: "Worth checking",
     },
+    // The Calendar lens (D-2, FR12/FR13/FR15, UX-DR5): the true-up heartbeat. A twelve-month rolling
+    // grid placing each meter's and array's true-up month, with the next-upcoming pulled out above the
+    // grid in plain words so the grower never does date math. The per-entry credit dollar is
+    // honest-blank until a statement is uploaded (the upload affordance is wired in G-3), so this lens
+    // carries STRUCTURE and TIMING only - never a fabricated true-up dollar. A persistent calm note
+    // states the monthly-reconciliation truth for aggregation meters (FR15). Plain operator English,
+    // no clock-precise dates, no exclamation marks, no em dashes.
+    calendar: {
+      // The accessible name for the lens region.
+      heading: "True-up calendar",
+      // The next-upcoming pull-out lead, in plain words ("Next true-up: December, 6 meters, about 6
+      // weeks out"). monthsAhead is whole months (0 = settling this month); the lead never shows raw
+      // date math. month is 1-12.
+      nextLabel: "Next true-up",
+      nextLine: (month: number, meterCount: number, monthsAhead: number): string => {
+        const name = MONTHS[month - 1] ?? "";
+        const meters = meterCount === 1 ? "1 meter" : `${meterCount} meters`;
+        let when: string;
+        if (monthsAhead <= 0) when = "settling this month";
+        else if (monthsAhead === 1) when = "about 4 weeks out";
+        else if (monthsAhead === 2) when = "about 6 weeks out";
+        else when = `about ${monthsAhead} months out`;
+        return `${name}, ${meters}, ${when}`;
+      },
+      // Shown above the grid when no solar meter has a true-up month on file (honest absence).
+      nextNone: "No true-up dates on file yet",
+      // One month cell: the month name (1-12) and the count of meters (and arrays) settling that month.
+      monthName: (month: number): string => MONTHS[month - 1] ?? "",
+      // The settling counts inside a populated cell, said in plain words. A cell with no settle reads
+      // calm and empty (no fabricated zero count). Arrays are named separately so aggregation is legible.
+      cellMeters: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      cellArrays: (n: number): string => (n === 1 ? "1 array" : `${n} arrays`),
+      // The credit dollar per cell is honest-blank until a statement settles it (the upload path is
+      // wired in G-3). This label names the absence calmly beside a populated cell.
+      creditLabel: "Credit",
+      // The persistent monthly-reconciliation note for aggregation meters (FR15). Plain truth: an
+      // aggregation account reconciles its meters' credits monthly as well as settling once a year.
+      monthlyNote:
+        "Aggregation meters reconcile their credits monthly, then settle once a year at the true-up.",
+      // The empty state when no solar meter (or array) has a true-up month on file at all.
+      empty: "No true-up months on file yet",
+      // Accessible label for a populated month cell, naming the month and its settling counts as
+      // content so a screen reader reads the heartbeat, never an empty cell it skips.
+      cellAria: (month: number, meterCount: number, arrayCount: number): string => {
+        const name = MONTHS[month - 1] ?? "";
+        const meters = meterCount === 1 ? "1 meter" : `${meterCount} meters`;
+        if (arrayCount === 0) return `${name}: ${meters} settling`;
+        const arrays = arrayCount === 1 ? "1 array" : `${arrayCount} arrays`;
+        return `${name}: ${meters} and ${arrays} settling`;
+      },
+    },
   },
 
   // The rebuilt dashboard: a ranked feed of moves, with charts one tap down. Plain

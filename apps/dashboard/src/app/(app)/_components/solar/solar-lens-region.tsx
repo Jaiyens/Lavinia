@@ -7,20 +7,23 @@ import { parseSolarLens, solarLensQueryOptions } from "@/lib/solar/lens-solar";
 import type { SolarDataset } from "@/lib/dashboard/solar";
 import type { MeterView } from "@/lib/dashboard/load";
 import { ArraysLens } from "./arrays-lens";
+import { SolarCalendarLens } from "./solar-calendar-lens";
 import { SolarMapLens } from "./solar-map-lens";
 import { SolarTableLens } from "./solar-table-lens";
 
-// The active solar-lens region (A-2 scaffold, A-5 fills the Arrays view, A-6 the Map view). Reads the
-// same nuqs `lens` key as the toggle, against the SOLAR registry, and shows one lens at a time over the
-// solar dataset: Arrays (default, the aggregation map), Calendar, Map, Table. A-5 wires the Arrays lens
-// (the default data hero); A-6 wires the Map lens (the solar fleet geographically); A-8 wires the Table
-// lens (the Excel bridge + CSV export); Calendar (Epic D) still renders the empty-but-structured "coming"
-// placeholder until its story lands.
+// The active solar-lens region (A-2 scaffold, A-5 fills the Arrays view, A-6 the Map view, D-2 the
+// Calendar view). Reads the same nuqs `lens` key as the toggle, against the SOLAR registry, and shows
+// one lens at a time over the solar dataset: Arrays (default, the aggregation map), Calendar, Map,
+// Table. A-5 wires the Arrays lens (the default data hero); D-2 wires the Calendar lens (the true-up
+// heartbeat, rendering the D-1 derivation on the dataset); A-6 wires the Map lens (the solar fleet
+// geographically); A-8 wires the Table lens (the Excel bridge + CSV export). All four lenses now
+// render; the placeholder branch remains as the honest fallback if a future lens is added to the
+// registry before its view ships.
 // Switching the toggle swaps which view shows here, never a crash or a blank region. The Map lens reads
 // the canonical MeterView[] (it needs lat/long, which the solar dataset's legibility view does not
 // carry); it filters to solar meters itself. It is also handed the page-edge `nowMonth` so its
 // true-up-soon pin signal (FR35) shares the dataset's clock-free window. The placeholder branch keeps `aria-live` + the active-lens
-// label so the structure stays whole and accessible for the not-yet-shipped lenses.
+// label so the structure stays whole and accessible for any not-yet-shipped lens.
 
 export function SolarLensRegion({
   dataset,
@@ -48,6 +51,13 @@ export function SolarLensRegion({
         nameplateVerified={dataset.nameplateVerified}
       />
     );
+  }
+
+  if (active === "calendar") {
+    // The Calendar lens (D-2) renders the D-1 true-up calendar carried on the dataset (rolled forward
+    // from the same injected nowMonth the KPI next-true-up tile uses, so the two never disagree). It
+    // computes nothing itself; the per-cell credit dollar stays honest-blank (FR14).
+    return <SolarCalendarLens dataset={dataset} />;
   }
 
   if (active === "map") {

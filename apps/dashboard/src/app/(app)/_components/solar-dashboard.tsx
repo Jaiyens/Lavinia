@@ -120,8 +120,8 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
                 tile), the filter bar (entity / ranch / rate / account / program), the lens toggle
                 (Arrays / Calendar / Map / Table, default Arrays), and the active lens region - all
                 narrowing CONSISTENTLY to the same matching meters when a filter is applied. The
-                Arrays lens (A-5) is the default data hero; Map (A-6) is live; Table (A-8) and
-                Calendar (Epic D) fill in as their stories land. The shared drawer is mounted below
+                Arrays lens (A-5) is the default data hero; Calendar (D-2) renders the true-up
+                heartbeat; Map (A-6) and Table (A-8) are live. The shared drawer is mounted below
                 (A-5). Switching a lens writes only the `lens` key; a filter writes only its key;
                 neither drops the other or the open `?meter=` drawer. */}
             <SolarSurface
