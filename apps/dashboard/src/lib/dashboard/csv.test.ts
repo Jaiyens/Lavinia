@@ -173,6 +173,7 @@ const array = (over: Partial<MeterArrayView> & { id: string }): MeterArrayView =
   nameplateKw: 840,
   nemType: "nem2",
   trueUpMonth: null,
+  interconnectionDate: null,
   ...over,
 });
 

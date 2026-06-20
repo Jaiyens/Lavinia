@@ -14,7 +14,14 @@ import type { MeterView, MeterArrayView } from "./load";
 // produced (honest-blank, FR10).
 
 function array(over: Partial<MeterArrayView> & { id: string }): MeterArrayView {
-  return { name: over.id, nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: null, ...over };
+  return {
+    name: over.id,
+    nameplateKw: 840,
+    nemType: "nem2_agg",
+    trueUpMonth: null,
+    interconnectionDate: null,
+    ...over,
+  };
 }
 
 /** A per-cycle summary carrying just the totalKwh the allocation share reads (C-2, NFR4). */
@@ -147,6 +154,46 @@ describe("buildSolarDataset - array grouping (FR7)", () => {
       1,
     );
     expect(ds.arrays[0]?.meters[0]?.solarKw).toBeNull();
+  });
+});
+
+describe("buildSolarDataset - grandfather position (F-1, FR16/FR18)", () => {
+  it("is honest-unknown at launch: no interconnection date on file (DM1 absent)", () => {
+    const west = array({ id: "West", nemType: "nem2_agg", interconnectionDate: null });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      6,
+      { asOf: "2026-06-20T12:00:00.000Z" },
+    );
+    expect(ds.arrays[0]?.grandfather).toEqual({ state: "unknown" });
+  });
+
+  it("is honest-unknown when no asOf is injected, even with a date on file (fail-closed)", () => {
+    const west = array({
+      id: "West",
+      nemType: "nem2_agg",
+      interconnectionDate: "2018-01-01T00:00:00.000Z",
+    });
+    const ds = buildSolarDataset([meter({ id: "p1", isSolar: true, benefitingArrays: [west] })], 6);
+    expect(ds.arrays[0]?.grandfather).toEqual({ state: "unknown" });
+  });
+
+  it("computes the 20-year-from-PTO countdown when a date and asOf are on file (NEM2 cohort)", () => {
+    const west = array({
+      id: "West",
+      nemType: "nem2_agg",
+      interconnectionDate: "2018-03-01T00:00:00.000Z",
+    });
+    const ds = buildSolarDataset(
+      [meter({ id: "p1", isSolar: true, benefitingArrays: [west] })],
+      6,
+      { asOf: "2026-06-20T12:00:00.000Z" },
+    );
+    expect(ds.arrays[0]?.grandfather).toEqual({
+      state: "known",
+      expiryYear: 2038,
+      yearsRemaining: 11,
+    });
   });
 });
 

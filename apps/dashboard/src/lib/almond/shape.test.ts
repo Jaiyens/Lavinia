@@ -290,7 +290,15 @@ describe("summarizeFindings", () => {
 function arrayView(
   over: Partial<MeterView["benefitingArrays"][number]> = {},
 ): MeterView["benefitingArrays"][number] {
-  return { id: "arr-1", name: "West Array", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, ...over };
+  return {
+    id: "arr-1",
+    name: "West Array",
+    nameplateKw: 840,
+    nemType: "nem2_agg",
+    trueUpMonth: 9,
+    interconnectionDate: null,
+    ...over,
+  };
 }
 
 describe("summarizeMeterSolar", () => {

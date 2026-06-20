@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/test/pg-harness";
 import { SOLAR_TOOL } from "@/lib/energy/solar-nem";
 import { runEngines } from "./run";
-import { runSolarInsight } from "./run-solar-insight";
+import { routeDemandResponseFinding, runSolarInsight } from "./run-solar-insight";
 
 // Integration test for the solar-insight runner (Story 3.4): persists the gated
 // NEM demand insight idempotently under the solar tool. Throwaway Postgres; never dev.db.
@@ -602,5 +602,209 @@ describe("rate-legibility finding (E-3, F1)", () => {
     expect(
       await prisma.recommendation.count({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } }),
     ).toBe(0);
+  });
+});
+
+// Story F-3: the grandfather (F4) and aging-array (F5) finding emitters, DATA-GATED (ADR-S10). F4
+// fires ONLY where a real interconnection (PTO) date is on file; the launch fleet has none, so it is
+// silent - correct, not broken. F5 needs a per-array generation series the launch export does not
+// carry, so it is uniformly silent at launch. Both carry impactNote only (never impactUsd, NFR5) and
+// never a NEM3 framing (FR18).
+describe("grandfather watch finding (F-3, F4)", () => {
+  it("emits a watch protect_grandfather finding for a NEM2 array with a PTO date on file, dollar honest-blank", async () => {
+    const farm = await prisma.farm.create({ data: { name: "GF Farm", isDemo: false } });
+    const id = farm.id;
+    // A grandfathered NEM2 array WITH an interconnection date on file -> a 20-year countdown.
+    const array = await prisma.solarArray.create({
+      data: {
+        name: "ARR-GF",
+        nameplateKw: 840,
+        nemType: "nem2_agg",
+        farmId: id,
+        interconnectionDate: new Date("2018-03-01T00:00:00.000Z"),
+      },
+    });
+    // A solar meter linked to the array, off the AG-C demand family so only the F4 finding emits.
+    await prisma.pump.create({
+      data: {
+        name: "P300",
+        serviceId: "SA-GF-1",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2_agg",
+        coverageState: "reconciled",
+        farmId: id,
+        benefitingArrays: { connect: { id: array.id } },
+      },
+    });
+
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const recs = await prisma.recommendation.findMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+    });
+    const gf = recs.find((r) => (r.action as { kind?: string }).kind === "protect_grandfather");
+    if (!gf) throw new Error("expected a protect_grandfather finding");
+    expect(gf.severity).toBe("watch"); // protect-the-asset, never money at stake (no color)
+    expect(gf.impactUsd).toBeNull(); // no fabricated dollar (NFR5) - never inflates the at-risk sum
+    expect(gf.impactNote).not.toBeNull();
+    expect(gf.situation).toContain("2038"); // the 20-year-from-PTO expiry year, traces to the array
+    const action = gf.action as { kind: string; params?: { arrayId?: string; expiryYear?: number } };
+    expect(action.params?.arrayId).toBe(array.id);
+    expect(action.params?.expiryYear).toBe(2038);
+    // Cohort isolation (FR18): no NEM3 / net-billing framing in the copy.
+    expect(gf.situation.toLowerCase()).not.toContain("nem3");
+  });
+
+  it("is silent for an array with no interconnection date on file (the launch state, data-gated)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "GF Farm 2", isDemo: false } });
+    const id = farm.id;
+    const array = await prisma.solarArray.create({
+      data: { name: "ARR-GF-2", nameplateKw: 840, nemType: "nem2_agg", farmId: id }, // no PTO date
+    });
+    await prisma.pump.create({
+      data: {
+        name: "P301",
+        serviceId: "SA-GF-2",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2_agg",
+        coverageState: "reconciled",
+        farmId: id,
+        benefitingArrays: { connect: { id: array.id } },
+      },
+    });
+
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const grandfatherCount = (
+      await prisma.recommendation.findMany({
+        where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      })
+    ).filter((r) => (r.action as { kind?: string }).kind === "protect_grandfather").length;
+    expect(grandfatherCount).toBe(0); // honest-unknown -> no finding, not an error
+  });
+
+  it("never fires the grandfather watch for the launch fleet (no PTO dates) and emits no F5 either", async () => {
+    const farm = await prisma.farm.create({ data: { name: "Launch Fleet", isDemo: false } });
+    const id = farm.id;
+    // A plain solar meter, no array with a PTO date, no generation series: both F4 and F5 stay silent.
+    await prisma.pump.create({
+      data: {
+        name: "P302",
+        serviceId: "SA-LAUNCH",
+        rateSchedule: "AGA1 Ag<35 kW Low Use",
+        isSolar: true,
+        solarKw: 500,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+      },
+    });
+    await runSolarInsight(prisma, id, "2026-06-20T12:00:00.000Z");
+    const kinds = (
+      await prisma.recommendation.findMany({
+        where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      })
+    ).map((r) => (r.action as { kind?: string }).kind);
+    expect(kinds).not.toContain("protect_grandfather"); // data-gated silence is correct
+    expect(kinds).not.toContain("investigate_array"); // F5 silent: no generation series at launch
+  });
+});
+
+// Story H-4: the F7 demand-response routing finding (FR30), the path Almond invokes to "route a
+// demand-response/repower finding". DISPLAY-ONLY in v1 with the dollar HONEST-BLANK (no published DR
+// rate table exists, NFR12). routeDemandResponseFinding upserts ONLY this meter's F7, leaving every
+// other SOLAR_TOOL finding untouched, idempotent and sticky.
+describe("demand-response routing finding (H-4, F7)", () => {
+  it("routes an act finding with no fabricated DR dollar, leaving other SOLAR_TOOL findings untouched", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Farm", isDemo: false } });
+    const id = farm.id;
+    // An un-enrolled solar meter on the demand-charge AG-C family: F7-eligible.
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P400",
+        serviceId: "SA-DR-1",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+        billingPeriods: {
+          create: {
+            start: new Date("2026-02-11T00:00:00.000Z"),
+            close: new Date("2026-03-12T00:00:00.000Z"),
+            billingLineItems: { create: [{ kind: "other", label: "Customer Charge", amountCents: 4300 }] },
+          },
+        },
+      },
+    });
+
+    const result = await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    expect(result.created).toBe(1);
+
+    const rows = await prisma.recommendation.findMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+    });
+    const f7 = rows.find((r) => (r.action as { kind?: string }).kind === "enroll_demand_response");
+    if (!f7) throw new Error("expected an F7 finding");
+    expect(f7.severity).toBe("act"); // shaped for action, display-only in v1
+    expect(f7.impactUsd).toBeNull(); // NO fabricated DR $/kW (NFR12) - never inflates the at-risk sum
+    expect(f7.impactNote).not.toBeNull(); // the opportunity is named, never a figure
+    expect(f7.situation).toContain("P400"); // traces to the named, visible meter
+    const action = f7.action as { kind: string; execute: unknown; params?: { pumpId?: string } };
+    expect(action.execute).toBeNull(); // display-only: nothing is actually enrolled
+    expect(action.params?.pumpId).toBe(meter.id);
+  });
+
+  it("is idempotent (a re-route replaces, never duplicates) and sticky (a dismissed F7 never resurrects)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Farm 2", isDemo: false } });
+    const id = farm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P401",
+        serviceId: "SA-DR-2",
+        rateSchedule: "AGC Ag35+ kW High Use",
+        isSolar: true,
+        solarKw: 840,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+      },
+    });
+
+    await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    const drCount = (
+      await prisma.recommendation.findMany({ where: { farmId: id, tool: SOLAR_TOOL, status: "pending" } })
+    ).filter((r) => (r.action as { kind?: string }).kind === "enroll_demand_response").length;
+    expect(drCount).toBe(1); // idempotent: a re-route replaces, never doubles
+
+    await prisma.recommendation.updateMany({
+      where: { farmId: id, tool: SOLAR_TOOL, status: "pending" },
+      data: { status: "dismissed", resolvedAt: new Date() },
+    });
+    const after = await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    expect(after.created).toBe(0); // a dismissed DR routing finding never comes back
+  });
+
+  it("routes nothing for an ineligible meter (non-AG-C or already enrolled)", async () => {
+    const farm = await prisma.farm.create({ data: { name: "DR Farm 3", isDemo: false } });
+    const id = farm.id;
+    const meter = await prisma.pump.create({
+      data: {
+        name: "P402",
+        serviceId: "SA-DR-3",
+        rateSchedule: "AGA1 Ag<35 kW Low Use", // not the demand-charge AG-C family
+        isSolar: true,
+        solarKw: 200,
+        nemType: "nem2",
+        coverageState: "reconciled",
+        farmId: id,
+      },
+    });
+    const result = await routeDemandResponseFinding(prisma, id, meter.id, "2026-06-20T12:00:00.000Z");
+    expect(result.created).toBe(0); // ineligible -> no finding, never a fabricated route
   });
 });

@@ -70,7 +70,14 @@ const meter: MeterView = {
   trueUpDate: "2025-12-15T00:00:00.000Z",
   solarKw: 840,
   benefitingArrays: [
-    { id: "arr1", name: "South Array", nameplateKw: 840, nemType: "nem2", trueUpMonth: 12 },
+    {
+      id: "arr1",
+      name: "South Array",
+      nameplateKw: 840,
+      nemType: "nem2",
+      trueUpMonth: 12,
+      interconnectionDate: null,
+    },
   ],
   growerPumpId: "P021",
   nemPeriods: [

@@ -17,11 +17,16 @@ import {
   SOLAR_TOOL,
 } from "@/lib/energy/solar-nem";
 import { auditAllocation } from "@/lib/energy/solar-allocation";
+import { expandTripWire } from "@/lib/energy/solar-grandfather";
+import { agingArrayFlag } from "@/lib/energy/solar-degradation";
+import { drEnrollment, type DrProgram } from "@/lib/energy/dr";
+import { planFromLabel } from "@/lib/energy/rate-lever";
 import {
   measuredAnnualHours,
   rateLegibilityFlag,
 } from "@/lib/energy/solar-rate-legibility";
 import { loadRateCard } from "@/lib/pge/rate-card";
+import type { RateCard } from "@/lib/energy/rates";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { buildSolarDataset } from "@/lib/dashboard/solar";
 import { formatUsdWhole } from "@/lib/format/money";
@@ -99,6 +104,25 @@ export async function runSolarInsight(
       return action?.kind === "verify_solar_schedule" &&
         typeof action.params?.pumpId === "string"
         ? [action.params.pumpId]
+        : [];
+    }),
+  );
+  // F4 (F-3, protect_grandfather) and F5 (F-3, investigate_array) are ARRAY-scoped findings: a
+  // dismissed grandfather/aging-array note on an array never resurrects, keyed by arrayId, the same
+  // sticky-response discipline as F1/F2/F3.
+  const resolvedGrandfatherArrayIds = new Set(
+    resolved.flatMap((r) => {
+      const action = r.action as { kind?: unknown; params?: { arrayId?: unknown } } | null;
+      return action?.kind === "protect_grandfather" && typeof action.params?.arrayId === "string"
+        ? [action.params.arrayId]
+        : [];
+    }),
+  );
+  const resolvedAgingArrayIds = new Set(
+    resolved.flatMap((r) => {
+      const action = r.action as { kind?: unknown; params?: { arrayId?: unknown } } | null;
+      return action?.kind === "investigate_array" && typeof action.params?.arrayId === "string"
+        ? [action.params.arrayId]
         : [];
     }),
   );
@@ -232,7 +256,10 @@ export async function runSolarInsight(
   //     silent today and is proven by the audit's unit test.
   // The dollar is ALWAYS honest-blank (impactNote only, severity watch): a "verify with PG&E" signal,
   // never money at stake, so it never inflates the rail's at-risk sum (NFR5/NFR6).
-  const dataset = buildSolarDataset(meters, monthOf(asOf));
+  // Pass `asOf` so the grandfather position (F-1) is measured against an injected instant, not a
+  // clock; the launch fleet has no interconnection date, so every array stays honest-unknown and F4
+  // emits nothing - correct, not broken.
+  const dataset = buildSolarDataset(meters, monthOf(asOf), { asOf });
 
   // A solar meter linked to no array is a dropped meter ONLY when an aggregation graph EXISTS on the
   // farm to be dropped from (FR9): a meter absent from arrays that DO exist is a real gap to verify. A
@@ -312,6 +339,89 @@ export async function runSolarInsight(
     }
   }
 
+  // F4 (F-3, FR16/FR17): the grandfather expiry watch. DATA-GATED on the interconnection date (DM1):
+  // an array whose date is on file gets a 20-year-from-PTO countdown; an array with no date stays
+  // honest-unknown and emits NOTHING. The expand trip-wire (FR17) adds the protect-what-you-have
+  // framing for the NEM2 cohort. NEVER carries a dollar (impactNote only, severity watch): it is a
+  // protect-the-asset signal, never money at stake, so it never inflates the rail's at-risk sum. The
+  // launch fleet has no PTO date, so this loop is silent today - correct, not broken; the moment a
+  // date lands it emits. A net-billing array never produces a known position (cohort isolation, FR18).
+  for (const group of dataset.arrays) {
+    if (group.grandfather.state !== "known") continue;
+    if (resolvedGrandfatherArrayIds.has(group.id)) continue;
+    const tripWire = expandTripWire({ nemType: group.nemType });
+    if (!tripWire.applies) continue; // only the grandfathered NEM2 cohort has value to protect
+    const arrayName = group.name ?? en.solar.grandfather.unnamedArray;
+    drafts.push(
+      draftRecommendation({
+        tool: SOLAR_TOOL,
+        farmId,
+        severity: "watch",
+        createdAt: asOf,
+        situation: en.solar.grandfather.situation(
+          arrayName,
+          group.grandfather.expiryYear,
+          group.grandfather.yearsRemaining,
+        ),
+        impactNote: en.solar.grandfather.note,
+        action: {
+          kind: "protect_grandfather",
+          label: en.solar.grandfather.action(),
+          params: {
+            arrayId: group.id,
+            expiryYear: group.grandfather.expiryYear,
+            yearsRemaining: group.grandfather.yearsRemaining,
+          },
+          execute: null,
+        },
+      }),
+    );
+  }
+
+  // F5 (F-3, FR19/FR20): the aging-array underperformance flag. DATA-GATED on a per-array generation
+  // series (DM2), which the launch export does not carry, so `agingArrayFlag` returns null and this
+  // loop is SILENT (never a fabricated zero, never a guessed "healthy" state). It NEVER carries a
+  // dollar (impactNote only, severity watch): the dollars-lost figure is per-site variable and not
+  // honestly computable here (NFR5). The flag names its evidence window in the copy. The moment a
+  // generation series and an interconnection date both land for an array, this emits.
+  for (const group of dataset.arrays) {
+    if (resolvedAgingArrayIds.has(group.id)) continue;
+    const flag = agingArrayFlag({
+      // No persisted per-array generation series at launch (DM2 absent) -> empty -> the flag is
+      // null and nothing is emitted. Wired so it lights up the moment the series is persisted.
+      generationByMonthKwh: [],
+      nameplateKw: group.nameplateKw,
+      interconnectionDate: group.interconnectionDate,
+      asOf,
+    });
+    if (flag === null) continue;
+    const arrayName = group.name ?? en.solar.aging.unnamedArray;
+    drafts.push(
+      draftRecommendation({
+        tool: SOLAR_TOOL,
+        farmId,
+        severity: "watch",
+        createdAt: asOf,
+        situation: en.solar.aging.situation(
+          arrayName,
+          Math.round(flag.shortfallPct),
+          flag.monthsObserved,
+        ),
+        impactNote: en.solar.aging.note,
+        action: {
+          kind: "investigate_array",
+          label: en.solar.aging.action(),
+          params: {
+            arrayId: group.id,
+            shortfallPct: flag.shortfallPct,
+            monthsObserved: flag.monthsObserved,
+          },
+          execute: null,
+        },
+      }),
+    );
+  }
+
   await prisma.$transaction([
     prisma.recommendation.deleteMany({
       where: { farmId, tool: SOLAR_TOOL, status: "pending" },
@@ -336,4 +446,142 @@ export async function runSolarInsight(
   ]);
 
   return { created: drafts.length };
+}
+
+/**
+ * F7 eligibility (H-4, FR30) - PURE. A solar meter on the demand-charge AG-C family that is NOT
+ * already enrolled in a DR program (per its printed bill line items) is a candidate to ROUTE a
+ * demand-response finding: DR programs pay for the evening curtailment solar cannot offset (solar is
+ * nearly off when the demand peak is set). Returns false for a non-solar meter, a non-AG-C schedule,
+ * or an already-enrolled meter (DR is then a fact surfaced elsewhere, never re-pitched). No dollar,
+ * no clock, no I/O - just the structural gate. Almond uses this to decide whether to route F7.
+ */
+export function eligibleForDemandResponseRouting(args: {
+  isSolar: boolean;
+  rateSchedule: string | null;
+  card: RateCard;
+  lineItems: ReadonlyArray<{ label: string | null }>;
+}): boolean {
+  const { isSolar, rateSchedule, card, lineItems } = args;
+  if (!isSolar) return false;
+  if (rateSchedule === null) return false;
+  const plan = planFromLabel(rateSchedule, card, null);
+  if (plan === null || plan.family !== "AG-C") return false;
+  const enrolled: DrProgram | null = drEnrollment(lineItems);
+  return enrolled === null;
+}
+
+/**
+ * Build the F7 demand-response routing finding for ONE eligible meter (H-4, FR30) - PURE. DISPLAY-ONLY
+ * in v1 (severity `act`, shaped for later execution, `execute: null` - nothing is actually enrolled).
+ * The dollar is HONEST-BLANK: the codebase carries no published DR program-rate table and NFR12
+ * forbids a fabricated $/kW, so there is NO `impactUsd` and NO guessed figure - the note names the
+ * opportunity only. F7 NEVER multiplies a $/kW. Returns null for an ineligible meter so a caller can
+ * route unconditionally.
+ */
+export function buildDemandResponseFinding(args: {
+  farmId: string;
+  pumpId: string;
+  meterName: string;
+  rateSchedule: string | null;
+  isSolar: boolean;
+  card: RateCard;
+  lineItems: ReadonlyArray<{ label: string | null }>;
+  asOf?: string;
+}): DraftRecommendation | null {
+  const { farmId, pumpId, meterName, rateSchedule, isSolar, card, lineItems, asOf } = args;
+  if (!eligibleForDemandResponseRouting({ isSolar, rateSchedule, card, lineItems })) return null;
+  return draftRecommendation({
+    tool: SOLAR_TOOL,
+    farmId,
+    severity: "act",
+    createdAt: asOf ?? "2026-06-09T12:00:00.000Z",
+    situation: en.solar.demandResponse.situation(meterName),
+    // HONEST-BLANK dollar: no published DR rate table exists, so we name the opportunity, never a
+    // figure (NFR12). impactNote only, never impactUsd - it never enters the rail's at-risk sum.
+    impactNote: en.solar.demandResponse.note,
+    action: {
+      kind: "enroll_demand_response",
+      label: en.solar.demandResponse.action(),
+      // Shaped for later execution; display-only in v1, so execute stays null.
+      params: { pumpId, scheduleLabel: rateSchedule },
+      execute: null,
+    },
+  });
+}
+
+/**
+ * Route (persist) the F7 demand-response finding for one meter (H-4, FR30), the path Almond invokes to
+ * "surface a solar finding and route a demand-response/repower finding". Idempotent and sticky: it
+ * upserts the single pending F7 row for THIS meter (delete-pending-scoped-to-this-meter's
+ * enroll_demand_response, then insert) and refuses to resurrect a resolved (done/dismissed) one, the
+ * same discipline as the F1-F6 emitters - WITHOUT touching any other SOLAR_TOOL finding. Returns
+ * `{ created: 0 }` for an ineligible meter or a meter whose F7 the grower already resolved, never a
+ * fabricated dollar.
+ */
+export async function routeDemandResponseFinding(
+  prisma: PrismaClient,
+  farmId: string,
+  pumpId: string,
+  asOf = "2026-06-09T12:00:00.000Z",
+): Promise<RunSolarInsightResult> {
+  const card = loadRateCard();
+  const meter = (await loadMetersForFarm(prisma, farmId)).find((m) => m.id === pumpId);
+  if (meter === undefined) return { created: 0 };
+
+  const draft = buildDemandResponseFinding({
+    farmId,
+    pumpId: meter.id,
+    meterName: meter.name,
+    rateSchedule: meter.rateSchedule,
+    isSolar: meter.isSolar,
+    card,
+    lineItems: meter.periods.flatMap((p) => p.lineItems),
+    asOf,
+  });
+  if (draft === null) return { created: 0 };
+
+  // Sticky: a resolved (done/dismissed) F7 for this meter never resurrects.
+  const resolved = await prisma.recommendation.findMany({
+    where: { farmId, tool: SOLAR_TOOL, status: { not: "pending" } },
+    select: { action: true },
+  });
+  const alreadyResolved = resolved.some((r) => {
+    const action = r.action as { kind?: unknown; params?: { pumpId?: unknown } } | null;
+    return action?.kind === "enroll_demand_response" && action.params?.pumpId === pumpId;
+  });
+  if (alreadyResolved) return { created: 0 };
+
+  // Upsert ONLY this meter's pending F7, leaving every other SOLAR_TOOL finding untouched: find the
+  // existing pending F7 rows for this meter and replace them, so a re-route is idempotent.
+  const pendingF7 = await prisma.recommendation.findMany({
+    where: { farmId, tool: SOLAR_TOOL, status: "pending" },
+    select: { id: true, action: true },
+  });
+  const staleIds = pendingF7
+    .filter((r) => {
+      const action = r.action as { kind?: unknown; params?: { pumpId?: unknown } } | null;
+      return action?.kind === "enroll_demand_response" && action.params?.pumpId === pumpId;
+    })
+    .map((r) => r.id);
+
+  await prisma.$transaction([
+    ...(staleIds.length > 0
+      ? [prisma.recommendation.deleteMany({ where: { id: { in: staleIds } } })]
+      : []),
+    prisma.recommendation.create({
+      data: {
+        farmId: draft.farmId,
+        tool: draft.tool,
+        situation: draft.situation,
+        action: draft.action as unknown as Prisma.InputJsonValue,
+        impactUsd: draft.impactUsd ?? null,
+        impactNote: draft.impactNote ?? null,
+        severity: draft.severity,
+        status: draft.status,
+        createdAt: new Date(draft.createdAt),
+      },
+    }),
+  ]);
+  return { created: 1 };
 }

@@ -14,6 +14,7 @@ import { toDrawerDetail } from "@/lib/dashboard/drawer";
 import { SURFACE } from "@/lib/dashboard/surface";
 import { CoveragePill } from "./coverage-pill";
 import { FindingCard } from "./finding-card";
+import { StatementUpload } from "./solar/statement-upload";
 
 // The meter drawer (Story 2.5): the ONE shared drill-in surface, opened from any table row
 // (and later any chart bar / map pin) by the nuqs `meter` key. Open/close is pure URL state,
@@ -108,6 +109,8 @@ export function MeterDrawer({
   trackedResults,
   readOnly = false,
   solar = false,
+  nowIso,
+  canAttach = false,
 }: {
   meters: MeterView[];
   findings: FindingView[];
@@ -120,6 +123,13 @@ export function MeterDrawer({
   /** On the Solar tab (C-2): feed the fleet to toDrawerDetail so the solar section's allocation row
    *  carries the real usage-proportional share. Off (the Energy drawer) leaves it honest-blank. */
   solar?: boolean;
+  /** F-1/F-3 (FR16): the injected "now" (ISO) the grandfather countdown is measured against, so the
+   *  drawer stays pure (no clock). Omitted leaves the grandfather row honest-unknown - the launch
+   *  state, since no interconnection date is on file regardless. */
+  nowIso?: string;
+  /** G-3 (FR37/NFR10): owner/manager only. When true and the meter is solar, the drawer solar section
+   *  shows the per-meter true-up statement upload affordance; a viewer never sees it. */
+  canAttach?: boolean;
 }) {
   const [meterId, setMeter] = useQueryState(SURFACE.meter);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -170,7 +180,7 @@ export function MeterDrawer({
 
   // On the Solar tab, hand the fleet to the derivation so a single-array meter's allocation row
   // shows its real usage-proportional share (C-2); the Energy drawer leaves it honest-blank.
-  const d = toDrawerDetail(meter, solar ? meters : undefined);
+  const d = toDrawerDetail(meter, solar ? meters : undefined, solar ? nowIso : undefined);
   // Bill-accuracy verification (Story 4.1): render the badge only on a positive
   // match. A miss (verified:false) and an uncheckable bill (null) both render
   // nothing - fail closed, no negative claim about PG&E.
@@ -446,6 +456,20 @@ export function MeterDrawer({
                   }
                 />
                 <FieldRow label={t.credit} value={t.creditNotOnFile} />
+                {/* Grandfather position (F-1/F-3, FR16): the 20-year-from-PTO expiry where the
+                    interconnection date is on file, honest-unknown (not-on-file) otherwise. The launch
+                    export carries no PTO date, so this reads not-on-file - never a guessed vintage. */}
+                <FieldRow
+                  label={t.grandfather}
+                  value={
+                    d.solar.grandfather.state === "known"
+                      ? t.grandfatherValue(
+                          d.solar.grandfather.expiryYear,
+                          d.solar.grandfather.yearsRemaining,
+                        )
+                      : t.grandfatherNotOnFile
+                  }
+                />
                 {/* Story 3.4: the printed NEM facts. Position/charges come from the persisted
                     statement months; the demand line renders only when reconciled billing
                     shows a demand charge (solar never reduces it). */}
@@ -528,6 +552,16 @@ export function MeterDrawer({
                     />
                   </dl>
                 </>
+              )}
+
+              {/* G-3 (FR37): the per-meter true-up statement upload, owner/manager only (a viewer of
+                  a real farm and the public Tour never see it). The same fail-closed extract pipeline
+                  the header affordance uses; on an exact match the honest-blank credit rows above flip
+                  to settled. */}
+              {canAttach && !readOnly && (
+                <div className="mt-6">
+                  <StatementUpload variant="inline" />
+                </div>
               )}
             </>
           )}

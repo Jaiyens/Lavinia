@@ -10,11 +10,13 @@ import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
+import { farmRole } from "@/lib/auth/access";
 import { Reveal } from "./shell/reveal";
 import { MeterDrawer } from "./meter-drawer";
 import { FindingsRail } from "./shell/findings-rail";
 import { FindingsSheet } from "./shell/findings-sheet";
 import { SolarSurface } from "./solar/solar-surface";
+import { StatementUpload } from "./solar/statement-upload";
 
 // The Solar tab data hero (A-1). A composition SIBLING of EnergyDashboard, not a fork: it renders
 // the same three-zone OS shell (the agent rail / mobile bottom tabs come from the surrounding
@@ -54,7 +56,12 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   // read at this server page edge (1-12) and INJECTED so the pure builder stays clock-free (NFR1);
   // the dataset reads per-cycle summaries only, never the interval series (NFR4).
   const meters = await resolveMeters(farm.id);
-  const nowMonth = new Date().getMonth() + 1;
+  // Read "now" ONCE at this server page edge and inject it (the month for the calendar/KPI, the ISO
+  // instant for the F-1 grandfather countdown) so every pure builder downstream stays clock-free
+  // (NFR1). The grandfather countdown is honest-unknown at launch regardless (no PTO date on file).
+  const now = new Date();
+  const nowMonth = now.getMonth() + 1;
+  const nowIso = now.toISOString();
 
   // The farm-level solar provenance the dataset needs that does not live on a meter (C-1, FR6),
   // read in one query at this server edge and injected so the pure builder stays IO-free (NFR1):
@@ -67,6 +74,13 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   // Fail-closed: a missing farm / absent flag reads as unverified, and a malformed JSON value
   // coerces to an empty code list (loadSolarFarmProvenance does the honest coercion).
   const { nameplateVerified, unlinkedNemaCodes } = await loadSolarFarmProvenance(prisma, farm.id);
+
+  // G-3 (FR37/NFR10): the true-up statement upload is a WRITE that settles a dollar, so it is gated
+  // to owner/manager (parity with the layout's `canAttach` and the chat route). A viewer of a real
+  // farm, and the public Tour, never see the affordance - they can read the honest-blank state but
+  // not push a PDF in. The Server Action re-checks the role server-side regardless.
+  const role = !demoOnly && userId ? await farmRole(prisma, farm.id, userId) : null;
+  const canAttach = role === "owner" || role === "manager";
 
   // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
   // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
@@ -111,9 +125,18 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
           )}
 
           <Reveal>
-            <header className="mb-8">
-              <p className="type-label-caps text-primary">{en.solar.tab.eyebrow}</p>
-              <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
+            <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="type-label-caps text-primary">{en.solar.tab.eyebrow}</p>
+                <h1 className="type-display-lg mt-1 text-on-surface">{farm.name}</h1>
+              </div>
+              {/* G-3: the true-up statement upload on-ramp, owner/manager only. The single way a
+                  net-metering dollar flips from honest-blank to settled (FR37/FR28). */}
+              {canAttach && (
+                <div className="sm:max-w-xs">
+                  <StatementUpload />
+                </div>
+              )}
             </header>
 
             {/* The filter-aware solar surface (A-7): the KPI strip (A-3, four calm tiles, no dollar
@@ -127,6 +150,7 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             <SolarSurface
               meters={meters}
               nowMonth={nowMonth}
+              nowIso={nowIso}
               nameplateVerified={nameplateVerified}
               unlinkedNemaCodes={unlinkedNemaCodes}
             />
@@ -141,6 +165,8 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             trackedResults={trackedResults}
             readOnly={demoOnly}
             solar
+            nowIso={nowIso}
+            canAttach={canAttach}
           />
         </div>
 

@@ -388,6 +388,10 @@ model SolarArray {
   nameplateKw Float // array nameplate, e.g. 840 or 1092
   nemType     String? // "nem2" | "nem2_agg" | "vnem"   (DM3: "vnem" widened in, forward-compatible, no launch instance)
   trueUpMonth Int? // per-array annual true-up month (1-12)
+  // DM1 (F-1, FR16): Permission-to-Operate / interconnection date. Nullable and absent from the
+  // current export (A6): the 20-year-from-PTO grandfather countdown renders ONLY where this is on
+  // file, and honest-unknown otherwise. Never estimated, never inferred from a program code.
+  interconnectionDate DateTime?
   saId        String? // the generating meter's SA ID (the array's own service)
   farmId      String
   createdAt   DateTime @default(now())

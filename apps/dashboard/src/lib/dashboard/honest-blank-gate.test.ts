@@ -44,7 +44,14 @@ import { en } from "@/copy/en";
 // --- Fixtures: a solar farm with NO true-up statement on file (the release-gate scenario) ----------
 
 function array(over: Partial<MeterArrayView> & { id: string }): MeterArrayView {
-  return { name: over.id, nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, ...over };
+  return {
+    name: over.id,
+    nameplateKw: 840,
+    nemType: "nem2_agg",
+    trueUpMonth: 9,
+    interconnectionDate: null,
+    ...over,
+  };
 }
 
 /** A per-cycle summary carrying usage (totalKwh) and a billed demand charge, but NO statement-settled

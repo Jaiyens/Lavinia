@@ -285,6 +285,103 @@ describe("persistExtraction NEM persistence (Story 3.4)", () => {
     expect(after.trueUpMonth).toBe(8); // preserved
     expect(after.trueUpDate?.toISOString()).toBe("2025-08-15T00:00:00.000Z"); // preserved
   });
+
+  // G-3 (FR28/FR37): the settle flip. A statement upload routes through this same persistence path,
+  // so the contract is proven here: an EXACT match flips the dollar from honest-blank (null) to a
+  // settled value; a statement that matches NO meter on the farm leaves every dollar honest-blank
+  // (null), never a partial or guessed figure.
+  describe("settle flip (G-3, FR28)", () => {
+    it("flips trueUpAmountCents from honest-blank (null) to settled on an exact SA match", async () => {
+      const saId = "4699777111";
+      const opts = { farmName: "Batth Farms", accountNumber: "4699664587-8", isDemo: false };
+      // First a reconciled bill with NO settlement: the credit is honest-blank.
+      await persistExtraction(
+        {
+          pages: 1,
+          accountNumber: "4699664587-8",
+          accountPrintedTotalCents: null,
+          bills: [{ ...reconciledBill(saId), saIdDescriptor: "P301", growerPumpId: "P301" }],
+          nem: [],
+          needsReview: [],
+          reconciledCount: 1,
+          escalatedCount: 0,
+        },
+        prisma,
+        opts,
+      );
+      const before = await prisma.pump.findFirstOrThrow({ where: { serviceId: saId } });
+      expect(before.trueUpAmountCents).toBeNull(); // honest-blank: no statement on file
+
+      // Now the true-up statement lands and matches the meter exactly: the dollar settles.
+      await persistExtraction(
+        {
+          pages: 1,
+          accountNumber: "4699664587-8",
+          accountPrintedTotalCents: null,
+          bills: [{ ...reconciledBill(saId), saIdDescriptor: "P301", growerPumpId: "P301" }],
+          nem: [
+            {
+              generatingSaId: saId,
+              arrayId: null,
+              arrayName: null,
+              trueUpMonth: 12,
+              trueUpDate: "2025-12-15",
+              trueUpAmountCents: -512300, // a credit, said in words as a credit by the surface
+              months: [{ start: "2025-11-10", close: "2025-12-09", netKwh: -800, amountCents: -512300 }],
+              benefitingMeterSaIds: [],
+              coverageState: "needs_review",
+            },
+          ],
+          needsReview: [],
+          reconciledCount: 1,
+          escalatedCount: 0,
+        },
+        prisma,
+        opts,
+      );
+      const after = await prisma.pump.findFirstOrThrow({
+        where: { serviceId: saId },
+        include: { nemPeriods: true },
+      });
+      expect(after.trueUpAmountCents).toBe(-512300); // settled - flipped from honest-blank
+      expect(after.nemPeriods).toHaveLength(1); // the printed month is on file
+    });
+
+    it("leaves the dollar honest-blank (null) when the statement matches no meter on the farm", async () => {
+      const saId = "4699777222";
+      const opts = { farmName: "Batth Farms", accountNumber: "4699664587-8", isDemo: false };
+      await persistExtraction(
+        {
+          pages: 1,
+          accountNumber: "4699664587-8",
+          accountPrintedTotalCents: null,
+          bills: [{ ...reconciledBill(saId), saIdDescriptor: "P302", growerPumpId: "P302" }],
+          nem: [
+            // A statement whose generating SA matches NO meter on this farm: it cannot settle a meter.
+            {
+              generatingSaId: "9999000011", // unmatchable
+              arrayId: null,
+              arrayName: null,
+              trueUpMonth: 12,
+              trueUpDate: "2025-12-15",
+              trueUpAmountCents: -999999,
+              months: [{ start: "2025-11-10", close: "2025-12-09", netKwh: -1, amountCents: -1 }],
+              benefitingMeterSaIds: [],
+              coverageState: "needs_review",
+            },
+          ],
+          needsReview: [],
+          reconciledCount: 1,
+          escalatedCount: 0,
+        },
+        prisma,
+        opts,
+      );
+      const pump = await prisma.pump.findFirstOrThrow({ where: { serviceId: saId } });
+      // The real meter's dollar stays honest-blank: no fabricated or mis-attached settlement.
+      expect(pump.trueUpAmountCents).toBeNull();
+    });
+  });
 });
 
 describe("parseNemDate", () => {

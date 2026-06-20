@@ -14,6 +14,10 @@ import {
   type NemEnergyPosition,
 } from "@/lib/energy/solar-nem";
 import { allocateArray } from "@/lib/energy/solar-allocation";
+import {
+  grandfatherPosition,
+  type GrandfatherPosition,
+} from "@/lib/energy/solar-grandfather";
 import type { RateCard } from "@/lib/energy/rates";
 import type { MeterView } from "./load";
 
@@ -53,6 +57,24 @@ function drawerAllocationShare(meter: MeterView, allMeters: MeterView[] | undefi
     .map((m) => ({ pumpId: m.id, meterName: m.name, cumulativeKwh: cumulativeKwhFor(m) }));
   const allocation = allocateArray(array.id, array.name, basis);
   return allocation.shares.find((s) => s.pumpId === meter.id)?.share ?? null;
+}
+
+/**
+ * F-1/F-3 (FR16/FR18): the grandfather position of the meter's single array, for the drawer row.
+ * Honest-unknown unless the meter sits under EXACTLY ONE array (otherwise we cannot say which array's
+ * vintage is the meter's), an `asOf` is supplied, and the array carries an interconnection date in the
+ * NEM2 cohort. Never a guessed vintage. With no `asOf` (the Energy drawer) it stays honest-unknown.
+ */
+function drawerGrandfather(meter: MeterView, asOf: string | undefined): GrandfatherPosition {
+  if (asOf === undefined) return { state: "unknown" };
+  if (meter.benefitingArrays.length !== 1) return { state: "unknown" };
+  const array = meter.benefitingArrays[0];
+  if (array === undefined) return { state: "unknown" };
+  return grandfatherPosition({
+    interconnectionDate: array.interconnectionDate,
+    nemType: array.nemType,
+    asOf,
+  });
 }
 
 export type DrawerTouRow = {
@@ -147,6 +169,11 @@ export type DrawerSolar = {
    *  not exactly one array, or the fleet not supplied). The credit DOLLAR beside it stays honest-blank
    *  until a statement settles it - never a fabricated zero, never a percent multiplied into a dollar. */
   allocationShare: number | null;
+  /** F-1/F-3 (FR16/FR18): the 20-year-from-PTO grandfather position of the meter's single array.
+   *  `unknown` when the interconnection date is not on file (the launch state), the meter is under
+   *  zero or several arrays, or the array is not in the NEM2 cohort - honest-unknown, never a guessed
+   *  vintage. The drawer row reads not-on-file there. */
+  grandfather: GrandfatherPosition;
   arrays: { id: string; name: string | null; nameplateKw: number }[];
   /** Energy position from the printed NEM months; null when none on file (Story 3.4). */
   position: NemEnergyPosition | null;
@@ -228,7 +255,11 @@ export function verificationFor(
  * the real usage-proportional share (C-2); when omitted (the Energy drawer), the share stays
  * honest-blank. Everything else is unchanged.
  */
-export function toDrawerDetail(meter: MeterView, allMeters?: MeterView[]): DrawerDetail {
+export function toDrawerDetail(
+  meter: MeterView,
+  allMeters?: MeterView[],
+  asOf?: string,
+): DrawerDetail {
   const isCovered = meter.coverageState === "reconciled";
 
   let latest: DrawerLatest | null = null;
@@ -320,6 +351,9 @@ export function toDrawerDetail(meter: MeterView, allMeters?: MeterView[]): Drawe
       // sits under exactly one array; honest-blank otherwise. The credit dollar stays honest-blank
       // regardless - never a fabricated zero, never a percent multiplied into a credit dollar.
       allocationShare: drawerAllocationShare(meter, allMeters),
+      // F-1/F-3 (FR16/FR18): honest-unknown at launch (no PTO date on file), a real countdown the
+      // moment an interconnection date lands for a meter under a single NEM2 array.
+      grandfather: drawerGrandfather(meter, asOf),
       arrays: meter.benefitingArrays.map((a) => ({
         id: a.id,
         name: a.name,

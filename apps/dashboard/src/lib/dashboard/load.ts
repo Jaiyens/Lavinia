@@ -58,6 +58,9 @@ export type MeterArrayView = {
   nameplateKw: number;
   nemType: string | null;
   trueUpMonth: number | null;
+  /** DM1 (F-1, FR16): the array's interconnection (Permission-to-Operate) date, ISO; null when not
+   *  on file (the launch state) - the grandfather countdown is honest-unknown there, never guessed. */
+  interconnectionDate: string | null;
 };
 
 export type MeterView = {
@@ -131,7 +134,14 @@ export async function loadMetersForFarm(
       ranch: { select: { name: true } },
       crop: { select: { name: true } },
       benefitingArrays: {
-        select: { id: true, name: true, nameplateKw: true, nemType: true, trueUpMonth: true },
+        select: {
+          id: true,
+          name: true,
+          nameplateKw: true,
+          nemType: true,
+          trueUpMonth: true,
+          interconnectionDate: true,
+        },
         orderBy: { name: "asc" },
       },
       billingPeriods: {
@@ -171,6 +181,9 @@ export async function loadMetersForFarm(
       nameplateKw: arr.nameplateKw,
       nemType: arr.nemType,
       trueUpMonth: arr.trueUpMonth,
+      interconnectionDate: arr.interconnectionDate
+        ? arr.interconnectionDate.toISOString()
+        : null,
     })),
     growerPumpId: pump.growerPumpId,
     nemPeriods: pump.nemPeriods.map((nem) => ({

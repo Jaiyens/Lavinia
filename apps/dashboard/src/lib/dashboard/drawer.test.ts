@@ -197,7 +197,14 @@ describe("toDrawerDetail", () => {
         trueUpMonth: 9,
         solarKw: 1092,
         benefitingArrays: [
-          { id: "arr1", name: "South Array", nameplateKw: 1092, nemType: "nem2", trueUpMonth: 9 },
+          {
+            id: "arr1",
+            name: "South Array",
+            nameplateKw: 1092,
+            nemType: "nem2",
+            trueUpMonth: 9,
+            interconnectionDate: null,
+          },
         ],
       }),
     );
@@ -207,6 +214,8 @@ describe("toDrawerDetail", () => {
       trueUpMonth: 9,
       solarKw: 1092,
       allocationShare: null,
+      // F-1/F-3: honest-unknown - no asOf supplied and no PTO date on file (the launch state).
+      grandfather: { state: "unknown" },
       arrays: [{ id: "arr1", name: "South Array", nameplateKw: 1092 }],
       position: null,
       nemChargesCents: null,
@@ -221,7 +230,7 @@ describe("toDrawerDetail", () => {
   });
 
   it("computes the real allocation share when the fleet is supplied and the meter is under one array (C-2)", () => {
-    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
+    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: null };
     const m1 = meter({
       id: "m1",
       coverageState: "reconciled",
@@ -244,8 +253,8 @@ describe("toDrawerDetail", () => {
   });
 
   it("stays honest-blank when the meter is under more than one array (never guesses which split)", () => {
-    const west = { id: "w", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
-    const east = { id: "e", name: "East", nameplateKw: 1092, nemType: "nem2_agg", trueUpMonth: 9 };
+    const west = { id: "w", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: null };
+    const east = { id: "e", name: "East", nameplateKw: 1092, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: null };
     const m1 = meter({
       id: "m1",
       coverageState: "reconciled",
@@ -257,7 +266,7 @@ describe("toDrawerDetail", () => {
   });
 
   it("a meter with no billed usage stays not-on-file (share null), never a fabricated zero (C-2/FR10)", () => {
-    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9 };
+    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: null };
     const m1 = meter({ id: "m1", coverageState: "no_bill", isSolar: true, benefitingArrays: [arr], periods: [] });
     expect(toDrawerDetail(m1, [m1]).solar.allocationShare).toBeNull();
   });
@@ -677,7 +686,14 @@ describe("toDrawerDetail solar legibility (A-9, FR2/FR3/FR4)", () => {
         nemType: "nem2",
         solarKw: 840,
         benefitingArrays: [
-          { id: "arr1", name: "West Array", nameplateKw: 840, nemType: "nem2", trueUpMonth: 4 },
+          {
+            id: "arr1",
+            name: "West Array",
+            nameplateKw: 840,
+            nemType: "nem2",
+            trueUpMonth: 4,
+            interconnectionDate: null,
+          },
         ],
       }),
     );
@@ -707,11 +723,45 @@ describe("toDrawerDetail solar legibility (A-9, FR2/FR3/FR4)", () => {
         solarKw: 1092,
         trueUpAmountCents: 500000,
         benefitingArrays: [
-          { id: "arr2", name: "South Array", nameplateKw: 1092, nemType: "nem2", trueUpMonth: 9 },
+          {
+            id: "arr2",
+            name: "South Array",
+            nameplateKw: 1092,
+            nemType: "nem2",
+            trueUpMonth: 9,
+            interconnectionDate: null,
+          },
         ],
       }),
     );
     expect(d.solar.allocationShare).toBeNull();
     expect(d.solar.program).toEqual({ kind: "granular", code: "NEM2AA" });
+  });
+
+  it("renders the grandfather position honest-unknown by default (no asOf, no PTO date - F-1/F-3)", () => {
+    const arr = { id: "arr1", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: null };
+    const m1 = meter({ id: "m1", coverageState: "reconciled", isSolar: true, benefitingArrays: [arr] });
+    expect(toDrawerDetail(m1, [m1]).solar.grandfather).toEqual({ state: "unknown" });
+  });
+
+  it("computes the grandfather countdown when asOf + a single NEM2 array's PTO date are on file (F-1/F-3)", () => {
+    const arr = {
+      id: "arr1",
+      name: "West",
+      nameplateKw: 840,
+      nemType: "nem2_agg",
+      trueUpMonth: 9,
+      interconnectionDate: "2018-03-01T00:00:00.000Z",
+    };
+    const m1 = meter({ id: "m1", coverageState: "reconciled", isSolar: true, benefitingArrays: [arr] });
+    const d = toDrawerDetail(m1, [m1], "2026-06-20T12:00:00.000Z");
+    expect(d.solar.grandfather).toEqual({ state: "known", expiryYear: 2038, yearsRemaining: 11 });
+  });
+
+  it("stays honest-unknown for a meter under more than one array (cannot say which vintage is its)", () => {
+    const west = { id: "w", name: "West", nameplateKw: 840, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: "2018-03-01T00:00:00.000Z" };
+    const east = { id: "e", name: "East", nameplateKw: 1092, nemType: "nem2_agg", trueUpMonth: 9, interconnectionDate: "2019-01-01T00:00:00.000Z" };
+    const m1 = meter({ id: "m1", coverageState: "reconciled", isSolar: true, benefitingArrays: [west, east] });
+    expect(toDrawerDetail(m1, [m1], "2026-06-20T12:00:00.000Z").solar.grandfather).toEqual({ state: "unknown" });
   });
 });

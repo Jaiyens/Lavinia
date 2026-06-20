@@ -1237,6 +1237,16 @@ export const en = {
       allocationNotOnFile: "No usage on file",
       credit: "Credit",
       creditNotOnFile: "Not on file",
+      // F-1/F-3 (FR16): the grandfather position of the meter's array. DATA-GATED on the interconnection
+      // (Permission-to-Operate) date (DM1), which the launch export does not carry, so this reads
+      // not-on-file at launch - honest-unknown, never a guessed vintage. The moment a date lands it
+      // reads the 20-year-from-PTO expiry and the whole years remaining.
+      grandfather: "Grandfathered until",
+      grandfatherValue: (expiryYear: number, yearsRemaining: number): string => {
+        const years = yearsRemaining === 1 ? "1 year" : `${yearsRemaining} years`;
+        return `${expiryYear}, about ${years} from now`;
+      },
+      grandfatherNotOnFile: "Not on file",
       // DR enrollment shown as plain information (Story 3.7, FR-18). The event
       // window here is 4 to 9 in the evening (the DR clock), never the 5 to 8
       // rate peak. No savings claim, ever.
@@ -1485,6 +1495,35 @@ export const en = {
       // ("Not on file yet"), never an empty cell it skips. Includes what the absent thing is.
       blankAria: (what: string): string => `${what}: not on file yet`,
       unknownAria: (what: string): string => `${what}: not on file`,
+    },
+    // The true-up statement upload on-ramp (G-3, FR37/FR28/FR14). The single way a net-metering dollar
+    // flips from honest-blank to a settled value: a grower uploads their true-up statement PDF and it
+    // routes through the SAME fail-closed extract pipeline the bill upload uses (the PDF never touches
+    // the repo, client, or anything the agent can read, NFR10). On an exact match the dollar settles;
+    // an unmatched or unreadable statement leaves every dollar honest-blank, never a partial or guessed
+    // figure. Role-gated to owner/manager (a viewer never sees the affordance). Plain operator English,
+    // no exclamation marks, no em dashes.
+    statementUpload: {
+      // The header-level affordance on the Solar tab.
+      title: "Settle your true-up",
+      body: "Upload your PG&E true-up statement and Terra fills in the credit the moment it reads it.",
+      // The accepted formats hint.
+      hint: "A PDF of your annual true-up statement.",
+      // The one button (the file picker; the form self-submits on choose, like the onboarding upload).
+      cta: "Upload statement",
+      uploading: "Reading your statement",
+      // The chosen-file label while the server reads it.
+      chosen: (name: string): string => `Reading ${name}`,
+      // The settled confirmation after an exact match populates the dollar.
+      settled: "Statement read. Your true-up credit is now on file.",
+      // The needs-review feedback when the statement could not be matched or read cleanly: nothing is
+      // guessed, the dollar stays honest-blank, and the grower is told plainly to try a clearer file.
+      needsReview:
+        "We could not match that statement to a meter yet, so nothing changed. Try a clearer PDF of the full statement.",
+      // The error feedback for a missing/unreadable file (before extraction even runs).
+      error: "Choose a PDF of your true-up statement first.",
+      // The role-gate / no-farm fallback (a viewer or an unauthenticated caller).
+      denied: "You do not have permission to upload a statement to this farm.",
     },
     // The Solar tab shell (A-1). Eyebrow over the farm name on /solar, and the
     // empty-but-structured placeholder shown before the lenses arrive (A-2 onward).
@@ -1820,6 +1859,54 @@ export const en = {
       // The honest-blank dollar acknowledgement: the net credit obscures the rate, so no figure here.
       note: "Your solar credit hides what the underlying rate is doing, so we cannot put a dollar on this yet. The schedule is still worth a look.",
       action: (): string => "Check this schedule",
+    },
+    // The F4 grandfather watch (F-3, FR16/FR17): a grandfathered NEM2 array nears its 20-year-from-PTO
+    // expiry, and expanding its capacity beyond the tariff threshold would forfeit that grandfathered
+    // value early. DATA-GATED on the interconnection date (DM1): this only ever speaks where a real PTO
+    // date is on file - the launch fleet has none, so it stays silent. A protect-what-you-have signal
+    // with NO dollar (impactNote only). Plain operator English, no exclamation marks, no em dashes.
+    grandfather: {
+      // Names the array, the expiry year, and the whole years remaining. Frames protection, not purchase.
+      situation: (array: string, expiryYear: number, yearsRemaining: number): string => {
+        const years = yearsRemaining === 1 ? "1 year" : `${yearsRemaining} years`;
+        return `The ${array} array keeps its grandfathered net-metering terms until ${expiryYear}, about ${years} from now. Expanding it beyond the program limit would give those terms up early, so plan any changes around that.`;
+      },
+      // No dollar: the value of the grandfathered terms is real but not a single figure we can quote.
+      note: "We cannot put a dollar on the grandfathered terms, but they are worth protecting. Keep any expansion within the program limit.",
+      action: (): string => "Protect the grandfathered terms",
+      // The unnamed-array fallback when the populator wrote no array name.
+      unnamedArray: "unnamed",
+    },
+    // The F5 aging-array flag (F-3, FR19/FR20): an array is producing meaningfully below its
+    // age-adjusted expectation, sustained over a real evidence window. DATA-GATED on a per-array
+    // generation series (DM2), which the launch export does not carry - so this stays silent today.
+    // Names its evidence window, never an annual claim from a sub-window. NO dollar (impactNote only):
+    // the dollars-lost figure is per-site variable. Plain operator English, no exclamation marks.
+    aging: {
+      // Names the array, the shortfall percent, and the evidence window (the number of months of data).
+      situation: (array: string, shortfallPct: number, monthsObserved: number): string => {
+        const months = monthsObserved === 1 ? "1 month" : `${monthsObserved} months`;
+        return `Across ${months} of generation data, the ${array} array is producing about ${shortfallPct}% below what its age suggests it should. That is worth investigating before the next season.`;
+      },
+      // No dollar: the value lost depends on the site, so we name the shortfall, not a figure.
+      note: "We cannot put a dollar on the shortfall, since that depends on the site. The drop itself is worth a closer look.",
+      action: (): string => "Investigate this array",
+      // The unnamed-array fallback when the populator wrote no array name.
+      unnamedArray: "unnamed",
+    },
+    // The F7 demand-response routing finding (H-4, FR30), surfaced and routed by Almond. A solar meter
+    // on a demand-charge schedule that is not already enrolled is a candidate: demand-response programs
+    // pay growers for the evening curtailment solar cannot cover. DISPLAY-ONLY in v1 (nothing is
+    // actually enrolled). The dollar is HONEST-BLANK: the codebase carries no published DR program-rate
+    // table, so we name the opportunity, never a figure (NFR12). Plain operator English, no exclamation
+    // marks, no em dashes.
+    demandResponse: {
+      // Names the meter; says DR pays for the evening curtailment solar misses. No dollar, no pitch.
+      situation: (meter: string): string =>
+        `${meter} carries a demand charge that solar does not cover, because the peak is set in the evening when the panels are nearly off. A demand-response program would pay you for curtailing then, which you may already be doing.`,
+      // The honest-blank dollar: no published program rate is on file, so no figure is quoted.
+      note: "We cannot put a dollar on this yet, since the program rate is not on file. It is worth looking into with PG&E.",
+      action: (): string => "Look into demand response",
     },
     // The Calendar lens (D-2, FR12/FR13/FR15, UX-DR5): the true-up heartbeat. A twelve-month rolling
     // grid placing each meter's and array's true-up month, with the next-upcoming pulled out above the

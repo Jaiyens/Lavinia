@@ -14,6 +14,8 @@ import { canAccessFarm, requireRole } from "@/lib/auth/access";
 import { ACTIVE_FARM_COOKIE, activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm } from "@/lib/onboarding/farm";
 import { acceptanceResult } from "@/lib/recommendations/result";
+import { importBillUpload } from "@/lib/onboarding/sources";
+import { runSolarInsight } from "@/lib/recommendations/run-solar-insight";
 import { ALMOND_NUDGE_COOKIE } from "@/lib/almond/nudge";
 import { en } from "@/copy/en";
 
@@ -140,4 +142,75 @@ export async function resolveFinding(
   // page - responding from /energy must refresh the rail/sheet/drawer too.
   revalidatePath("/", "layout");
   return { ok: true, data: null };
+}
+
+/** The state the true-up statement upload form reports back (G-3). `error` is shown inline (a bad
+ *  file or a no-match); `settled` is the calm confirmation that a dollar flipped from honest-blank. */
+export type StatementUploadState = { error?: string; settled?: boolean };
+
+/**
+ * Upload a true-up statement PDF and settle the dollar (G-3, FR37/FR28). Routes the PDF through the
+ * EXISTING fail-closed extract pipeline (`importBillUpload` -> `runExtraction`/`persistExtraction`,
+ * which persists `NemPeriod.amountCents` + `Pump.trueUpAmountCents`), so the PDF never touches the
+ * repo, client, or anything the agent can read (NFR10) and the settle logic is inherited, not
+ * re-implemented. Role-gated to owner/manager (`requireRole`). On an EXACT match the dollar surfaces
+ * flip from honest-blank to settled (we re-run `runSolarInsight` so the F2 demand surface re-derives
+ * over the now-settled facts); an unmatched or unreadable statement leaves every dollar honest-blank
+ * and returns a needs-review note, never a partial or guessed figure. We detect a real settle by
+ * comparing the count of settled NEM facts before and after - if nothing settled, we report
+ * needs-review rather than claim a flip.
+ */
+export async function uploadTrueUpStatementAction(
+  _prev: StatementUploadState,
+  formData: FormData,
+): Promise<StatementUploadState> {
+  // A Server Action is independently reachable, so it re-checks the session and the role itself.
+  const session = await auth();
+  if (!session?.user) return { error: en.solar.statementUpload.denied };
+  const userId = session.user.id;
+  const activeId = await activeFarmId(userId);
+  const resolved = await dashboardFarm(prisma, userId, activeId);
+  if (resolved === null) return { error: en.solar.statementUpload.denied };
+  const farmId = resolved.farm.id;
+  // Uploading a statement is a WRITE that settles a dollar: viewers are read-only (owner/manager only).
+  if (!(await requireRole(prisma, farmId, userId, "manager"))) {
+    return { error: en.solar.statementUpload.denied };
+  }
+
+  // Require an actual file (a no-file submit must not re-run the import on nothing).
+  const file = formData
+    .getAll("statement")
+    .find((f): f is File => f instanceof File && f.size > 0);
+  if (!file) return { error: en.solar.statementUpload.error };
+
+  // The count of settled true-up facts BEFORE the upload, to detect whether anything actually
+  // settled (an exact match) vs the extract finding nothing matchable (needs-review).
+  const settledBefore = await prisma.pump.count({
+    where: { farmId, trueUpAmountCents: { not: null } },
+  });
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  try {
+    // The same fail-closed extract pipeline the bill upload uses. It persists NemPeriod +
+    // trueUpAmountCents only where it matches a meter exactly; an unmatched/malformed extract
+    // leaves the figures untouched (honest-blank stays honest-blank).
+    await importBillUpload(prisma, farmId, bytes);
+  } catch {
+    return { error: en.solar.statementUpload.needsReview };
+  }
+
+  const settledAfter = await prisma.pump.count({
+    where: { farmId, trueUpAmountCents: { not: null } },
+  });
+
+  if (settledAfter <= settledBefore) {
+    // Nothing new settled: the statement did not match a meter exactly. Honest-blank stays, no guess.
+    return { error: en.solar.statementUpload.needsReview };
+  }
+
+  // A real settle: re-derive the solar findings so the F2 demand surface reflects the settled facts,
+  // then revalidate so every honest-blank cell that just flipped re-renders as settled.
+  await runSolarInsight(prisma, farmId);
+  revalidatePath("/", "layout");
+  return { settled: true };
 }

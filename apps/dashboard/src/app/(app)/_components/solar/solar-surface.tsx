@@ -26,12 +26,16 @@ import { SolarLensRegion } from "./solar-lens-region";
 export function SolarSurface({
   meters,
   nowMonth,
+  nowIso,
   nameplateVerified = false,
   unlinkedNemaCodes,
 }: {
   meters: MeterView[];
   /** The page-edge "now" month (1-12), injected so the rebuilt next-true-up KPI stays clock-free. */
   nowMonth: number;
+  /** F-1 (FR16): the page-edge "now" instant (ISO), injected so the rebuilt grandfather position
+   *  stays clock-free (NFR1). Omitted leaves every array's grandfather position honest-unknown. */
+  nowIso?: string;
   /**
    * DM4 (C-1, FR6): `Farm.solarLayoutVerifiedAt != null`, read at the server page edge and injected
    * so the pure builder stays IO-free. Omitted/false => the cautious nameplate render (fail-closed).
@@ -51,8 +55,8 @@ export function SolarSurface({
     [meters, entity, ranch, rate, account, program],
   );
   const dataset = useMemo(
-    () => buildSolarDataset(filtered, nowMonth, { nameplateVerified, unlinkedNemaCodes }),
-    [filtered, nowMonth, nameplateVerified, unlinkedNemaCodes],
+    () => buildSolarDataset(filtered, nowMonth, { nameplateVerified, unlinkedNemaCodes, asOf: nowIso }),
+    [filtered, nowMonth, nameplateVerified, unlinkedNemaCodes, nowIso],
   );
 
   return (

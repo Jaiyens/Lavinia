@@ -27,6 +27,10 @@ import {
   type TrueUpCalendar,
   type TrueUpEntryInput,
 } from "@/lib/energy/solar-calendar";
+import {
+  grandfatherPosition,
+  type GrandfatherPosition,
+} from "@/lib/energy/solar-grandfather";
 import type { MeterView } from "./load";
 
 /** One solar-flagged meter, projected to the legibility fields the Solar tab renders (FR1, FR3). */
@@ -73,6 +77,14 @@ export type SolarArrayGroup = {
   nemType: string | null;
   /** The array's annual true-up month (1-12); null = not on file. */
   trueUpMonth: number | null;
+  /** F-1 (FR16/FR18): the 20-year-from-PTO grandfather position. `unknown` when the interconnection
+   *  date is not on file (the launch state) - honest-unknown, never a guessed vintage; only the NEM2
+   *  cohort produces a countdown. Computed from the injected `asOf`, no clock. */
+  grandfather: GrandfatherPosition;
+  /** DM1 (F-1): the array's interconnection (PTO) date, ISO; null when not on file (the launch state).
+   *  Fed to the F-2 degradation baseline so it can age the array; the grandfather position above is
+   *  derived from it. */
+  interconnectionDate: string | null;
   /** Every meter this array's credits offset, in stable name order. */
   meters: ArrayGroupMeterRow[];
 };
@@ -161,6 +173,10 @@ export type SolarDatasetContext = {
   nameplateVerified?: boolean;
   /** `importInventory().unlinkedNemaCodes` - referenced codes with no generating meter. */
   unlinkedNemaCodes?: string[];
+  /** F-1 (FR16): the injected "now" instant (ISO) the grandfather countdown is measured against, so
+   *  the dataset stays pure (no clock). Omitted => the grandfather position is honest-unknown for
+   *  every array (the same fail-closed posture as a missing interconnection date). */
+  asOf?: string;
 };
 
 /** Distinct true-up months in [1,12]; ignores anything out of range (honest, never guessed). */
@@ -281,6 +297,17 @@ export function buildSolarDataset(
             nameplateKw: arr.nameplateKw,
             nemType: arr.nemType,
             trueUpMonth: arr.trueUpMonth,
+            // F-1 (FR16): honest-unknown when no asOf or no interconnection date is on file (the
+            // launch state); only the NEM2 cohort with a date on file gets a real countdown.
+            grandfather:
+              context.asOf !== undefined
+                ? grandfatherPosition({
+                    interconnectionDate: arr.interconnectionDate,
+                    nemType: arr.nemType,
+                    asOf: context.asOf,
+                  })
+                : { state: "unknown" },
+            interconnectionDate: arr.interconnectionDate,
             meters: [],
           },
           basis: [],
