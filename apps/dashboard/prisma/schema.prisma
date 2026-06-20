@@ -45,6 +45,7 @@ model Farm {
   connections     Connection[]
   recommendations Recommendation[]
   generatedReports GeneratedReport[]
+  almondConversations AlmondConversation[]
 
   @@index([userId])
 }
@@ -517,6 +518,43 @@ model GeneratedReport {
   @@index([createdById])
 }
 
+// --- Almond chat history (per-user, per-farm conversations) --------------------
+// Saved Almond conversations, scoped to the SIGNED-IN user (a verified email IS the person):
+// each grower sees only their OWN threads, never a farm-mate's, even on a shared farm. The
+// thread is ALSO keyed to the farm it is about (Almond is farm-scoped), so switching farms
+// shows that farm's history and the tenant boundary holds. Messages are stored as a sanitized,
+// text-only JSON array; the live transient parts (navigation chips, download-card bytes) are
+// never persisted, matching the chat stream's transient-by-design contract. A new thread is
+// created LAZILY on its first completed turn, so an opened-then-abandoned composer never leaves
+// an empty row behind.
+model AlmondConversation {
+  id String @id @default(cuid())
+
+  // The owner of this thread (the per-email isolation gate). Cascade: deleting the user removes
+  // their private history with them.
+  userId String
+
+  // The farm the conversation is about. Cascade with the farm so a removed farm takes its
+  // threads with it.
+  farmId String
+
+  // Human title, derived from the first user turn (truncated), or a default for an empty thread.
+  title String
+
+  // The sanitized conversation: an array of { id, role, parts: [{ type: "text", text }] }. Text
+  // only - transient parts (navigate chips, report bytes) are dropped before persisting, by design.
+  messages Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  // The history list: a user's own threads for one farm, newest-first.
+  @@index([userId, farmId, updatedAt])
+}
+
 // --- Auth.js v5 (@auth/prisma-adapter) ----------------------------------------
 // The four tables the Prisma adapter needs for sign-in (Story 5.1). One twist: the
 // adapter calls a delegate named `account` for OAuth links, but Terra ALREADY has a
@@ -542,6 +580,7 @@ model User {
   sessions           Session[]
   farms              Farm[]
   generatedReports   GeneratedReport[]
+  almondConversations AlmondConversation[]
   farmMemberships    FarmMembership[] @relation("FarmMemberships")
   invitedMemberships FarmMembership[] @relation("SentFarmInvites")
   sentInvites        FarmInvite[]     @relation("InviteInviter")

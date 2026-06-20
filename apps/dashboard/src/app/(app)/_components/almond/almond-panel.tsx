@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import { en } from "@/copy/en";
@@ -9,6 +9,7 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMessages } from "./almond-messages";
 import { AlmondComposer } from "./almond-composer";
+import { AlmondHistoryButton, AlmondHistorySheet, AlmondNewChatButton } from "./almond-history";
 import { useAlmondChat } from "./almond-launcher-provider";
 
 const t = en.shell.almond;
@@ -34,12 +35,18 @@ export function AlmondPanel() {
   } = useAlmondChat();
   const reduce = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-  // Escape closes; move focus into the panel on open.
+  // Escape closes the history overlay first, then the whole panel; focus into the panel on open.
   useEffect(() => {
     panelRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeAlmond();
+      if (e.key !== "Escape") return;
+      setShowHistory((open) => {
+        if (open) return false; // first Escape just closes the overlay
+        closeAlmond();
+        return false;
+      });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -72,20 +79,28 @@ export function AlmondPanel() {
             height={16}
             className="pointer-events-none absolute inset-0 text-primary/15 [mask-image:linear-gradient(to_right,white,transparent)]"
           />
-          <AlmondAvatar size={52} animated className="relative" />
+          <AlmondAvatar size={52} animated trackCursor className="relative" />
           <div className="relative min-w-0">
             <p className="type-body-md font-semibold text-on-surface">{t.name}</p>
             <p className="type-label-caps text-on-surface-variant">{t.tagline}</p>
           </div>
-          <button
-            type="button"
-            onClick={closeAlmond}
-            aria-label={t.closeLabel}
-            className="relative ml-auto grid h-9 w-9 place-items-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-tint"
-          >
-            <X size={18} aria-hidden />
-          </button>
+          {/* New chat + saved history (per-user). Render nothing on the Tour (history disabled). */}
+          <div className="relative ml-auto flex items-center gap-0.5">
+            <AlmondNewChatButton />
+            <AlmondHistoryButton onClick={() => setShowHistory(true)} />
+            <button
+              type="button"
+              onClick={closeAlmond}
+              aria-label={t.closeLabel}
+              className="grid h-9 w-9 place-items-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-tint"
+            >
+              <X size={18} aria-hidden />
+            </button>
+          </div>
         </header>
+
+        {/* Saved-chats overlay, covering the panel body until a thread is picked or it is closed. */}
+        <AlmondHistorySheet open={showHistory} onClose={() => setShowHistory(false)} />
 
         <AlmondMessages
           messages={messages}

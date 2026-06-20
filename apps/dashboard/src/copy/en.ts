@@ -669,6 +669,18 @@ export const en = {
       busy: "You have made several files in a row. Give it a minute and ask again.",
       // Accessible label for the live conversation region.
       conversationLabel: "Conversation with Almond",
+      // Saved history (per-user, per-farm): a new-chat affordance and the list of past threads.
+      // Each grower sees only their OWN chats. Plain operator English, no exclamation marks.
+      newChat: "New chat",
+      newChatAria: "Start a new chat",
+      history: "History",
+      historyAria: "Your saved chats",
+      chatsHeading: "Chats",
+      historyEmpty: "No saved chats yet",
+      historyLoading: "Loading your chats",
+      deleteChat: "Delete",
+      deleteChatAria: (title: string): string => `Delete chat: ${title}`,
+      closeHistory: "Close history",
       // Starter prompts shown on the empty chat, drawn from the farm so the grower is never staring
       // at a blank box. Two kinds (Story 10.1): READ questions (always safe) and ACTION/EXPORT prompts
       // that advertise Almond's new powers (Epics 7-9). The finding-pointing prompts
