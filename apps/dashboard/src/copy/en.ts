@@ -1567,15 +1567,15 @@ export const en = {
       trueUpNone: "No true-up month on file",
       // The unnamed-array fallback (the populator wrote no name).
       unnamed: "Array",
-      // The "N meters" sub-line under the array header.
-      meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
       // C-3 (FR11): the array's program type said in plain operator English (never the raw token).
-      // "nem" is single-meter solar (the array credits its own meter); "nema" is aggregation (one
-      // array's credits spread across N meters, so you control the split); "vnem" is virtual NEM
-      // (PG&E controls the allocation). VNEM is forward-compatible with no launch instance.
+      // "nem" is single-meter solar (the array credits its own meter); "nema" is aggregation where
+      // PG&E controls the split (PG&E's usage-weighted formula spreads one array's credits across N
+      // meters and the grower cedes control of where they go); "vnem" is aggregation where you set the
+      // split (the system owner picks the allocation percentages). VNEM is forward-compatible with no
+      // launch instance. The label never shows the raw NEMA / VNEM / "Virtual NEM" term (ux-spec).
       programType: (kind: "nem" | "nema" | "vnem", meterCount: number): string => {
-        if (kind === "vnem") return "Virtual NEM (PG&E sets the split)";
-        if (kind === "nema") return `Aggregation across ${meterCount} meters`;
+        if (kind === "vnem") return `Aggregation across ${meterCount} meters (you set the split)`;
+        if (kind === "nema") return `Aggregation across ${meterCount} meters (PG&E sets the split)`;
         return "Single-meter solar";
       },
       // The benefiting-meter rows section heading inside each card.
