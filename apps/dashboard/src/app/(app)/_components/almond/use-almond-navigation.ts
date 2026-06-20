@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { SURFACE, lensQueryOptions, type Lens } from "@/lib/dashboard/surface";
+import type { SolarLens } from "@/lib/solar/lens-solar";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
 
 /**
@@ -30,9 +31,13 @@ import type { NavigateAction } from "@/lib/almond/skills/navigate";
  * worked for filtering.
  */
 
-/** The five canonical URL-state setters, each typed to the value its key holds. */
+/** The canonical URL-state setters, each typed to the value its key holds. `setLens` admits BOTH an
+ *  energy `Lens` and a `SolarLens` (H-3): the `lens` URL key is shared across surfaces, and a solar
+ *  navigate can now emit a `SolarLens` the resolver validated against `lens-solar.ts`. The other
+ *  setters are raw nullable strings, so `program`/`account` reuse `setEntity`-style setters at the
+ *  call site (added when the Solar tab wires its own filter setters). */
 export type NavigationSetters = {
-  setLens: (value: Lens) => void;
+  setLens: (value: Lens | SolarLens) => void;
   setEntity: (value: string | null) => void;
   setRanch: (value: string | null) => void;
   setRate: (value: string | null) => void;
