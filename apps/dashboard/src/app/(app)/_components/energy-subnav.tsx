@@ -14,6 +14,10 @@ import { en } from "@/copy/en";
 // Rendered as a LOUD segmented pill control (icons + readable labels + a filled green active
 // pill), not the quiet caps-underline of the lens toggle: this is cross-route navigation a grower
 // has to be able to find, so it earns more visual weight than an in-view lens switch.
+//
+// Desktop already shows Parcel as a nested item in the left rail (AgentRail), so this strip is
+// mobile-only (lg:hidden): on a phone the rail collapses to the bottom tab bar, which has no room
+// for the sub-item, so this is how a phone user switches Energy <-> Parcel.
 export function EnergySubnav({ basePath = "/energy" }: { basePath?: string }) {
   const pathname = usePathname();
   const parcelHref = `${basePath}/parcel`;
@@ -26,7 +30,7 @@ export function EnergySubnav({ basePath = "/energy" }: { basePath?: string }) {
     <div
       role="tablist"
       aria-label={en.parcel.subnavLabel}
-      className="flex items-center gap-2 border-b border-outline-variant px-5 py-3 lg:px-12"
+      className="flex items-center gap-2 border-b border-outline-variant px-5 py-3 lg:hidden"
     >
       {tabs.map(({ href, label, Icon, active }) => (
         <Link

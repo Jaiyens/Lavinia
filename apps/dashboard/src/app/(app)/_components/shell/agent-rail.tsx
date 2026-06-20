@@ -1,8 +1,9 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, MapPin, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Wordmark } from "@/components/logo";
@@ -42,25 +43,49 @@ export function AgentRail({ demo = false }: { demo?: boolean } = {}) {
               </span>
             );
           }
-          const active = isAgentActive(agent, pathname, demo);
           const href = agentHref(agent, demo) ?? agent.href;
+          // Energy has one sub-route today: the Parcel lookup, shown as a nested rail item so it
+          // is findable from anywhere (not only once you are inside the Energy page). When you are
+          // on Parcel, the sub-item owns the active state so the parent Energy pill does not also
+          // light up.
+          const parcelHref = `${href}/parcel`;
+          const onParcel =
+            agent.key === "energy" &&
+            (pathname === parcelHref || pathname.startsWith(`${parcelHref}/`));
+          const active = isAgentActive(agent, pathname, demo) && !onParcel;
           // Active item = a soft white pill with a hairline + gentle shadow and the brand green
           // on the icon and label (the reference's selected-nav treatment, in Terra's palette).
           return (
-            <Link
-              key={agent.key}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex h-11 items-center gap-3 rounded-xl px-3 type-body-md transition-colors",
-                active
-                  ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
-                  : "text-on-surface hover:bg-surface-container-low",
+            <Fragment key={agent.key}>
+              <Link
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex h-11 items-center gap-3 rounded-xl px-3 type-body-md transition-colors",
+                  active
+                    ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
+                    : "text-on-surface hover:bg-surface-container-low",
+                )}
+              >
+                <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
+                <span>{agent.label}</span>
+              </Link>
+              {agent.key === "energy" && (
+                <Link
+                  href={parcelHref}
+                  aria-current={onParcel ? "page" : undefined}
+                  className={cn(
+                    "flex h-10 items-center gap-2.5 rounded-xl pl-9 pr-3 type-body-md transition-colors",
+                    onParcel
+                      ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
+                      : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+                  )}
+                >
+                  <MapPin size={16} aria-hidden className={onParcel ? "text-primary" : undefined} />
+                  <span>{en.parcel.navTab}</span>
+                </Link>
               )}
-            >
-              <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
-              <span>{agent.label}</span>
-            </Link>
+            </Fragment>
           );
         })}
       </nav>
