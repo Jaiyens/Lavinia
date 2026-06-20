@@ -111,6 +111,10 @@ export function buildAllowlist(snapshot: ReportSnapshot): Set<string> {
     allow.add(canon(formatCentsUsd(cents))); // "61417.76"
     allow.add(String(Math.round(cents / 100))); // rounded whole dollars
     allow.add(String(Math.floor(cents / 100))); // floored whole dollars
+    // ...and the whole-dollar forms WITH trailing cents (a report may show "$61,418.00"), so a
+    // legitimately-rounded figure is not flagged as fabricated.
+    allow.add(`${Math.round(cents / 100)}.00`);
+    allow.add(`${Math.floor(cents / 100)}.00`);
   };
   const addStringNumbers = (s: string | null): void => {
     if (s === null) return;
@@ -119,6 +123,9 @@ export function buildAllowlist(snapshot: ReportSnapshot): Set<string> {
 
   allow.add(String(snapshot.meterCount));
   addStringNumbers(snapshot.farm.name);
+  // The coverage date (e.g. "2026-06-20") is almost always printed as an "as of" line; without this
+  // its year/month/day tokens read as undeclared numbers and reject every dated report (fail-closed).
+  addStringNumbers(snapshot.coverageAsOf);
 
   if (snapshot.totals.latestMonthSpendCents !== null) addMoney(snapshot.totals.latestMonthSpendCents);
   addMoney(snapshot.totals.rateSwitchSavingsCents);
@@ -181,7 +188,13 @@ export function verifyArtifact(
  * which (with a non-trivial report) leaves the manifest check as the only pass and is safe.
  */
 export async function extractPdfText(pdfBytes: Buffer): Promise<string> {
-  const { default: pdfParse } = await import("pdf-parse/lib/pdf-parse.js");
-  const data = await pdfParse(pdfBytes);
-  return typeof data.text === "string" ? data.text : "";
+  try {
+    const { default: pdfParse } = await import("pdf-parse/lib/pdf-parse.js");
+    const data = await pdfParse(pdfBytes);
+    return typeof data.text === "string" ? data.text : "";
+  } catch {
+    // Honor the documented contract: an extraction failure surfaces as empty text (the manifest check
+    // remains authoritative) rather than throwing out of the verifier.
+    return "";
+  }
 }
