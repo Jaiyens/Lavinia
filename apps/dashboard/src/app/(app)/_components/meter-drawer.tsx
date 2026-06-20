@@ -386,7 +386,19 @@ export function MeterDrawer({
             <>
               <SectionHeader>{t.solarHeader}</SectionHeader>
               <dl>
-                <FieldRow label={t.nemProgram} value={d.solar.nemType} />
+                {/* The program said in plain words (A-9, FR2/FR5): the generic NEM2 program for a
+                    generic token, the exact code for a recognized granular one, not-on-file for an
+                    absent/unrecognized token - never the raw token, never a guessed granular code. */}
+                <FieldRow
+                  label={t.nemProgram}
+                  value={
+                    d.solar.program.kind === "granular"
+                      ? d.solar.program.code
+                      : d.solar.program.kind === "generic"
+                        ? t.programGeneric
+                        : null
+                  }
+                />
                 <FieldRow
                   label={t.trueUp}
                   value={
@@ -414,9 +426,16 @@ export function MeterDrawer({
                       : null
                   }
                 />
-                {/* NEM allocation: a labeled honest absence until Epic 1 persists allocation
-                    rows; never a fabricated split (AC2). */}
-                <FieldRow label={t.allocation} value={null} />
+                {/* NEM allocation + credit: HONEST-BLANK (A-9, FR10). The real usage-proportional
+                    share arrives in C-2 and the credit settles only with a true-up statement (Epic
+                    G); until then both read their not-on-file state - never a fabricated split, never
+                    a percentage multiplied into a credit dollar. d.solar.allocationShare is always
+                    null at A-9, so the explicit honest-blank copy renders, not a guessed value. */}
+                <FieldRow
+                  label={t.allocation}
+                  value={d.solar.allocationShare === null ? t.allocationNotOnFile : null}
+                />
+                <FieldRow label={t.credit} value={t.creditNotOnFile} />
                 {/* Story 3.4: the printed NEM facts. Position/charges come from the persisted
                     statement months; the demand line renders only when reconciled billing
                     shows a demand charge (solar never reduces it). */}

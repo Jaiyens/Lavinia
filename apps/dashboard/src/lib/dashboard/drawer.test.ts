@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CoverageState } from "@/lib/recommendations/types";
 import { priceCycleCents, type RateCard, type RatePlan } from "@/lib/energy/rates";
 import type { MeterView, MeterPeriodView, MeterLineItemView } from "./load";
-import { toDrawerDetail, verificationFor } from "./drawer";
+import { resolveDrawerProgram, toDrawerDetail, verificationFor } from "./drawer";
 
 function li(over: Partial<MeterLineItemView> & { kind: MeterLineItemView["kind"] }): MeterLineItemView {
   return { label: null, amountCents: 0, quantity: null, unit: null, rate: null, ...over };
@@ -203,8 +203,10 @@ describe("toDrawerDetail", () => {
     );
     expect(d.solar).toEqual({
       nemType: "nem2",
+      program: { kind: "generic", raw: "nem2" },
       trueUpMonth: 9,
       solarKw: 1092,
+      allocationShare: null,
       arrays: [{ id: "arr1", name: "South Array", nameplateKw: 1092 }],
       position: null,
       nemChargesCents: null,
@@ -497,5 +499,100 @@ describe("verificationFor", () => {
       VERIFY_CARD,
     );
     expect(v?.verified).toBe(true);
+  });
+
+  it("stays null for a solar meter regardless of layout (the drawer solar section never shows a verify badge, A-9)", () => {
+    // A-9 acceptance: verificationFor correctly stays null for solar meters, so the drawer's
+    // d.showSolar block carries the legibility (program/nameplate/array) but no bill-verify badge.
+    expect(
+      verificationFor(
+        meter({ id: "s1", coverageState: "reconciled", isSolar: true, periods: [billPeriod()] }),
+        VERIFY_CARD,
+      ),
+    ).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A-9: the drawer solar section extension (program code, nameplate, array;
+// allocation + credit honest-blank). FR4, FR3/FR2, partial FR10.
+// ---------------------------------------------------------------------------
+
+describe("resolveDrawerProgram (A-9, FR2/FR5)", () => {
+  it("resolves each recognized granular six-code to that exact code, case-insensitively", () => {
+    for (const code of ["NEM2AA", "NEM2AG", "NEM2M", "NEMEXPM", "NEMEXP", "NEMS"]) {
+      expect(resolveDrawerProgram(code)).toEqual({ kind: "granular", code });
+      expect(resolveDrawerProgram(code.toLowerCase())).toEqual({ kind: "granular", code });
+    }
+  });
+
+  it("resolves the generic nem2-family token to generic, never a guessed granular code", () => {
+    expect(resolveDrawerProgram("nem2")).toEqual({ kind: "generic", raw: "nem2" });
+    expect(resolveDrawerProgram("NEM2")).toEqual({ kind: "generic", raw: "NEM2" });
+    expect(resolveDrawerProgram("nem2_agg")).toEqual({ kind: "generic", raw: "nem2_agg" });
+  });
+
+  it("resolves a null, blank, or unrecognized token to unknown (not-on-file, never inferred)", () => {
+    expect(resolveDrawerProgram(null)).toEqual({ kind: "unknown" });
+    expect(resolveDrawerProgram("")).toEqual({ kind: "unknown" });
+    expect(resolveDrawerProgram("   ")).toEqual({ kind: "unknown" });
+    expect(resolveDrawerProgram("nem3")).toEqual({ kind: "unknown" });
+    expect(resolveDrawerProgram("something-else")).toEqual({ kind: "unknown" });
+  });
+
+  it("never infers one meter's code from another (each token resolves only from itself)", () => {
+    // Two adjacent tokens resolve independently: a granular meter beside an absent one does not
+    // lend its code, and vice-versa. The function takes only its own raw value (no cross-meter read).
+    expect(resolveDrawerProgram("NEM2AA")).toEqual({ kind: "granular", code: "NEM2AA" });
+    expect(resolveDrawerProgram(null)).toEqual({ kind: "unknown" });
+  });
+});
+
+describe("toDrawerDetail solar legibility (A-9, FR2/FR3/FR4)", () => {
+  it("feeds the program code, nameplate, and array membership the list shows", () => {
+    const d = toDrawerDetail(
+      meter({
+        id: "m1",
+        coverageState: "no_bill",
+        isSolar: true,
+        nemType: "nem2",
+        solarKw: 840,
+        benefitingArrays: [
+          { id: "arr1", name: "West Array", nameplateKw: 840, nemType: "nem2", trueUpMonth: 4 },
+        ],
+      }),
+    );
+    expect(d.solar.program).toEqual({ kind: "generic", raw: "nem2" });
+    expect(d.solar.solarKw).toBe(840);
+    expect(d.solar.arrays).toEqual([{ id: "arr1", name: "West Array", nameplateKw: 840 }]);
+  });
+
+  it("renders absent program and nameplate as the unknown/not-on-file state, never a guess (FR4)", () => {
+    // A solar-flagged meter with no NEM token and no paired nameplate: the program is unknown
+    // (the component renders not-on-file) and the nameplate stays null (FieldRow reads not-on-file).
+    const d = toDrawerDetail(meter({ id: "m2", coverageState: "no_bill", isSolar: true }));
+    expect(d.solar.program).toEqual({ kind: "unknown" });
+    expect(d.solar.solarKw).toBeNull();
+    expect(d.solar.arrays).toEqual([]);
+  });
+
+  it("keeps the allocation share honest-blank (always null at A-9, the real value is C-2, FR10)", () => {
+    // Even a fully-populated solar meter carries no allocation share at this story: the drawer
+    // renders the honest-blank allocation + credit rows, never a fabricated split or a credit dollar.
+    const d = toDrawerDetail(
+      meter({
+        id: "m3",
+        coverageState: "reconciled",
+        isSolar: true,
+        nemType: "NEM2AA",
+        solarKw: 1092,
+        trueUpAmountCents: 500000,
+        benefitingArrays: [
+          { id: "arr2", name: "South Array", nameplateKw: 1092, nemType: "nem2", trueUpMonth: 9 },
+        ],
+      }),
+    );
+    expect(d.solar.allocationShare).toBeNull();
+    expect(d.solar.program).toEqual({ kind: "granular", code: "NEM2AA" });
   });
 });

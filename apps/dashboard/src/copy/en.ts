@@ -1218,12 +1218,23 @@ export const en = {
       // Solar / NEM section (renders only for a solar meter).
       solarHeader: "Solar",
       nemProgram: "Net metering",
+      // The program-code value said the way the grower recognizes it (A-9, FR2/FR5): a recognized
+      // granular six-code reads as that code; the generic token reads the generic program; an
+      // absent/unrecognized token reads not-on-file - never a guessed granular code, never inferred.
+      programGeneric: "NEM2",
+      programNotOnFile: "Not on file",
       trueUp: "True-up month",
       nameplate: "Array size",
       nameplateValue: (kw: string): string => `${kw} kW`,
       arrays: "Arrays crediting this meter",
       arrayUnnamed: "Array",
       allocation: "Credit allocation",
+      // The allocation share + credit dollar render HONEST-BLANK in the drawer (A-9, FR10): the real
+      // usage-proportional share arrives in Epic C and the credit settles only with a true-up
+      // statement (Epic G). Until then both read not-on-file, never a fabricated zero or a credit.
+      allocationNotOnFile: "Not computed yet",
+      credit: "Credit",
+      creditNotOnFile: "Not on file",
       // DR enrollment shown as plain information (Story 3.7, FR-18). The event
       // window here is 4 to 9 in the evening (the DR clock), never the 5 to 8
       // rate peak. No savings claim, ever.

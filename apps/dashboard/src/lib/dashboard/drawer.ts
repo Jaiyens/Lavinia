@@ -48,12 +48,63 @@ export type DrawerHistoryRow = {
   totalCents: number;
 };
 
+/**
+ * The drawer's program-code resolution (A-9, FR2/FR5). The drilled-in meter's net-metering program
+ * said the way the grower recognizes it, never the raw `nem2` token and never a guessed granular
+ * code. This mirrors A-4's `resolveProgramCode` contract inline so the drawer repeats the list's
+ * legibility honestly until the shared `program-code.ts` module lands:
+ *   - `"generic"`: the source carries only the generic `nem2`-family token; render the generic
+ *     program plus a not-on-file note for the granular six-code label, never an inferred NEM2AA.
+ *   - `"unknown"`: the source is null or unrecognized; render not-on-file, never inferred from an
+ *     adjacent meter, never written back.
+ * A recognized granular six-code value would render `"granular"` with the exact code; the committed
+ * fixture carries only the generic token, so that branch is forward-compatible (no launch instance).
+ */
+export type DrawerProgram =
+  | { kind: "granular"; code: string }
+  | { kind: "generic"; raw: string }
+  | { kind: "unknown" };
+
+/** The recognized granular six-code program labels (FR2). The source field is OQ2-resolved; today
+ *  the fixture carries only the generic `nem2`, so this set is the forward-compatible branch. */
+const GRANULAR_PROGRAM_CODES: ReadonlySet<string> = new Set([
+  "NEM2AA",
+  "NEM2AG",
+  "NEM2M",
+  "NEMEXPM",
+  "NEMEXP",
+  "NEMS",
+]);
+
+/**
+ * Resolve the drilled-in meter's program code from its raw source token (A-9, FR2/FR5). Pure, no
+ * inference from any other meter, no write-back. A recognized granular six-code value resolves to
+ * that exact code; the generic `nem2`-family token resolves to `generic` (the generic program plus a
+ * not-on-file granular note); a null or unrecognized token resolves to `unknown` (not-on-file).
+ */
+export function resolveDrawerProgram(rawSourceValue: string | null): DrawerProgram {
+  if (rawSourceValue === null) return { kind: "unknown" };
+  const trimmed = rawSourceValue.trim();
+  if (trimmed === "") return { kind: "unknown" };
+  if (GRANULAR_PROGRAM_CODES.has(trimmed.toUpperCase())) {
+    return { kind: "granular", code: trimmed.toUpperCase() };
+  }
+  if (trimmed.toLowerCase().startsWith("nem2")) return { kind: "generic", raw: trimmed };
+  return { kind: "unknown" };
+}
+
 export type DrawerSolar = {
   nemType: string | null;
+  /** The resolved program code (A-9, FR2/FR5): granular | generic | unknown, never an inferred or
+   *  raw token. The drawer renders its plain-English meaning, repeating the list's legibility. */
+  program: DrawerProgram;
   /** NEM annual settle month (1-12); null when not on file. */
   trueUpMonth: number | null;
   /** Paired array nameplate kW carried on the meter; null when not on file. */
   solarKw: number | null;
+  /** Usage-proportional allocation share in [0,1]; ALWAYS null at A-9 - the real value arrives in
+   *  C-2 and the row renders honest-blank until then, never a fabricated zero (FR10). */
+  allocationShare: number | null;
   arrays: { id: string; name: string | null; nameplateKw: number }[];
   /** Energy position from the printed NEM months; null when none on file (Story 3.4). */
   position: NemEnergyPosition | null;
@@ -177,8 +228,15 @@ export function toDrawerDetail(meter: MeterView): DrawerDetail {
     showSolar: meter.isSolar || meter.nemType !== null,
     solar: {
       nemType: meter.nemType,
+      // A-9 (FR2/FR5): the program said in plain words, resolved from the meter's own token only -
+      // never inferred from another meter, never a guessed granular code. The drawer repeats the
+      // list's legibility (the Arrays lens ProgramChip and the Table lens program cell agree).
+      program: resolveDrawerProgram(meter.nemType),
       trueUpMonth: meter.trueUpMonth,
       solarKw: meter.solarKw,
+      // A-9 (FR10): the allocation row renders HONEST-BLANK; the real usage-proportional share is
+      // computed in C-2. Never a fabricated zero, never a percent multiplied into a credit dollar.
+      allocationShare: null,
       arrays: meter.benefitingArrays.map((a) => ({
         id: a.id,
         name: a.name,
