@@ -1,0 +1,927 @@
+{
+  "generatedAt": "2026-06-20T22:18:31.384Z",
+  "name": "Cordova Ranches",
+  "county": "Fresno",
+  "center": {
+    "lat": 36.6004616,
+    "lng": -119.7817871
+  },
+  "parcels": [
+    {
+      "base": {
+        "apn": "33803213",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.785424330336,
+                36.6016238506242
+              ],
+              [
+                -119.781898007977,
+                36.6016462472952
+              ],
+              [
+                -119.781868678433,
+                36.5980275291065
+              ],
+              [
+                -119.785531159529,
+                36.5980329365577
+              ],
+              [
+                -119.78555268711,
+                36.5999829655927
+              ],
+              [
+                -119.785493951957,
+                36.6009508683756
+              ],
+              [
+                -119.785424330336,
+                36.6016238506242
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.599823,
+        "centroid_lon": -119.7837001,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 32.2
+      },
+      "enrichment": {
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803239S",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.781733883209,
+                36.6015879878411
+              ],
+              [
+                -119.780861727236,
+                36.6015909644393
+              ],
+              [
+                -119.777322001544,
+                36.6016031440756
+              ],
+              [
+                -119.777334187461,
+                36.5997653197461
+              ],
+              [
+                -119.777340636254,
+                36.5980346646934
+              ],
+              [
+                -119.780648138863,
+                36.5980169896584
+              ],
+              [
+                -119.780655649612,
+                36.5989234508413
+              ],
+              [
+                -119.78171171769,
+                36.5989177879437
+              ],
+              [
+                -119.781733883209,
+                36.6015879878411
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.5999001,
+        "centroid_lon": -119.7794191,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 36.1
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803241",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.779568323816,
+                36.6034042225302
+              ],
+              [
+                -119.777339374096,
+                36.6034290067581
+              ],
+              [
+                -119.777340061059,
+                36.6033995655448
+              ],
+              [
+                -119.777322001544,
+                36.6016031440756
+              ],
+              [
+                -119.780861727236,
+                36.6015909644393
+              ],
+              [
+                -119.780860378529,
+                36.6021321333855
+              ],
+              [
+                -119.781729106167,
+                36.6021264314992
+              ],
+              [
+                -119.781727810902,
+                36.602268172218
+              ],
+              [
+                -119.780811660937,
+                36.6022694508199
+              ],
+              [
+                -119.780811935126,
+                36.6023971815821
+              ],
+              [
+                -119.780781273201,
+                36.6023972248606
+              ],
+              [
+                -119.780781606355,
+                36.6025524246001
+              ],
+              [
+                -119.78081226835,
+                36.6025523822227
+              ],
+              [
+                -119.780812803354,
+                36.6028013072289
+              ],
+              [
+                -119.781722950588,
+                36.602800036512
+              ],
+              [
+                -119.781717783486,
+                36.6033654040434
+              ],
+              [
+                -119.781717666704,
+                36.6033817377267
+              ],
+              [
+                -119.779568323816,
+                36.6034042225302
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6025397,
+        "centroid_lon": -119.7792805,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 17.2
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hesperia sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803215",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.785424330336,
+                36.6016238506242
+              ],
+              [
+                -119.785570430805,
+                36.6016228204491
+              ],
+              [
+                -119.785561632404,
+                36.6025109063913
+              ],
+              [
+                -119.785518271474,
+                36.6028541666333
+              ],
+              [
+                -119.784990314722,
+                36.6038740401301
+              ],
+              [
+                -119.784153792854,
+                36.6050415348784
+              ],
+              [
+                -119.783010075799,
+                36.6051479554928
+              ],
+              [
+                -119.782137878669,
+                36.6051509423421
+              ],
+              [
+                -119.781953183328,
+                36.6050807337063
+              ],
+              [
+                -119.781930964882,
+                36.6049050711596
+              ],
+              [
+                -119.781898007977,
+                36.6016462472952
+              ],
+              [
+                -119.785424330336,
+                36.6016238506242
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6032316,
+        "centroid_lon": -119.7835455,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 27.3
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Citrus & subtropical",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hesperia sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33812027",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.784162495753,
+                36.5961576691102
+              ],
+              [
+                -119.784164605393,
+                36.5943501250093
+              ],
+              [
+                -119.785646807764,
+                36.5943377594696
+              ],
+              [
+                -119.785666069975,
+                36.5967335605667
+              ],
+              [
+                -119.785627734066,
+                36.5976061408817
+              ],
+              [
+                -119.78530354916,
+                36.5976127542934
+              ],
+              [
+                -119.784817021341,
+                36.5978784741549
+              ],
+              [
+                -119.784166307812,
+                36.5978772689358
+              ],
+              [
+                -119.784162495753,
+                36.5961576691102
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.5960587,
+        "centroid_lon": -119.784896,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 12.5
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803230S",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.777327208172,
+                36.5960211987982
+              ],
+              [
+                -119.77733432077,
+                36.5943564667292
+              ],
+              [
+                -119.781772790846,
+                36.5943164121328
+              ],
+              [
+                -119.781760517012,
+                36.5961350103087
+              ],
+              [
+                -119.779583589582,
+                36.5961328048297
+              ],
+              [
+                -119.779589295222,
+                36.5960228872104
+              ],
+              [
+                -119.777327208172,
+                36.5960211987982
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.5952074,
+        "centroid_lon": -119.779593,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 18.9
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33505139",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.777226415435,
+                36.6070071188706
+              ],
+              [
+                -119.777211107125,
+                36.6058232622105
+              ],
+              [
+                -119.777206110001,
+                36.6053260879568
+              ],
+              [
+                -119.781621722663,
+                36.6053218997713
+              ],
+              [
+                -119.781599660783,
+                36.605835733191
+              ],
+              [
+                -119.780386568713,
+                36.6058217158436
+              ],
+              [
+                -119.780382086578,
+                36.6063903751703
+              ],
+              [
+                -119.780381011273,
+                36.6069590112237
+              ],
+              [
+                -119.777226415435,
+                36.6070071188706
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6060917,
+        "centroid_lon": -119.7790257,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 14.4
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803223",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.772937397836,
+                36.6016207068107
+              ],
+              [
+                -119.772949688925,
+                36.5997828820284
+              ],
+              [
+                -119.777334187461,
+                36.5997653197461
+              ],
+              [
+                -119.777322001544,
+                36.6016031440756
+              ],
+              [
+                -119.772937397836,
+                36.6016207068107
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.600693,
+        "centroid_lon": -119.7751358,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 19.8
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803242",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.790741653443,
+                36.6033826555932
+              ],
+              [
+                -119.786561459686,
+                36.6034154308887
+              ],
+              [
+                -119.786478249351,
+                36.6026425641416
+              ],
+              [
+                -119.786366540581,
+                36.601095310945
+              ],
+              [
+                -119.786325816477,
+                36.6005835569121
+              ],
+              [
+                -119.788881341591,
+                36.6005666586446
+              ],
+              [
+                -119.788887375917,
+                36.6011589716252
+              ],
+              [
+                -119.790710347563,
+                36.6011468838174
+              ],
+              [
+                -119.790713634795,
+                36.6013797011714
+              ],
+              [
+                -119.790132443365,
+                36.6013835597874
+              ],
+              [
+                -119.790138452229,
+                36.6019715568847
+              ],
+              [
+                -119.790721934831,
+                36.6019676821579
+              ],
+              [
+                -119.790730891217,
+                36.6026020827215
+              ],
+              [
+                -119.789503941297,
+                36.6026102269473
+              ],
+              [
+                -119.789508682195,
+                36.6030744344509
+              ],
+              [
+                -119.790737400639,
+                36.6030631827718
+              ],
+              [
+                -119.790741653443,
+                36.6033826555932
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6020545,
+        "centroid_lon": -119.7882991,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 24.9
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33518022",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.781991189821,
+                36.6088383804806
+              ],
+              [
+                -119.781981727049,
+                36.6055447892749
+              ],
+              [
+                -119.782042330007,
+                36.6054729692831
+              ],
+              [
+                -119.782673120937,
+                36.6054750636441
+              ],
+              [
+                -119.783144979648,
+                36.6055144397723
+              ],
+              [
+                -119.783900519318,
+                36.6056204559658
+              ],
+              [
+                -119.78395296832,
+                36.6056383849458
+              ],
+              [
+                -119.783960260451,
+                36.608840693058
+              ],
+              [
+                -119.781991189821,
+                36.6088383804806
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6071791,
+        "centroid_lon": -119.7829639,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 16
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hesperia sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803224",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.772949688925,
+                36.5997828820284
+              ],
+              [
+                -119.772956016369,
+                36.5980302531485
+              ],
+              [
+                -119.777340636254,
+                36.5980346646934
+              ],
+              [
+                -119.777334187461,
+                36.5997653197461
+              ],
+              [
+                -119.772949688925,
+                36.5997828820284
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.5989033,
+        "centroid_lon": -119.7751405,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 18.7
+      },
+      "enrichment": {
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33803243",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.790710347563,
+                36.6011468838174
+              ],
+              [
+                -119.788887375917,
+                36.6011589716252
+              ],
+              [
+                -119.788881341591,
+                36.6005666586446
+              ],
+              [
+                -119.786325816477,
+                36.6005835569121
+              ],
+              [
+                -119.786306844227,
+                36.60058368216
+              ],
+              [
+                -119.786228623767,
+                36.5995582068708
+              ],
+              [
+                -119.7862137589,
+                36.598296690102
+              ],
+              [
+                -119.786482418132,
+                36.5982949163869
+              ],
+              [
+                -119.787266924318,
+                36.5980297637667
+              ],
+              [
+                -119.788160452451,
+                36.5980238543388
+              ],
+              [
+                -119.788168089501,
+                36.5991041858148
+              ],
+              [
+                -119.78873223899,
+                36.5990977088919
+              ],
+              [
+                -119.788721171347,
+                36.5980127353645
+              ],
+              [
+                -119.790665210425,
+                36.5979996603213
+              ],
+              [
+                -119.790698221829,
+                36.6003118585689
+              ],
+              [
+                -119.789849021361,
+                36.6003176893837
+              ],
+              [
+                -119.789853194868,
+                36.6007261923808
+              ],
+              [
+                -119.79070432864,
+                36.600720542496
+              ],
+              [
+                -119.790710347563,
+                36.6011468838174
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.5994602,
+        "centroid_lon": -119.788564,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 27.7
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "gsa_name": {
+          "value": "Central Kings GSA",
+          "source": "DWR SGMA GSA boundaries"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    }
+  ]
+}

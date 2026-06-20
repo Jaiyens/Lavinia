@@ -1,84 +1,71 @@
 # Parcels (dashboard feature)
 
-A coordinate-driven **public-records parcel lookup**, surfaced as a **top-level agent** in the
-left rail (a peer of Home / Energy, sitting above the not-yet-built Water). Enter a
-latitude/longitude and the dashboard returns the county parcel that contains the point (its
-**APN**, acreage, boundary, and centroid) from **free public county GIS sources**, drawn on the
-map with a copyable-APN card.
+The farmer's **land, map-first** — an Acres.com-style shell filled with farm-operations data (not
+real-estate comps). A top-level agent in the rail (peer of Home / Energy). Loads straight to the
+operation's blocks on a full-screen map: **zero manual entry**. Click a block for a rich grouped
+detail drawer; hover for a tooltip; shade every block by an attribute (the priority feature that
+makes a wall of APNs visual); read the portfolio at a glance.
 
-Routes:
+Routes: `/parcels` (signed-in, auth + farm gated) and `/tour/parcels` (public Tour).
 
-- `/parcels` — signed-in app (auth + farm gated, like the rest of the dashboard)
-- `/tour/parcels` — the public Tour (reads only public records, so it is safe unauthenticated)
-
-## How it's wired into the existing dashboard
-
-It reuses the app's patterns; nothing was re-architected.
+## Shell
 
 ```
-AGENTS registry (shell/agents.ts)  ← "parcels" is a live top-level agent (href /parcels, MapPin)
-  └─ AgentRail / AgentTabBar         ← render it automatically in the rail + mobile tab bar
-
-parcels/page.tsx                   ← renders <ParcelView/>
-  └─ <ParcelView>                  ← client: prefilled lat/lng input → fetch /api/parcel → card + map
-       ├─ GET /api/parcel          ← thin route handler → lookupParcelByPoint() (server-side)
-       └─ <ParcelMap>              ← MapLibre GeoJSON polygon + centroid, over the shared basemap
+parcels/page.tsx                 ← server: loadRepresentativeFarm(todayIso) -> <ParcelsWorkspace>
+  └─ ParcelsWorkspace            ← full-bleed `fixed` container (escapes the <main> padding;
+                                    offset by the rail on desktop, the tab bar on mobile)
+       ├─ FarmMap                ← MapLibre: every block as a polygon shaded by the active
+       │                           attribute; hover tooltip; click -> select; clay ring = attention
+       ├─ banner                 ← "Representative farm. Connect yours" + Connect CTA
+       ├─ PortfolioStrip         ← acres, blocks, % leased, leases expiring, need-a-look, by-crop bar
+       ├─ ColorByControl         ← crop / tree age / NDVI / owned-leased / water source + legend
+       ├─ AddParcelTool          ← the demoted lookup: APN or coordinate -> /api/parcel/block
+       └─ ParcelDrawer           ← grouped sections (identity/planting/water/energy/soil/health/
+                                    compliance/financial), copyable APN, source badges
 ```
 
 | Piece | File |
 |---|---|
-| Agent registry entry | `src/app/(app)/_components/shell/agents.ts` (`parcels`) |
-| Page (signed-in) | `src/app/(app)/(dashboard)/parcels/page.tsx` |
-| Page (Tour) | `src/app/tour/parcels/page.tsx` |
-| Lookup surface | `src/app/(app)/_components/parcel-view.tsx` |
-| Map | `src/app/(app)/_components/parcel-map.tsx` |
-| Shared basemap (also used by `meter-map.tsx`) | `src/app/(app)/_components/basemap.tsx` |
-| API route | `src/app/api/parcel/route.ts` |
-| Copy | `src/copy/en.ts` → `en.parcel`, plus the tab label `en.shell.agents.parcels` |
-| Lookup engine | `src/lib/parcel/*` (see its README) |
+| Workspace | `src/app/(app)/_components/parcels-workspace.tsx` |
+| Map | `src/app/(app)/_components/farm-map.tsx` |
+| Drawer | `src/app/(app)/_components/parcel-drawer.tsx` |
+| Add-parcel tool | `src/app/(app)/_components/add-parcel-tool.tsx` |
+| Shared basemap (with MeterMap) | `src/app/(app)/_components/basemap.tsx` |
+| Ingest route | `src/app/api/parcel/block/route.ts` (POST `{ apn }` or `{ lat, lng }` -> `FarmParcel`) |
+| Data + engine | `src/lib/parcel/farm/*` (see its README) and `src/lib/parcel/*` (the public-records engine) |
+| Copy | `src/copy/en.ts` -> `en.parcel.farm` |
 
-### Design-system reuse
+## How the pieces interact
 
-- `cardClass()`, `Button`, `Input` primitives; the warm green palette; Inter + `type-*` roles.
-- The map reuses MeterMap's exact MapLibre setup via the shared `basemap.tsx` (same keyless
-  satellite/streets tiles, same scroll-zoom gating, same graceful tile-failure fallback). The
-  parcel boundary is a translucent green fill + outline with a dot at the centroid.
-- All strings live in `en.parcel`; no em dashes; plain operator English.
-- Layout follows the acres.com plat-map shape: a left detail column, a large map on the right;
-  stacks on mobile.
+- **Seeded farm.** With no connected farmer yet, the page loads a seeded representative operation:
+  12 real ag blocks (real APNs / boundaries / acreage from the county engine) clustered around
+  `36.6004616, -119.7817871`, auto-enriched from free public layers (DWR crop class, GSA, water
+  district, USDA soil) and filled with believable ops data. The "representative data" banner stays.
+- **Color-by.** Each block's fill color for the active attribute is precomputed in JS (`color.ts`)
+  and fed to MapLibre as a feature property, so switching attributes is a `setData`. The legend
+  shows only the buckets present; a clay ring marks blocks needing a look (low NDVI or overdue task).
+- **Ingestion.** "+ Add parcel" (and, at scale, "Connect your farm") POST an APN or coordinate to
+  `/api/parcel/block`; the engine pulls the boundary, `enrichParcel` auto-enriches it, and the block
+  drops onto the map + portfolio. Adding another **county** is one adapter in `@/lib/parcel`, no
+  workspace change.
 
-## Behavior notes
+## Layout note
 
-- The input is **pre-filled** with the Fresno test point `36.6004616, -119.7817871`.
-- That point sits on a **road/right-of-way**, so the lookup falls back to the nearest parcel
-  within 25 m and the card shows an honest "showing the nearest parcel, about 5.6 m away" note.
-- APN copy uses the clipboard API; the button flips to "Copied" for ~1.5 s.
-- A monotonic request token guards against a slow older lookup overwriting a newer one.
-
-## API
-
-`GET /api/parcel?lat={lat}&lng={lng}` →
-
-- `200` `ParcelResult` JSON (see `@/lib/parcel`)
-- `400` `{ error: "invalid_point" }`
-- `404` `{ error: "not_found" }` (county has no parcel here) or `{ error: "out_of_coverage" }`
-  (no county source covers the point)
-- `502` `{ error: "upstream" | "lookup_failed" }` (the county service failed)
-
-> The route currently proxies a free public county service unauthenticated. It exposes only
-> public records, but add a per-IP rate limit / bot check before exposing it widely (same note as
-> `api/almond/chat`).
+The workspace is `fixed inset-x-0 top-0 bottom-16 lg:left-40 lg:bottom-0`, so it fills the content
+area (right of the 160px rail, above the 64px mobile tab bar) without editing the shared dashboard
+layout. The banner + controls overlay the map; the overlay layer is `pointer-events-none` with
+`pointer-events-auto` on the actual controls, so the map stays draggable between them.
 
 ## Verifying
 
 ```bash
-npm test -w @lavinia/dashboard
-PARCEL_LIVE=1 npx vitest run src/lib/parcel/fresno.live.test.ts
+npm test -w @lavinia/dashboard           # farm data-layer + engine tests
+npx tsx scripts/seed-representative-farm.ts   # refresh the fixture from live data
 
-# the live HTTP route (with the dev server on :3001)
-curl "http://localhost:3001/api/parcel?lat=36.6004616&lng=-119.7817871"
+# the live ingest route (dev server on :3001)
+curl -X POST localhost:3001/api/parcel/block -H 'content-type: application/json' -d '{"apn":"33803239S"}'
 ```
 
-Acceptance: looking up `36.6004616, -119.7817871` returns Fresno APN **33803239S** (~36.1 acres)
-with its boundary drawn on the map. Adding another county is one adapter in `@/lib/parcel`, with
-no change here.
+Acceptance: `/parcels` loads to the farm's blocks on a full map (no entry); click -> grouped drawer;
+hover -> tooltip; color-by works with a legend; the portfolio strip is populated; adding a real farm
+is entering APNs, no rearchitecting.

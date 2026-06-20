@@ -1,0 +1,358 @@
+"use client";
+
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { AlertTriangle, Check, Copy, ExternalLink, X } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { en, usd } from "@/copy/en";
+import type { FarmParcel } from "@/lib/parcel/farm/types";
+
+// The per-block detail drawer: slides in over the map (right side, map stays full behind) and
+// shows the grouped farm-ops data, scrollable. APN is one-click copyable; genuinely auto-enriched
+// fields (crop class, GSA, water district, soil) are badged with their public source.
+
+const t = en.parcel.farm;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fmtDate(iso: string, withDay = true): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const mon = MONTHS[(m ?? 1) - 1] ?? "";
+  return withDay ? `${mon} ${d}, ${y}` : `${mon} ${y}`;
+}
+
+export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!parcel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [parcel, onClose]);
+
+  // Move focus into the drawer on open (it remounts per parcel via its key), so keyboard / screen
+  // reader users land on the panel rather than the canvas behind it. Mirrors meter-drawer.tsx.
+  useEffect(() => {
+    asideRef.current?.focus();
+  }, []);
+
+  // Keep Tab within the drawer while it is open.
+  const trapTab = (e: ReactKeyboardEvent<HTMLElement>) => {
+    if (e.key !== "Tab") return;
+    const root = asideRef.current;
+    if (!root) return;
+    const focusable = root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(id);
+  }, [copied]);
+
+  if (!parcel) return null;
+  const p = parcel;
+  const leased = p.identity.tenure === "leased";
+
+  const copyApn = async () => {
+    try {
+      await navigator.clipboard.writeText(p.apn);
+      setCopied(true);
+    } catch {
+      // clipboard blocked; the value stays visible to copy by hand
+    }
+  };
+
+  return (
+    <aside
+      ref={asideRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${p.name} detail`}
+      tabIndex={-1}
+      onKeyDown={trapTab}
+      className="drawer-in absolute inset-y-0 right-0 z-30 flex w-full flex-col bg-surface-container-lowest shadow-e4 outline-none sm:w-[420px]"
+    >
+      {/* Header */}
+      <div className="shrink-0 border-b border-outline-variant px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="type-label-caps text-primary">{p.planting.crop}</p>
+            <h2 className="type-title mt-0.5 truncate text-on-surface">{p.name}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.close}
+            className="-mr-1.5 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-surface-container-low"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="type-num tnum text-on-surface-variant">APN {p.apn}</span>
+          <button
+            type="button"
+            onClick={() => void copyApn()}
+            aria-label={t.copyApn}
+            className={cn(
+              "inline-flex h-7 items-center gap-1 rounded-[var(--radius-control)] border border-outline-variant px-2 type-label-caps transition-colors hover:bg-surface-container-low",
+              copied ? "text-primary" : "text-on-surface-variant",
+            )}
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            <span>{copied ? t.copied : t.copyApn}</span>
+          </button>
+          <span className="type-body-sm text-on-surface-variant">
+            {t.acres(p.identity.gross_acres)} &middot; {p.county}
+          </span>
+        </div>
+      </div>
+
+      {/* Scrollable grouped body. Extra bottom padding so the source link clears the floating
+          Almond launcher (fixed bottom-right, above this panel). */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-24 pt-4">
+        <Group title={t.sections.identity}>
+          <Row label={t.labels.grossAcres} value={t.acres(p.identity.gross_acres)} />
+          <Row label={t.labels.netPlanted} value={t.acres(p.identity.net_planted_acres)} />
+          <Row label={t.labels.mtrs} value={p.identity.mtrs} />
+          <Row label={t.labels.tenure} value={t.tenure[p.identity.tenure]} />
+          {leased && <Row label={t.labels.landlord} value={p.identity.landlord} />}
+          {leased && p.identity.rent_per_acre !== null && (
+            <Row label={t.labels.rentPerAcre} value={`${usd(p.identity.rent_per_acre)}/ac`} />
+          )}
+          {leased && p.identity.lease_start && p.identity.lease_expiry && (
+            <Row
+              label={t.labels.leaseTerm}
+              value={`${fmtDate(p.identity.lease_start, false)} - ${fmtDate(p.identity.lease_expiry, false)}`}
+            />
+          )}
+        </Group>
+
+        <Group title={t.sections.planting}>
+          <Row label={t.labels.crop} value={p.planting.crop} source={p.sources.crop} />
+          <Row label={t.labels.variety} value={p.planting.variety} />
+          <Row label={t.labels.rootstock} value={p.planting.rootstock} />
+          <Row
+            label={t.labels.plantingYear}
+            value={p.planting.planting_year ? String(p.planting.planting_year) : "Annual"}
+          />
+          <Row label={t.labels.treeCount} value={p.planting.tree_count} />
+          <Row label={t.labels.spacing} value={p.planting.spacing} />
+          <Row
+            label={t.labels.irrigation}
+            value={p.planting.irrigation_method ? t.irrigation[p.planting.irrigation_method] ?? null : null}
+          />
+          <Row
+            label={t.labels.expectedYield}
+            value={
+              p.planting.expected_yield_per_acre !== null
+                ? t.perAcre(p.planting.expected_yield_per_acre, p.planting.yield_unit)
+                : null
+            }
+          />
+          <Row
+            label={t.labels.historicalYield}
+            value={
+              p.planting.historical_yield_per_acre !== null
+                ? t.perAcre(p.planting.historical_yield_per_acre, p.planting.yield_unit)
+                : null
+            }
+          />
+        </Group>
+
+        <Group title={t.sections.water}>
+          <Row label={t.labels.waterSource} value={t.waterSource[p.water.water_source] ?? null} />
+          <Row label={t.labels.wellDepth} value={p.water.well_depth_ft !== null ? t.feet(p.water.well_depth_ft) : null} />
+          <Row label={t.labels.wellHp} value={p.water.well_hp !== null ? t.hp(p.water.well_hp) : null} />
+          <Row
+            label={t.labels.wellCapacity}
+            value={p.water.well_capacity_gpm !== null ? t.gpm(p.water.well_capacity_gpm) : null}
+          />
+          <Row label={t.labels.gsa} value={p.water.gsa_name} source={p.sources.gsa_name} />
+          <Row
+            label={t.labels.allocation}
+            value={p.water.groundwater_allocation_af !== null ? t.afPerAcre(p.water.groundwater_allocation_af) : null}
+          />
+          <Row label={t.labels.waterDistrict} value={p.water.water_district} source={p.sources.water_district} />
+          <Row
+            label={t.labels.et}
+            value={p.water.et_estimate_af !== null ? t.af(p.water.et_estimate_af) : null}
+            source={p.sources.et_estimate_af}
+          />
+        </Group>
+
+        <Group title={t.sections.energy}>
+          <Row label={t.labels.pgeMeter} value={p.energy.pge_meter_id} />
+          <Row
+            label={t.labels.rateSchedule}
+            value={p.energy.rate_schedule}
+            badge={p.energy.rate_misclassified ? t.rateMisclassified : undefined}
+          />
+          <Row label={t.labels.pumpHp} value={p.energy.pump_hp !== null ? t.hp(p.energy.pump_hp) : null} />
+          <Row
+            label={t.labels.annualEnergyCost}
+            value={p.energy.annual_energy_cost !== null ? usd(p.energy.annual_energy_cost) : null}
+          />
+        </Group>
+
+        <Group title={t.sections.soil}>
+          <Row label={t.labels.soilClass} value={p.soil.soil_class} source={p.sources.soil_class} />
+          <Row label={t.labels.slope} value={p.soil.slope_pct !== null ? t.pct(p.soil.slope_pct) : null} />
+          <Row label={t.labels.salinity} value={p.soil.salinity_notes} />
+        </Group>
+
+        <Group title={t.sections.health}>
+          <Row
+            label={t.labels.ndvi}
+            value={
+              p.health.ndvi_latest !== null
+                ? `${p.health.ndvi_latest.toFixed(2)}${p.health.ndvi_trend ? ` (${t.ndviTrend[p.health.ndvi_trend] ?? p.health.ndvi_trend})` : ""}`
+                : null
+            }
+          />
+          {p.health.scouting_notes.length > 0 && (
+            <ListBlock label={t.labels.scouting}>
+              {p.health.scouting_notes.map((n, i) => (
+                <li key={i} className="type-body-sm text-on-surface">
+                  <span className="text-on-surface-variant">{fmtDate(n.date)}</span> {n.note}
+                  {n.author ? <span className="text-on-surface-variant"> - {n.author}</span> : null}
+                </li>
+              ))}
+            </ListBlock>
+          )}
+          {p.health.photos.length > 0 && (
+            <ListBlock label={t.labels.photos}>
+              {p.health.photos.map((ph, i) => (
+                <li key={i} className="type-body-sm text-on-surface-variant">
+                  {ph.caption} - {fmtDate(ph.date)}
+                </li>
+              ))}
+            </ListBlock>
+          )}
+        </Group>
+
+        <Group title={t.sections.compliance}>
+          <Row label={t.labels.permit} value={p.compliance.permit_site_id} />
+          {p.compliance.spray_history.length > 0 && (
+            <ListBlock label={t.labels.sprayHistory}>
+              {p.compliance.spray_history.map((s, i) => (
+                <li key={i} className="flex flex-wrap items-center gap-1.5 type-body-sm text-on-surface">
+                  <span>{t.sprayLine(s.material, fmtDate(s.date))}</span>
+                  {s.rei_until >= s.date && <Tag tone="alert">{t.reiActive}</Tag>}
+                </li>
+              ))}
+            </ListBlock>
+          )}
+          {p.compliance.upcoming_tasks.length > 0 && (
+            <ListBlock label={t.labels.tasks}>
+              {p.compliance.upcoming_tasks.map((task, i) => (
+                <li key={i} className="flex flex-wrap items-center gap-1.5 type-body-sm text-on-surface">
+                  <span className="text-on-surface-variant">{fmtDate(task.due)}</span>
+                  <span>{task.label}</span>
+                  {task.overdue && <Tag tone="alert">{t.overdue}</Tag>}
+                </li>
+              ))}
+            </ListBlock>
+          )}
+        </Group>
+
+        <Group title={t.sections.financial}>
+          <Row label={t.labels.revenue} value={p.financial.revenue !== null ? usd(p.financial.revenue) : null} />
+          <Row
+            label={t.labels.costPerAcre}
+            value={p.financial.cost_per_acre !== null ? `${usd(p.financial.cost_per_acre)}/ac` : null}
+          />
+          {leased && p.financial.lease_cost !== null && (
+            <Row label={t.labels.leaseCost} value={usd(p.financial.lease_cost)} />
+          )}
+        </Group>
+
+        <a
+          href={p.source_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 type-body-sm text-primary hover:underline"
+        >
+          <ExternalLink className="h-4 w-4" />
+          {en.parcel.sourceLink}
+        </a>
+      </div>
+    </aside>
+  );
+}
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mb-5">
+      <h3 className="mb-2 type-label-caps text-on-surface-variant">{title}</h3>
+      <dl className="divide-y divide-outline-variant/60">{children}</dl>
+    </section>
+  );
+}
+
+function Row({
+  label,
+  value,
+  source,
+  badge,
+}: {
+  label: string;
+  value: string | number | null;
+  source?: string;
+  badge?: string;
+}) {
+  const display = value === null || value === undefined || value === "" ? t.notOnFile : String(value);
+  const muted = display === t.notOnFile;
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <dt className="type-body-sm shrink-0 text-on-surface-variant">{label}</dt>
+      <dd className="flex flex-wrap items-center justify-end gap-1.5 text-right">
+        <span className={cn("type-body-md tnum", muted ? "text-on-surface-variant/60" : "text-on-surface")}>
+          {display}
+        </span>
+        {badge && <Tag tone="alert">{badge}</Tag>}
+        {source && <Tag tone="source">{t.sourceFrom(source)}</Tag>}
+      </dd>
+    </div>
+  );
+}
+
+function ListBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="py-1.5">
+      <p className="type-body-sm text-on-surface-variant">{label}</p>
+      <ul className="mt-1 flex flex-col gap-1">{children}</ul>
+    </div>
+  );
+}
+
+function Tag({ tone, children }: { tone: "alert" | "source"; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 type-label-caps",
+        tone === "alert"
+          ? "bg-alert-container text-on-alert-container"
+          : "border border-outline-variant text-on-surface-variant/80",
+      )}
+    >
+      {tone === "alert" && <AlertTriangle className="h-3 w-3" />}
+      {children}
+    </span>
+  );
+}
