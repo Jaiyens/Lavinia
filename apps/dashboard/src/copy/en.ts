@@ -380,13 +380,11 @@ export const en = {
       body: "Connect your PG&E account and see all your meters, rates, and bills in one place.",
       cta: "Create a farm",
     },
-    // Phase 1: joining happens by invite, so this card explains how. (Phase 2 turns it into a
-    // request-to-join link.)
+    // Join a farm someone else set up: enter the code they gave you and ask to join (the /join page).
     join: {
       title: "Join a farm",
-      body: "Someone on your team set this up. Ask them to invite your email, then sign back in to see their farm.",
-      emailNote: (email: string): string => `Ask them to add this email: ${email}`,
-      noEmail: "Ask them to invite the email you sign in with.",
+      body: "Enter the join code a teammate gave you. They approve you before you see the farm.",
+      cta: "Join a farm",
     },
   },
   // Request-to-join (Phase 2), requester-facing: the /join code-entry page, the waiting screen, the
