@@ -147,12 +147,18 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
           <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
         </div>
 
+        {/* PHASE TWO (not built yet): a "Board" / "Map" view toggle goes here, beside the groups.
+            "Map" would render each meter as a colored dot or mini-gauge pinned at its real lat/lng
+            (MeterSnapshot.lat/lng) on the shared farm map (see farm-map.tsx), so the farmer can find
+            the red pump by where it physically sits. Keep the per-meter gauge as the dot/popover.
+            Add the toggle in the header above; swap this groups column for a <MetersMap> when "Map". */}
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {groups.map((group) => (
             <GroupCard
               key={group.name}
               group={group}
               allGroupNames={allNames}
+              now={now}
               onOpenMeter={setOpenMeterId}
               onMoveMeter={moveMeter}
               onRenameGroup={renameGroup}

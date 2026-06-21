@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import { formatUsdWhole, centsFromDollars } from "@/lib/format/money";
@@ -11,34 +11,50 @@ import { MeterTile } from "./meter-tile";
 
 // A GROUP container: collapsible, with a spare header - the worst-meter risk dot, the group name,
 // its meter count, and the ONE dollar figure that matters (demand locked so far). A group is
-// organizational, never a billing unit, so it never shows a pooled kW. The header lets the farmer
-// rename the group; each tile lets them move a meter to another group; both corrections persist.
+// organizational, never a billing unit, so it never shows a pooled kW.
+//
+// Normal view shows clean gauge tiles only. Regrouping (rename + move/merge/split) lives behind an
+// EDIT MODE toggled by the pencil on the header, so the board reads like a dashboard, not a form.
 
 const m = en.meters;
 
 export function GroupCard({
   group,
   allGroupNames,
+  now,
   onOpenMeter,
   onMoveMeter,
   onRenameGroup,
 }: {
   group: MeterGroup;
   allGroupNames: string[];
+  now: Date;
   onOpenMeter: (meterId: string) => void;
   onMoveMeter: (meterId: string, toGroup: string) => void;
   onRenameGroup: (from: string, to: string) => void;
 }) {
   const [open, setOpen] = useState(group.worst !== "safe");
-  const [renaming, setRenaming] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(group.name);
   const style = RISK_STYLE[group.worst];
+  // Meters sort most-at-risk first, so the eye lands on the problem meter (top-left).
   const ordered = byUrgency(group.risks);
   const lockedCents = centsFromDollars(group.totalLockedDemandUsd);
 
+  const toggleEdit = () => {
+    setEditing((e) => {
+      const next = !e;
+      if (next) {
+        setDraftName(group.name);
+        setOpen(true); // editing reveals the tiles + move controls
+      }
+      return next;
+    });
+  };
+
   return (
     <section className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low">
-      {/* Header: collapse toggle, worst-meter dot, name, meter count, demand-so-far dollar. */}
+      {/* Header: collapse toggle, worst-meter dot, name, meter count, demand-so-far dollar, edit. */}
       <div className="flex items-center gap-3 p-3.5">
         <button
           type="button"
@@ -53,7 +69,7 @@ export function GroupCard({
             <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
           )}
           <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: style.dot }} />
-          {renaming ? (
+          {editing ? (
             <input
               autoFocus
               value={draftName}
@@ -62,11 +78,11 @@ export function GroupCard({
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   onRenameGroup(group.name, draftName);
-                  setRenaming(false);
+                  setEditing(false);
                 }
                 if (e.key === "Escape") {
                   setDraftName(group.name);
-                  setRenaming(false);
+                  setEditing(false);
                 }
               }}
               className="min-w-0 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-2 py-1 type-body-md text-on-surface"
@@ -84,27 +100,37 @@ export function GroupCard({
         </span>
         <button
           type="button"
-          aria-label={m.group.rename}
-          onClick={() => {
-            setDraftName(group.name);
-            setRenaming(true);
-          }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-surface-container"
+          aria-label={editing ? m.group.doneEditing : m.group.edit}
+          aria-pressed={editing}
+          onClick={toggleEdit}
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] transition-colors",
+            editing
+              ? "bg-primary-container text-primary"
+              : "text-on-surface-variant hover:bg-surface-container",
+          )}
         >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
+          {editing ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Pencil className="h-3.5 w-3.5" aria-hidden />}
         </button>
       </div>
 
       {open && (
-        <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2">
           {ordered.map((risk) => (
             <div key={risk.meter.id} className="flex flex-col gap-1.5">
-              <MeterTile risk={risk} onOpen={() => onOpenMeter(risk.meter.id)} />
-              <MoveControl
-                current={group.name}
-                allGroupNames={allGroupNames}
-                onMove={(to) => onMoveMeter(risk.meter.id, to)}
+              <MeterTile
+                risk={risk}
+                groupName={group.name}
+                now={now}
+                onOpen={() => onOpenMeter(risk.meter.id)}
               />
+              {editing && (
+                <MoveControl
+                  current={group.name}
+                  allGroupNames={allGroupNames}
+                  onMove={(to) => onMoveMeter(risk.meter.id, to)}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -113,8 +139,8 @@ export function GroupCard({
   );
 }
 
-/** The per-meter "move to group" control: pick an existing group or type a new one. The
- *  correction is handed up to the board, which persists it in localStorage. */
+/** The per-meter "move to group" control (edit mode only): pick an existing group or type a new one.
+ *  The correction is handed up to the board, which persists it in localStorage. */
 function MoveControl({
   current,
   allGroupNames,

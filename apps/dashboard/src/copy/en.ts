@@ -1387,6 +1387,8 @@ export const en = {
       moveTo: "Move to group",
       newGroup: "New group name",
       rename: "Rename group",
+      edit: "Edit group",
+      doneEditing: "Done editing",
       cancel: "Cancel",
       resetGroups: "Reset grouping",
       resetGroupsHint: "Undo your manual group changes.",
