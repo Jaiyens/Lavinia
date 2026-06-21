@@ -1,0 +1,59 @@
+{
+  "lens": "bill-audit-anomalies",
+  "account": "4699664587-8",
+  "generatedFor": "Batth (CHARANJIT S BATTH) - account 4699664587-8, 46 meters, latest cycle 2026-02-11 to 2026-03-12 (winter)",
+  "method": "Joined billing facts (apps/dashboard/fixtures/extract/batth-real-billing.json) to inventory (apps/dashboard/batth-real-inventory.json). Computed per-meter effective demand $/kW (demandChargeUsd/peakKw), effective $/kWh, and NEM true-up $/imported-kWh, then compared each meter to its same-rate-class peers and to the published PG&E tariff rows (brief-pge-ag-rates.md, brief-demand-charges.md, brief-nem-nema.md). Flagged meters whose unit cost is anomalous vs class peers / physics / tariff. Dollar figures only for account 4699664587-8 (the only account in the billing file).",
+  "caveats": "Single billing cycle (Feb-Mar 2026, winter) for energy/demand; annualization (x12) is an upper-frame for recurring demand lines and is flagged where seasonal. Several anomalous meters carry coverageState=needs_review with totalKwh=0 and empty touSplit, meaning the line is parser-unreconciled and must be confirmed against the actual PG&E bill / Supplemental Report before disputing. NEM true-up figures are already annual.",
+  "findings": [
+    {
+      "title": "AG-A2 demand charge billed at ~$22/kW on two HAGA2 meters vs $13.45/kW on their same-rate peers (1.6x over-rate)",
+      "annualUsd": 794.54,
+      "confidence": "medium",
+      "needsIntervalData": false,
+      "needsBill": true,
+      "meters": ["serviceId 4699664194 (VINES IRR 15HP BR-T2, HAGA2)", "serviceId 4699664794 (FARM SHOP SWANSON-T31, HAGA2)"],
+      "evidence": "All four HAGA2 (AG-A2 high-voltage) meters on this account share one rate class. Two larger ones bill demand at a consistent $13.45/kW (4699664553: $184.16/13.696kW; 4699664599: $127.81/9.5052kW), which matches the AG-A2 primary-voltage max-demand row ($13.95/kW). The two SMALLEST-peak meters bill ~$22/kW: 4699664194 = $86.41/3.948kW = $21.89/kW; 4699664794 = $84.55/3.84kW = $22.02/kW. That is 1.57-1.58x the highest published AG-A2 row ($13.95 primary) and 1.86x the secondary row ($11.79), and voltage cannot explain it (all four are HAGA2). The small-kW-only inflation is the signature of a duplicated demand line or a fixed minimum-demand floor. Conservative disputed amount uses the peer rate $13.45/kW: 4699664194: $86.41 - 3.948x$13.45 = $86.41-$53.10 = $33.31/cycle; 4699664794: $84.55 - 3.84x$13.45 = $84.55-$51.65 = $32.90/cycle. Sum $66.21/cycle x 12 = $794.54/yr if recurring (single-cycle-only floor = $66.21).",
+      "recommendation": "Pull the itemized demand line from these two meters' actual PG&E bills and compare $/kW to the other two HAGA2 meters. If the demand line is duplicated or a minimum-demand floor is mis-applied, dispute the excess (~$33/cycle each). Both meters also peak at <4 kW, so they are AG-A1 demote candidates (separate rate-arbitrage lens) which would zero the demand charge entirely."
+    },
+    {
+      "title": "P027 is a net EXPORTER (-22,906 kWh/yr) yet was charged a $2,461 NEM true-up - wrong-sign / orphaned-allocation candidate",
+      "annualUsd": 2071.66,
+      "confidence": "medium",
+      "needsIntervalData": false,
+      "needsBill": true,
+      "meters": ["serviceId 4697755484 (P027, AG5C, NEM2AA, ranch CHATEAU FRESNO)"],
+      "evidence": "P027 exported 39,855 kWh and imported only 16,949 kWh over the period (annualNetKwh = -22,906, a clear net exporter). A net exporter on NEM2/NEM2A should owe at most the non-bypassable-charge (NBC) residue and otherwise receive a credit/Net-Surplus-Compensation - it should NOT carry a $2,461.49 true-up. The NBC floor on its gross import is 16,949 kWh x $0.023/kWh = $389.83. Billed true-up $2,461.49 - $389.83 = $2,071.66 above the maximum legitimate NBC residue. coverageState=needs_review. This is the per-import diagnostic from brief-nem-nema.md: a charge far above the ~2.3 cents/kWh NBC floor on a meter that net-exports means its export credit is not reaching its own bill (allocation/enrollment break or a sign error in the true-up).",
+      "recommendation": "Pull P027's NEM2A Supplemental / Generation Allocation Summary and Form 79-1202 roster. Confirm its 39,855 kWh of exports were credited and its net-export position was honored. If the true-up ignored the export side, file for a recalculated/rebilled true-up - recover up to ~$2,072."
+    },
+    {
+      "title": "VINES IRR 75HP meter (4699664088) bills 111.52 kW peak demand - 1.8x the electrical ceiling of a 75 HP motor - on an unreconciled cycle ($1,113 demand)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "needsIntervalData": true,
+      "needsBill": true,
+      "meters": ["serviceId 4699664088 (VINES IRR 75HP NEW 75HP, AGC bill / AGB inventory, NEMEXP)"],
+      "evidence": "The SA descriptor is 'VINES IRR 75HP NEW 75HP'. A 75 HP motor draws ~62 kW electrical at full load and ~71.5 kW even at 1.15 service-factor overload. The latest cycle bills peakKw = 111.52 kW (1.79x that ceiling) with demandChargeUsd = $1,112.97, while reporting totalKwh = 0 and an empty touSplit, and coverageState = needs_review. The 0-kWh / empty-TOU / needs_review state means this demand line is NOT reconciled by the parser, so it cannot yet be asserted as a real over-billing; the '75HP' descriptor may also undercount actual connected load (the comparison 100HP pump P054 legitimately peaks at 278.88 kW because descriptor HP != connected load). Annual $ left at 0 pending confirmation; IF a 2x CT-multiplier error were proven, ~half the demand ($556/cycle) would be disputable.",
+      "recommendation": "Compare the meter's CT/PT multiplier and nameplate against the billed peak kW on the actual PG&E bill, and pull 15-minute interval data to see the true max 15-min demand. If billed kW is ~2x the metered interval peak, dispute the multiplier. This meter is also the headline $62,796 NEM true-up (separate NEM lens) - the same SA needs an allocation audit."
+    },
+    {
+      "title": "Two AG-B (HAGB) meters carry a demand-charge line, but Schedule AG-B has no demand charge per tariff",
+      "annualUsd": 0,
+      "confidence": "low",
+      "needsIntervalData": false,
+      "needsBill": true,
+      "meters": ["serviceId 4699664429 (FARM SHOP TURKEY-AL7, AGB/HAGB)", "serviceId 4699664416 (P078, AGB/HAGB)"],
+      "evidence": "Per brief-pge-ag-rates.md, Schedule AG-B (and its high-voltage HAGB code) recovers everything through energy and the customer charge and has NO demand charge at all. Yet the parser extracted demandChargeUsd = $49.55 (4699664429, peakKw 5.672) and $29.69 (4699664416, peakKw 5.32). If genuine, that is ~$950/yr (x12) of charges that the rate does not permit. HOWEVER the residual after energy+demand on these two meters (~$56-59) is roughly 2x the HAGB customer charge ($27.47), suggesting the extracted 'demand' line is more likely a parser mislabel of a customer/other charge than a true demand line. Annual $ left at 0 pending the actual bill; confidence low.",
+      "recommendation": "Read the actual line items on these two bills. If a line literally labeled demand/max-demand appears under an AG-B/HAGB schedule, dispute it (AG-B has no demand component); if it is a customer or other charge mislabeled by extraction, no dispute - fix the parser. Worst-case recoverable ~$950/yr."
+    },
+    {
+      "title": "Net-import NEM meters billed at full-retail $/kWh on the true-up (credit not reaching the meter) - NEM-lens, not classic billing error",
+      "annualUsd": 0,
+      "confidence": "low",
+      "needsIntervalData": false,
+      "needsBill": true,
+      "meters": ["serviceId 4699664088 ($0.273/imp kWh, $62,796 true-up)", "serviceId 4692494679 P003 ($0.086/imp, $7,130)", "serviceId 4695719808 P052 ($0.082/imp, $5,020)", "serviceId 4693142227 P028 ($0.093/imp, $3,304)", "serviceId 4699141870 P017 ($0.080/imp, $1,911)"],
+      "evidence": "Using the brief-nem-nema.md diagnostic (true-up $ / imported kWh: ~$0.023 = credited/NBC-only, ~$0.25-0.35 = not credited/full-retail), several solar-paired NEM2AA meters show effective import rates far above the 2.3 cents NBC floor - the headline 4699664088 at $0.273/kWh (excess over NBC = $57,500) plus a band of AG-5 meters at $0.08-0.09/kWh (partially credited but still well above floor). This is an under-allocation / orphaned-enrollment pattern, which is the dedicated NEM/NEMA lens, not a wrong-multiplier billing error; flagged here only so the bill-audit reviewer routes these SAs to the NEM allocation audit. Dollar quantification belongs to that lens, so annualUsd is 0 here to avoid double-counting.",
+      "recommendation": "Route every solar-paired SA on this account (NEM2AA / NEMEXP) to the NEM-aggregation lens: pull the Generation Allocation Summary and Form 79-1202 roster and confirm each SA's allocated percent. Do NOT add these dollars to the bill-audit total - they are the NEM lens's to claim."
+    }
+  ]
+}

@@ -1,0 +1,1699 @@
+{
+  "rollup": {
+    "accountNumber": "4699664587-8",
+    "accountPrintedTotalUsd": 86942.12,
+    "meterCount": 46,
+    "billCount": 52,
+    "totalAnnualDemandChargeUsd_latestCycles": 5939.4,
+    "idleMeterCount": 28,
+    "idleMetersTotalLatestUsd": 7729.17,
+    "nemTrueUpMeterCount": 11,
+    "nemTrueUpTotalUsd": 83338.49,
+    "nemZeroSolarBenefitCount": 12,
+    "reconciledCount": 39,
+    "escalatedCount": 22,
+    "idleZeroKwhMeterCount": 28,
+    "idleButNemEnrolledCount": 14,
+    "trulyIdleNonNemCount": 14,
+    "trulyIdleNonNemTotalLatestUsd": 436.96,
+    "note": "totalKwh is summed from per-cycle TOU splits. NEM-enrolled meters show totalKwh=0 on the monthly bill because their energy is netted under NEM true-up accounting, not because the pump is idle. trulyIdleNonNem isolates meters with zero energy AND no NEM. NEM netKwh sign: positive=net import (charge), negative=net export (credit). Annual cost ranking combines the latest printed cycle with any annual NEM true-up."
+  },
+  "meters": [
+    {
+      "serviceId": "4699664088",
+      "meterNumber": "1010427495",
+      "growerPumpId": null,
+      "saIdDescriptor": "VINES IRR 75HP NEW 75HP (PUMP",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 2867.7,
+        "totalKwh": 0,
+        "peakKw": 111.52,
+        "demandChargeUsd": 1112.97,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4699664088 VINES IRR 75HP NEW 75HP (PUMP",
+        "trueUpAmountUsd": 62795.65,
+        "trueUpMonth": 12,
+        "trueUpDate": "2026-03-26",
+        "trueUpPeriodMonths": 12,
+        "annualImportKwh": 230223,
+        "annualExportKwh": 39718,
+        "annualNetKwh": 190505,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 65663.35
+    },
+    {
+      "serviceId": "4696826125",
+      "meterNumber": "1010259637",
+      "growerPumpId": "P054",
+      "saIdDescriptor": "P054",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 11727.33,
+        "totalKwh": 31828.08,
+        "peakKw": 278.88,
+        "demandChargeUsd": 2783.22,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 87.6,
+            "amountUsd": 16.15
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 31740.48,
+            "amountUsd": 5059.62
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 11727.33
+    },
+    {
+      "serviceId": "4692494679",
+      "meterNumber": "1010100559",
+      "growerPumpId": "P003",
+      "saIdDescriptor": "P003",
+      "rateSchedule": "AG5B Large Time-of-Use Agricultural Power",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 35.83,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4692494679 P003",
+        "trueUpAmountUsd": 7130.31,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 83134,
+        "annualExportKwh": 76916,
+        "annualNetKwh": 6218,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 7166.14
+    },
+    {
+      "serviceId": "4695719808",
+      "meterNumber": "1010016455",
+      "growerPumpId": "P052",
+      "saIdDescriptor": "P052",
+      "rateSchedule": "AG5C Large Time-of-Use Agricultural Power",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 159.64,
+        "totalKwh": 0,
+        "peakKw": 0.02,
+        "demandChargeUsd": 0.38,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4695719808 P052",
+        "trueUpAmountUsd": 5020.03,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 61297,
+        "annualExportKwh": 55914,
+        "annualNetKwh": 5383,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 5179.67
+    },
+    {
+      "serviceId": "4698660251",
+      "meterNumber": "1009483211",
+      "growerPumpId": "P004",
+      "saIdDescriptor": "P004",
+      "rateSchedule": "AG5B",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 3642.22,
+        "totalKwh": 0,
+        "peakKw": 171.52,
+        "demandChargeUsd": 1409.21,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4698660251 P004",
+        "trueUpAmountUsd": null,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 12,
+        "annualImportKwh": 91267,
+        "annualExportKwh": 107326.88,
+        "annualNetKwh": -16059.88,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 3642.22
+    },
+    {
+      "serviceId": "4693142227",
+      "meterNumber": "1010106118",
+      "growerPumpId": "P028",
+      "saIdDescriptor": "P028",
+      "rateSchedule": "AG5C",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 159.26,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4693142227 P028",
+        "trueUpAmountUsd": 3303.92,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 35576,
+        "annualExportKwh": 32023,
+        "annualNetKwh": 3553,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 3463.18
+    },
+    {
+      "serviceId": "4697755484",
+      "meterNumber": "1010260190",
+      "growerPumpId": "P027",
+      "saIdDescriptor": "P027",
+      "rateSchedule": "AG5C Large Time-of-Use Agricultural Power",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 162.27,
+        "totalKwh": 0,
+        "peakKw": 0.16,
+        "demandChargeUsd": 3.01,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4697755484 P027",
+        "trueUpAmountUsd": 2461.49,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 16949,
+        "annualExportKwh": 39855,
+        "annualNetKwh": -22906,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 2623.76
+    },
+    {
+      "serviceId": "4699141870",
+      "meterNumber": "1010016109",
+      "growerPumpId": "P017",
+      "saIdDescriptor": "P017",
+      "rateSchedule": "AG4C",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 64.5,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4699141870 P017",
+        "trueUpAmountUsd": 1911.35,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 23909,
+        "annualExportKwh": 22246,
+        "annualNetKwh": 1663,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 1975.85
+    },
+    {
+      "serviceId": "4699664540",
+      "meterNumber": "1009999296",
+      "growerPumpId": null,
+      "saIdDescriptor": null,
+      "rateSchedule": "B1 Bus Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 1017.72,
+        "totalKwh": 2583.751,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 410.245,
+            "amountUsd": 163.91
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 1866.252,
+            "amountUsd": 716.89
+          },
+          {
+            "period": "Super Off-Peak",
+            "kWh": 307.253,
+            "amountUsd": 111.51
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 1017.72
+    },
+    {
+      "serviceId": "4699664553",
+      "meterNumber": "1008980663",
+      "growerPumpId": null,
+      "saIdDescriptor": "CHARANJIT BATH SHOP ELKHORN-18",
+      "rateSchedule": "AGA2 Ag<35 kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 735.44,
+        "totalKwh": 1923.683,
+        "peakKw": 13.696,
+        "demandChargeUsd": 184.16,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 173.173,
+            "amountUsd": 42.61
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 1750.51,
+            "amountUsd": 379.55
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 735.44
+    },
+    {
+      "serviceId": "4690972110",
+      "meterNumber": "1010253089",
+      "growerPumpId": "P018",
+      "saIdDescriptor": "P018",
+      "rateSchedule": "AG5B",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 35.83,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4690972110 P018",
+        "trueUpAmountUsd": 675.92,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 13408,
+        "annualExportKwh": 12477,
+        "annualNetKwh": 931,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 711.75
+    },
+    {
+      "serviceId": "4699664194",
+      "meterNumber": "1009930419",
+      "growerPumpId": null,
+      "saIdDescriptor": "VINES IRR 15HP BR-T2",
+      "rateSchedule": "AGA2 Ag<35 kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 635.29,
+        "totalKwh": 2391.646,
+        "peakKw": 3.948,
+        "demandChargeUsd": 86.41,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 306.205,
+            "amountUsd": 75.36
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 2085.441,
+            "amountUsd": 452.13
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 635.29
+    },
+    {
+      "serviceId": "4699664599",
+      "meterNumber": "1011541074",
+      "growerPumpId": null,
+      "saIdDescriptor": null,
+      "rateSchedule": "AGA2 Ag<35 kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 560.31,
+        "totalKwh": 1567.788,
+        "peakKw": 9.5052,
+        "demandChargeUsd": 127.81,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 265.399,
+            "amountUsd": 65.31
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 1302.389,
+            "amountUsd": 282.41
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 560.31
+    },
+    {
+      "serviceId": "4699664335",
+      "meterNumber": "1008774383",
+      "growerPumpId": "P060",
+      "saIdDescriptor": "P060",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 331.16,
+        "totalKwh": 809.521,
+        "peakKw": 4.596,
+        "demandChargeUsd": 21.67,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 110.067,
+            "amountUsd": 37.8
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 699.454,
+            "amountUsd": 219.52
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 331.16
+    },
+    {
+      "serviceId": "4695237170",
+      "meterNumber": "1009945238",
+      "growerPumpId": "P062",
+      "saIdDescriptor": "P062",
+      "rateSchedule": "AG5C",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 162.27,
+        "totalKwh": 0,
+        "peakKw": 0.16,
+        "demandChargeUsd": 3.01,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4695237170 P062",
+        "trueUpAmountUsd": 25.37,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 228,
+        "annualExportKwh": 203,
+        "annualNetKwh": 25,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 187.64
+    },
+    {
+      "serviceId": "4699664429",
+      "meterNumber": "5000031084",
+      "growerPumpId": null,
+      "saIdDescriptor": "FARM SHOP TURKEY-AL7",
+      "rateSchedule": "AGB Ag35+ kW Med Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 187.57,
+        "totalKwh": 252.062,
+        "peakKw": 5.672,
+        "demandChargeUsd": 49.55,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 36.183,
+            "amountUsd": 12.25
+          },
+          {
+            "period": "Off Peak",
+            "kWh": 215.879,
+            "amountUsd": 66.68
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 187.57
+    },
+    {
+      "serviceId": "4699664794",
+      "meterNumber": "1009535961",
+      "growerPumpId": null,
+      "saIdDescriptor": "FARM SHOP SWANSON-T31",
+      "rateSchedule": "AGA2",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 125.53,
+        "totalKwh": 92.4,
+        "peakKw": 3.84,
+        "demandChargeUsd": 84.55,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 8.36,
+            "amountUsd": 2.06
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 84.04,
+            "amountUsd": 18.22
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 125.53
+    },
+    {
+      "serviceId": "4699664294",
+      "meterNumber": "1007066646",
+      "growerPumpId": null,
+      "saIdDescriptor": "FARM SHP 7HP GRANT-T43",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 115.63,
+        "totalKwh": 145.064,
+        "peakKw": 3.734,
+        "demandChargeUsd": 17.61,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 24.161,
+            "amountUsd": 8.3
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 120.903,
+            "amountUsd": 37.94
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 115.63
+    },
+    {
+      "serviceId": "4699664272",
+      "meterNumber": "1003864066",
+      "growerPumpId": null,
+      "saIdDescriptor": "BATH FARMS- WTR SYS KAMM T-56",
+      "rateSchedule": "B1 Bus Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 104.06,
+        "totalKwh": 205.105,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 77.76,
+            "amountUsd": 31.0
+          },
+          {
+            "period": "Part-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 101.376,
+            "amountUsd": 38.94
+          },
+          {
+            "period": "Super Off-Peak",
+            "kWh": 25.968,
+            "amountUsd": 9.42
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 104.06
+    },
+    {
+      "serviceId": "4699664985",
+      "meterNumber": "1010467455",
+      "growerPumpId": null,
+      "saIdDescriptor": "BATH FARMS- OFFICE KAMM T-56",
+      "rateSchedule": "B1 Bus Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 103.51,
+        "totalKwh": 242.421,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 48.204,
+            "amountUsd": 19.27
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 177.703,
+            "amountUsd": 68.32
+          },
+          {
+            "period": "Super Off-Peak",
+            "kWh": 16.514,
+            "amountUsd": 5.99
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 103.51
+    },
+    {
+      "serviceId": "4699664416",
+      "meterNumber": "1009919243",
+      "growerPumpId": "P078",
+      "saIdDescriptor": "P078",
+      "rateSchedule": "AGB Ag35+ kW Med Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 103.43,
+        "totalKwh": 56.71,
+        "peakKw": 5.32,
+        "demandChargeUsd": 29.69,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 8.178,
+            "amountUsd": 2.77
+          },
+          {
+            "period": "Off Peak",
+            "kWh": 48.532,
+            "amountUsd": 15.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 103.43
+    },
+    {
+      "serviceId": "4694038660",
+      "meterNumber": "1010406762",
+      "growerPumpId": "P067",
+      "saIdDescriptor": "P067",
+      "rateSchedule": "AG5B",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 53.09,
+        "totalKwh": 0,
+        "peakKw": 1.02,
+        "demandChargeUsd": 13.12,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4694038660 P067",
+        "trueUpAmountUsd": 11.29,
+        "trueUpMonth": 5,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 10,
+        "annualImportKwh": 933,
+        "annualExportKwh": 0,
+        "annualNetKwh": 933,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 64.38
+    },
+    {
+      "serviceId": "4699664441",
+      "meterNumber": "1010260217",
+      "growerPumpId": "P041",
+      "saIdDescriptor": "P041",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 45.5,
+        "totalKwh": 0,
+        "peakKw": 0.16,
+        "demandChargeUsd": 2.5,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4699664441 P041",
+        "trueUpAmountUsd": 2.9,
+        "trueUpMonth": 12,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 3,
+        "annualImportKwh": 17,
+        "annualExportKwh": 0,
+        "annualNetKwh": 17,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 48.4
+    },
+    {
+      "serviceId": "4699664016",
+      "meterNumber": "1008711708",
+      "growerPumpId": null,
+      "saIdDescriptor": "FARM SHOP YELLOW S-T29",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 46.96,
+        "totalKwh": 41.737,
+        "peakKw": 1.816,
+        "demandChargeUsd": 8.56,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 5.123,
+            "amountUsd": 1.76
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 36.614,
+            "amountUsd": 11.49
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 46.96
+    },
+    {
+      "serviceId": "4699664820",
+      "meterNumber": "1010131530",
+      "growerPumpId": null,
+      "saIdDescriptor": "PUMP # 55",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 45.89,
+        "totalKwh": 14.006,
+        "peakKw": 0.024,
+        "demandChargeUsd": 0.61,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 1.867,
+            "amountUsd": 0.35
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 12.139,
+            "amountUsd": 1.93
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 45.89
+    },
+    {
+      "serviceId": "4691715828",
+      "meterNumber": "1010073676",
+      "growerPumpId": "PUMP 73",
+      "saIdDescriptor": "PUMP 73",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 44.21,
+        "totalKwh": 5.48,
+        "peakKw": 0.012,
+        "demandChargeUsd": 0.31,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.684,
+            "amountUsd": 0.13
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 4.796,
+            "amountUsd": 0.77
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 44.21
+    },
+    {
+      "serviceId": "4699664743",
+      "meterNumber": "1010782725",
+      "growerPumpId": "P038",
+      "saIdDescriptor": "P038",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 43.36,
+        "totalKwh": 0,
+        "peakKw": 0.0148,
+        "demandChargeUsd": 0.15,
+        "touSplit": [],
+        "coverageState": "needs_review"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4699664743 P038",
+        "trueUpAmountUsd": 0.26,
+        "trueUpMonth": 3,
+        "trueUpDate": "2026-03-26",
+        "trueUpPeriodMonths": 12,
+        "annualImportKwh": 124117,
+        "annualExportKwh": 0,
+        "annualNetKwh": 124117,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 43.62
+    },
+    {
+      "serviceId": "4699142630",
+      "meterNumber": "1010760843",
+      "growerPumpId": null,
+      "saIdDescriptor": null,
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4699664198",
+      "meterNumber": "1010284290",
+      "growerPumpId": "P072",
+      "saIdDescriptor": "P072",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4692424863",
+      "meterNumber": "1011089590",
+      "growerPumpId": "PUMP # 8",
+      "saIdDescriptor": "PUMP # 8",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4697631144",
+      "meterNumber": "1009488067",
+      "growerPumpId": null,
+      "saIdDescriptor": "BATH FARMS- IRR 100HP K-87",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4692166716",
+      "meterNumber": "1010259028",
+      "growerPumpId": "P075",
+      "saIdDescriptor": "P075",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4699664728",
+      "meterNumber": "1010284315",
+      "growerPumpId": "P077",
+      "saIdDescriptor": "P077",
+      "rateSchedule": "AGC Ag35+ kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 43.0,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 43.0
+    },
+    {
+      "serviceId": "4698074516",
+      "meterNumber": "1010071138",
+      "growerPumpId": "P058",
+      "saIdDescriptor": "P058",
+      "rateSchedule": "AGB Ag35+ kW Med Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 29.31,
+        "totalKwh": 5.327,
+        "peakKw": 0.012,
+        "demandChargeUsd": 0.17,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.668,
+            "amountUsd": 0.23
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 4.659,
+            "amountUsd": 1.44
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 29.31
+    },
+    {
+      "serviceId": "4699664561",
+      "meterNumber": "1009988357",
+      "growerPumpId": "P057",
+      "saIdDescriptor": "P057",
+      "rateSchedule": "AGB Ag35+ kW Med Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 27.47,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 27.47
+    },
+    {
+      "serviceId": "4698006011",
+      "meterNumber": "1010427314",
+      "growerPumpId": null,
+      "saIdDescriptor": null,
+      "rateSchedule": "AGB Ag35+ kW Med Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 27.47,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 27.47
+    },
+    {
+      "serviceId": "4696771732",
+      "meterNumber": "1011042812",
+      "growerPumpId": "P066",
+      "saIdDescriptor": "P066",
+      "rateSchedule": "AGA2 Ag<35 kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "printedTotalUsd": 26.48,
+        "totalKwh": 22.378,
+        "peakKw": 0.042,
+        "demandChargeUsd": 0.56,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 2.793,
+            "amountUsd": 0.69
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 19.585,
+            "amountUsd": 4.25
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 26.48
+    },
+    {
+      "serviceId": "4699664991",
+      "meterNumber": "1006467347",
+      "growerPumpId": null,
+      "saIdDescriptor": "FARM SHOP 400AC-AL11",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 21.03,
+        "totalKwh": 0.602,
+        "peakKw": 0.0228,
+        "demandChargeUsd": 0.17,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.052,
+            "amountUsd": 0.02
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.55,
+            "amountUsd": 0.17
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": false,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 21.03
+    },
+    {
+      "serviceId": "4699664321",
+      "meterNumber": "1009985509",
+      "growerPumpId": "P048",
+      "saIdDescriptor": "P048",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664286",
+      "meterNumber": "1009848597",
+      "growerPumpId": "P063",
+      "saIdDescriptor": "P063",
+      "rateSchedule": "AGA2 Ag<35 kW High Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664538",
+      "meterNumber": "1011635558",
+      "growerPumpId": "PUMP #56",
+      "saIdDescriptor": "PUMP #56",
+      "rateSchedule": "AGA1",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664012",
+      "meterNumber": "1006825809",
+      "growerPumpId": "P069",
+      "saIdDescriptor": "P069",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664965",
+      "meterNumber": "1009963402",
+      "growerPumpId": "P043",
+      "saIdDescriptor": "P043",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664955",
+      "meterNumber": "1011356262",
+      "growerPumpId": "P045",
+      "saIdDescriptor": "P045",
+      "rateSchedule": "AGA1 Ag<35 kW Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 20.67,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "coverageState": "reconciled"
+      },
+      "nem": null,
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": false,
+        "trulyIdleNonNem": true
+      },
+      "annualCostUsd": 20.67
+    },
+    {
+      "serviceId": "4699664172",
+      "meterNumber": "1010243610",
+      "growerPumpId": null,
+      "saIdDescriptor": "OFFICE BIG RANCH-T2",
+      "rateSchedule": "B1 Bus Low Use",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": 9.85,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4699664172 OFFICE BIG RANCH-T2",
+        "trueUpAmountUsd": null,
+        "trueUpMonth": 10,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 7,
+        "annualImportKwh": 3728,
+        "annualExportKwh": 1629.5,
+        "annualNetKwh": 2098.5,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": 9.85
+    },
+    {
+      "serviceId": "4691688023",
+      "meterNumber": "1010127871",
+      "growerPumpId": "P002",
+      "saIdDescriptor": "P002",
+      "rateSchedule": "AG5B Large Time-of-Use Agricultural Power",
+      "latestCycle": {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "printedTotalUsd": -149.11,
+        "totalKwh": 0,
+        "peakKw": null,
+        "demandChargeUsd": null,
+        "touSplit": [],
+        "coverageState": "reconciled"
+      },
+      "nem": {
+        "nemEnrolled": true,
+        "nemLabel": "4691688023 P002",
+        "trueUpAmountUsd": null,
+        "trueUpMonth": 8,
+        "trueUpDate": null,
+        "trueUpPeriodMonths": 9,
+        "annualImportKwh": 7437,
+        "annualExportKwh": 5861.85,
+        "annualNetKwh": 1575.15,
+        "coverageState": "needs_review"
+      },
+      "flags": {
+        "idleZeroKwh": true,
+        "nemEnrolledZeroSolarBenefit": true,
+        "trulyIdleNonNem": false
+      },
+      "annualCostUsd": -149.11
+    }
+  ]
+}

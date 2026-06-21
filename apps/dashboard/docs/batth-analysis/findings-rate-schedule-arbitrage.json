@@ -1,0 +1,69 @@
+{
+  "lens": "rate-schedule-arbitrage",
+  "findings": [
+    {
+      "title": "Idle/near-zero-demand AGC pumps stranded on the 35+ kW high-use schedule (demote to AGA1)",
+      "annualUsd": 2717.4,
+      "confidence": "medium",
+      "needsIntervalData": true,
+      "evidence": "10 meters on AGC (Ag35+ kW High Use) on account 4699664587-8 show near-zero load in the latest billed cycle: 7 print exactly $43.00 = pure customer charge (AGC $1.43343/day x 30 days = $43.00, zero kWh, zero demand), and 3 more (P041 peakKw=0.16, PUMP 55 peakKw=0.024 on 14 kWh, P038 peakKw=0.0148) are within $2.50 of that floor. AGC's customer charge is $1.43343/day = $523.20/yr vs AGA1 $0.68895/day = $251.47/yr. Customer-charge saving per meter = ($1.43343-$0.68895)x365 = $271.74/yr. Across 10 stranded meters: 10 x $271.74 = $2,717.40/yr. AGA1 also carries NO demand charge (vs AGC's $21.43/kW max + $29.92/kW summer-peak), so demoting also removes all demand exposure. CAVEAT: these are large irrigation pumps idle this cycle (one is 'IRR 100HP' ~75 kW running; P077/P075 are 1400/1000 gpm), and AGA1 eligibility is a TRAILING-12-MONTH ratchet - a single month >=35 kW disqualifies AGA1 for a year. Trailing-12-mo interval data must confirm max 15-min demand stayed <35 kW before electing AGA1; high-gpm/high-HP pumps likely exceed 35 kW in-season and are NOT demotable.",
+      "meters": [
+        "4699664441 (P041)",
+        "4699664820 (PUMP 55)",
+        "4691715828 (PUMP 73)",
+        "4699664743 (P038)",
+        "4699142630",
+        "4699664198 (P072)",
+        "4692424863 (PUMP 8)",
+        "4697631144 (IRR 100HP K-87)",
+        "4692166716 (P075)",
+        "4699664728 (P077)"
+      ],
+      "recommendation": "Pull trailing-12-month 15-minute interval data for all 10 idle AGC meters. For each whose max demand stayed comfortably <35 kW across all 12 months, re-elect AGA1 (no demand charge, ~$0.69/day) - capturing ~$271.74/yr customer-charge saving each. Start with the low-gpm meters (PUMP 55 @250 gpm, P072 @300 gpm) as the safest demotions; exclude the 100HP and 1000-1400 gpm pumps unless interval data proves they never breach 35 kW. Do not demote a pump about to ramp up seasonally (12-month stickiness)."
+    },
+    {
+      "title": "AGA2 meters with high demand-to-energy ratio cost less on AGA1 (drop the max-demand charge)",
+      "annualUsd": 900.0,
+      "confidence": "low",
+      "needsIntervalData": true,
+      "evidence": "AGA1 and AGA2 share the same customer charge ($0.68895/day); the difference is AGA2 carries an $11.79/kW max-demand charge with lower energy, AGA1 has no demand charge but higher energy (peak-summer $0.51620 vs $0.40475; off-peak-winter $0.31060 vs $0.21642). Modeling the latest (winter) cycle: meter 4699664794 paid demand$ $84.55 on only 92.4 kWh - on AGA1 the extra energy is 92.4 x ($0.31060-$0.21642)=$8.70, so AGA1 saves ~$75.85 that cycle (annualizing the recurring demand-charge avoidance on a meter this lightly loaded is on the order of several hundred $/yr). But the trade flips for steady-energy meters: 4699664194 (2,392 kWh, demand$ $86.41) would pay $225.25 MORE energy on AGA1, a NET LOSS of ~$139/cycle; 4699664599 also loses ~$20/cycle; 4699664553 is roughly break-even (+$3). So the saving is real ONLY for low-load-factor AGA2 meters and is small and seasonal. The $900 figure is an order-of-magnitude estimate for the 1-2 demand-dominated meters (esp. 4699664794) pending full-year interval confirmation.",
+      "meters": [
+        "4699664794 (best candidate)",
+        "4699664553 (break-even)",
+        "4696771732 (P066, marginal)"
+      ],
+      "recommendation": "Only worth acting on for AGA2 meters whose annual demand charges materially exceed the incremental AGA1 energy cost - i.e. low load factor (high kW, few kWh). Pull 12-month interval data and model both rates per meter; elect AGA1 only where the full-year model is clearly positive. Do NOT blanket-switch AGA2->AGA1; it loses money on steady-use meters (4699664194, 4699664599)."
+    },
+    {
+      "title": "Legacy AG5B/AG5C/AG4C solar-NEM pumps: rate is intentional, not arbitrage (hold until 2027)",
+      "annualUsd": 0.0,
+      "confidence": "high",
+      "needsIntervalData": false,
+      "evidence": "10 meters sit on closed legacy schedules AG5B/AG5C/AG4C (P002,P003,P004,P017,P018,P027,P028,P052,P062,P067), every one NEM2-paired (solarGroup 4433/4444/5219). Per the rate brief these are deliberately parked on legacy TOU to hold the noon-6pm peak window that overlaps midday solar production; the modern AG 5-8pm peak no longer overlaps solar. They are not a rate-arbitrage opportunity - moving them to Schedule AG early would DESTROY solar value. They force-transition to Schedule AG only when solar-legacy eligibility lapses (no later than 7/31/2027). At that forced transition AG5B/C->AGC, AG4C->AGC; the demotion-to-AGA1 analysis (Finding 1) should be re-run for any that are then idle/<35 kW. Note P004 (AG5B) shows real demand (peakKw=171.52, demand$ $1,409) and is correctly demand-rated when running.",
+      "meters": [
+        "4692494679 (P003)",
+        "4698660251 (P004)",
+        "4699141870 (P017)",
+        "4690972110 (P018)",
+        "4697755484 (P027)",
+        "4693142227 (P028)",
+        "4695719808 (P052)",
+        "4695237170 (P062)",
+        "4694038660 (P067)",
+        "4691688023 (P002)"
+      ],
+      "recommendation": "Take no rate action before the 2027 solar-legacy lapse - the legacy TOU window is worth more than any schedule swap. Calendar the 2027 force-transition and re-run the AGA1 demotion sweep on any of these meters that are idle or confirmed <35 kW at that time."
+    },
+    {
+      "title": "87 more AGC/HAGC meters across 45 other accounts likely hold the same stranded-demand arbitrage (need bills)",
+      "annualUsd": 0.0,
+      "confidence": "medium",
+      "needsIntervalData": true,
+      "evidence": "The 183-meter inventory has 96 meters coded AGC/HAGC (13 AGC + 83 HAGC). Only 9 fall on the one account with billing data (4699664587-8); the other 87 AGC/HAGC meters sit on 45 accounts with NO bills in this dataset (largest pools: account 1909940814-8 = 21 meters, 6539944461-4 = 11 meters). HAGC is the same AGC rate at transmission voltage (same $1.43343/day customer charge, demand on the transmission rows). On the one account we CAN measure, 10 of 12 AGC meters were idle/sub-1-kW and stranded on the 35+ class - if that ratio holds, the bulk of the 87 are also candidates for demotion to AGA1/HAGA1, each worth ~$272/yr in customer charge alone plus removal of demand exposure. Cannot be dollar-quantified without the bills and trailing-12-mo interval data for those accounts.",
+      "meters": [
+        "~87 AGC/HAGC meters on 45 accounts (e.g. account 1909940814-8 x21, 6539944461-4 x11, 8922820273-8 x3, 3922545703-3 x3)"
+      ],
+      "recommendation": "Request PG&E bills + trailing-12-month interval data for the remaining 45 accounts. Run the same idle/low-demand AGC->AGA1 (and HAGC->HAGA1) sweep. Prioritize the two large pools (accounts 1909940814-8 and 6539944461-4) which alone hold 32 AGC/HAGC meters."
+    }
+  ]
+}

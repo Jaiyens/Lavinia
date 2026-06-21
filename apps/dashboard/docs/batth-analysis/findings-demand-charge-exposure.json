@@ -1,0 +1,75 @@
+{
+  "lens": "DEMAND-CHARGE EXPOSURE",
+  "generatedFrom": {
+    "billingFile": "apps/dashboard/fixtures/extract/batth-real-billing.json (account 4699664587-8)",
+    "inventoryFile": "apps/dashboard/batth-real-inventory.json (183 meters)",
+    "demandBrief": "brief-demand-charges.md",
+    "rateBrief": "brief-pge-ag-rates.md"
+  },
+  "method": {
+    "provenAnchor": "Each meter's billed demand charge is from a single Feb-11 to Mar-12 2026 (29-day, WINTER) cycle. The demand charge is set by the highest 15-min average kW in the cycle at ANY hour, and it recurs every month a pump runs. We annualize CONSERVATIVELY by holding the observed winter $/kW flat across the meter's active irrigation season (vines ~7 mo, almonds ~8 mo). AG-C/AG-5B summer Max-Demand $/kW is HIGHER than winter, so holding winter flat UNDERSTATES the true annual figure.",
+    "recoverable": "Demand brief sec.5: staggering/sequencing recovers ~15-30% of the base Max-Demand charge for a multi-pump farm. We use the LOW end (20%) as the working planning number. The base Max-Demand lever is staggering coincident overlap (the peak is set by the worst 15-min when pumps overlap).",
+    "summerPeakContingent": "AG-C carries a separate Summer Peak Demand charge of $29.92/kW on the highest 15-min during 5-8pm (AG-5B: $10.45/kW noon-6pm). This does NOT appear on the winter bill. P054's bill shows it already pumps ~99.7% off-peak (31,740 kWh off-peak vs 87.6 kWh peak), so the summer-peak exposure is most likely NOT realized. We report it as a flagged CONTINGENT at-risk number that only 15-min interval data can confirm/deny - we do NOT add it to the proven annual figure."
+  },
+  "findings": [
+    {
+      "title": "P054 (100HP vines pump, Swanson) is the single biggest demand-charge meter on the farm",
+      "annualUsd": 19483,
+      "confidence": "high",
+      "needsIntervalData": true,
+      "meters": ["serviceId 4696826125 / meter 1010259637 / P054 / AGC(HAGC) / VINES IRR 100HP S-T31, Swanson"],
+      "evidence": "Billed Feb-Mar 2026 cycle: peak demand 278.88 kW, demand charge $2,783.22 (= $9.98/kW, AG-C base Max-Demand at transmission/HAGC voltage). The demand charge recurs every active month. Annual (conservative) = $2,783.22 x 7 active vines months = $19,483. This is the proven, recurring base demand $ at risk. CONTINGENT summer-peak (AG-C $29.92/kW x 278.88 kW x 4 summer months = $33,376) is NOT added because the bill shows the pump already runs ~99.7% off-peak (31,740 off-peak vs 87.6 peak kWh) - interval data is required to confirm whether the summer 15-min peak ever lands in 5-8pm. Recoverable via staggering coincident overlap @20% = ~$3,897/yr.",
+      "recommendation": "Buy 12 months of 15-min interval data for P054 first - it sets the most demand dollars on the farm. Locate the coincident peak interval and overlay which other Swanson/large pumps were running. If P054's 278 kW peak is set by overlap with another big pump, offsetting starts by 15-20 min collapses the coincident peak toward the single-pump level. Conservative recoverable ~$3,900/yr from staggering; interval data also tests the ~$33k/yr summer-peak contingent."
+    },
+    {
+      "title": "P004 (2,250 gpm almond pump, Huron/Westlands) is the 2nd-biggest demand meter",
+      "annualUsd": 11274,
+      "confidence": "high",
+      "needsIntervalData": true,
+      "meters": ["serviceId 4698660251 / meter 1009483211 / P004 / AG5B / almonds, Huron, Westlands"],
+      "evidence": "Billed Feb-Mar 2026 cycle: peak demand 171.52 kW, demand charge $1,409.21 (= $8.22/kW, AG-5B winter, primary-voltage discount applied). Almonds run a long irrigation season; annual (conservative) = $1,409.21 x 8 active months = $11,274. AG-5B summer Max-Demand ($27.89/kW) exceeds winter ($20.54/kW), so holding the observed winter rate flat understates the summer months. CONTINGENT AG-5B summer peak-demand (noon-6pm $10.45/kW x 171.52 kW x 4 mo = $7,170) is reported separately and needs interval data. Recoverable via staggering @20% = ~$2,255/yr.",
+      "recommendation": "Pull 15-min interval data for P004. As the only large pump on AG-5B with a legacy noon-6pm TOU window, confirm whether its demand-setting interval coincides with other Huron pumps or with the noon-6pm peak window. ~$2,300/yr recoverable from staggering conservatively; interval data also confirms/denies the ~$7k/yr summer-peak contingent and whether AG-5B vs AG-C is still the right rate."
+    },
+    {
+      "title": "P031 (75HP vines pump) is the 3rd-biggest demand meter and shares the AG-C summer-peak exposure",
+      "annualUsd": 7791,
+      "confidence": "high",
+      "needsIntervalData": true,
+      "meters": ["serviceId 4699664088 / meter 1010427495 / P031 / AGC / VINES IRR 75HP NEW 75HP (PUMP # 31)"],
+      "evidence": "Billed Feb-Mar 2026 cycle: peak demand 111.52 kW, demand charge $1,112.97 (= $9.98/kW, AG-C base Max-Demand). Annual (conservative) = $1,112.97 x 7 active vines months = $7,791. CONTINGENT AG-C summer peak-demand ($29.92/kW x 111.52 kW x 4 mo = $13,347) is reported separately - needs interval data to confirm the 15-min peak lands in 5-8pm. Recoverable via staggering @20% = ~$1,558/yr.",
+      "recommendation": "Include P031 in the interval-data pull alongside P054 - both are AG-C vines pumps likely on a shared irrigation schedule, so they are prime candidates to be coincident in the same 15-min window. If P031 and P054 overlap, de-conflicting them is the single highest-leverage move. ~$1,560/yr recoverable conservatively."
+    },
+    {
+      "title": "Top-3 pumps stack to ~$38.5k/yr proven demand $ at risk; staggering recovers ~$7.7k/yr conservatively",
+      "annualUsd": 7709,
+      "confidence": "medium",
+      "needsIntervalData": true,
+      "meters": [
+        "P054 / 1010259637 / 4696826125 (AGC, 278.88 kW)",
+        "P004 / 1009483211 / 4698660251 (AG5B, 171.52 kW)",
+        "P031 / 1010427495 / 4699664088 (AGC, 111.52 kW)"
+      ],
+      "evidence": "Combined proven base demand $ at risk (annualized conservatively at observed winter $/kW): $19,483 + $11,274 + $7,791 = $38,547/yr. These three pumps are the only meters on the account billing 100+ kW (P054 278.88, P004 171.52, P031 111.52) - they dwarf the next meter (13.7 kW shop). Recoverable from staggering/sequencing at the brief's conservative low end (20% of base demand): $3,897 + $2,255 + $1,558 = $7,709/yr. At the brief's upper de-confliction range (~30-40% where overlap is severe and fixable) this rises toward $11.6k-$15.4k/yr.",
+      "recommendation": "These three meters define the interval-data buy list. Their billed demand charges prove a peak exists; only 15-min interval data shows when it happens, which pumps overlap, and whether breaking the overlap is worth the modeled $7.7k+/yr. Start with P054+P031 (both AG-C vines, likely co-scheduled) for the coincidence analysis."
+    },
+    {
+      "title": "Mid-tier AGA2 shop/15HP meters carry small Max-Demand charges but are NOT staggering candidates",
+      "annualUsd": 4830,
+      "confidence": "medium",
+      "needsIntervalData": false,
+      "meters": [
+        "1008980663 / 4699664553 (AGA2, 13.70 kW, $184.16/cyc, SHOP ELKHORN)",
+        "1011541074 / 4699664599 (AGA2, 9.51 kW, $127.81/cyc)",
+        "1009930419 / 4699664194 (AGA2, 3.95 kW, $86.41/cyc, VINES 15HP BR)",
+        "1009535961 / 4699664794 (AGA2, 3.84 kW, $84.55/cyc, FARM SHOP SWANSON)"
+      ],
+      "evidence": "These four AG-A2 meters carry a Max-Demand-only charge (no peak-demand component, $11.79/kW secondary per rate brief). Combined latest-cycle demand = $184.16 + $127.81 + $86.41 + $84.55 = $482.93/cycle; annualized x ~10 active months = ~$4,830/yr. But each is a single small load (shop, 15HP) - staggering does not apply (the lever is coincidence between BIG pumps). The real question for these is whether each should be on AG-A1 (no demand charge, higher energy) given its load factor.",
+      "recommendation": "Do NOT buy interval data for these for the staggering lens - the demand $ is small and there is no coincident-overlap opportunity on single small loads. Instead flag them for a rate-fit review (AG-A2 with a demand charge vs AG-A1 with none) under the rate-optimization lens. Demand-charge staggering effort belongs entirely on the 100+ kW pumps."
+    }
+  ],
+  "notes": {
+    "metersOutsideBillingAccount": "Only account 4699664587-8 (46 meters) has billing facts. The 183-meter inventory includes other accounts/entities whose demand exposure cannot be dollar-quantified without their bills - mark those needsBill if surfaced. Several large AG-C inventory pumps (e.g. P075/1010259028, P072/1010284290, PUMP#8/1011089590, IRR 100HP K-87/1009488067) show NO billed demand in the latest cycle (idle/zero-kWh this cycle) - they may become demand-charge candidates once irrigating; needsIntervalData=true once active.",
+    "labelCorrection": "The lens prompt's 'PUMP 21 / 1010259637' is meter 1010259637 = P054, descriptor VINES IRR 100HP S-T31 (Swanson). 'SW SE 33 / 1009483211' = P004 (2,250 gpm almond pump, Huron/Westlands). The '75HP vines pump' = P031 / 1010427495.",
+    "conservatismChecks": "(1) Annualized at WINTER $/kW though summer is higher = understates. (2) Used 20% recoverable (low end of brief's 15-30%). (3) Summer-peak demand reported as contingent/at-risk only, NOT added to proven annual, because P054's bill proves it already pumps ~99.7% off-peak. (4) Active-month counts (7 vines / 8 almonds) are conservative season estimates; interval data confirms the true per-month peak."
+  }
+}

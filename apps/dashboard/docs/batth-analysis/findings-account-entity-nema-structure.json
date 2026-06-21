@@ -1,0 +1,76 @@
+{
+  "lens": "account-entity-nema-structure",
+  "scopeNote": "Inventory = 183 meters across 57 PG&E accounts and ~6 distinct entities (the prompt's '~10 accounts / 4 entities' undercounts the real inventory). Dollar math is only possible for account 4699664587-8 (the one account in the billing file: 46 metered SAs, $86,942 printed + $83,338 NEM true-up). All other accounts are quantified qualitatively and flagged needsBill / needsIntervalData.",
+  "findings": [
+    {
+      "title": "Orphaned 'Solar' NEMEXP group: $62.8k true-up on a load meter that should sit under the 12,180 kW array fleet (NEMA linkage break)",
+      "annualUsd": 58414,
+      "confidence": "high",
+      "needsIntervalData": false,
+      "evidence": "Inventory solarGroup='Solar' contains 9 meters, ALL load (zero carry solarKw), spread across 2 entities / 6 accounts. The whole farm's generating nameplate (5x1092 kW + 8x840 kW = 12,180 kW, ~18.3-23.1 M kWh/yr expected) lives in SEPARATE groups (1092kw, 840kw) tagged nem=None, NOT linked to this 'Solar' group. In the billing file the 'Solar' group meters total $62,799 of true-up, dominated by serviceId 4699664088 (VINES IRR 75HP, NEMEXP, AGC): annualImport 230,223 kWh, export 39,718, net 190,505 kWh, true-up $62,795.65. Effective rate = 62795.65/190505 = $0.330/kWh = full-retail ag TOU, ~14x the ~2.3c/kWh NBC floor. This SA is configured as an export/generating SA (NEMEXP) yet shows full-retail import with no allocated credit = enrollment/linkage break (NEM brief failure mode (a)). With 12,180 kW of arrays producing ~15-19x this meter's load, the credit exists but is not reaching this SA. Recoverable = true-up minus NBC floor = 62,795.65 - (190,505 x 0.023) = 62,795.65 - 4,381.6 = $58,414. Fix is administrative (corrected Form 79-1202 to enroll/re-point this SA into the right NEMA arrangement + request rebill of the true-up), not capital.",
+      "meters": [
+        "serviceId 4699664088 (VINES IRR 75HP, NEMEXP, AGC, acct 4699664587-8) -- the $62,795.65 true-up",
+        "serviceId 4699664441 (NEMEXP, AGC, true-up $3)",
+        "serviceId 4699664743 / P038 (NEMEXPM, AGC, 124,117 kWh net import but $0 true-up -- verify it is actually credited)",
+        "serviceId 4699664172 (NEMS, B1, true-up $0)",
+        "Generating arrays that should back this group: 840kw group sids 5407601648,1203585402,303286619,8696448389,9566109872,4395569085,9495121765,3371044698; 1092kw group sids 6534296787,6534699050,6531000280,6532880573,6116351334"
+      ],
+      "recommendation": "Pull the Generation Allocation Summary / Supplemental Report and the active Form 79-1202 roster for the arrangement that owns the 12,180 kW arrays. Confirm SA 4699664088 is absent or at 0% allocation, then file a corrected Form 79-1202 to (re)enroll it as a benefiting account under the right generating meter and request PG&E recalculate/rebill the December true-up. Recovers ~$58.4k with no hardware. Also confirm P038 (4699664743) really was credited (124 MWh import at $0 true-up is anomalous)."
+    },
+    {
+      "title": "12,180 kW of generating arrays fragmented across 9 accounts and 3 entities, tagged nem=None -- not bound into any NEMA arrangement",
+      "annualUsd": 120000,
+      "confidence": "low",
+      "needsIntervalData": true,
+      "evidence": "The 13 generating meters (5x1092 kW + 8x840 kW = 12,180 kW nameplate) carry nemType=None in inventory and sit on 9 separate PG&E accounts spanning 3 entities: the 1092kw group on acct 6539944461-4 (KANWARJIT BATTH & GAGANDIP BATTH) plus one unknown acct 57448094630; the 840kw group on 8 distinct single-meter accounts split between BATTH FARMS INC (6 arrays) and KANWARJIT BATTH & GAGANDIP BATTH (2 arrays). NEMA (NEM2A) requires ONE customer-of-record and ONE generating meter per arrangement; 13 generating SAs with no NEM tag, scattered across 3 customers-of-record, cannot all be feeding the NEM2AA load groups correctly. Order-of-magnitude exposure: if even a fraction of the fleet's ~18-23 M kWh/yr of generation is not reaching load (as the orphaned VINES meter proves is already happening on at least one SA), under-credited load priced at full-retail ag TOU (~$0.20-0.33/kWh) vs the ~2.3c NBC floor implies tens to low-hundreds of thousands of dollars per year of avoidable true-up across the portfolio. The $120k point estimate = the observed $62.8k orphaned true-up on ONE account's 'Solar' group, scaled ~2x to reflect the other 56 accounts not in the billing file that share the same fleet (explicitly a range, $60k-$250k, pending bills + Allocation Summaries).",
+      "meters": [
+        "1092kw arrays: 6534296787, 6534699050, 6531000280, 6532880573 (acct 6539944461-4); 6116351334 (acct 57448094630, entity UNKNOWN, rate blank)",
+        "840kw arrays: 5407601648 (acct 5401297941-2), 1203585402 (1202269697-0), 303286619 (0305152088-4), 8696448389 (8693286367-2), 9566109872 (9568475552-3), 4395569085 (4391127618-6), 9495121765 (9493367026-0), 3371044698 (3375127040-7)"
+      ],
+      "recommendation": "Request the full Generation Allocation Summary for every active NEMA arrangement plus each generating meter's annual export/interval data and the 79-1202 rosters. Map each of the 13 generating SAs to its arrangement; identify generating meters whose exports are not being allocated to load. This is the single highest-value structural review on the portfolio; quantify per-arrangement once Allocation Summaries + bills for the non-4699664587-8 accounts are in hand."
+    },
+    {
+      "title": "Single customer-of-record violated: NEMA load groups span 2-4 distinct Batth entities, which can void aggregation eligibility",
+      "annualUsd": 30000,
+      "confidence": "low",
+      "needsIntervalData": false,
+      "evidence": "NEM2A requires that every account in an arrangement name the SAME customer-of-record and that all parcels be solely owned/leased by that one customer. The inventory's aggregation groups cross entity lines: group 4433 spans 3 entities (BATTH CHARANJIT S x8, KANWARJIT BATTH & GAGANDIP BATTH x2, K S BATTH & G S BATTH PARTNERSHIP x1); 4444 spans 3 entities; 5219 spans 4 entities (K S BATTH & G S BATTH PARTNERSHIP, KANWARJIT, BATTH FARMS INC, BATTH CHARANJIT S); the 'Solar' group spans 2 (BATTH CHARANJIT S x7, KANWARJIT x2); the 840kw generating fleet spans 2 (BATTH FARMS INC, KANWARJIT). If PG&E treats these as different customers-of-record, the cross-entity benefiting meters are ineligible and get billed full-retail (the same failure that produced the $62.8k VINES true-up). Conservatively, the recurring true-ups already visible in the one billing account ($83,338/yr across 11 NEM meters) are partly an entity-mismatch symptom; a $30k point estimate (range $15k-$60k) reflects the share of avoidable true-up attributable to cross-entity meters once aligned. Cannot be priced precisely without each entity's bills.",
+      "meters": [
+        "Cross-entity benefiting meters in 4433: 5097806378 (KANWARJIT, acct 5090219363-5), 6535191728 (KANWARJIT, 6539944461-4), 6439420511 (K S BATTH PARTNERSHIP, 6431815493-3)",
+        "Cross-entity in 4444: 4691688023 (CHARANJIT, 4699664587-8), 6416446454 (CHARANJIT, 6413523340-7), 3615394927 (PARTNERSHIP, 3619074535-0)",
+        "Cross-entity in 5219: 2707181864 (BATTH FARMS INC, 2700884486-5), 4694038660 (CHARANJIT, 4699664587-8), 6865522899 (PARTNERSHIP, 6863917471-0)",
+        "Cross-entity in Solar: 6539944670 (KANWARJIT, 6539944461-4), 8922820405 (KANWARJIT, 8922820273-8)"
+      ],
+      "recommendation": "Reconcile the legal customer-of-record on every account in each NEMA arrangement against the array owner. Where parcels are commonly controlled, consolidate accounts under a single customer-of-record (or use the same name on the 79-1202) so the cross-entity benefiting meters stay eligible. Where they truly are different owners, those meters cannot aggregate and need their own generation. Verify against parcel maps (Form 79-1202) and the actual PG&E bill name."
+    },
+    {
+      "title": "True-up dates scattered across 6 different anniversary months -- portfolio-wide misalignment forfeits cross-meter netting and signals mid-year rearrangements",
+      "annualUsd": 12000,
+      "confidence": "low",
+      "needsIntervalData": true,
+      "evidence": "True-up months across the farm's NEM meters: December x6, May x3, January x2, August x1, July x1, October x1. A single coordinated NEMA arrangement settles all its SAs on ONE 12-month Relevant Period anchored to the interconnection anniversary. Six different anniversary months means the load meters are NOT all in one arrangement and surplus generation banked under one anniversary cannot offset a deficit settling under another. The NEM brief notes any membership change forces an EARLY true-up and restarts the 12-month clock -- the spread of anniversary months is itself evidence of mid-year rearrangements that can orphan SAs (exactly the suspected cause of the $62.8k VINES true-up, whose December true-up does not match its group-mates). Timing misalignment also means a heavy summer-import meter can true-up at the worst point of its cycle. Conservative recurring carrying-cost / lost-netting estimate $12k/yr (range $5k-$25k), driven by forfeited cross-anniversary credit netting; precise figure needs each meter's monthly NEM ledger.",
+      "meters": [
+        "December true-up: 4699664088, 4699664441, 4699664743, 6539944670, 9597876433, 8922820405",
+        "May: 6439420511, 6865522899, 730240746",
+        "January: 5089901108, 3372050998",
+        "August: 3615394927",
+        "July: 4502675334",
+        "October: 4699664172"
+      ],
+      "recommendation": "Pull each NEM meter's monthly netting ledger and the arrangement anniversary dates. Where meters belong together physically and by ownership, request PG&E re-anchor them to a single Relevant Period so banked summer export offsets winter import within one true-up. Investigate the December-anniversary cluster (which holds the $62.8k orphan) for a mid-year rearrangement that dropped SAs from the allocation."
+    },
+    {
+      "title": "14 truly-idle zero-kWh meters each pay a full customer charge for nothing; 6 are stranded on the AGC high-use rate",
+      "annualUsd": 3138,
+      "confidence": "high",
+      "needsIntervalData": false,
+      "evidence": "Billing account 4699664587-8 has 28 idle (zero-kWh) meters; 14 are truly idle non-NEM (zero energy AND no NEM netting), total latest-cycle customer charges = $436.96/month = $5,244/yr (rollup field trulyIdleNonNemTotalLatestUsd = 436.96). PG&E customer charges are per-METER not per-account, so closing accounts does not help -- but these meters draw zero kWh while paying a fixed daily charge. 6 sit on AGC at $43.58/mo (= $1.43343/day x 30.4): 4699142630, 4699664198, 4692424863, 4697631144, 4692166716, 4699664728. Demoting each idle AGC meter to AGA1 ($20.95/mo, zero demand charge) saves (43.58-20.95)x12 = $271.56/yr each = $1,629/yr; fully closing the 6 dead services saves 43.58x12x6 = $3,138/yr. The remaining 8 idle meters (2 on AGB at $27.47/mo, 6 on AGA1/AGA2 at ~$20.67/mo) save up to $3,138 + 2x330 + 6x248 = ~$5,244/yr if all dead services are closed.",
+      "meters": [
+        "Idle AGC (close or demote to AGA1): 4699142630, 4699664198, 4692424863 (PUMP #8), 4697631144 (BATH FARMS IRR 100HP), 4692166716 (P075), 4699664728 (P077)",
+        "Idle AGB: 4699664561 (P057), 4698006011",
+        "Idle AGA1/AGA2: 4699664321 (P048), 4699664286 (P063), 4699664538 (PUMP #56), 4699664012 (P069), 4699664965 (P043), 4699664955 (P045)"
+      ],
+      "recommendation": "Confirm with the grower which idle services are permanently abandoned (old/replaced wells) and close those PG&E service agreements to stop the per-meter customer charge entirely (~$5.2k/yr). For idle-but-retained AGC meters, demote to AGA1 to drop the $43.58/mo high-use customer charge to $20.95/mo and shed the demand-charge exposure ($1.6k/yr on the 6 AGC meters alone). Cross-check status='NEW WELL' / 'BAD' / 'OLD' tags in inventory before closing."
+    }
+  ]
+}

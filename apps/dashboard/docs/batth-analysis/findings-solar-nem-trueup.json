@@ -1,0 +1,95 @@
+{
+  "lens": "SOLAR / NEM TRUE-UP ANOMALIES",
+  "generatedFrom": {
+    "inventory": "/Users/panda/Lavinia/apps/dashboard/batth-real-inventory.json (183 meters, all accounts)",
+    "billing": "/Users/panda/Lavinia/apps/dashboard/fixtures/extract/batth-real-billing.json (account 4699664587-8 only, 46 meters, 14 NEM-enrolled)",
+    "briefs": [
+      "/Users/panda/Lavinia/undefined/brief-nem-nema.md",
+      "/Users/panda/Lavinia/brief-pge-ag-rates.md",
+      "/Users/panda/Lavinia/brief-demand-charges.md"
+    ]
+  },
+  "arrayTopology": {
+    "physicalArrays": {
+      "1092kw_group": {"nameplateKw": 1092, "generatingMeters": 5, "pumps": ["P006","P013","P024","P099","(unnamed sid 6116351334)"], "nemType": "None (generating side)"},
+      "840kw_group": {"nameplateKw": 840, "generatingMeters": 8, "pumps": ["P106","P118","P119","P120","P121","P122","P142","P154"], "nemType": "None (generating side)"},
+      "combinedKw": 1932,
+      "expectedAnnualKwh_centralValley": "2,898,000 to 3,670,800 (1500-1900 kWh/kW)"
+    },
+    "numberedNemaGroups_benefitingLoadMeters": {
+      "4433": {"members": 11, "nemTypes": "10x NEM2AA + 1x NEM2AG anchor"},
+      "4444": {"members": 8, "nemTypes": "7x NEM2AA + 1x NEM2AG anchor"},
+      "5219": {"members": 10, "nemTypes": "9x NEM2AA + 1x NEM2AG anchor"},
+      "4939": {"members": 4, "nemTypes": "3x None + 1x NEM2M"},
+      "4624": {"members": 1, "nemTypes": "1x NEMEXPM (DEHYDRATOR)"}
+    },
+    "solarOrphanGroup": {
+      "label": "Solar (NOT a numbered NEMA arrangement)",
+      "members": 9,
+      "nemTypes": "3x NEMEXP + 5x NEMEXPM + 1x NEMS",
+      "note": "Export-designated SAs carrying NO numbered NEMA group code. This is the orphan bucket. The headline meter P031 lives here."
+    }
+  },
+  "findings": [
+    {
+      "title": "HEADLINE: VINES IRR 75HP (P031 / meter 1010427495) gets zero NEMA generation credit, billed full-retail, $62,796 true-up",
+      "annualUsd": 57501,
+      "confidence": "high",
+      "needsIntervalData": false,
+      "needsBill": false,
+      "meters": ["serviceId 4699664088 / meter 1010427495 / pump P031 (VINES IRR 75HP NEW)"],
+      "evidence": "Billing: annualImportKwh=230,223; annualExportKwh=39,718; annualNetKwh=190,505; trueUpAmountUsd=$62,795.65; trueUpMonth=12; rate=AGC (Ag35+ High Use). Effective rate = 62,795.65 / 190,505 = $0.330/kWh. That is FULL-RETAIL ag TOU pricing (AG-C blended energy is only ~$0.16-0.21/kWh; the 2.3c NBC floor would be only 0.023*230,223 = $5,295). $0.330/kWh is ~14x the NBC floor => this meter received essentially ZERO generation credit. Inventory: solarGroup='Solar' (NOT a numbered NEMA group like 4433/4444/5219), nemType=NEMEXP (export-designated) yet it nets 190,505 kWh net IMPORT. PROOF it is an administrative linkage break, not an array failure: sibling meter P038 (1010782725) sits in the IDENTICAL 'Solar'/NEMEXP-family bucket with a LARGER 124,117 kWh net import and 0 exports, yet its true-up is $0.26 -- so the arrangement's allocated credit zeroes a same-bucket meter's energy fine; the credit exists and reaches P038 but does NOT reach P031. The 1,092kW+840kW=1,932kW arrays produce ~2.9-3.7M kWh/yr, ~15-19x this meter's 190,505 kWh load, so generation is abundant. RECOVERABLE = trueUp - NBC floor = 62,795.65 - 5,295 = $57,501 (conservative; the NBC floor of ~$5,295 cannot be offset and remains owed). Fix is administrative.",
+      "recommendation": "Pull the arrangement's Generation Allocation Summary / Supplemental Report and the active Form 79-1202 roster; confirm SA 4699664088 is ABSENT or at 0% allocated percent (expected). File a corrected Form 79-1202 to (re)enroll P031 as a benefiting account in the correct NEMA arrangement (the same one P038 is in), then request PG&E rebill/recalculate the 12-month true-up with the corrected allocation. No new hardware. Recovers ~$57,501 of the $62,796; ~$5,295 NBC floor remains. If instead the Allocation Summary shows the SA present but the array group read near-zero exports, pivot to repairing the offline array group and disputing the affected period."
+    },
+    {
+      "title": "Off-billing-account 'Solar' orphan cohort: 5 more export-tagged pumps with no numbered NEMA group (same failure signature)",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "needsIntervalData": false,
+      "needsBill": true,
+      "meters": [
+        "acct 5089901685-6 / meter 1010127899 / pump P074 (NEMEXP, trueUp Jan)",
+        "acct 3372050929-9 / meter 1010785905 / pump P026 (NEMEXPM, trueUp Jan)",
+        "acct 6539944461-4 / meter 1010282416 / pump P033 (NEMEXPM, trueUp Dec)",
+        "acct 9597876494-2 / meter 1010025522 / pump P083 (NEMEXPM, trueUp Dec)",
+        "acct 8922820273-8 / meter 1011474007 / pump P034 (NEMEXPM, trueUp Dec)"
+      ],
+      "evidence": "Inventory scan across all 183 meters / all accounts: these 5 SAs carry the exact orphan signature of the headline finding -- solarGroup='Solar' (no numbered NEMA group 4433/4444/4624/4939/5219) and an export designation (NEMEXP/NEMEXPM). They sit in accounts OTHER than the billing account 4699664587-8, so no import/export/true-up dollars are in the billing file (account undefined). Each is a candidate for the same enrollment-linkage break that cost P031 $57,501. Cannot quantify without their bills/Allocation Summaries. Dollar value left at 0 pending bills; do NOT add to the headline total.",
+      "recommendation": "Pull the latest True-Up Statement + Generation Allocation Summary for each of these 5 SAs. For any showing a high net import at ~full-retail effective $/kWh (>~$0.10/kWh) with 0% allocation, file a Form 79-1202 correction and request rebill, exactly as for P031. needsBill: account-level billing not in scope of the supplied file."
+    },
+    {
+      "title": "Group-4433 benefiting meters carrying residual true-ups (partial offset, NOT zero): $20,528 across P003/P052/P028/P017/P018/P027/P062",
+      "annualUsd": 6000,
+      "confidence": "low",
+      "needsIntervalData": true,
+      "needsBill": false,
+      "meters": [
+        "serviceId 4692494679 / meter 1010100559 / pump P003 (trueUp $7,130; import 83,134 / export 76,916 / net 6,218)",
+        "serviceId 4695719808 / meter 1010016455 / pump P052 (trueUp $5,020; import 61,297 / export 55,914 / net 5,383)",
+        "serviceId 4693142227 / meter 1010106118 / pump P028 (trueUp $3,304; import 35,576 / export 32,023 / net 3,553)",
+        "serviceId 4699141870 / meter 1010016109 / pump P017 (trueUp $1,911; import 23,909 / export 22,246 / net 1,663)",
+        "serviceId 4690972110 / meter 1010253089 / pump P018 (trueUp $676; net 931)",
+        "serviceId 4697755484 / meter 1010260190 / pump P027 (trueUp $2,461; net -22,906 net EXPORT)",
+        "serviceId 4695237170 / meter 1009945238 / pump P062 (trueUp $25; net 25)"
+      ],
+      "evidence": "These 7 meters ARE properly enrolled (inventory nemType=NEM2AA, solarGroup=4433, contiguous=Yes mostly) and DO get allocation -- their imports and exports nearly balance (e.g. P003 import 83,134 vs export 76,916). Their true-ups sum to $20,528. Unlike P031, their effective $/kWh on net is high ONLY because net is tiny (a small positive net x retail), not because energy went uncredited. Failure modes here are (c) pro-rata under-allocation when total arrangement load > total generation and (d) NBC residue on full metered import (P003: 0.023*83,134=$1,912 NBC alone). P027 is actually a NET EXPORTER (-22,906 kWh) yet still shows a $2,461 true-up -- a TOU-timing dollar deficit (cheap midday exports vs expensive peak imports) and/or NBC, worth disputing. Recoverable here is genuinely uncertain and MUCH smaller than the headline -- a conservative ~$6,000 placeholder across the cohort, mostly from TOU-shifting irrigation and confirming allocation %, not from a single administrative fix. NOT additive to the headline with confidence.",
+      "recommendation": "Pull the Generation Allocation Summary for arrangement 4433: confirm each SA's allocated percent and check whether arrangement total generation >= total load (if not, no meter can be fully offset and the residuals are structural). Then (1) shift irrigation runtime into the legacy noon-6pm solar-peak window to convert peak imports into midday self-consumption, and (2) verify NBC lines. P027's net-export-but-owes case specifically merits a TOU dispute. Quantify per-meter only with trailing-12-month interval data (needsIntervalData)."
+    },
+    {
+      "title": "Control / non-anomaly: P038 and the credited orphans prove the array and allocation are healthy (no capital fix needed)",
+      "annualUsd": 0,
+      "confidence": "high",
+      "needsIntervalData": false,
+      "needsBill": false,
+      "meters": [
+        "serviceId 4699664743 / meter 1010782725 / pump P038 (import 124,117 / export 0 / net 124,117 / trueUp $0.26)",
+        "serviceId 4699664172 / meter 1010243610 / Office BIG RANCH-T2 (import 3,728 / export 1,630 / net 2,098 / trueUp $0.00)",
+        "serviceId 4698660251 / meter 1009483211 / pump P004 (import 91,267 / export 107,327 / net -16,060 / net EXPORTER, no charge)"
+      ],
+      "evidence": "Included to forestall a misdiagnosis a smart farmer would raise ('the array must be broken'). P038 is in the SAME 'Solar'/NEMEXPM bucket as P031, with a LARGER net import (124,117 kWh) and 0 exports, yet owes $0.26 -- i.e. its energy WAS zeroed by allocated NEMA credit (Exports=0 is correct-by-design for a benefiting load meter). Office (net 2,098) owes $0.00. P004 is a net EXPORTER (-16,060 kWh). So the 1,932 kW arrays are producing and the allocation machinery works for every meter EXCEPT P031. This isolates the defect to P031's enrollment linkage and rules out a systemic array-offline / under-production story (failure mode b). No dollars to recover here -- this is the evidentiary control that makes the headline finding administrative, not capital.",
+      "recommendation": "No action. Use as the comparison case in the PG&E rebill request for P031: 'same arrangement, same export designation, same Exports=0 -- P038 nets to ~$0 while P031 is billed full retail, so the allocation exists and must be re-pointed to P031's SA.'"
+    }
+  ],
+  "headlineTotalRecoverableUsd": 57501,
+  "cohortUpsideNote": "Plus an uncertain ~$6,000 from the 4433 partial-offset cohort (interval-data-gated) and an unquantified but likely-material opportunity across 5 off-account 'Solar' orphans (bill-gated). Headline alone, conservative and defensible: $57,501/yr."
+}
