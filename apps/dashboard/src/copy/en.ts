@@ -1355,64 +1355,38 @@ export const en = {
   // when that gap closes. Plain operator English: "highest point so far this cycle", never "kW
   // peak" jargon where it can be avoided.
   meters: {
-    eyebrow: "Demand risk",
     title: "Meters",
-    sub: "Every meter, and how close each is to a new demand charge.",
     // The representative-data marking (consistent with the app's other demo surfaces).
     representativeTag: "Representative data",
     // The freshness line. Interval data lags about a day, so we never call a draw "live".
     asOf: (phrase: string): string => `Latest meter reads from ${phrase}`,
     asOfShort: (phrase: string): string => `as of ${phrase}`,
 
-    // The top "do I need to pay attention?" tile.
+    // The "do I need to pay attention?" copy, shared by the side rail: the all-clear title and
+    // the daily-read eyebrow.
     top: {
       allClearTitle: "Nothing needs attention",
-      allClearBody:
-        "Every meter is comfortably below the highest point it has already set this cycle.",
-      atRisk: (n: number): string =>
-        n === 1 ? "1 meter near a new demand charge" : `${n} meters near a new demand charge`,
-      settingNow: (n: number): string =>
-        n === 1
-          ? "1 meter is setting a new peak right now"
-          : `${n} meters are setting a new peak right now`,
-      urgentEyebrow: "Most urgent",
-      // The dollar consequence of THIS meter crossing its own highest point.
-      urgentConsequence: (name: string, amount: string): string =>
-        `${name} is about ${amount} from costing more if it beats its highest point this cycle.`,
-      urgentConsequenceOver: (name: string, amount: string): string =>
-        `${name} is already past its highest point, locking in about ${amount} more in demand charges.`,
-      headroomLabel: "Room left",
-      // The running cycle demand total + where it is headed.
-      lockedLabel: "Demand charges so far this cycle",
-      headedLabel: "Where it is headed if at-risk meters cross",
-      headedFlat: "On track to hold here",
       readEyebrow: "Today's read",
     },
 
-    // The legend that teaches the color mechanic.
-    legend: {
-      title: "What the colors mean",
-      safe: "Plenty of room below its highest point",
-      watch: "Climbing toward its highest point",
-      danger: "About to set a new, costlier peak",
+    // The side rail: compact "Most urgent" + "Today's read" stat cards.
+    side: {
+      label: "At a glance",
+      urgentEyebrow: "Most urgent",
+      // The dollar consequence if the most urgent meter beats its own highest point.
+      urgentAmount: (amount: string): string => `${amount} at risk`,
     },
 
     // Group containers.
     group: {
-      // A group is organizational, never a billing unit: it shows summed dollars + an at-risk
-      // count, never a pooled kW (demand is per meter).
-      atRiskCount: (n: number): string =>
-        n === 0 ? "All clear" : n === 1 ? "1 at risk" : `${n} at risk`,
+      // A group is organizational, never a billing unit: it shows a summed dollar roll-up + a
+      // meter count, never a pooled kW (demand is per meter).
       meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
-      lockedDemand: "Demand so far",
-      crossExposure: "At risk if they cross",
       collapse: "Collapse",
       expand: "Expand",
-      moveMeter: "Move",
       moveTo: "Move to group",
       newGroup: "New group name",
       rename: "Rename group",
-      save: "Save",
       cancel: "Cancel",
       resetGroups: "Reset grouping",
       resetGroupsHint: "Undo your manual group changes.",

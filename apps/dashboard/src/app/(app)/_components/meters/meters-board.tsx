@@ -9,7 +9,6 @@ import {
   type GroupOverrides,
   type MetersFeedResult,
 } from "@/lib/meters";
-import { RISK_STYLE } from "./risk-style";
 import { TopTile } from "./top-tile";
 import { GroupCard } from "./group-card";
 import { MeterDetail } from "./meter-detail";
@@ -19,6 +18,10 @@ import { MeterDetail } from "./meter-detail";
 // dynamically, and persists the farmer's manual grouping corrections in localStorage so they
 // survive re-renders and later uploads (mirrors how the Home bento order persists). The board
 // itself never pools demand: every kW shown is one meter's own; groups show only dollars + counts.
+//
+// Layout: a minimal header, then a two-column board - the meter groups (main) and a slim side rail
+// with the "Most urgent" + "Today's read" stat cards. The page scrolls naturally; nothing is locked
+// to one screen, so all content stays reachable on any height.
 
 const m = en.meters;
 
@@ -109,68 +112,53 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
   const hasOverrides = Object.keys(overrides).length > 0;
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-6xl flex-col gap-4 overflow-hidden px-5 py-4 lg:px-12">
+    <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-12">
       {/* Header: title + the representative-data marking + the freshness line (the ~1-day lag). */}
-      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="type-label-caps text-on-surface-variant">{m.eyebrow}</p>
           <h1 className="type-display-lg text-on-surface">{m.title}</h1>
-          <p className="mt-1 type-body-md text-on-surface-variant">{m.sub}</p>
+          <time dateTime={summary.asOfIso} className="mt-1 block type-caption text-on-surface-variant">
+            {m.asOf(summary.asOfPhrase)}
+          </time>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex items-center gap-3">
+          {hasOverrides && (
+            <button
+              type="button"
+              onClick={resetGroups}
+              title={m.group.resetGroupsHint}
+              className="type-caption text-on-surface-variant underline-offset-2 hover:underline"
+            >
+              {m.group.resetGroups}
+            </button>
+          )}
           {summary.representative && (
             <span className="rounded-full bg-surface-container px-2.5 py-1 type-label-caps text-on-surface-variant">
               {m.representativeTag}
             </span>
           )}
-          <time dateTime={summary.asOfIso} className="type-caption text-on-surface-variant">
-            {m.asOf(summary.asOfPhrase)}
-          </time>
         </div>
       </header>
 
-      <div className="shrink-0">
-        <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
-      </div>
+      {/* Two-column board: the side rail (Most urgent + Today's read) and the meter groups.
+          On narrow screens the rail stacks above the groups. */}
+      <div className="flex flex-col gap-5 lg:flex-row-reverse lg:items-start">
+        <div className="lg:sticky lg:top-6 lg:w-72 lg:shrink-0">
+          <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+        </div>
 
-      {/* The legend that teaches the color mechanic. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest px-4 py-3">
-        <span className="type-label-caps text-on-surface-variant">{m.legend.title}</span>
-        {(["danger", "watch", "safe"] as const).map((level) => (
-          <span key={level} className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="h-3 w-3 rounded-full border border-outline-variant"
-              style={{ background: RISK_STYLE[level].dot }}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {groups.map((group) => (
+            <GroupCard
+              key={group.name}
+              group={group}
+              allGroupNames={allNames}
+              onOpenMeter={setOpenMeterId}
+              onMoveMeter={moveMeter}
+              onRenameGroup={renameGroup}
             />
-            <span className="type-caption text-on-surface-variant">{m.legend[level]}</span>
-          </span>
-        ))}
-        {hasOverrides && (
-          <button
-            type="button"
-            onClick={resetGroups}
-            title={m.group.resetGroupsHint}
-            className="ml-auto type-caption text-on-surface-variant underline-offset-2 hover:underline"
-          >
-            {m.group.resetGroups}
-          </button>
-        )}
-      </div>
-
-      {/* Groups, worst-first, collapsible. Only this region scrolls, so the page stays one screen. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-        {groups.map((group) => (
-          <GroupCard
-            key={group.name}
-            group={group}
-            allGroupNames={allNames}
-            now={now}
-            onOpenMeter={setOpenMeterId}
-            onMoveMeter={moveMeter}
-            onRenameGroup={renameGroup}
-          />
-        ))}
+          ))}
+        </div>
       </div>
 
       {openRisk !== null && (

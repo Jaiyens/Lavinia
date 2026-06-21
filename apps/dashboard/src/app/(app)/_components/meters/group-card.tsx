@@ -9,24 +9,22 @@ import { byUrgency, type MeterGroup } from "@/lib/meters";
 import { RISK_STYLE } from "./risk-style";
 import { MeterTile } from "./meter-tile";
 
-// A GROUP container: collapsible, showing the group's DOLLAR roll-ups + at-risk count + its
-// WORST-meter risk indicator. It deliberately shows NO group kW / distance-to-peak (a group is
-// organizational, never a billing unit; demand is per meter). The header lets the farmer rename
-// the group and each tile lets them move a meter to another group; both corrections persist.
+// A GROUP container: collapsible, with a spare header - the worst-meter risk dot, the group name,
+// its meter count, and the ONE dollar figure that matters (demand locked so far). A group is
+// organizational, never a billing unit, so it never shows a pooled kW. The header lets the farmer
+// rename the group; each tile lets them move a meter to another group; both corrections persist.
 
 const m = en.meters;
 
 export function GroupCard({
   group,
   allGroupNames,
-  now,
   onOpenMeter,
   onMoveMeter,
   onRenameGroup,
 }: {
   group: MeterGroup;
   allGroupNames: string[];
-  now: Date;
   onOpenMeter: (meterId: string) => void;
   onMoveMeter: (meterId: string, toGroup: string) => void;
   onRenameGroup: (from: string, to: string) => void;
@@ -37,29 +35,24 @@ export function GroupCard({
   const style = RISK_STYLE[group.worst];
   const ordered = byUrgency(group.risks);
   const lockedCents = centsFromDollars(group.totalLockedDemandUsd);
-  const crossCents = centsFromDollars(group.totalCrossPeakCostUsd);
 
   return (
-    <section className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low shadow-e1">
-      {/* Header: collapse toggle, worst-meter indicator, at-risk count, dollar roll-ups. */}
-      <div className="flex flex-wrap items-center gap-3 p-4">
+    <section className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low">
+      {/* Header: collapse toggle, worst-meter dot, name, meter count, demand-so-far dollar. */}
+      <div className="flex items-center gap-3 p-3.5">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label={open ? m.group.collapse : m.group.expand}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
         >
           {open ? (
             <ChevronDown className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
           ) : (
             <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
           )}
-          <span
-            aria-hidden
-            className="h-3 w-3 shrink-0 rounded-full"
-            style={{ background: style.dot }}
-          />
+          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: style.dot }} />
           {renaming ? (
             <input
               autoFocus
@@ -86,47 +79,27 @@ export function GroupCard({
           </span>
         </button>
 
-        <span
-          className="rounded-full px-2.5 py-1 type-label-caps"
-          style={{ background: style.bg, color: style.text }}
-        >
-          {m.group.atRiskCount(group.atRiskCount)}
+        <span className="shrink-0 type-num font-semibold tabular-nums text-on-surface">
+          {formatUsdWhole(lockedCents)}
         </span>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="type-caption text-on-surface-variant">{m.group.lockedDemand}</p>
-            <p className="type-num font-semibold tabular-nums text-on-surface">
-              {formatUsdWhole(lockedCents)}
-            </p>
-          </div>
-          {group.atRiskCount > 0 && (
-            <div className="text-right">
-              <p className="type-caption text-on-surface-variant">{m.group.crossExposure}</p>
-              <p className="type-num font-semibold tabular-nums" style={{ color: RISK_STYLE.danger.text }}>
-                {formatUsdWhole(crossCents)}
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            aria-label={m.group.rename}
-            onClick={() => {
-              setDraftName(group.name);
-              setRenaming(true);
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </div>
+        <button
+          type="button"
+          aria-label={m.group.rename}
+          onClick={() => {
+            setDraftName(group.name);
+            setRenaming(true);
+          }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-surface-container"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
       </div>
 
       {open && (
-        <div className="grid grid-cols-1 gap-3 border-t border-outline-variant p-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2 xl:grid-cols-3">
           {ordered.map((risk) => (
             <div key={risk.meter.id} className="flex flex-col gap-1.5">
-              <MeterTile risk={risk} now={now} onOpen={() => onOpenMeter(risk.meter.id)} />
+              <MeterTile risk={risk} onOpen={() => onOpenMeter(risk.meter.id)} />
               <MoveControl
                 current={group.name}
                 allGroupNames={allGroupNames}
@@ -185,8 +158,7 @@ function MoveControl({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="type-caption text-on-surface-variant">{en.meters.group.moveMeter}:</span>
+    <div className="flex items-center gap-1.5 pl-1">
       <select
         aria-label={en.meters.group.moveTo}
         value=""
@@ -196,7 +168,7 @@ function MoveControl({
           else if (v.length > 0) onMove(v);
         }}
         className={cn(
-          "rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-2 py-1 type-caption text-on-surface",
+          "rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-2 py-0.5 type-caption text-on-surface-variant",
         )}
       >
         <option value="" disabled>
