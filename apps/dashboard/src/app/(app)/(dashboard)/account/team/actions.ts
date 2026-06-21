@@ -10,12 +10,15 @@ import type { FarmRole } from "@prisma/client";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import * as ops from "@/lib/auth/team-ops";
+import * as joinOps from "@/lib/auth/join-request";
+import type { JoinCodeResult } from "@/lib/auth/join-request";
 import type { TeamActionResult } from "@/lib/auth/team";
 import { en } from "@/copy/en";
 
 const TEAM_PATH = "/account/team";
 
 const SIGNED_OUT: TeamActionResult = { ok: false, error: en.team.managerLimited };
+const SIGNED_OUT_CODE: JoinCodeResult = { ok: false, error: en.team.managerLimited };
 
 export async function inviteMembersAction(
   farmId: string,
@@ -71,6 +74,43 @@ export async function transferOwnershipAction(membershipId: string): Promise<Tea
   const userId = await sessionUserId();
   if (!userId) return SIGNED_OUT;
   const result = await ops.transferOwnership(prisma, userId, membershipId);
+  if (result.ok) revalidatePath(TEAM_PATH);
+  return result;
+}
+
+// --- Request-to-join: the admin-facing approval + join-code surface (Phase 2) -----------------
+
+export async function approveJoinRequestAction(
+  requestId: string,
+  grantedRole: FarmRole,
+): Promise<TeamActionResult> {
+  const userId = await sessionUserId();
+  if (!userId) return SIGNED_OUT;
+  const result = await joinOps.approveJoinRequest(prisma, userId, requestId, grantedRole);
+  if (result.ok) revalidatePath(TEAM_PATH);
+  return result;
+}
+
+export async function denyJoinRequestAction(requestId: string): Promise<TeamActionResult> {
+  const userId = await sessionUserId();
+  if (!userId) return SIGNED_OUT;
+  const result = await joinOps.denyJoinRequest(prisma, userId, requestId);
+  if (result.ok) revalidatePath(TEAM_PATH);
+  return result;
+}
+
+export async function getOrCreateJoinCodeAction(farmId: string): Promise<JoinCodeResult> {
+  const userId = await sessionUserId();
+  if (!userId) return SIGNED_OUT_CODE;
+  const result = await joinOps.getOrCreateJoinCode(prisma, userId, farmId);
+  if (result.ok) revalidatePath(TEAM_PATH);
+  return result;
+}
+
+export async function rotateJoinCodeAction(farmId: string): Promise<JoinCodeResult> {
+  const userId = await sessionUserId();
+  if (!userId) return SIGNED_OUT_CODE;
+  const result = await joinOps.rotateJoinCode(prisma, userId, farmId);
   if (result.ok) revalidatePath(TEAM_PATH);
   return result;
 }

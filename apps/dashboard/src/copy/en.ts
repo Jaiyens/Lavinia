@@ -389,6 +389,53 @@ export const en = {
       noEmail: "Ask them to invite the email you sign in with.",
     },
   },
+  // Request-to-join (Phase 2), requester-facing: the /join code-entry page, the waiting screen, the
+  // declined notice, and the email to admins. Plain operator English. No em dashes, no exclamations.
+  join: {
+    title: "Join a farm",
+    lede: "Enter the join code your team gave you. An admin approves you before you see anything.",
+    codeLabel: "Join code",
+    codePlaceholder: "Example: 7K2P9QXM",
+    messageLabel: "Add a note (optional)",
+    messagePlaceholder: "Tell them who you are.",
+    submit: "Ask to join",
+    back: "Back",
+    // Outcomes returned by the ops, shown to the requester.
+    outcome: {
+      submitted: "Your request is in. We will let you know when an admin approves it.",
+      alreadyRequested: "Your request is already in. We will let you know when an admin approves it.",
+      alreadyMember: "You already have access to this farm.",
+      invitePending: "You have already been invited to this farm. Sign out and back in to open it.",
+      codeNotFound: "That code did not match a farm. Check it with whoever shared it.",
+      denyCooldown: "This farm reviewed your request recently. You can ask again later.",
+      rateLimited: "Too many requests just now. Try again in a little while.",
+      requestGone: "That request is no longer open.",
+    },
+    // The waiting-for-approval screen (rendered by /start while a request is pending).
+    waiting: {
+      title: "Waiting for approval",
+      body: (farmName: string): string =>
+        `Your request to join ${farmName} is waiting for an admin to approve it.`,
+      hint: "You can close this and come back. We will let you in as soon as they approve.",
+      cancel: "Cancel request",
+      signOut: "Use a different account",
+    },
+    // Shown on the fork after a request was declined.
+    declined: {
+      title: "Your request was not approved",
+      body: (farmName: string): string =>
+        `Your request to join ${farmName} was declined. You can ask again later or create your own farm.`,
+    },
+    // The email to admins when someone asks to join.
+    requestEmail: {
+      subject: (farmName: string): string => `Someone asked to join ${farmName} on Terra`,
+      heading: (farmName: string): string => `A request to join ${farmName}`,
+      body: (requesterName: string, farmName: string): string =>
+        `${requesterName} asked to join ${farmName}. Open the team page to approve or decline. They only get access once you approve.`,
+      button: "Review the request",
+      ignore: "If you do not know this person, you can decline the request.",
+    },
+  },
   account: {
     navLabel: "Account",
     eyebrow: "Account",
@@ -479,6 +526,23 @@ export const en = {
     switcherHeading: "Farms you can open",
     // "+ Add a farm" entry in the switcher (start or join another farm).
     addFarm: "Add a farm",
+    // Request-to-join (Phase 2): the admin-facing approval surface + the shareable join-code card.
+    requestsHeading: "Asked to join",
+    requestApprove: "Approve",
+    requestDeny: "Decline",
+    requestRoleLabel: "Let them",
+    requestApproved: "Added to the farm.",
+    requestDenied: "Request declined.",
+    requestNote: (note: string): string => `Note: ${note}`,
+    joinCode: {
+      heading: "Invite by link",
+      body: "Share this code or link with someone so they can ask to join. You approve each request.",
+      codeLabel: "Join code",
+      copyLink: "Copy link",
+      copied: "Copied",
+      rotate: "Make a new code",
+      show: "Show join code",
+    },
     // Empty state.
     empty: {
       title: "It is just you so far",

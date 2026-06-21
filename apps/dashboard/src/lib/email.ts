@@ -118,6 +118,73 @@ export async function sendFarmInvite({ to, farmName, inviterName, url }: FarmInv
   }
 }
 
+/** What the join-request notifier needs: which admin to mail, the farm, who asked, and the URL. */
+export type JoinRequestEmail = {
+  to: string;
+  farmName: string;
+  requesterName: string;
+  reviewUrl: string;
+};
+
+/** The branded "someone asked to join" HTML body (same shell as the invite). */
+function joinRequestHtml({ farmName, requesterName, reviewUrl }: Omit<JoinRequestEmail, "to">): string {
+  const t = en.join.requestEmail;
+  return `<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:${PAPER};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};padding:40px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border:1px solid #e7e5dc;border-radius:16px;overflow:hidden;">
+          <tr><td style="padding:32px 32px 8px;">
+            <span style="font-family:Inter,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${GREEN};">Terra</span>
+            <h1 style="margin:12px 0 0;font-family:Inter,Arial,sans-serif;font-size:22px;font-weight:600;color:${INK};">${t.heading(farmName)}</h1>
+            <p style="margin:12px 0 24px;font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:${MUTED};">${t.body(requesterName, farmName)}</p>
+            <a href="${reviewUrl}" style="display:inline-block;font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;background:${GREEN};text-decoration:none;padding:12px 20px;border-radius:10px;">${t.button}</a>
+            <p style="margin:28px 0 0;font-family:Inter,Arial,sans-serif;font-size:13px;line-height:1.5;color:${MUTED};">${t.ignore}</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+/**
+ * Notify a farm admin that someone asked to join. Same Resend-or-stub boundary as sendFarmInvite,
+ * and likewise NEVER throws: the request row is already saved by the time we send, so a transient
+ * email failure must not roll it back (the admin still sees the request on the team page).
+ */
+export async function sendJoinRequest({ to, farmName, requesterName, reviewUrl }: JoinRequestEmail): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(`[join-request] no RESEND_API_KEY; no email sent to ${to}.`);
+      return;
+    }
+    console.log(`\n[join-request] ${requesterName} asked to join ${farmName}; review: ${reviewUrl}\n`);
+    return;
+  }
+  const from = process.env.AUTH_EMAIL_FROM ?? "Terra <onboarding@resend.dev>";
+  try {
+    const res = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: en.join.requestEmail.subject(farmName),
+        html: joinRequestHtml({ farmName, requesterName, reviewUrl }),
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(`[join-request] Resend send failed (${res.status}): ${detail.slice(0, 300)}`);
+    }
+  } catch (err) {
+    console.error("[join-request] send error:", err instanceof Error ? err.message : err);
+  }
+}
+
 /**
  * Deliver a magic-link sign-in URL.
  *  - RESEND_API_KEY set  -> send the branded email via Resend's HTTP API.
