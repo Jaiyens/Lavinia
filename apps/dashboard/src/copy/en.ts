@@ -1780,6 +1780,7 @@ export const en = {
       zoomOut: "Zoom out",
       fsa: "FSA",
       parcel: "Parcel",
+      home: "My farm",
     },
   },
 

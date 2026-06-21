@@ -29,6 +29,8 @@ export interface GisMapHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   flyTo: (lng: number, lat: number, zoom?: number) => void;
+  /** Return to the farmer's own land: fit to their blocks (or the default center if none). */
+  home: () => void;
 }
 
 /** What a map click hands the page: the APN, whether it's one of the farmer's own blocks (so the
@@ -186,6 +188,13 @@ export function GisMap({
       zoomOut: () => mapRef.current?.zoomOut({ duration: 240 }),
       flyTo: (lng: number, lat: number, zoom = 16) =>
         mapRef.current?.flyTo({ center: [lng, lat], zoom, duration: 900 }),
+      home: () => {
+        const map = mapRef.current;
+        if (!map) return;
+        const b = farmBounds(myParcelsRef.current);
+        if (b) map.fitBounds(b, { padding: 90, maxZoom: 15.5, duration: 900 });
+        else map.flyTo({ center: GIS_CENTER, zoom: GIS_ZOOM, duration: 900 });
+      },
     }),
     [],
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { Home, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { ParcelDrawer } from "../parcel-drawer";
@@ -158,8 +158,9 @@ export function ParcelsGis({ myFarm, year }: { myFarm: Farm; year: number }) {
           </div>
         )}
 
-        {/* Bottom-right: zoom. */}
-        <ZoomControls
+        {/* Bottom-right: return to my farm + zoom. */}
+        <MapControls
+          onHome={() => mapHandle.current?.home()}
           onZoomIn={() => mapHandle.current?.zoomIn()}
           onZoomOut={() => mapHandle.current?.zoomOut()}
         />
@@ -483,9 +484,28 @@ function Stat({ label, value, alert }: { label: string; value: string; alert?: b
 
 /* ---------------------------------------------------------------------------- Bottom controls */
 
-function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
+function MapControls({
+  onHome,
+  onZoomIn,
+  onZoomOut,
+}: {
+  onHome: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+}) {
   return (
-    <div className="pointer-events-auto absolute bottom-5 right-4">
+    <div className="pointer-events-auto absolute bottom-5 right-4 flex flex-col items-end gap-2">
+      {/* Return to the farmer's own land. */}
+      <button
+        type="button"
+        aria-label={c.controls.home}
+        title={c.controls.home}
+        onClick={onHome}
+        className="flex h-9 items-center gap-2 rounded-xl bg-white px-3 text-[0.82rem] font-semibold text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition hover:bg-surface-container-high"
+      >
+        <Home className="size-4 text-[#2fa84f]" />
+        {c.controls.home}
+      </button>
       <div className="flex flex-col overflow-hidden rounded-xl bg-white text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
         <button
           type="button"
