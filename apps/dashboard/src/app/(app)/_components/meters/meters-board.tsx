@@ -140,31 +140,27 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
         </div>
       </header>
 
-      {/* Two-column board: the side rail (Most urgent + Today's read) and the meter groups.
-          On narrow screens the rail stacks above the groups. */}
-      <div className="flex flex-col gap-5 lg:flex-row-reverse lg:items-start">
-        <div className="lg:sticky lg:top-6 lg:w-72 lg:shrink-0">
-          <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
-        </div>
+      {/* A dashboard, not an accordion: the wide top tile (Most urgent + Today's read), then every
+          meter on screen at once - each group is a section with ALL its gauges shown, no collapse. */}
+      <div className="flex flex-col gap-4">
+        <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
 
-        {/* PHASE TWO (not built yet): a "Board" / "Map" view toggle goes here, beside the groups.
+        {/* PHASE TWO (not built yet): a "Board" / "Map" view toggle goes here, beside the title.
             "Map" would render each meter as a colored dot or mini-gauge pinned at its real lat/lng
             (MeterSnapshot.lat/lng) on the shared farm map (see farm-map.tsx), so the farmer can find
             the red pump by where it physically sits. Keep the per-meter gauge as the dot/popover.
-            Add the toggle in the header above; swap this groups column for a <MetersMap> when "Map". */}
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {groups.map((group) => (
-            <GroupCard
-              key={group.name}
-              group={group}
-              allGroupNames={allNames}
-              now={now}
-              onOpenMeter={setOpenMeterId}
-              onMoveMeter={moveMeter}
-              onRenameGroup={renameGroup}
-            />
-          ))}
-        </div>
+            Add the toggle in the header above; swap these group sections for a <MetersMap> when "Map". */}
+        {groups.map((group) => (
+          <GroupCard
+            key={group.name}
+            group={group}
+            allGroupNames={allNames}
+            now={now}
+            onOpenMeter={setOpenMeterId}
+            onMoveMeter={moveMeter}
+            onRenameGroup={renameGroup}
+          />
+        ))}
       </div>
 
       {openRisk !== null && (

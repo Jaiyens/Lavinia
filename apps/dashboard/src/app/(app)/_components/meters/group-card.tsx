@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import { formatUsdWhole, centsFromDollars } from "@/lib/format/money";
@@ -9,12 +9,13 @@ import { byUrgency, type MeterGroup } from "@/lib/meters";
 import { RISK_STYLE } from "./risk-style";
 import { MeterTile } from "./meter-tile";
 
-// A GROUP container: collapsible, with a spare header - the worst-meter risk dot, the group name,
-// its meter count, and the ONE dollar figure that matters (demand locked so far). A group is
-// organizational, never a billing unit, so it never shows a pooled kW.
+// A GROUP section on the dashboard: a slim header (worst-meter dot, name, meter count, demand-so-far
+// dollar, edit pencil) with ALL its meters shown beneath as gauge tiles. There is no collapse - it
+// is a dashboard, so every meter is on screen at once; the farmer never clicks to reveal a group.
+// A group is organizational, never a billing unit, so it shows a summed dollar roll-up, never a kW.
 //
-// Normal view shows clean gauge tiles only. Regrouping (rename + move/merge/split) lives behind an
-// EDIT MODE toggled by the pencil on the header, so the board reads like a dashboard, not a form.
+// Regrouping (rename + move/merge/split) lives behind an EDIT MODE toggled by the pencil, so normal
+// viewing stays clean.
 
 const m = en.meters;
 
@@ -33,7 +34,6 @@ export function GroupCard({
   onMoveMeter: (meterId: string, toGroup: string) => void;
   onRenameGroup: (from: string, to: string) => void;
 }) {
-  const [open, setOpen] = useState(group.worst !== "safe");
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(group.name);
   const style = RISK_STYLE[group.worst];
@@ -41,60 +41,34 @@ export function GroupCard({
   const ordered = byUrgency(group.risks);
   const lockedCents = centsFromDollars(group.totalLockedDemandUsd);
 
-  const toggleEdit = () => {
-    setEditing((e) => {
-      const next = !e;
-      if (next) {
-        setDraftName(group.name);
-        setOpen(true); // editing reveals the tiles + move controls
-      }
-      return next;
-    });
-  };
-
   return (
     <section className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low">
-      {/* Header: collapse toggle, worst-meter dot, name, meter count, demand-so-far dollar, edit. */}
-      <div className="flex items-center gap-3 p-3.5">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={open ? m.group.collapse : m.group.expand}
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-        >
-          {open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden />
-          )}
-          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: style.dot }} />
-          {editing ? (
-            <input
-              autoFocus
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onRenameGroup(group.name, draftName);
-                  setEditing(false);
-                }
-                if (e.key === "Escape") {
-                  setDraftName(group.name);
-                  setEditing(false);
-                }
-              }}
-              className="min-w-0 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-2 py-1 type-body-md text-on-surface"
-            />
-          ) : (
-            <span className="truncate type-title text-on-surface">{group.name}</span>
-          )}
-          <span className="shrink-0 type-caption text-on-surface-variant">
-            {m.group.meterCount(group.risks.length)}
-          </span>
-        </button>
-
+      {/* Slim header: worst-meter dot, name, meter count, demand-so-far dollar, edit. */}
+      <div className="flex items-center gap-3 px-3.5 py-3">
+        <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: style.dot }} />
+        {editing ? (
+          <input
+            autoFocus
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onRenameGroup(group.name, draftName);
+                setEditing(false);
+              }
+              if (e.key === "Escape") {
+                setDraftName(group.name);
+                setEditing(false);
+              }
+            }}
+            className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-2 py-1 type-body-md text-on-surface"
+          />
+        ) : (
+          <h2 className="min-w-0 flex-1 truncate type-title text-on-surface">{group.name}</h2>
+        )}
+        <span className="shrink-0 type-caption text-on-surface-variant">
+          {m.group.meterCount(group.risks.length)}
+        </span>
         <span className="shrink-0 type-num font-semibold tabular-nums text-on-surface">
           {formatUsdWhole(lockedCents)}
         </span>
@@ -102,39 +76,39 @@ export function GroupCard({
           type="button"
           aria-label={editing ? m.group.doneEditing : m.group.edit}
           aria-pressed={editing}
-          onClick={toggleEdit}
+          onClick={() => {
+            if (!editing) setDraftName(group.name);
+            setEditing((e) => !e);
+          }}
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] transition-colors",
-            editing
-              ? "bg-primary-container text-primary"
-              : "text-on-surface-variant hover:bg-surface-container",
+            editing ? "bg-primary-container text-primary" : "text-on-surface-variant hover:bg-surface-container",
           )}
         >
           {editing ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Pencil className="h-3.5 w-3.5" aria-hidden />}
         </button>
       </div>
 
-      {open && (
-        <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2">
-          {ordered.map((risk) => (
-            <div key={risk.meter.id} className="flex flex-col gap-1.5">
-              <MeterTile
-                risk={risk}
-                groupName={group.name}
-                now={now}
-                onOpen={() => onOpenMeter(risk.meter.id)}
+      {/* Every meter, always visible. */}
+      <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2 xl:grid-cols-3">
+        {ordered.map((risk) => (
+          <div key={risk.meter.id} className="flex flex-col gap-1.5">
+            <MeterTile
+              risk={risk}
+              groupName={group.name}
+              now={now}
+              onOpen={() => onOpenMeter(risk.meter.id)}
+            />
+            {editing && (
+              <MoveControl
+                current={group.name}
+                allGroupNames={allGroupNames}
+                onMove={(to) => onMoveMeter(risk.meter.id, to)}
               />
-              {editing && (
-                <MoveControl
-                  current={group.name}
-                  allGroupNames={allGroupNames}
-                  onMove={(to) => onMoveMeter(risk.meter.id, to)}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
