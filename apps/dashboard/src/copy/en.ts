@@ -526,6 +526,9 @@ export const en = {
     addFarm: "Add a farm",
     // Request-to-join (Phase 2): the admin-facing approval surface + the shareable join-code card.
     requestsHeading: "Asked to join",
+    // Accessible label for the Team nav badge (a bare number is not meaningful to a screen reader).
+    pendingBadge: (n: number): string =>
+      n === 1 ? "1 request to join waiting" : `${n} requests to join waiting`,
     requestApprove: "Approve",
     requestDeny: "Decline",
     requestRoleLabel: "Let them",

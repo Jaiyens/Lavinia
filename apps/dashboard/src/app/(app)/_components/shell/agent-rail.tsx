@@ -23,6 +23,7 @@ export function AgentRail({
   farms = [],
   activeFarmId = null,
   access = null,
+  pendingRequests = 0,
 }: {
   demo?: boolean;
   farms?: { id: string; name: string }[];
@@ -30,6 +31,9 @@ export function AgentRail({
   // The signed-in member's capability set on the active farm (null on the public Tour). Drives the
   // role pill and the admin-only Team entry. Server-resolved and passed in - never derived here.
   access?: FarmAccess | null;
+  // Open join requests awaiting a decision (Phase 2): the count badge on the Team entry. Resolved
+  // server-side; a viewer never receives it (they never see the Team entry).
+  pendingRequests?: number;
 } = {}) {
   const pathname = usePathname();
   return (
@@ -133,6 +137,14 @@ export function AgentRail({
                   className={pathname === "/account/team" ? "text-primary" : undefined}
                 />
                 <span>{en.team.navLabel}</span>
+                {pendingRequests > 0 ? (
+                  <span
+                    aria-label={en.team.pendingBadge(pendingRequests)}
+                    className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-primary-container px-1.5 py-0.5 type-label-caps text-on-primary-container"
+                  >
+                    {pendingRequests}
+                  </span>
+                ) : null}
               </Link>
             ) : null}
             <Link

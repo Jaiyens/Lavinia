@@ -10,7 +10,7 @@ import { createJoinRequestAction } from "./actions";
 // On success the request is in, so we route to /start, whose resolveLanding now returns "waiting"
 // and renders the waiting-for-approval screen. On a calm short-circuit (already a member, bad code,
 // cooldown) the op returns ok:false with a plain message shown inline.
-export function JoinForm() {
+export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
   const router = useRouter();
   const t = en.join;
   const [pending, start] = useTransition();
@@ -32,7 +32,14 @@ export function JoinForm() {
 
   return (
     <form action={onSubmit} className="flex flex-col gap-4">
-      <Input name="code" label={t.codeLabel} placeholder={t.codePlaceholder} required autoComplete="off" />
+      <Input
+        name="code"
+        label={t.codeLabel}
+        placeholder={t.codePlaceholder}
+        defaultValue={initialCode}
+        required
+        autoComplete="off"
+      />
       <Input name="message" label={t.messageLabel} placeholder={t.messagePlaceholder} autoComplete="off" />
       {error ? <p className="type-body-sm text-alert">{error}</p> : null}
       <Button type="submit" variant="primary" className="mt-2 w-full" disabled={pending}>

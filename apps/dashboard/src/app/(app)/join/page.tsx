@@ -10,7 +10,13 @@ import { JoinForm } from "./join-form";
 // not bounce a farm-less user who belongs here. The "Create vs Join" fork at /start links here.
 export const dynamic = "force-dynamic";
 
-export default function JoinPage() {
+export default async function JoinPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  // A shared join link (/join?code=XXXX) prefills the code so the teammate just taps "Ask to join".
+  const { code } = await searchParams;
   const t = en.join;
   return (
     <ForkShell maxWidth="max-w-md">
@@ -27,7 +33,7 @@ export default function JoinPage() {
           <h1 className="type-display-lg">{t.title}</h1>
           <p className="type-body-md text-on-surface-variant">{t.lede}</p>
         </div>
-        <JoinForm />
+        <JoinForm initialCode={code ?? ""} />
       </div>
     </ForkShell>
   );

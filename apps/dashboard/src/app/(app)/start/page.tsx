@@ -7,13 +7,15 @@ import { en } from "@/copy/en";
 import { activeFarmId } from "@/lib/auth/active-farm";
 import { resolveLanding } from "@/lib/onboarding/landing";
 import { claimInvitesForUser } from "@/lib/auth/invite";
+import { ForkShell } from "../_components/fork-shell";
+import { WaitingForApproval } from "../_components/waiting-for-approval";
 
-// The post-login fork. A signed-in user with no farm lands here (the dashboard layout sends
-// every farm-less user to /start) and chooses to create a new farm or join one a teammate set
-// up. Lives under (app) (so it is auth-gated) but OUTSIDE (app)/(dashboard) (so the dashboard's
-// no-farm redirect cannot bounce a farm-less user who legitimately belongs here). resolveLanding
-// is the routing brain; this page redirects on every non-"choose" verdict so a ready member can
-// never be stranded on the fork, and an owner mid-onboarding resumes instead of starting over.
+// The post-login fork. A signed-in user with no farm lands here (the dashboard layout sends every
+// farm-less user to /start) and chooses to create a new farm or join one a teammate set up. Lives
+// under (app) (auth-gated) but OUTSIDE (app)/(dashboard) so the dashboard's no-farm redirect cannot
+// bounce a farm-less user who belongs here. resolveLanding is the routing brain; this page redirects
+// on every non-render verdict so a ready member is never stranded on the fork, an owner mid-
+// onboarding resumes, and a pending requester sees the waiting screen.
 export const dynamic = "force-dynamic";
 
 export default async function StartPage({
@@ -39,46 +41,62 @@ export default async function StartPage({
       // Self-heal a rare missed claim: convert the pending invite, then land on the dashboard.
       if (userId) await claimInvitesForUser(prisma, { id: userId, email });
       redirect("/");
+    case "waiting":
+      return (
+        <ForkShell maxWidth="max-w-md">
+          <WaitingForApproval requestId={landing.requestId} farmName={landing.farmName} />
+        </ForkShell>
+      );
     case "choose":
+    case "declined":
       break;
   }
 
+  // The fork. A recently declined request shows a calm notice above it (so a denial is not a silent
+  // bounce back to the choice screen); otherwise it is the plain Create-vs-Join choice.
+  const declinedFarm = landing.kind === "declined" ? landing.farmName : null;
   const t = en.start;
   return (
-    <main className="grain relative flex min-h-dvh w-full flex-col bg-surface text-on-surface">
-      <header className="mx-auto flex w-full max-w-5xl items-center px-5 py-5">
-        <span className="font-display text-lg font-semibold tracking-tight">Terra</span>
-      </header>
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 pb-20 pt-2">
-        <div className="mb-8 flex flex-col gap-2">
-          <span className="type-label-caps text-on-surface-variant">{t.eyebrow}</span>
-          <h1 className="type-display-lg">{t.title}</h1>
-          <p className="type-body-md text-on-surface-variant">{t.lede}</p>
+    <ForkShell>
+      {declinedFarm ? (
+        <div
+          role="status"
+          className="mb-6 rounded-2xl border border-outline-variant bg-surface-container px-5 py-4"
+        >
+          <p className="type-body-md font-semibold text-on-surface">{en.join.declined.title}</p>
+          <p className="mt-1 type-body-sm text-on-surface-variant">
+            {en.join.declined.body(declinedFarm)}
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Create a farm -> the existing onboarding identify step. Not ?new=1, so an interrupted
-              onboarding still resumes rather than spawning a duplicate farm. */}
-          <Link
-            href="/onboarding"
-            className="group flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low"
-          >
-            <Sprout size={24} aria-hidden className="text-primary" />
-            <h2 className="type-title text-on-surface">{t.create.title}</h2>
-            <p className="type-body-sm text-on-surface-variant">{t.create.body}</p>
-            <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.create.cta}</span>
-          </Link>
-          {/* Join a farm. Phase 1: joining is by invite, so this card explains how. Phase 2 turns
-              it into a request-to-join link to /join. */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-            <Users size={24} aria-hidden className="text-on-surface-variant" />
-            <h2 className="type-title text-on-surface">{t.join.title}</h2>
-            <p className="type-body-sm text-on-surface-variant">{t.join.body}</p>
-            <p className="mt-auto rounded-lg bg-surface-container px-3 py-2 type-caption text-on-surface-variant">
-              {email ? t.join.emailNote(email) : t.join.noEmail}
-            </p>
-          </div>
-        </div>
+      ) : null}
+      <div className="mb-8 flex flex-col gap-2">
+        <span className="type-label-caps text-on-surface-variant">{t.eyebrow}</span>
+        <h1 className="type-display-lg">{t.title}</h1>
+        <p className="type-body-md text-on-surface-variant">{t.lede}</p>
       </div>
-    </main>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Create a farm -> the existing onboarding identify step. Not ?new=1, so an interrupted
+            onboarding still resumes rather than spawning a duplicate farm. */}
+        <Link
+          href="/onboarding"
+          className="group flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low"
+        >
+          <Sprout size={24} aria-hidden className="text-primary" />
+          <h2 className="type-title text-on-surface">{t.create.title}</h2>
+          <p className="type-body-sm text-on-surface-variant">{t.create.body}</p>
+          <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.create.cta}</span>
+        </Link>
+        {/* Join a farm -> the /join code-entry page (request-to-join). */}
+        <Link
+          href="/join"
+          className="group flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low"
+        >
+          <Users size={24} aria-hidden className="text-on-surface-variant" />
+          <h2 className="type-title text-on-surface">{t.join.title}</h2>
+          <p className="type-body-sm text-on-surface-variant">{t.join.body}</p>
+          <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.join.cta}</span>
+        </Link>
+      </div>
+    </ForkShell>
   );
 }

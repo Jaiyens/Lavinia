@@ -46,6 +46,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // Almond chat route applies the same role-derived gate.
   const access = userId ? await resolveFarmAccess(prisma, resolved.farm.id, userId) : null;
   const canAttach = access?.canManageData ?? false;
+  // Open join requests awaiting an admin's decision (Phase 2): the count drives the Team nav badge.
+  // Admin-only query (a viewer never sees the Team item, so never the count).
+  const pendingRequests = access?.canManageTeam
+    ? await prisma.farmJoinRequest.count({
+        where: { farmId: resolved.farm.id, status: "open", expiresAt: { gt: new Date() } },
+      })
+    : 0;
   // The farms this user can switch between (the rail switcher). Single-farm users see a label.
   const farms = await accessibleFarms(prisma, userId);
   // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
@@ -80,7 +87,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
-          <AgentRail farms={farms} activeFarmId={resolved.farm.id} access={access} />
+          <AgentRail
+            farms={farms}
+            activeFarmId={resolved.farm.id}
+            access={access}
+            pendingRequests={pendingRequests}
+          />
           <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
         </div>
         <AgentTabBar />

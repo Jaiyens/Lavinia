@@ -52,6 +52,12 @@ async function makePendingFarm(userId: string, name = "Pending"): Promise<{ id: 
   });
 }
 
+/** A bare farm (no membership for the test user) to attach a join request to. */
+async function makeBareFarm(name = "Other Farm"): Promise<{ id: string }> {
+  const owner = await prisma.user.create({ data: { email: `owner-${name.replace(/\W/g, "")}@x.com` } });
+  return prisma.farm.create({ data: { name, userId: owner.id, isDemo: false }, select: { id: true } });
+}
+
 describe("resolveLanding", () => {
   it("sends a signed-out caller to the choice screen", async () => {
     expect(await resolveLanding(prisma, { userId: null, email: null })).toEqual({ kind: "choose" });
@@ -137,5 +143,76 @@ describe("resolveLanding", () => {
     expect(
       await resolveLanding(prisma, { userId: u.id, email: u.email, addIntent: true }),
     ).toEqual({ kind: "choose" });
+  });
+
+  it("shows the waiting screen for a user with an open join request and no farm", async () => {
+    const u = await makeUser("waiter@example.com");
+    const farm = await makeBareFarm("Waiting Farm");
+    const req = await prisma.farmJoinRequest.create({
+      data: {
+        farmId: farm.id,
+        userId: u.id,
+        requestedEmail: u.email,
+        status: "open",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+      select: { id: true },
+    });
+    expect(await resolveLanding(prisma, { userId: u.id, email: u.email })).toEqual({
+      kind: "waiting",
+      requestId: req.id,
+      farmName: "Waiting Farm",
+    });
+  });
+
+  it("prefers the dashboard over a pending request when the user is already a ready member", async () => {
+    const u = await makeUser("memberwithreq@example.com");
+    await makeReadyFarm(u.id, "Home Farm");
+    const other = await makeBareFarm("Some Other Farm");
+    await prisma.farmJoinRequest.create({
+      data: {
+        farmId: other.id,
+        userId: u.id,
+        requestedEmail: u.email,
+        status: "open",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+    expect(await resolveLanding(prisma, { userId: u.id, email: u.email })).toEqual({ kind: "dashboard" });
+  });
+
+  it("shows the fork with a declined notice after a recent denial", async () => {
+    const u = await makeUser("declined@example.com");
+    const farm = await makeBareFarm("Declined Farm");
+    await prisma.farmJoinRequest.create({
+      data: {
+        farmId: farm.id,
+        userId: u.id,
+        requestedEmail: u.email,
+        status: "denied",
+        decidedAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+    expect(await resolveLanding(prisma, { userId: u.id, email: u.email })).toEqual({
+      kind: "declined",
+      farmName: "Declined Farm",
+    });
+  });
+
+  it("ages out the declined notice (old denial falls through to choose)", async () => {
+    const u = await makeUser("olddeclined@example.com");
+    const farm = await makeBareFarm("Old Declined Farm");
+    await prisma.farmJoinRequest.create({
+      data: {
+        farmId: farm.id,
+        userId: u.id,
+        requestedEmail: u.email,
+        status: "denied",
+        decidedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago, past the notice window
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+    expect(await resolveLanding(prisma, { userId: u.id, email: u.email })).toEqual({ kind: "choose" });
   });
 });

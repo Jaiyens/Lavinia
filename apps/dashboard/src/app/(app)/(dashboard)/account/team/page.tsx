@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import type { FarmRole } from "@prisma/client";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { farmRole, roleAtLeast } from "@/lib/auth/access";
@@ -8,6 +9,8 @@ import { activeFarmId } from "@/lib/auth/active-farm";
 import { en } from "@/copy/en";
 import { AddPeople } from "./_components/add-people";
 import { TeamList, type InviteRow, type MemberRow } from "./_components/team-list";
+import { JoinRequests, type JoinRequestRow } from "./_components/join-requests";
+import { JoinCodeCard } from "./_components/join-code-card";
 
 // The Team settings page for the ACTIVE farm. Team is a property of the farm (not the personal
 // profile), so it lives under the farm's account area and resolves the active farm. Controls are
@@ -16,6 +19,38 @@ export const dynamic = "force-dynamic";
 
 function displayName(user: { name: string | null; email: string | null } | null): string {
   return user?.name?.trim() || user?.email || "Someone";
+}
+
+type JoinDatum = {
+  id: string;
+  requestedEmail: string;
+  proposedRole: FarmRole;
+  message: string | null;
+  user: { name: string | null; email: string | null } | null;
+};
+
+// Admin-only Phase 2 join data (the shareable code + open requests), in one read. A viewer never
+// sees the join-code card or the requests section, so the query is skipped for them entirely.
+async function loadJoinData(
+  farmId: string,
+  canManage: boolean,
+): Promise<{ joinCode: string | null; joinRequests: JoinDatum[] }> {
+  if (!canManage) return { joinCode: null, joinRequests: [] };
+  const [farm, joinRequests] = await Promise.all([
+    prisma.farm.findUnique({ where: { id: farmId }, select: { joinCode: true } }),
+    prisma.farmJoinRequest.findMany({
+      where: { farmId, status: "open", expiresAt: { gt: new Date() } },
+      select: {
+        id: true,
+        requestedEmail: true,
+        proposedRole: true,
+        message: true,
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { joinCode: farm?.joinCode ?? null, joinRequests };
 }
 
 export default async function TeamPage() {
@@ -30,6 +65,10 @@ export default async function TeamPage() {
   const farm = await prisma.farm.findUnique({ where: { id: farmId }, select: { name: true } });
   const farmName = farm?.name?.trim() || "your farm";
   const canManage = roleAtLeast(role, "manager");
+  // Phase 2 join data (admin-only). Guarded so a missing FarmJoinRequest table / joinCode column
+  // (an environment where the additive Phase 2 migration is not applied yet) degrades to "no code,
+  // no requests" rather than crashing the team page; in prod / the test DBs it loads normally.
+  const { joinCode, joinRequests } = await loadJoinData(farmId, canManage);
 
   const memberships = await prisma.farmMembership.findMany({
     where: { farmId, status: "active" },
@@ -64,6 +103,13 @@ export default async function TeamPage() {
     role: i.role,
     addedBy: i.invitedBy ? displayName(i.invitedBy) : null,
   }));
+  const requestRows: JoinRequestRow[] = joinRequests.map((r) => ({
+    id: r.id,
+    name: r.user?.name?.trim() || r.user?.email || r.requestedEmail || "Someone",
+    email: r.user?.email || r.requestedEmail || "",
+    proposedRole: r.proposedRole,
+    message: r.message,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 lg:px-12 lg:py-12">
@@ -82,12 +128,20 @@ export default async function TeamPage() {
       </header>
 
       {canManage ? (
-        <AddPeople farmId={farmId} canGrantOwner={role === "owner"} />
+        <>
+          <AddPeople farmId={farmId} canGrantOwner={role === "owner"} />
+          <JoinCodeCard farmId={farmId} initialCode={joinCode} />
+        </>
       ) : (
         <p className="mb-8 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 type-body-sm text-on-surface-variant">
           {t.managerLimited}
         </p>
       )}
+
+      {/* People who asked to join via the code (self-hides when there are none / for a viewer). */}
+      <div className="mb-8">
+        <JoinRequests requests={requestRows} canGrantOwner={role === "owner"} />
+      </div>
 
       <TeamList
         farmId={farmId}
