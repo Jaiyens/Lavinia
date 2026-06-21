@@ -47,9 +47,17 @@ model Farm {
   // listed them. Read by the solar-dashboard server edge -> dashboard/solar.ts.
   unlinkedNemaCodes Json?
 
+  // Shareable join code (Phase 2 request-to-join). An admin generates it lazily ("show join code")
+  // and gives it out of band; possessing it proves an insider referred you, with NO way to
+  // enumerate which farms exist. Nullable so seed/demo farms (and farms whose admin never opened
+  // the card) carry none; rotatable (null-and-regenerate) to invalidate old links. Unique so a
+  // code maps to exactly one farm.
+  joinCode String? @unique
+
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   memberships     FarmMembership[]
   invites         FarmInvite[]
+  joinRequests    FarmJoinRequest[]
   blocks          Block[]
   ranches         Ranch[]
   pumps           Pump[]
@@ -129,6 +137,53 @@ model FarmInvite {
   // email per farm and a revoke is genuinely final.
   @@index([invitedEmail]) // the claim lookup at sign-in (hot)
   @@index([farmId]) // the pending list in settings
+}
+
+// open | approved | denied | cancelled | expired. A decided request is terminal (a re-request is
+// a new row, blocked for a cooldown after a deny).
+enum JoinRequestStatus {
+  open
+  approved
+  denied
+  cancelled
+  expired
+}
+
+// Phase 2: a logged-in, NON-invited user asks to join an existing farm via its join code; an admin
+// (owner/manager) approves with a role or denies. The mirror image of FarmInvite (admin -> email,
+// pre-vouched, auto-claimed): here it is stranger -> farm, role PROPOSED, human-approved. Kept a
+// dedicated model so the single-purpose invite-claim path in lib/auth/invite.ts stays untouched.
+// Keyed on userId (the requester already has an account), never on email, so a different-email
+// sign-in can never hijack a request.
+model FarmJoinRequest {
+  id              String            @id @default(cuid())
+  farmId          String
+  // The logged-in requester. Authorization and the granted membership both key on this.
+  userId          String
+  // The requester's email at request time, normalized - captured for the admin UI + audit only,
+  // NOT a match key (authorization is by userId).
+  requestedEmail  String
+  // What the requester ASKS for. Advisory: the approver chooses the granted role (capped by
+  // assertCanGrantRole). Default viewer = least privilege for an unvouched stranger.
+  proposedRole    FarmRole          @default(viewer)
+  status          JoinRequestStatus @default(open)
+  // Optional "why I should be on this farm" note to help the admin decide.
+  message         String?
+  createdAt       DateTime          @default(now())
+  // 14d like an invite, so an abandoned request never lingers as a notification.
+  expiresAt       DateTime
+  decidedAt       DateTime?
+  // The admin who approved/denied. SetNull so a deleted admin never cascades the audit row away.
+  decidedByUserId String?
+
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user      User  @relation("FarmJoinRequester", fields: [userId], references: [id], onDelete: Cascade)
+  decidedBy User? @relation("FarmJoinDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+
+  // Note: a partial unique index (farmId, userId) WHERE status='open' is added in the migration SQL
+  // (Prisma's DSL cannot express it) so there is at most ONE open request per user per farm.
+  @@index([userId]) // "my pending requests" (the waiting screen) - hot
+  @@index([farmId, status]) // the admin pending list (hot)
 }
 
 // A legal billing entity. Batth runs ~6 of these; each owns several PG&E accounts.
@@ -603,6 +658,8 @@ model User {
   farmMemberships    FarmMembership[] @relation("FarmMemberships")
   invitedMemberships FarmMembership[] @relation("SentFarmInvites")
   sentInvites        FarmInvite[]     @relation("InviteInviter")
+  joinRequests       FarmJoinRequest[] @relation("FarmJoinRequester")
+  decidedJoinRequests FarmJoinRequest[] @relation("FarmJoinDecider")
 }
 
 // OAuth account link (renamed from the adapter's default `Account` to avoid colliding
