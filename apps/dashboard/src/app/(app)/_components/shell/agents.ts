@@ -1,11 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutGrid, Zap, Droplets, Users } from "lucide-react";
+import { LayoutGrid, Zap, Gauge, Droplets, Users } from "lucide-react";
 import { en } from "@/copy/en";
 
-// The agent rail lists AGENTS, not features (EXPERIENCE.md). Today only the Energy agent is
-// live; Home is the Energy dashboard today. Water/Labor sell the OS but are not built, so they
-// render at reduced opacity with a "coming" tag and are non-interactive (href === null).
-export type AgentKey = "home" | "energy" | "water" | "labor";
+// The agent rail lists AGENTS, not features (EXPERIENCE.md). Home + Energy + Meters are live;
+// Water/Labor sell the OS but are not built, so they render at reduced opacity with a "coming"
+// tag and are non-interactive (href === null).
+export type AgentKey = "home" | "energy" | "meters" | "water" | "labor";
 
 export type AgentItem = {
   key: AgentKey;
@@ -19,6 +19,7 @@ export type AgentItem = {
 export const AGENTS: readonly AgentItem[] = [
   { key: "home", label: en.shell.agents.home, href: "/", icon: LayoutGrid, live: true },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true },
+  { key: "meters", label: en.shell.agents.meters, href: "/meters", icon: Gauge, live: true },
   { key: "water", label: en.shell.agents.water, href: null, icon: Droplets, live: false },
   { key: "labor", label: en.shell.agents.labor, href: null, icon: Users, live: false },
 ] as const;
@@ -29,6 +30,7 @@ export const AGENTS: readonly AgentItem[] = [
 const TOUR_HREF: Partial<Record<AgentKey, string>> = {
   home: "/tour",
   energy: "/tour/energy",
+  meters: "/tour/meters",
 };
 
 /** The destination for an agent, under the tour shell (demo) or the real app. */
