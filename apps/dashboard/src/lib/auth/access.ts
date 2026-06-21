@@ -96,3 +96,38 @@ export function assertCanGrantRole(
     throw new RoleGrantError("only an owner can grant the owner role");
   }
 }
+
+/**
+ * The coarse capability set the UI gates on, derived once from a role. "Admin" = owner + manager
+ * (both manage the team and the farm's data); a viewer is read-only. Owner is the super-admin
+ * (transfer ownership, grant the owner role). This is the SINGLE definition of the admin tier:
+ * the `roleAtLeast(role, "manager")` line below is the one place that decides who is an admin, so
+ * the line can move without touching any surface. The fine-grained member-on-member rules
+ * (canActOnMember / assertCanGrantRole) stay separate - this object is only for UI gating, never a
+ * substitute for the server-side write gates, which re-derive role on every request.
+ */
+export type FarmAccess = {
+  role: FarmRole;
+  /** Invite, change roles, remove members, approve join requests. */
+  canManageTeam: boolean;
+  /** Connect/add data sources, attach files to Almond, persist exports, resolve findings. */
+  canManageData: boolean;
+  /** Transfer ownership, grant the owner role. */
+  isOwner: boolean;
+};
+
+/** Build the capability set for a known role. Pure; the admin line lives here, once. */
+export function farmAccess(role: FarmRole): FarmAccess {
+  const admin = roleAtLeast(role, "manager");
+  return { role, canManageTeam: admin, canManageData: admin, isOwner: role === "owner" };
+}
+
+/** The signed-in user's capability set on a farm, or null when they have no active membership. */
+export async function resolveFarmAccess(
+  prisma: PrismaClient,
+  farmId: string,
+  userId: string | null | undefined,
+): Promise<FarmAccess | null> {
+  const role = await farmRole(prisma, farmId, userId);
+  return role ? farmAccess(role) : null;
+}
