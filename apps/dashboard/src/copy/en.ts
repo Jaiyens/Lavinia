@@ -576,6 +576,7 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
+      meters: "Meters",
       parcels: "Parcels",
       water: "Water",
     },
@@ -1345,6 +1346,117 @@ export const en = {
       notConnectedBody:
         "Connect a PG&E account and Terra reads every meter, rate, and bill, then finds the money in them.",
       notConnectedCta: "Connect PG&E",
+    },
+  },
+
+  // The Meters demand-risk board. PG&E bills a demand charge on each meter's single highest
+  // 15-minute draw of the billing cycle, separately per meter. The board makes the gap between
+  // a meter's current draw and its own highest point so far (its "ceiling") obvious, and warns
+  // when that gap closes. Plain operator English: "highest point so far this cycle", never "kW
+  // peak" jargon where it can be avoided.
+  meters: {
+    eyebrow: "Demand risk",
+    title: "Meters",
+    sub: "Every meter, and how close each is to a new demand charge.",
+    // The representative-data marking (consistent with the app's other demo surfaces).
+    representativeTag: "Representative data",
+    // The freshness line. Interval data lags about a day, so we never call a draw "live".
+    asOf: (phrase: string): string => `Latest meter reads from ${phrase}`,
+    asOfShort: (phrase: string): string => `as of ${phrase}`,
+
+    // The top "do I need to pay attention?" tile.
+    top: {
+      allClearTitle: "Nothing needs attention",
+      allClearBody:
+        "Every meter is comfortably below the highest point it has already set this cycle.",
+      atRisk: (n: number): string =>
+        n === 1 ? "1 meter near a new demand charge" : `${n} meters near a new demand charge`,
+      settingNow: (n: number): string =>
+        n === 1
+          ? "1 meter is setting a new peak right now"
+          : `${n} meters are setting a new peak right now`,
+      urgentEyebrow: "Most urgent",
+      // The dollar consequence of THIS meter crossing its own highest point.
+      urgentConsequence: (name: string, amount: string): string =>
+        `${name} is about ${amount} from costing more if it beats its highest point this cycle.`,
+      urgentConsequenceOver: (name: string, amount: string): string =>
+        `${name} is already past its highest point, locking in about ${amount} more in demand charges.`,
+      headroomLabel: "Room left",
+      // The running cycle demand total + where it is headed.
+      lockedLabel: "Demand charges so far this cycle",
+      headedLabel: "Where it is headed if at-risk meters cross",
+      headedFlat: "On track to hold here",
+      readEyebrow: "Today's read",
+    },
+
+    // The legend that teaches the color mechanic.
+    legend: {
+      title: "What the colors mean",
+      safe: "Plenty of room below its highest point",
+      watch: "Climbing toward its highest point",
+      danger: "About to set a new, costlier peak",
+    },
+
+    // Group containers.
+    group: {
+      // A group is organizational, never a billing unit: it shows summed dollars + an at-risk
+      // count, never a pooled kW (demand is per meter).
+      atRiskCount: (n: number): string =>
+        n === 0 ? "All clear" : n === 1 ? "1 at risk" : `${n} at risk`,
+      meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      lockedDemand: "Demand so far",
+      crossExposure: "At risk if they cross",
+      collapse: "Collapse",
+      expand: "Expand",
+      moveMeter: "Move",
+      moveTo: "Move to group",
+      newGroup: "New group name",
+      rename: "Rename group",
+      save: "Save",
+      cancel: "Cancel",
+      resetGroups: "Reset grouping",
+      resetGroupsHint: "Undo your manual group changes.",
+    },
+
+    // A single meter tile.
+    tile: {
+      currentDraw: "Drawing now",
+      peakSoFar: "Highest this cycle",
+      headroom: "Room left",
+      overPeak: "Over its highest point",
+      // The timestamp that rides every current-draw figure (the ~1-day lag, made honest).
+      drawAsOf: (phrase: string): string => `reading from ${phrase}`,
+      kindPump: "Pump",
+      kindWell: "Well",
+      kindShop: "Shop",
+      openDetail: "Open meter",
+    },
+
+    // The meter detail view.
+    detail: {
+      back: "Back to meters",
+      curveTitle: "Today's draw, every 15 minutes",
+      ceilingLabel: "Highest point this cycle (the demand ceiling)",
+      nowLabel: "Latest reading",
+      chargeTitle: "This cycle's demand charge",
+      // What set the charge, in plain English.
+      chargeSet: (amount: string, kw: string, time: string): string =>
+        `${amount}. Set by the highest 15-minute draw so far this cycle: about ${kw} around ${time}.`,
+      chargeRate: (perKw: string): string => `Priced at ${perKw} per kW on this meter's rate.`,
+      // Stagger advice is ONLY ever shown when overlapping loads share ONE meter.
+      sameMeterNote:
+        "This is one meter. Spreading its own overlapping runs apart lowers its single highest draw. Pumps on separate meters running at once do not stack into one demand charge.",
+      crossMeterNote:
+        "Demand is billed per meter. Running this meter at the same time as another meter has no effect on either meter's demand charge.",
+      noData: "We could not find this meter.",
+    },
+
+    // Axis + chart labels.
+    chart: {
+      kwAxis: "kW",
+      timeAxis: "Time of day",
+      ceiling: "Ceiling",
+      now: "Now",
     },
   },
 

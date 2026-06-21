@@ -1,12 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutGrid, Zap, MapPin, Droplets } from "lucide-react";
+import { LayoutGrid, Zap, Gauge, MapPin, Droplets } from "lucide-react";
 import { en } from "@/copy/en";
 
-// The agent rail lists AGENTS, not features (EXPERIENCE.md). Energy (the PG&E tool) and Parcels
-// (public-records parcel lookup) are live; Home is the Energy dashboard today. Water sells the OS
-// but is not built, so it renders at reduced opacity with a "coming" tag and is non-interactive
-// (href === null).
-export type AgentKey = "home" | "energy" | "parcels" | "water";
+// The agent rail lists AGENTS, not features (EXPERIENCE.md). Home, Energy, Meters, and Parcels are
+// live; Water sells the OS but is not built, so it renders at reduced opacity with a "coming" tag
+// and is non-interactive (href === null).
+export type AgentKey = "home" | "energy" | "meters" | "parcels" | "water";
 
 export type AgentItem = {
   key: AgentKey;
@@ -20,6 +19,7 @@ export type AgentItem = {
 export const AGENTS: readonly AgentItem[] = [
   { key: "home", label: en.shell.agents.home, href: "/", icon: LayoutGrid, live: true },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true },
+  { key: "meters", label: en.shell.agents.meters, href: "/meters", icon: Gauge, live: true },
   { key: "parcels", label: en.shell.agents.parcels, href: "/parcels", icon: MapPin, live: true },
   { key: "water", label: en.shell.agents.water, href: null, icon: Droplets, live: false },
 ] as const;
@@ -30,6 +30,7 @@ export const AGENTS: readonly AgentItem[] = [
 const TOUR_HREF: Partial<Record<AgentKey, string>> = {
   home: "/tour",
   energy: "/tour/energy",
+  meters: "/tour/meters",
   parcels: "/tour/parcels",
 };
 
