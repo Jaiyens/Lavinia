@@ -494,7 +494,7 @@ function MapControls({
   onZoomOut: () => void;
 }) {
   return (
-    <div className="pointer-events-auto absolute bottom-5 right-4 flex flex-col items-end gap-2">
+    <div className="pointer-events-auto absolute bottom-28 right-4 flex flex-col items-end gap-2 lg:bottom-24">
       {/* Return to the farmer's own land. */}
       <button
         type="button"
