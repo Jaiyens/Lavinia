@@ -81,10 +81,15 @@ that's the first thing we'd pull."* That is the "we see what you don't" moment, 
 ### C. The headline lever — rate optimization (needs interval data)
 Your `CLAUDE.md` ranks **rate optimization #1** (~40% on one pump, zero operational change). Honestly, **our engine
 cannot produce a rate-optimization number yet** — it needs an interval-derived load profile and an honesty gate
-that reproduces posted bills; our fixture has no intervals. *(An engineering pass is re-checking whether the
-fixed rate-label parsing unlocks anything from bill-summary data alone — result folded in below when ready.)*
+that reproduces posted bills; our fixture has no intervals. **Confirmed by an engineering pass (typecheck green):**
+the tariff-label parsing bug is fixed, but the deeper blocker is that the bill summary carries **no kWh** — only
+dollars and demand — so the engine models the entire energy term as zero. It now emits 3 "switch AG-C→AG-B"
+findings (~$5,465) that are **pure demand-$/kW arbitrage and must NOT be shown** — they're sign-ambiguous because
+AG-B's *energy* rates are higher than AG-C's, so whether the switch saves or loses is unknowable without kWh.
+**Interval data resolves this:** once 15-min TOU usage lands, **42 of 46 billed meters become legitimate
+rate-opt candidates** (33 current AG-A/B/C + 9 legacy AG-4/AG-5; the other 4 are business B1, correctly no-op).
 **This is the cleanest justification for the $60 spend:** interval data on the biggest-spend meters is exactly
-what turns the #1 lever from "pending" into a dollar figure.
+what turns the #1 lever from "pending" into a real, defensible dollar figure.
 
 ### D. Demand charges — reframe, do NOT lead with staggering
 The latest cycle alone carried **$5,939.40 in demand charges across 23 meters** (engine-verified, matches the
@@ -121,8 +126,8 @@ findings need zero interval data.
   `intervals: []`). In worktree `wf_814e52aa-a50-39`, uncommitted.
 - **Engine harness:** `scripts/analyze-batth-real.ts` — runs the pure energy engines over the fixture.
 - **Engine-verified output:** demand-charge engine = **$5,939.40 across 23 cycles** (matches the bills exactly);
-  bill-audit = honest $0 (one cycle each, below its 3-comparator minimum); rate-optimization = $0 *(label-parse
-  fix + interval-gating under re-check)*.
+  bill-audit = honest $0 (one cycle each, below its 3-comparator minimum); rate-optimization emits 3 demand-only
+  **artifact** findings, flagged as not trustworthy (see §2C — energy modeled as zero). **`npm run typecheck` passes clean (exit 0).**
 - **Local Postgres is DOWN (`localhost:5432` closed)**, so I did **not** seed/render the dashboard — to render the
   186-pin map + findings, start your DB and run `npm run db:seed`. Everything else (pure engines, typecheck) is
   verified without a DB.
@@ -148,7 +153,9 @@ findings need zero interval data.
 - **P031 recovery may be zero-sum** if the 1,932 kW arrays are oversubscribed. Number is $0–$57k pending the
   Generation Allocation Summary / Form 79-1202. Present as "we'll find out," never "we've recovered it."
 - **Rate optimization produces no number without interval data.** The #1 lever is currently the least-quantified —
-  that's the whole point of the $60 spend. Don't claim a rate-opt dollar figure on Tuesday.
+  that's the whole point of the $60 spend. Don't claim a rate-opt dollar figure on Tuesday. **And do NOT show the
+  3 "switch AG-C→AG-B" findings the harness emits — they model energy as zero and are sign-ambiguous (AG-B energy
+  is higher than AG-C). Artifacts of missing interval data, not savings.**
 - **Demand charges:** lead with rate-opt + DR enrollment, not staggering (per `CLAUDE.md`).
 - **Closing dead services is ~permanent** — get a PG&E reconnection quote first; reconnection/line-extension can
   dwarf the saved customer charge. Demoting rates is the safe, reversible move.
@@ -170,7 +177,7 @@ findings need zero interval data.
 | **Bankable now (safe/reversible)** | **~$5,000/yr** | defended |
 | Bankable if dead services closed | up to ~$8–10k/yr | less reversible |
 | **P031 NEM anomaly (investigate)** | **$0–$57k/yr** | needs Allocation Summary |
-| Rate optimization (the #1 lever) | pending | needs interval data ($60 spend) |
+| Rate optimization (the #1 lever) | pending — 42/46 meters become candidates with intervals | needs interval data ($60 spend) |
 | Portfolio NEM structural audit | unsized | needs other accounts' bills |
 
 *Counted once each. The P031 anomaly is NOT added to the bankable total — it's a separate, contingent line.*
