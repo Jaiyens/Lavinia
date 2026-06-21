@@ -1665,6 +1665,80 @@ export const en = {
       parcel: "Parcel",
     },
   },
+
+  // Energy demand visuals (Feature A): the intra-day load curve that makes one expensive
+  // 15-minute window visible, and the concrete fix with the new number. No em dashes.
+  spike: {
+    sectionTitle: "Demand spike",
+    intro:
+      "One short window set this whole month's demand charge. Here is the day it happened.",
+    // The peak window callout: time of day + the dollars that window set.
+    windowSet: (time: string, amount: string): string =>
+      `${time} set ${amount} of demand charge`,
+    peakAtLabel: "Peak demand",
+    peakKw: (kw: string): string => `${kw} kW`,
+    curveAria: "Intra-day load curve for the peak day, fifteen-minute readings",
+    yAxisLabel: "kW",
+    representativeNote:
+      "Representative shape from this meter's billed peak. The peak kW and the demand charge are the real billed figures.",
+    // Cause + fix lines.
+    causeOverlap: "Several pumps ran at the same time and stacked into one peak.",
+    causePeakWindow: "One run set the peak inside the 5 to 8pm price window.",
+    fixLabel: "The fix",
+    overlapPumpsNote:
+      "Representative split across this meter's pumps. The combined peak and the charge are billed figures.",
+    // The before/after dollar line: "$X now to about $Y, save about $Z".
+    delta: (now: string, after: string, save: string): string =>
+      `${now} now to about ${after}, save about ${save}`,
+    nowLabel: "This cycle's demand charge",
+    afterLabel: "After the fix",
+    saveLabel: "You keep",
+    newPeakLabel: "New peak",
+    // The headline demand-share stat (Feature C), proving demand is not rate x usage.
+    shareLabel: "Demand charges",
+    sharePercent: (pct: number): string => `${pct}%`,
+    shareCaption: "of your PG&E bill is the demand charge",
+    shareAria: (pct: number): string =>
+      `Demand charges are about ${pct} percent of your total PG&E bill`,
+  },
+
+  // The "Show meter" proof layer (Feature B): the meter's own shape, then the same usage
+  // priced under two rates so the saving is not a claim, it is arithmetic.
+  proof: {
+    sectionTitle: "Why this rate",
+    shapeTitle: "This meter's pattern",
+    shapeIntro: "How this pump draws power over a representative day.",
+    trendTitle: "Peak demand by month",
+    trendIntro: "The highest fifteen-minute demand each billing cycle.",
+    compareTitle: "Same usage, two rates",
+    compareIntro:
+      "We took this cycle's exact usage and priced it on both rates. Same kilowatt-hours, same peak, different cost.",
+    currentColumn: (schedule: string): string => `Now: ${schedule}`,
+    recommendedColumn: (schedule: string): string => `Recommended: ${schedule}`,
+    energyRow: "Energy",
+    demandRow: "Demand",
+    customerRow: "Service charge",
+    totalRow: "Total this cycle",
+    saving: (amount: string): string => `Saves ${amount} on this cycle`,
+    noSaving: "This cycle does not favor a switch.",
+    billedNote: "Current column is your printed bill total.",
+    modelNote: (delta: string): string =>
+      `Our model of the current rate is within ${delta} of the printed bill.`,
+    aria: "Side by side bill comparison, current rate versus recommended rate",
+  },
+
+  // Misclassification refund (Feature D): a pump billed on a commercial rate it was never
+  // eligible for. Framed as money that may be owed, never a promised payout.
+  refund: {
+    findingTitle: "Wrong rate class, refund may be owed",
+    situation: (tariff: string): string =>
+      `This meter runs like an irrigation pump but is billed on ${tariff}, a commercial rate. That looks like a billing-class error.`,
+    action: "Ask PG&E to review the rate class and back-bill the difference",
+    impactNote: (amount: string): string => `Up to ${amount} may be recoverable`,
+    rule:
+      "Under PG&E Rule 17.1 a billing-class error can be corrected for past cycles, capped at 36 months.",
+    upTo: (amount: string): string => `Up to ${amount}`,
+  },
 } as const;
 
 export type CopyTree = typeof en;
