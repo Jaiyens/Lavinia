@@ -19,7 +19,9 @@ import {
   createUtilityApiForm,
   getUtilityApiAuthorizations,
   getUtilityApiMetersRaw,
+  meterUidsFromRaw,
   readyCountsFromRaw,
+  triggerUtilityApiHistorical,
   utilityApiConfigured,
 } from "@/lib/utilityapi/client";
 import { classifyMeter, meterSignature } from "@/lib/energy";
@@ -1115,6 +1117,13 @@ export async function utilityApiReadiness(
  * /meters body (which arrives before the Green Button exports), then the meter-collection
  * progress folds in as collections finish. Same shape as bayouReveal.
  */
+// Forms whose historical collection we have already nudged this process. UtilityAPI hands back
+// the meter LIST on authorization but does not always begin collecting bills/intervals; the
+// /meters/historical-collection trigger is the explicit nudge. Guarding by form uid keeps the
+// connecting screen's ~2s poll from re-queuing the collection every tick. In-memory by design:
+// a process restart simply re-nudges once, which is harmless (the trigger is idempotent).
+const historicalTriggered = new Set<string>();
+
 export async function utilityApiReveal(
   prisma: PrismaClient,
   farmId: string,
@@ -1158,6 +1167,16 @@ export async function utilityApiReveal(
   const raw = await getUtilityApiMetersRaw(usableUids);
   const { accounts, electricMeters, gasMeters } = countUtilityApiMeters(raw);
   const { total, ready } = readyCountsFromRaw(raw);
+  // Kick off the historical collection the form's auto-collect can miss. UtilityAPI returns the
+  // meter list on authorization but does not always start pulling bills/intervals, so a real
+  // connect otherwise sits at "meters but no data" forever (readiness never trips). Trigger it
+  // explicitly the first time we see meters that have not collected yet, once per form (the
+  // in-memory guard) so the connecting screen's ~2s poll does not re-queue it every tick.
+  // Best-effort: triggerUtilityApiHistorical swallows failures and the poll re-checks readiness.
+  if (formUid && total > 0 && ready < total && !historicalTriggered.has(formUid)) {
+    historicalTriggered.add(formUid);
+    await triggerUtilityApiHistorical(meterUidsFromRaw(raw));
+  }
   const dataReady = total > 0 && ready === total;
   return {
     dataKind: "real",
