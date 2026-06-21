@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
-import { farmRole } from "@/lib/auth/access";
+import { farmRole, farmAccess } from "@/lib/auth/access";
 import { activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { buildSystemPrompt } from "@/lib/almond/persona";
@@ -89,7 +89,7 @@ export async function POST(req: Request): Promise<Response> {
   // a downloadable file (streamed, never stored). Resolution guarantees `userId` is an active
   // member of `farm`, so role is non-null for an authed caller.
   const role = userId ? await farmRole(prisma, farm.id, userId) : null;
-  const canPersist = role === "owner" || role === "manager";
+  const canPersist = role ? farmAccess(role).canManageData : false;
   const canExport = true; // every resolved farm (any member OR demo) may pull a downloadable file
   // Attachments are a write-capable context channel, so they are gated on canPersist: an owner/
   // manager's spreadsheet/CSV is parsed to text and PDFs/images pass through; a viewer or the

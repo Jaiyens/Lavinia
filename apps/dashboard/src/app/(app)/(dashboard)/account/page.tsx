@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
+import { resolveFarmAccess } from "@/lib/auth/access";
+import { RolePill } from "@/app/(app)/_components/shell/role-pill";
 import { signOutAction } from "../../actions";
 import { resolveActiveFarmId, resolveFarm } from "../_data";
 
@@ -30,6 +32,11 @@ export default async function AccountPage() {
   const memberCount = farm
     ? await prisma.farmMembership.count({ where: { farmId: farm.id, status: "active" } })
     : 0;
+  // The signed-in member's role/capabilities on this farm. A viewer is read-only: no "connect
+  // another", and the team card invites them to "see who has access" rather than "manage".
+  const access = farm ? await resolveFarmAccess(prisma, farm.id, userId) : null;
+  const canManageData = access?.canManageData ?? false;
+  const canManageTeam = access?.canManageTeam ?? false;
 
   const t = en.account;
   const name = session?.user?.name?.trim() || null;
@@ -43,7 +50,10 @@ export default async function AccountPage() {
       </header>
 
       <section className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-        <h2 className="type-label-caps mb-4 text-on-surface-variant">{t.signedInAs}</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="type-label-caps text-on-surface-variant">{t.signedInAs}</h2>
+          {access ? <RolePill role={access.role} /> : null}
+        </div>
         <dl className="flex flex-col gap-4">
           <Row label={t.nameLabel} value={name ?? t.noName} />
           <Row label={t.emailLabel} value={email ?? t.noName} />
@@ -66,7 +76,9 @@ export default async function AccountPage() {
             <h2 className="type-label-caps mb-1 text-on-surface-variant">{en.team.eyebrow}</h2>
             <p className="type-body-md text-on-surface">{en.team.summaryCard(memberCount)}</p>
           </div>
-          <span className="type-body-sm font-semibold text-primary">{en.team.manageLink}</span>
+          <span className="type-body-sm font-semibold text-primary">
+            {canManageTeam ? en.team.manageLink : en.team.viewLink}
+          </span>
         </Link>
       )}
 
@@ -87,7 +99,7 @@ export default async function AccountPage() {
             ))}
           </ul>
         )}
-        {farm && (
+        {farm && canManageData ? (
           <Link
             href={`/onboarding/connect?farm=${farm.id}&add=1`}
             className="mt-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-4 py-2 type-body-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
@@ -95,8 +107,20 @@ export default async function AccountPage() {
             <Plus size={16} aria-hidden />
             {t.connectMore}
           </Link>
-        )}
+        ) : farm ? (
+          <p className="mt-4 type-body-sm text-on-surface-variant">{t.connectMoreHint}</p>
+        ) : null}
       </section>
+
+      {/* Whole-new-farm entry: start or join ANOTHER farm (distinct from adding sources above).
+          /start?add=1 always shows the Create-vs-Join fork even for a user who already has a farm. */}
+      <Link
+        href="/start?add=1"
+        className="mb-6 inline-flex items-center gap-2 type-body-sm font-semibold text-primary underline-offset-4 hover:underline"
+      >
+        <Plus size={16} aria-hidden />
+        {t.addFarm}
+      </Link>
 
       <form action={signOutAction}>
         <button

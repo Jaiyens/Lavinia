@@ -17,6 +17,7 @@ import { acceptanceResult } from "@/lib/recommendations/result";
 import { importBillUpload } from "@/lib/onboarding/sources";
 import { runSolarInsight } from "@/lib/recommendations/run-solar-insight";
 import { ALMOND_NUDGE_COOKIE } from "@/lib/almond/nudge";
+import { MEMBER_WELCOME_COOKIE } from "@/lib/member-welcome";
 import { en } from "@/copy/en";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -66,6 +67,23 @@ export async function dismissAlmondNudgeAction(): Promise<void> {
   if (!session?.user) return;
   const store = await cookies();
   store.set(ALMOND_NUDGE_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365, // one year — a one-time hint, remembered
+  });
+}
+
+/**
+ * Dismiss the invited-member welcome banner (a one-time "you have been added to {farm}" hint shown
+ * on Home). Same fire-and-forget shape as the Almond nudge: re-checks auth, persists an httpOnly
+ * cookie read server-side so the banner never flashes after dismissal, and the client self-hides.
+ */
+export async function dismissMemberWelcomeAction(): Promise<void> {
+  const session = await auth();
+  if (!session?.user) return;
+  const store = await cookies();
+  store.set(MEMBER_WELCOME_COOKIE, "1", {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

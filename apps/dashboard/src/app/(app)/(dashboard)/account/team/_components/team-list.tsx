@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import type { FarmRole } from "@prisma/client";
 import { en } from "@/copy/en";
 import type { TeamActionResult } from "@/lib/auth/team";
+import { RolePill } from "@/app/(app)/_components/shell/role-pill";
 import {
   changeRoleAction,
   leaveFarmAction,
@@ -28,15 +29,6 @@ export type MemberRow = {
 };
 
 export type InviteRow = { id: string; email: string; role: FarmRole; addedBy: string | null };
-
-function RolePill({ role }: { role: FarmRole }) {
-  const label = en.team.roles[role].label;
-  const tone =
-    role === "owner"
-      ? "bg-primary-container text-on-primary-container"
-      : "bg-surface-container text-on-surface-variant";
-  return <span className={`rounded-full px-2.5 py-0.5 type-label-caps ${tone}`}>{label}</span>;
-}
 
 export function TeamList({
   farmId,

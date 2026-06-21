@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
+import { resolveFarmAccess } from "@/lib/auth/access";
 import { showPendingPullBanner } from "@/lib/dashboard/connection";
 import { loadTrackedResults } from "@/lib/dashboard/results";
 import { verificationFor } from "@/lib/dashboard/drawer";
@@ -47,6 +48,10 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   }
 
   const { farm, dataKind } = resolved;
+  // A signed-in VIEWER is read-only: the one-tap finding responses require manager+, so hide them
+  // (the same mechanism the public Tour uses via demoOnly). Owners/managers keep the actions.
+  const access = !demoOnly && userId ? await resolveFarmAccess(prisma, farm.id, userId) : null;
+  const findingsReadOnly = demoOnly || !(access?.canManageData ?? false);
   const meters = await resolveMeters(farm.id);
   // AC3 (Story 5.3): when a real farm's live PG&E pull is still pending but RECONCILED bills
   // are already in, the dashboard keeps working off those bills and shows an honest
@@ -152,14 +157,14 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
             findings={findings}
             verifications={verifications}
             trackedResults={trackedResults}
-            readOnly={demoOnly}
+            readOnly={findingsReadOnly}
           />
         </div>
 
-        <FindingsRail findings={findings} readOnly={demoOnly} />
+        <FindingsRail findings={findings} readOnly={findingsReadOnly} />
       </div>
 
-      <FindingsSheet findings={findings} readOnly={demoOnly} />
+      <FindingsSheet findings={findings} readOnly={findingsReadOnly} />
     </>
   );
 }

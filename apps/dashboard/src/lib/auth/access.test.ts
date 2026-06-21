@@ -4,6 +4,7 @@ import {
   assertCanGrantRole,
   assertCanManageMember,
   canActOnMember,
+  farmAccess,
   roleAtLeast,
 } from "./access";
 
@@ -57,5 +58,27 @@ describe("assertCanManageMember", () => {
     expect(() => assertCanManageMember("manager", "owner")).toThrow(RoleGrantError);
     expect(() => assertCanManageMember("owner", "owner")).not.toThrow();
     expect(() => assertCanManageMember("manager", "manager")).not.toThrow();
+  });
+});
+
+describe("farmAccess (the UI capability set: admin = owner + manager)", () => {
+  it("treats owner and manager as admins (manage team + data)", () => {
+    for (const role of ["owner", "manager"] as const) {
+      const a = farmAccess(role);
+      expect(a.role).toBe(role);
+      expect(a.canManageTeam).toBe(true);
+      expect(a.canManageData).toBe(true);
+    }
+  });
+  it("makes a viewer read-only (no team, no data)", () => {
+    const a = farmAccess("viewer");
+    expect(a.canManageTeam).toBe(false);
+    expect(a.canManageData).toBe(false);
+    expect(a.isOwner).toBe(false);
+  });
+  it("marks only the owner as the super-admin (isOwner)", () => {
+    expect(farmAccess("owner").isOwner).toBe(true);
+    expect(farmAccess("manager").isOwner).toBe(false);
+    expect(farmAccess("viewer").isOwner).toBe(false);
   });
 });

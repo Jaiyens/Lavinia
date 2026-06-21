@@ -10,7 +10,7 @@ import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
-import { farmRole } from "@/lib/auth/access";
+import { farmRole, farmAccess } from "@/lib/auth/access";
 import { Reveal } from "./shell/reveal";
 import { MeterDrawer } from "./meter-drawer";
 import { FindingsRail } from "./shell/findings-rail";
@@ -80,7 +80,10 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
   // farm, and the public Tour, never see the affordance - they can read the honest-blank state but
   // not push a PDF in. The Server Action re-checks the role server-side regardless.
   const role = !demoOnly && userId ? await farmRole(prisma, farm.id, userId) : null;
-  const canAttach = role === "owner" || role === "manager";
+  const canAttach = role ? farmAccess(role).canManageData : false;
+  // A signed-in viewer is also read-only for the one-tap finding responses below (parity with Home
+  // and Energy); demoOnly already implies read-only.
+  const findingsReadOnly = demoOnly || !canAttach;
 
   // The shared drill-in for the Solar tab (A-5): the SAME MeterDrawer the Energy dashboard mounts,
   // reused not duplicated (architecture: "Shared sub-components ... the drawer ... are reused").
@@ -163,17 +166,17 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             findings={findings}
             verifications={verifications}
             trackedResults={trackedResults}
-            readOnly={demoOnly}
+            readOnly={findingsReadOnly}
             solar
             nowIso={nowIso}
             canAttach={canAttach}
           />
         </div>
 
-        <FindingsRail findings={findings} readOnly={demoOnly} />
+        <FindingsRail findings={findings} readOnly={findingsReadOnly} />
       </div>
 
-      <FindingsSheet findings={findings} readOnly={demoOnly} />
+      <FindingsSheet findings={findings} readOnly={findingsReadOnly} />
     </>
   );
 }

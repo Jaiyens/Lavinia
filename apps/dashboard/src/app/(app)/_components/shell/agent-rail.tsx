@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LogOut, UserRound } from "lucide-react";
+import { FileText, LogOut, Users, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import type { FarmAccess } from "@/lib/auth/access";
 import { Wordmark } from "@/components/logo";
 import { signOutAction } from "../../actions";
 import { AlmondAvatar } from "../almond/almond-avatar";
 import { FarmSwitcher } from "./farm-switcher";
+import { RolePill } from "./role-pill";
 import { AGENTS, agentHref, isAgentActive } from "./agents";
 
 // Desktop left rail (240px). Lists agents; the active live agent is primary, future agents are
@@ -20,10 +22,14 @@ export function AgentRail({
   demo = false,
   farms = [],
   activeFarmId = null,
+  access = null,
 }: {
   demo?: boolean;
   farms?: { id: string; name: string }[];
   activeFarmId?: string | null;
+  // The signed-in member's capability set on the active farm (null on the public Tour). Drives the
+  // role pill and the admin-only Team entry. Server-resolved and passed in - never derived here.
+  access?: FarmAccess | null;
 } = {}) {
   const pathname = usePathname();
   return (
@@ -35,6 +41,12 @@ export function AgentRail({
         <Wordmark className="text-on-surface" />
       </div>
       {demo ? null : <FarmSwitcher farms={farms} activeFarmId={activeFarmId} />}
+      {/* The member's role on the active farm, always in view so a viewer knows they are read-only. */}
+      {!demo && access ? (
+        <div className="px-3 pb-4">
+          <RolePill role={access.role} />
+        </div>
+      ) : null}
       <p className="px-3 pb-2 type-label-caps text-on-surface-variant/70">{en.shell.navTrack}</p>
       <nav className="flex flex-col gap-1">
         {AGENTS.map((agent) => {
@@ -102,6 +114,27 @@ export function AgentRail({
               <FileText size={18} aria-hidden />
               <span>{en.reports.navLabel}</span>
             </Link>
+            {/* Team: admin-only (owner/manager). A viewer never sees it - they have nothing to
+                manage and reach the read-only member list through Account if they want it. */}
+            {access?.canManageTeam ? (
+              <Link
+                href="/account/team"
+                aria-current={pathname === "/account/team" ? "page" : undefined}
+                className={cn(
+                  "flex h-11 items-center gap-3 rounded-xl px-3 type-body-md transition-colors",
+                  pathname === "/account/team"
+                    ? "border border-outline-variant bg-surface-container-lowest font-semibold text-primary shadow-[var(--shadow-soft)]"
+                    : "text-on-surface hover:bg-surface-container-low",
+                )}
+              >
+                <Users
+                  size={18}
+                  aria-hidden
+                  className={pathname === "/account/team" ? "text-primary" : undefined}
+                />
+                <span>{en.team.navLabel}</span>
+              </Link>
+            ) : null}
             <Link
               href="/account"
               aria-current={pathname === "/account" ? "page" : undefined}

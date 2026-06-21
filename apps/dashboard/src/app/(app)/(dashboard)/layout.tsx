@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { farmRole } from "@/lib/auth/access";
+import { resolveFarmAccess } from "@/lib/auth/access";
 import { accessibleFarms } from "@/lib/onboarding/farm";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { resolveActiveFarmId, resolveFarm, resolveFindings } from "./_data";
@@ -21,9 +21,10 @@ import { ALMOND_NUDGE_COOKIE, shouldShowAlmondNudge } from "@/lib/almond/nudge";
 // request-time dynamic, never statically prerendered.
 export const dynamic = "force-dynamic";
 
-// Where a signed-in user with no farm yet is sent (Story 5.1 AC4 / Story 5.2): the
-// connect-a-source onboarding, so they never land on a blank shell.
-const CONNECT_SOURCE_PATH = "/onboarding";
+// Where a signed-in user with no farm yet is sent: the post-login fork (/start), which itself
+// sorts brand-new vs resume-onboarding vs claim-a-stray-invite, so they never land on a blank
+// shell. Onboarding lives one hop past it (Create a farm).
+const START_PATH = "/start";
 
 // The three-zone OS shell (agent rail - data hero - findings rail) wrapping every
 // DASHBOARD screen. Auth is already enforced by the parent (app) layout; this layer adds
@@ -37,12 +38,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const userId = await sessionUserId();
   const activeId = await resolveActiveFarmId(userId);
   const resolved = await resolveFarm(userId, activeId, false);
-  if (resolved === null) redirect(CONNECT_SOURCE_PATH);
+  if (resolved === null) redirect(START_PATH);
   // Capability is derived from the caller's ROLE, never from dataKind: a viewer of a real farm
   // is read-only (can stream/download an export, but never attach files or persist), while an
-  // owner/manager can attach. The Almond chat route applies the same role-derived gate.
-  const role = userId ? await farmRole(prisma, resolved.farm.id, userId) : null;
-  const canAttach = role === "owner" || role === "manager";
+  // owner/manager (an "admin") can attach + manage. Resolved once here into the FarmAccess object
+  // and threaded to the rail, tab bar, Almond, and findings, so the admin line never drifts. The
+  // Almond chat route applies the same role-derived gate.
+  const access = userId ? await resolveFarmAccess(prisma, resolved.farm.id, userId) : null;
+  const canAttach = access?.canManageData ?? false;
   // The farms this user can switch between (the rail switcher). Single-farm users see a label.
   const farms = await accessibleFarms(prisma, userId);
   // Findings are no longer a shell-wide right rail (the Home overview is full-width like the
@@ -77,7 +80,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       >
         <TopoBackground />
         <div className="flex min-h-dvh w-full text-on-surface">
-          <AgentRail farms={farms} activeFarmId={resolved.farm.id} />
+          <AgentRail farms={farms} activeFarmId={resolved.farm.id} access={access} />
           <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
         </div>
         <AgentTabBar />

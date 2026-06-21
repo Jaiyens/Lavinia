@@ -368,6 +368,27 @@ export const en = {
     attentionViewAll: "See all in Energy",
   },
   // The account / profile page (signed-in operator's own details + connected sources).
+  // The post-login fork (the /start screen): a signed-in user with no farm chooses to create a
+  // new farm or join one a teammate already set up. Plain operator English. No em dashes, no
+  // exclamation marks.
+  start: {
+    eyebrow: "Welcome to Terra",
+    title: "Get started",
+    lede: "Are you setting up a new farm, or joining one a teammate already made?",
+    create: {
+      title: "Create a farm",
+      body: "Connect your PG&E account and see all your meters, rates, and bills in one place.",
+      cta: "Create a farm",
+    },
+    // Phase 1: joining happens by invite, so this card explains how. (Phase 2 turns it into a
+    // request-to-join link.)
+    join: {
+      title: "Join a farm",
+      body: "Someone on your team set this up. Ask them to invite your email, then sign back in to see their farm.",
+      emailNote: (email: string): string => `Ask them to add this email: ${email}`,
+      noEmail: "Ask them to invite the email you sign in with.",
+    },
+  },
   account: {
     navLabel: "Account",
     eyebrow: "Account",
@@ -382,6 +403,10 @@ export const en = {
     sourcesEmpty: "No sources connected yet.",
     sourceStatus: (type: string, status: string): string => `${type} - ${status}`,
     connectMore: "Connect another account",
+    // Shown to a viewer in place of the connect button (connecting data is an admin action).
+    connectMoreHint: "Ask an admin to connect another account.",
+    // Whole-new-farm entry (distinct from connecting more sources to THIS farm).
+    addFarm: "Start or join another farm",
     signOut: "Sign out",
   },
   // Team management (the multi-user farm membership feature). Plain operator English; the trust
@@ -448,8 +473,12 @@ export const en = {
     summaryCard: (n: number): string =>
       n === 1 ? "1 person has access" : `${n} people have access`,
     manageLink: "Manage team",
+    // Viewer version of the account-hub CTA (a viewer reaches a read-only member list).
+    viewLink: "See who has access",
     // Farm switcher (for a user who can open more than one farm).
     switcherHeading: "Farms you can open",
+    // "+ Add a farm" entry in the switcher (start or join another farm).
+    addFarm: "Add a farm",
     // Empty state.
     empty: {
       title: "It is just you so far",
@@ -513,6 +542,13 @@ export const en = {
       labor: "Labor",
     },
     comingTag: "Coming",
+    // One-time welcome shown on Home to an invited member (someone added to a farm another operator
+    // set up). The owner who created the farm never sees it. No em dashes, no exclamation marks.
+    memberWelcome: {
+      title: (farmName: string): string => `You have been added to ${farmName}`,
+      body: "You can see this farm's meters, bills, and savings. You only see this one farm.",
+      dismiss: "Got it",
+    },
     // Lens toggle (one meter dataset, one lens at a time).
     lensLabel: "View",
     lens: {

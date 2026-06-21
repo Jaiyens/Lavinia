@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ArrowRight } from "lucide-react";
+import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
+import { resolveFarmAccess } from "@/lib/auth/access";
+import { MEMBER_WELCOME_COOKIE, shouldShowMemberWelcome } from "@/lib/member-welcome";
 import { en } from "@/copy/en";
+import { MemberWelcome } from "./member-welcome";
 import { formatUsdWhole } from "@/lib/format/money";
 import { cardClass } from "@/components/ui";
 import { upcomingCloses } from "@/lib/dashboard/calendar";
@@ -43,6 +48,24 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   }
 
   const { farm } = resolved;
+  // A signed-in VIEWER is read-only: the one-tap finding responses require manager+, so hide them
+  // (the same mechanism the public Tour uses via demoOnly). Owners/managers keep the actions.
+  const access = !demoOnly && userId ? await resolveFarmAccess(prisma, farm.id, userId) : null;
+  const findingsReadOnly = demoOnly || !(access?.canManageData ?? false);
+  // An invited member (added by someone else) gets a one-time welcome on Home; the owner who
+  // created the farm never does. Decided server-side with the dismissal cookie so it never flashes.
+  let showMemberWelcome = false;
+  if (!demoOnly && userId) {
+    const membership = await prisma.farmMembership.findUnique({
+      where: { farmId_userId: { farmId: farm.id, userId } },
+      select: { invitedById: true },
+    });
+    const dismissed = (await cookies()).has(MEMBER_WELCOME_COOKIE);
+    showMemberWelcome = shouldShowMemberWelcome({
+      wasInvited: membership?.invitedById != null,
+      dismissed,
+    });
+  }
   const [meters, findings] = await Promise.all([resolveMeters(farm.id), resolveFindings(farm.id)]);
 
   const savingsCents = Math.round(findings.reduce((acc, f) => acc + (f.impactUsd ?? 0), 0) * 100);
@@ -195,7 +218,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
         <DashboardTile
           className="h-full w-full"
           label={en.home.rateFix.biggestEyebrow}
-          detail={<RateFixCard finding={rateFinding} analyzed={rateAnalyzed} energyHref={energyHref} readOnly={demoOnly} />}
+          detail={<RateFixCard finding={rateFinding} analyzed={rateAnalyzed} energyHref={energyHref} readOnly={findingsReadOnly} />}
         >
           {rateFinding ? (
             <>
@@ -259,6 +282,8 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
 
   return (
     <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-120px)] lg:overflow-hidden lg:p-4">
+      {/* One-time welcome for an invited member (shrinks to nothing once dismissed). */}
+      <MemberWelcome show={showMemberWelcome} farmName={farm.name} />
       {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
           the viewport (minus the tour banner) so the whole farm stays on one screen. */}
       <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
