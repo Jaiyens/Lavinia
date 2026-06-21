@@ -44,7 +44,7 @@ export type RefundFinding = {
  */
 export function refundFindingForMeter(meter: MeterView, card: RateCard): RefundFinding | null {
   const billedTariff = meter.rateSchedule;
-  if (!isCommercialTariff(billedTariff)) return null;
+  if (billedTariff === null || !isCommercialTariff(billedTariff)) return null;
 
   // Size signal: the largest billed peak across the meter's cycles (a pump motor draws tens of
   // kW; an office draws single digits - classifyMeter's threshold is 20 kW / 8 kW).
