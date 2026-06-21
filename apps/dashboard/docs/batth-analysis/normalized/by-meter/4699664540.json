@@ -1,0 +1,175 @@
+{
+  "serviceId": "4699664540",
+  "idx": 158,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 159,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664540",
+    "meterSerial": "1009999296",
+    "growerPumpId": null,
+    "rateSchedule": "HB1",
+    "legacy": null,
+    "descriptor": null,
+    "latitude": 36.531314,
+    "longitude": -119.930852,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": null,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": null,
+    "status": null
+  },
+  "billing": {
+    "serviceId": "4699664540",
+    "meterNumber": "1009999296",
+    "growerPumpId": null,
+    "saIdDescriptor": null,
+    "latestTariff": "B1 Bus Low Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 1017.72,
+      "totalKwh": 2583.751,
+      "peakKw": null,
+      "demandChargeUsd": null
+    },
+    "totalKwh_latestCycle": 2583.751,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "tariff": "B1 Bus Low Use",
+        "isLegacyTou": true,
+        "isTrueUpCycle": false,
+        "peakKw": null,
+        "demandChargeUsd_structured": null,
+        "totalKwh": 2583.751,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 410.245,
+            "amountUsd": 163.91
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 1866.252,
+            "amountUsd": 716.89
+          },
+          {
+            "period": "Super Off-Peak",
+            "kWh": 307.253,
+            "amountUsd": 111.51
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 24.64,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.77,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 163.91,
+            "quantity": 410.2455,
+            "unit": "kWh",
+            "rate": 0.39899,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.39899
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 716.89,
+            "quantity": 1866.2515,
+            "unit": "kWh",
+            "rate": 0.38287,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.38287
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Super Off-Peak",
+            "amountUsd": 111.51,
+            "quantity": 307.2535,
+            "unit": "kWh",
+            "rate": 0.36291,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.36291
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 (18 days @ $0.82136)",
+            "amountUsd": 14.78,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.82136
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 (12 days @ $0.82136)",
+            "amountUsd": 9.86,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.82136
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 02/11/2026 to 02/28/2026",
+            "amountUsd": 0.45,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 03/01/2026 to 03/12/2026",
+            "amountUsd": 0.32,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          }
+        ],
+        "printedTotalUsd": 1017.72,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 1017.72
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "B1 Bus Low Use",
+      "demandCharges": [],
+      "demandChargeUsd": null,
+      "totalBillUsd": 1017.72
+    }
+  ],
+  "nem": null
+}

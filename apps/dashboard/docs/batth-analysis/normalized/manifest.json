@@ -1,0 +1,1649 @@
+[
+  {
+    "idx": 0,
+    "serviceId": "4698660251",
+    "pumpId": "P004",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "HURON",
+    "billed": true
+  },
+  {
+    "idx": 1,
+    "serviceId": "4699141870",
+    "pumpId": "P017",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": true
+  },
+  {
+    "idx": 2,
+    "serviceId": "4690972110",
+    "pumpId": "P018",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": true
+  },
+  {
+    "idx": 3,
+    "serviceId": "4697755484",
+    "pumpId": "P027",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "CHATEAU FRESNO",
+    "billed": true
+  },
+  {
+    "idx": 4,
+    "serviceId": "4693142227",
+    "pumpId": "P028",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "CHATEAU FRESNO",
+    "billed": true
+  },
+  {
+    "idx": 5,
+    "serviceId": "5097806378",
+    "pumpId": "P035",
+    "account": "5090219363-5",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "NEW RANCH",
+    "billed": false
+  },
+  {
+    "idx": 6,
+    "serviceId": "4695719808",
+    "pumpId": "P052",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 7,
+    "serviceId": "4695237170",
+    "pumpId": "P062",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "ELKHORN SHOP",
+    "billed": true
+  },
+  {
+    "idx": 8,
+    "serviceId": "4692494679",
+    "pumpId": "P003",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "ELKHORN SHOP",
+    "billed": true
+  },
+  {
+    "idx": 9,
+    "serviceId": "6535191728",
+    "pumpId": "P036",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 10,
+    "serviceId": "6439420511",
+    "pumpId": null,
+    "account": "6431815493-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 11,
+    "serviceId": "4691688023",
+    "pumpId": "P002",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "MENDOTA",
+    "billed": true
+  },
+  {
+    "idx": 12,
+    "serviceId": "6534260378",
+    "pumpId": "P012",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 13,
+    "serviceId": "6535587295",
+    "pumpId": "P019",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 14,
+    "serviceId": "6531931782",
+    "pumpId": "P023",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 15,
+    "serviceId": "5090079335",
+    "pumpId": "P061",
+    "account": "5090219363-5",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "ELKHORN SHOP",
+    "billed": false
+  },
+  {
+    "idx": 16,
+    "serviceId": "6536550188",
+    "pumpId": "P079",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 17,
+    "serviceId": "6416446454",
+    "pumpId": "P086",
+    "account": "6413523340-7",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "HOME RANCH",
+    "billed": false
+  },
+  {
+    "idx": 18,
+    "serviceId": "3615394927",
+    "pumpId": null,
+    "account": "3619074535-0",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 19,
+    "serviceId": "730240746",
+    "pumpId": null,
+    "account": "0730240888-0",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 20,
+    "serviceId": "6531180292",
+    "pumpId": "P042",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 21,
+    "serviceId": "3927267676",
+    "pumpId": "P047",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "SWANSON",
+    "billed": false
+  },
+  {
+    "idx": 22,
+    "serviceId": "4502675334",
+    "pumpId": null,
+    "account": "4507020255-6",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 23,
+    "serviceId": "6538183119",
+    "pumpId": "P080",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "SWANSON",
+    "billed": false
+  },
+  {
+    "idx": 24,
+    "serviceId": "3926288595",
+    "pumpId": "P005",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 25,
+    "serviceId": "6538597514",
+    "pumpId": "P014",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 26,
+    "serviceId": "6530897254",
+    "pumpId": "P015",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 27,
+    "serviceId": "6535738251",
+    "pumpId": "P016",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "HURON",
+    "billed": false
+  },
+  {
+    "idx": 28,
+    "serviceId": "3923515092",
+    "pumpId": "P046",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "SWANSON",
+    "billed": false
+  },
+  {
+    "idx": 29,
+    "serviceId": "2707181864",
+    "pumpId": "P059",
+    "account": "2700884486-5",
+    "entity": "BATTH FARMS INC",
+    "ranch": "ELKHORN SHOP",
+    "billed": false
+  },
+  {
+    "idx": 30,
+    "serviceId": "4694038660",
+    "pumpId": "P067",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "HOME RANCH",
+    "billed": true
+  },
+  {
+    "idx": 31,
+    "serviceId": "3929761887",
+    "pumpId": "P076",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM CORNELIA",
+    "billed": false
+  },
+  {
+    "idx": 32,
+    "serviceId": "3923782155",
+    "pumpId": "P009",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 33,
+    "serviceId": "6865522899",
+    "pumpId": null,
+    "account": "6863917471-0",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 34,
+    "serviceId": "6534296787",
+    "pumpId": "P006",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 35,
+    "serviceId": "6534699050",
+    "pumpId": "P013",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 36,
+    "serviceId": "6531000280",
+    "pumpId": "P024",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 37,
+    "serviceId": "6532880573",
+    "pumpId": "P099",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "ELKHORN SHOP",
+    "billed": false
+  },
+  {
+    "idx": 38,
+    "serviceId": "6116351334",
+    "pumpId": null,
+    "account": "57448094630",
+    "entity": null,
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 39,
+    "serviceId": "5407601648",
+    "pumpId": "P106",
+    "account": "5401297941-2",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "ELKHORN SHOP",
+    "billed": false
+  },
+  {
+    "idx": 40,
+    "serviceId": "1203585402",
+    "pumpId": "P118",
+    "account": "1202269697-0",
+    "entity": "BATTH FARMS INC",
+    "ranch": "HOME RANCH",
+    "billed": false
+  },
+  {
+    "idx": 41,
+    "serviceId": "303286619",
+    "pumpId": "P119",
+    "account": "0305152088-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "HOME RANCH",
+    "billed": false
+  },
+  {
+    "idx": 42,
+    "serviceId": "8696448389",
+    "pumpId": "P120",
+    "account": "8693286367-2",
+    "entity": "BATTH FARMS INC",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 43,
+    "serviceId": "9566109872",
+    "pumpId": "P121",
+    "account": "9568475552-3",
+    "entity": "BATTH FARMS INC",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 44,
+    "serviceId": "4395569085",
+    "pumpId": "P122",
+    "account": "4391127618-6",
+    "entity": "BATTH FARMS INC",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 45,
+    "serviceId": "9495121765",
+    "pumpId": "P142",
+    "account": "9493367026-0",
+    "entity": "BATTH FARMS INC",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 46,
+    "serviceId": "3371044698",
+    "pumpId": "P154",
+    "account": "3375127040-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": "RODRIQUES",
+    "billed": false
+  },
+  {
+    "idx": 47,
+    "serviceId": "4699664441",
+    "pumpId": "P041",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "AIRPORT",
+    "billed": true
+  },
+  {
+    "idx": 48,
+    "serviceId": "5089901108",
+    "pumpId": "P074",
+    "account": "5089901685-6",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "OFFICE",
+    "billed": false
+  },
+  {
+    "idx": 49,
+    "serviceId": "3372050998",
+    "pumpId": "P026",
+    "account": "3372050929-9",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "CHATEAU FRESNO",
+    "billed": false
+  },
+  {
+    "idx": 50,
+    "serviceId": "6539944670",
+    "pumpId": "P033",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "NEW RANCH",
+    "billed": false
+  },
+  {
+    "idx": 51,
+    "serviceId": "9597876433",
+    "pumpId": "P083",
+    "account": "9597876494-2",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 52,
+    "serviceId": "4699664088",
+    "pumpId": "P031",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 53,
+    "serviceId": "8922820405",
+    "pumpId": "P034",
+    "account": "8922820273-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "NEW RANCH",
+    "billed": false
+  },
+  {
+    "idx": 54,
+    "serviceId": "4699664743",
+    "pumpId": "P038",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": true
+  },
+  {
+    "idx": 55,
+    "serviceId": "4699664172",
+    "pumpId": "Office",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 56,
+    "serviceId": "8760985291",
+    "pumpId": "P001",
+    "account": "8760985871-4",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "MENDOTA",
+    "billed": false
+  },
+  {
+    "idx": 57,
+    "serviceId": "6539944988",
+    "pumpId": "P020",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 58,
+    "serviceId": "4697793352",
+    "pumpId": "P025",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "CHATEAU FRESNO",
+    "billed": false
+  },
+  {
+    "idx": 59,
+    "serviceId": "3922145108",
+    "pumpId": "P030",
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "NEW RANCH",
+    "billed": false
+  },
+  {
+    "idx": 60,
+    "serviceId": "4699664321",
+    "pumpId": "P048",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 61,
+    "serviceId": "4696826125",
+    "pumpId": "P054",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 62,
+    "serviceId": "4699664561",
+    "pumpId": "P057",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 63,
+    "serviceId": "4698074516",
+    "pumpId": "P058",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 64,
+    "serviceId": "4699664335",
+    "pumpId": "P060",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "ELKHORN SHOP",
+    "billed": true
+  },
+  {
+    "idx": 65,
+    "serviceId": "4699664286",
+    "pumpId": "P063",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "ELKHORN SHOP",
+    "billed": true
+  },
+  {
+    "idx": 66,
+    "serviceId": "4696771732",
+    "pumpId": "P066",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "PINOT GRIS",
+    "billed": true
+  },
+  {
+    "idx": 67,
+    "serviceId": "8764708693",
+    "pumpId": "P068",
+    "account": "8760985871-4",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "HOME RANCH",
+    "billed": false
+  },
+  {
+    "idx": 68,
+    "serviceId": "4699664012",
+    "pumpId": "P069",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "KAMM CORNELIA",
+    "billed": true
+  },
+  {
+    "idx": 69,
+    "serviceId": "4699664198",
+    "pumpId": "P072",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "HOME RANCH",
+    "billed": true
+  },
+  {
+    "idx": 70,
+    "serviceId": "4695663573",
+    "pumpId": "P073",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "KAMM CORNELIA",
+    "billed": false
+  },
+  {
+    "idx": 71,
+    "serviceId": "4692166716",
+    "pumpId": "P075",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "OFFICE",
+    "billed": true
+  },
+  {
+    "idx": 72,
+    "serviceId": "6531233097",
+    "pumpId": "P081",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "SWANSON",
+    "billed": false
+  },
+  {
+    "idx": 73,
+    "serviceId": "9331950751",
+    "pumpId": "P085",
+    "account": "9331488005-0",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": false
+  },
+  {
+    "idx": 74,
+    "serviceId": "6410518243",
+    "pumpId": "P087",
+    "account": "6413523340-7",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 75,
+    "serviceId": "1906932923",
+    "pumpId": "P098",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 76,
+    "serviceId": "2906427012",
+    "pumpId": "P144",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM CORNELIA",
+    "billed": false
+  },
+  {
+    "idx": 77,
+    "serviceId": "4462569195",
+    "pumpId": "P147",
+    "account": "4463803133-4",
+    "entity": "BATHH FARMS INC",
+    "ranch": "OFFICE",
+    "billed": false
+  },
+  {
+    "idx": 78,
+    "serviceId": "3377845145",
+    "pumpId": "P158",
+    "account": "3375127040-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": "KAMM CORNELIA",
+    "billed": false
+  },
+  {
+    "idx": 79,
+    "serviceId": "7607694922",
+    "pumpId": "P161",
+    "account": "7604773269-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "NEW RANCH",
+    "billed": false
+  },
+  {
+    "idx": 80,
+    "serviceId": "6206180841",
+    "pumpId": "P167",
+    "account": "6207619728-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BIG BLOCK",
+    "billed": false
+  },
+  {
+    "idx": 81,
+    "serviceId": "92923550",
+    "pumpId": "Huron big reservoir",
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 82,
+    "serviceId": "98964868",
+    "pumpId": "Huron Well 4",
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 83,
+    "serviceId": "4692424863",
+    "pumpId": "P008",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": true
+  },
+  {
+    "idx": 84,
+    "serviceId": "4699664965",
+    "pumpId": "P043",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BIG BLOCK",
+    "billed": true
+  },
+  {
+    "idx": 85,
+    "serviceId": "4699664955",
+    "pumpId": "P045",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "CEDAR RANCH",
+    "billed": true
+  },
+  {
+    "idx": 86,
+    "serviceId": "4699664820",
+    "pumpId": "P055",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 87,
+    "serviceId": "4699664538",
+    "pumpId": "P056",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "SWANSON",
+    "billed": true
+  },
+  {
+    "idx": 88,
+    "serviceId": "4699664728",
+    "pumpId": "P077",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "KAMM CORNELIA",
+    "billed": true
+  },
+  {
+    "idx": 89,
+    "serviceId": "4699664416",
+    "pumpId": "P078",
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "DEHYDRATER",
+    "billed": true
+  },
+  {
+    "idx": 90,
+    "serviceId": "1906937335",
+    "pumpId": "P088",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "FLORAL RANCH",
+    "billed": false
+  },
+  {
+    "idx": 91,
+    "serviceId": "1904328353",
+    "pumpId": "P091",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "PINOT GRIS 640",
+    "billed": false
+  },
+  {
+    "idx": 92,
+    "serviceId": "1904375385",
+    "pumpId": "P092",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "PINOT GRIS 641",
+    "billed": false
+  },
+  {
+    "idx": 93,
+    "serviceId": "7627848857",
+    "pumpId": "P093",
+    "account": "7620375179-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": "PINOT GRIS 642",
+    "billed": false
+  },
+  {
+    "idx": 94,
+    "serviceId": "6539705088",
+    "pumpId": "P094",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "MANNING PISTACHIOS",
+    "billed": false
+  },
+  {
+    "idx": 95,
+    "serviceId": "1065394377",
+    "pumpId": "P095",
+    "account": "1061496173-7",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "MANNING PISTACHIOS",
+    "billed": false
+  },
+  {
+    "idx": 96,
+    "serviceId": "6411804003",
+    "pumpId": "P096",
+    "account": "6411804366-6",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "MANNING PISTACHIOS",
+    "billed": false
+  },
+  {
+    "idx": 97,
+    "serviceId": "1909940537",
+    "pumpId": "P097",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "DEHYDRATER",
+    "billed": false
+  },
+  {
+    "idx": 98,
+    "serviceId": "5650325696",
+    "pumpId": "P101",
+    "account": "5658999696-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BLOCK 33",
+    "billed": false
+  },
+  {
+    "idx": 99,
+    "serviceId": "5658220082",
+    "pumpId": "P102",
+    "account": "5658999696-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BLOCK 33",
+    "billed": false
+  },
+  {
+    "idx": 100,
+    "serviceId": "2513725042",
+    "pumpId": "P103",
+    "account": "2516429758-9",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "BLOCK 34",
+    "billed": false
+  },
+  {
+    "idx": 101,
+    "serviceId": "1909940793",
+    "pumpId": "P105",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BLOCK 23",
+    "billed": false
+  },
+  {
+    "idx": 102,
+    "serviceId": "8925240409",
+    "pumpId": "P107",
+    "account": "8922820273-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "BLOCK 63",
+    "billed": false
+  },
+  {
+    "idx": 103,
+    "serviceId": "1902685195",
+    "pumpId": "P109",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BLOCK 64",
+    "billed": false
+  },
+  {
+    "idx": 104,
+    "serviceId": "1906782234",
+    "pumpId": "P110",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "BLOCK 36",
+    "billed": false
+  },
+  {
+    "idx": 105,
+    "serviceId": "6537453498",
+    "pumpId": "P112",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "KAMM RANCH",
+    "billed": false
+  },
+  {
+    "idx": 106,
+    "serviceId": "8923940171",
+    "pumpId": "P114",
+    "account": "8922820273-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "AIRPORT",
+    "billed": false
+  },
+  {
+    "idx": 107,
+    "serviceId": "1909793138",
+    "pumpId": "P116",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "NEBRASKA",
+    "billed": false
+  },
+  {
+    "idx": 108,
+    "serviceId": "1902604939",
+    "pumpId": "P123",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "FLORAL WALNUT",
+    "billed": false
+  },
+  {
+    "idx": 109,
+    "serviceId": "1900745457",
+    "pumpId": "P124",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "FLORAL WALNUT",
+    "billed": false
+  },
+  {
+    "idx": 110,
+    "serviceId": "1907047703",
+    "pumpId": "P126",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "EAST RANCH N",
+    "billed": false
+  },
+  {
+    "idx": 111,
+    "serviceId": "1904214662",
+    "pumpId": "P128",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "EAST RANCH N",
+    "billed": false
+  },
+  {
+    "idx": 112,
+    "serviceId": "8330075849",
+    "pumpId": "P129",
+    "account": "8336092256-7",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": "EAST RANCH S",
+    "billed": false
+  },
+  {
+    "idx": 113,
+    "serviceId": "1901313328",
+    "pumpId": "P130",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "EAST RANCH S",
+    "billed": false
+  },
+  {
+    "idx": 114,
+    "serviceId": "913405450",
+    "pumpId": "P131",
+    "account": "0919077708-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": "EAST RANCH S",
+    "billed": false
+  },
+  {
+    "idx": 115,
+    "serviceId": "5517582776",
+    "pumpId": "P132",
+    "account": "5511054911-4",
+    "entity": "BATTH FARMS INC",
+    "ranch": "EAST RANCH S",
+    "billed": false
+  },
+  {
+    "idx": 116,
+    "serviceId": "1909251922",
+    "pumpId": "P133",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "NIAGRA",
+    "billed": false
+  },
+  {
+    "idx": 117,
+    "serviceId": "6537627641",
+    "pumpId": "P134",
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "NIAGRA",
+    "billed": false
+  },
+  {
+    "idx": 118,
+    "serviceId": "7653966606",
+    "pumpId": "P136",
+    "account": "7651472957-3",
+    "entity": "BATTH FARMS INC",
+    "ranch": "NIAGRA",
+    "billed": false
+  },
+  {
+    "idx": 119,
+    "serviceId": "1903422429",
+    "pumpId": "P137",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "WALNUTS",
+    "billed": false
+  },
+  {
+    "idx": 120,
+    "serviceId": "1901103772",
+    "pumpId": "P138",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "WALNUTS",
+    "billed": false
+  },
+  {
+    "idx": 121,
+    "serviceId": "1904287908",
+    "pumpId": "P141",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "PINOT GRIS 643",
+    "billed": false
+  },
+  {
+    "idx": 122,
+    "serviceId": "8922791703",
+    "pumpId": "P145",
+    "account": "8922820273-8",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": "FLORAL RANCH",
+    "billed": false
+  },
+  {
+    "idx": 123,
+    "serviceId": "1904969980",
+    "pumpId": "P149",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM RANCH",
+    "billed": false
+  },
+  {
+    "idx": 124,
+    "serviceId": "1905685568",
+    "pumpId": "P150",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM RANCH",
+    "billed": false
+  },
+  {
+    "idx": 125,
+    "serviceId": "1901049160",
+    "pumpId": "P152",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "DeFREITAS",
+    "billed": false
+  },
+  {
+    "idx": 126,
+    "serviceId": "1904792004",
+    "pumpId": "P156",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM RANCH",
+    "billed": false
+  },
+  {
+    "idx": 127,
+    "serviceId": "1906213714",
+    "pumpId": "P157",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "HUGHES",
+    "billed": false
+  },
+  {
+    "idx": 128,
+    "serviceId": "1900922159",
+    "pumpId": "P160",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "DeFREITAS",
+    "billed": false
+  },
+  {
+    "idx": 129,
+    "serviceId": "1901145092",
+    "pumpId": "P164",
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": "KAMM RANCH",
+    "billed": false
+  },
+  {
+    "idx": 130,
+    "serviceId": "97136771",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 131,
+    "serviceId": "96239479",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 132,
+    "serviceId": "91898735",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 133,
+    "serviceId": "92896223",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 134,
+    "serviceId": "736862474",
+    "pumpId": null,
+    "account": "0731904574-1",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 135,
+    "serviceId": "97994462",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 136,
+    "serviceId": "1903286356",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 137,
+    "serviceId": "98438182",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 138,
+    "serviceId": "98843124",
+    "pumpId": null,
+    "account": "0096005793-3",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 139,
+    "serviceId": "7528166864",
+    "pumpId": null,
+    "account": "7526105246-0",
+    "entity": "BATHH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 140,
+    "serviceId": "4699664991",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 141,
+    "serviceId": "4699664553",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 142,
+    "serviceId": "4699664794",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 143,
+    "serviceId": "4699664016",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 144,
+    "serviceId": "1666375919",
+    "pumpId": null,
+    "account": "1664841929-5",
+    "entity": "BATHH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 145,
+    "serviceId": "1906939119",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 146,
+    "serviceId": "9285010095",
+    "pumpId": null,
+    "account": "9286085735-5",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 147,
+    "serviceId": "3928996365",
+    "pumpId": null,
+    "account": "3922545703-3",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 148,
+    "serviceId": "4699142630",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 149,
+    "serviceId": "6536945950",
+    "pumpId": null,
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 150,
+    "serviceId": "1909073740",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 151,
+    "serviceId": "4699664429",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 152,
+    "serviceId": "5428355624",
+    "pumpId": null,
+    "account": "5425333077-0",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 153,
+    "serviceId": "4699664599",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 154,
+    "serviceId": "1903918561",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 155,
+    "serviceId": "1901096161",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 156,
+    "serviceId": "6535731705",
+    "pumpId": null,
+    "account": "6539944461-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 157,
+    "serviceId": "778172070",
+    "pumpId": null,
+    "account": "0772131295-2",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 158,
+    "serviceId": "4699664540",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 159,
+    "serviceId": "4699664272",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 160,
+    "serviceId": "4699664985",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 161,
+    "serviceId": "4699664194",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 162,
+    "serviceId": "1907064274",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 163,
+    "serviceId": "8711536029",
+    "pumpId": null,
+    "account": "8711536399-3",
+    "entity": "BATTH,SURINDER K",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 164,
+    "serviceId": "1905217082",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 165,
+    "serviceId": "3712455947",
+    "pumpId": null,
+    "account": "3712455880-2",
+    "entity": "BATTH,SURINDER K",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 166,
+    "serviceId": "730240595",
+    "pumpId": null,
+    "account": "0730240888-0",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 167,
+    "serviceId": "1902245781",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 168,
+    "serviceId": "7335536414",
+    "pumpId": null,
+    "account": "7336549253-4",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 169,
+    "serviceId": "3376947330",
+    "pumpId": null,
+    "account": "3375127040-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 170,
+    "serviceId": "4699664294",
+    "pumpId": null,
+    "account": "4699664587-8",
+    "entity": "BATTH,CHARANJIT S",
+    "ranch": null,
+    "billed": true
+  },
+  {
+    "idx": 171,
+    "serviceId": "2455282657",
+    "pumpId": null,
+    "account": "2456362560-7",
+    "entity": "BATHH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 172,
+    "serviceId": "5054032730",
+    "pumpId": null,
+    "account": "5051864669-5",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 173,
+    "serviceId": "4928508024",
+    "pumpId": null,
+    "account": "4924574721-4",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 174,
+    "serviceId": "1909000728",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 175,
+    "serviceId": "3893060656",
+    "pumpId": null,
+    "account": "3897913971-4",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 176,
+    "serviceId": "4040485611",
+    "pumpId": null,
+    "account": "4049668808-2",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 177,
+    "serviceId": "1908476023",
+    "pumpId": null,
+    "account": "1909940814-8",
+    "entity": "K S BATTH & G S BATTH PARTNERSHIP",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 178,
+    "serviceId": "9364241924",
+    "pumpId": null,
+    "account": "9361810967-7",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 179,
+    "serviceId": "5047939283",
+    "pumpId": null,
+    "account": "5047939094-5",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 180,
+    "serviceId": "8789207013",
+    "pumpId": null,
+    "account": "8780138865-0",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 181,
+    "serviceId": "8782228927",
+    "pumpId": null,
+    "account": "8780138865-0",
+    "entity": "BATTH FARMS INC",
+    "ranch": null,
+    "billed": false
+  },
+  {
+    "idx": 182,
+    "serviceId": "5042685096",
+    "pumpId": null,
+    "account": "5047939094-5",
+    "entity": "KANWARJIT BATTH & GAGANDIP BATTH",
+    "ranch": null,
+    "billed": false
+  }
+]

@@ -1,0 +1,176 @@
+{
+  "serviceId": "4699664820",
+  "idx": 86,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 87,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664820",
+    "meterSerial": "1010131530",
+    "growerPumpId": "P055",
+    "rateSchedule": "HAGC",
+    "legacy": null,
+    "descriptor": "PUMP # 55",
+    "latitude": 36.503649,
+    "longitude": -119.865734,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": 250,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": "SWANSON",
+    "status": "GOOD"
+  },
+  "billing": {
+    "serviceId": "4699664820",
+    "meterNumber": "1010131530",
+    "growerPumpId": null,
+    "saIdDescriptor": "PUMP # 55",
+    "latestTariff": "AGC Ag35+ kW High Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 45.89,
+      "totalKwh": 14.006,
+      "peakKw": 0.024,
+      "demandChargeUsd": 0.61
+    },
+    "totalKwh_latestCycle": 14.006,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "tariff": "AGC Ag35+ kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 0.024,
+        "demandChargeUsd_structured": 0.61,
+        "totalKwh": 14.006,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 1.867,
+            "amountUsd": 0.35
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 12.139,
+            "amountUsd": 1.93
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 43.0,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.21,
+            "quantity": 1.121,
+            "unit": "kWh",
+            "rate": 0.1843,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.1843
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 1.16,
+            "quantity": 7.304,
+            "unit": "kWh",
+            "rate": 0.15861,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.15861
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.14,
+            "quantity": 0.746,
+            "unit": "kWh",
+            "rate": 0.1855,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.1855
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 0.77,
+            "quantity": 4.835,
+            "unit": "kWh",
+            "rate": 0.15981,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.15981
+          },
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 0.61,
+            "quantity": 0.024,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11-02/28 18 days @$1.43343",
+            "amountUsd": 25.8,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 1.43343
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01-03/12 12 days @$1.43343",
+            "amountUsd": 17.2,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 1.43343
+          }
+        ],
+        "printedTotalUsd": 45.89,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 45.89
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGC Ag35+ kW High Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 0.61
+        }
+      ],
+      "demandChargeUsd": 0.61,
+      "totalBillUsd": 45.89
+    }
+  ],
+  "nem": null
+}

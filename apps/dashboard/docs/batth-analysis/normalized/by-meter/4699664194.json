@@ -1,0 +1,174 @@
+{
+  "serviceId": "4699664194",
+  "idx": 161,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 162,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664194",
+    "meterSerial": "1009930419",
+    "growerPumpId": null,
+    "rateSchedule": "HAGA2",
+    "legacy": null,
+    "descriptor": "VINES IRR 15HP BR-T2",
+    "latitude": 36.532522,
+    "longitude": -119.903323,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": null,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": null,
+    "status": null
+  },
+  "billing": {
+    "serviceId": "4699664194",
+    "meterNumber": "1009930419",
+    "growerPumpId": null,
+    "saIdDescriptor": "VINES IRR 15HP BR-T2",
+    "latestTariff": "AGA2 Ag<35 kW High Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 635.29,
+      "totalKwh": 2391.646,
+      "peakKw": 3.948,
+      "demandChargeUsd": 86.41
+    },
+    "totalKwh_latestCycle": 2391.646,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "tariff": "AGA2 Ag<35 kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 3.948,
+        "demandChargeUsd_structured": 86.41,
+        "totalKwh": 2391.646,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 306.205,
+            "amountUsd": 75.36
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 2085.441,
+            "amountUsd": 452.13
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 20.67,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.72,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 75.36,
+            "quantity": 306.205,
+            "unit": "kWh",
+            "rate": 0.246,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.246
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 452.13,
+            "quantity": 2085.441,
+            "unit": "kWh",
+            "rate": 0.2167,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.2167
+          },
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 86.41,
+            "quantity": 3.948,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 (18 days @ $0.68895)",
+            "amountUsd": 12.4,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.68895
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 (12 days @ $0.68895)",
+            "amountUsd": 8.27,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.68895
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 02/11-02/28",
+            "amountUsd": 0.43,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 03/01-03/12",
+            "amountUsd": 0.29,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          }
+        ],
+        "printedTotalUsd": 635.29,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 635.29
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGA2 Ag<35 kW High Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 86.41
+        }
+      ],
+      "demandChargeUsd": 86.41,
+      "totalBillUsd": 635.29
+    }
+  ],
+  "nem": null
+}

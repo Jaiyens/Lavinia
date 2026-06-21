@@ -1,0 +1,142 @@
+{
+  "serviceId": "4699664286",
+  "idx": 65,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 66,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664286",
+    "meterSerial": "1009848597",
+    "growerPumpId": "P063",
+    "rateSchedule": "HAGA2",
+    "legacy": null,
+    "descriptor": "PUMP # 63",
+    "latitude": 36.510807,
+    "longitude": -119.882284,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": true,
+    "solarNotes": "not using",
+    "gpm": 1000,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": "ELKHORN SHOP",
+    "status": "GOOD"
+  },
+  "billing": {
+    "serviceId": "4699664286",
+    "meterNumber": "1009848597",
+    "growerPumpId": "P063",
+    "saIdDescriptor": "P063",
+    "latestTariff": "AGA2 Ag<35 kW High Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 20.67,
+      "totalKwh": 0,
+      "peakKw": null,
+      "demandChargeUsd": null
+    },
+    "totalKwh_latestCycle": 0,
+    "idleZeroKwh": true,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "tariff": "AGA2 Ag<35 kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": null,
+        "demandChargeUsd_structured": null,
+        "totalKwh": 0,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.0,
+            "amountUsd": 0.0
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 20.67,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.0,
+            "quantity": 0,
+            "unit": "kWh",
+            "rate": 0,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 0.0,
+            "quantity": 0,
+            "unit": "kWh",
+            "rate": 0,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 18 days @$0.68895",
+            "amountUsd": 12.4,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.68895
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 12 days @$0.68895",
+            "amountUsd": 8.27,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.68895
+          }
+        ],
+        "printedTotalUsd": 20.67,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 20.67
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGA2 Ag<35 kW High Use",
+      "demandCharges": [],
+      "demandChargeUsd": null,
+      "totalBillUsd": 20.67
+    }
+  ],
+  "nem": null
+}

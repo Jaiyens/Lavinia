@@ -1,0 +1,323 @@
+{
+  "serviceId": "4694038660",
+  "idx": 30,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 31,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4694038660",
+    "meterSerial": "1010406762",
+    "growerPumpId": "P067",
+    "rateSchedule": "AG5B",
+    "legacy": true,
+    "descriptor": "Pump 67",
+    "latitude": 36.521529,
+    "longitude": -119.899423,
+    "hasCoordinates": true,
+    "solarFlag": true,
+    "solarGroupLabel": "5219",
+    "solarKw": null,
+    "nemType": "NEM2AA",
+    "trueUpMonth": null,
+    "contiguous": true,
+    "solarNotes": null,
+    "gpm": 400,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": "HOME RANCH",
+    "status": "GOOD"
+  },
+  "billing": {
+    "serviceId": "4694038660",
+    "meterNumber": "1010406762",
+    "growerPumpId": "P067",
+    "saIdDescriptor": "P067",
+    "latestTariff": "AG5B",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 53.09,
+      "totalKwh": 0,
+      "peakKw": 1.02,
+      "demandChargeUsd": 13.12
+    },
+    "totalKwh_latestCycle": 0,
+    "idleZeroKwh": true,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "tariff": "AG5B",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 1.02,
+        "demandChargeUsd_structured": 13.12,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 35.83,
+          "demandChargeTextUsd": 17.26,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 13.12,
+            "quantity": 1.02,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 (18 days @ $1.19446)",
+            "amountUsd": 21.5,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 1.19446
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge Max Demand 02/11/2026 to 02/28/2026 (1.020000 kW @ $21.43000)",
+            "amountUsd": 13.12,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 1.02,
+            "parsedRatePerKw": 21.43
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 (12 days @ $1.19446)",
+            "amountUsd": 14.33,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 1.19446
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge Max Demand 03/01/2026 to 03/12/2026 (0.504000 kW @ $20.54000)",
+            "amountUsd": 4.14,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 0.504,
+            "parsedRatePerKw": 20.54
+          }
+        ],
+        "printedTotalUsd": 53.09,
+        "coverageState": "needs_review"
+      }
+    ],
+    "nem": {
+      "nemEnrolled": true,
+      "trueUpAmountUsd": 11.29,
+      "trueUpMonth": 5,
+      "trueUpDate": null,
+      "ytdRunningChargeUsd": null,
+      "annualImportKwh_printed": 933,
+      "annualExportKwh_printed": 0,
+      "annualNetKwh_printed": 933,
+      "annualImportKwh_derived": 972.4,
+      "annualExportKwh_derived": 0,
+      "annualNetKwh_derived": 972.4,
+      "monthlyNet": [
+        {
+          "start": "-",
+          "close": "2025-06-09",
+          "netKwh": 88,
+          "amountUsd": 21.46
+        },
+        {
+          "start": "-",
+          "close": "2025-07-10",
+          "netKwh": 133,
+          "amountUsd": 30.66
+        },
+        {
+          "start": "-",
+          "close": "2025-08-10",
+          "netKwh": 126,
+          "amountUsd": 29.55
+        },
+        {
+          "start": "-",
+          "close": "2025-09-10",
+          "netKwh": 119,
+          "amountUsd": 28.01
+        },
+        {
+          "start": "-",
+          "close": "2025-10-10",
+          "netKwh": 83,
+          "amountUsd": 20.58
+        },
+        {
+          "start": "-",
+          "close": "2025-11-10",
+          "netKwh": 80,
+          "amountUsd": 19.89
+        },
+        {
+          "start": "-",
+          "close": "2025-12-11",
+          "netKwh": 97,
+          "amountUsd": 21.93
+        },
+        {
+          "start": "-",
+          "close": "2026-01-12",
+          "netKwh": 86,
+          "amountUsd": 20.0
+        },
+        {
+          "start": "-",
+          "close": "2026-02-11",
+          "netKwh": 82,
+          "amountUsd": 18.17
+        },
+        {
+          "start": "-",
+          "close": "2026-03-13",
+          "netKwh": 39,
+          "amountUsd": 11.29
+        },
+        {
+          "start": "2026-02-11",
+          "close": "2026-02-28",
+          "netKwh": 31.4859,
+          "amountUsd": 8.08
+        },
+        {
+          "start": "2026-03-01",
+          "close": "2026-03-12",
+          "netKwh": 7.8764,
+          "amountUsd": 3.21
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    "nemTrueUpUsd": 11.29,
+    "billedAcrossCyclesUsd": 53.09
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AG5B",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 13.12
+        }
+      ],
+      "demandChargeUsd": 13.12,
+      "totalBillUsd": 53.09
+    }
+  ],
+  "nem": {
+    "nemEnrolled": true,
+    "trueUpAmountUsd": 11.29,
+    "trueUpMonth": 5,
+    "trueUpDate": null,
+    "ytdRunningChargeUsd": null,
+    "annualImportKwh_printed": 933,
+    "annualExportKwh_printed": 0,
+    "annualNetKwh_printed": 933,
+    "annualImportKwh_derived": 972.4,
+    "annualExportKwh_derived": 0,
+    "annualNetKwh_derived": 972.4,
+    "monthlyNet": [
+      {
+        "start": "-",
+        "close": "2025-06-09",
+        "netKwh": 88,
+        "amountUsd": 21.46
+      },
+      {
+        "start": "-",
+        "close": "2025-07-10",
+        "netKwh": 133,
+        "amountUsd": 30.66
+      },
+      {
+        "start": "-",
+        "close": "2025-08-10",
+        "netKwh": 126,
+        "amountUsd": 29.55
+      },
+      {
+        "start": "-",
+        "close": "2025-09-10",
+        "netKwh": 119,
+        "amountUsd": 28.01
+      },
+      {
+        "start": "-",
+        "close": "2025-10-10",
+        "netKwh": 83,
+        "amountUsd": 20.58
+      },
+      {
+        "start": "-",
+        "close": "2025-11-10",
+        "netKwh": 80,
+        "amountUsd": 19.89
+      },
+      {
+        "start": "-",
+        "close": "2025-12-11",
+        "netKwh": 97,
+        "amountUsd": 21.93
+      },
+      {
+        "start": "-",
+        "close": "2026-01-12",
+        "netKwh": 86,
+        "amountUsd": 20.0
+      },
+      {
+        "start": "-",
+        "close": "2026-02-11",
+        "netKwh": 82,
+        "amountUsd": 18.17
+      },
+      {
+        "start": "-",
+        "close": "2026-03-13",
+        "netKwh": 39,
+        "amountUsd": 11.29
+      },
+      {
+        "start": "2026-02-11",
+        "close": "2026-02-28",
+        "netKwh": 31.4859,
+        "amountUsd": 8.08
+      },
+      {
+        "start": "2026-03-01",
+        "close": "2026-03-12",
+        "netKwh": 7.8764,
+        "amountUsd": 3.21
+      }
+    ],
+    "benefitingMeterSaIds": [],
+    "coverageState": "needs_review"
+  }
+}

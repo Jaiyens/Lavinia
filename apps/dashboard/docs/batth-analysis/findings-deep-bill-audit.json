@@ -1,0 +1,59 @@
+{
+  "category": "Bill audit / billing errors",
+  "lever": "PG&E dispute. No operational change; recovery is a PG&E credit/rebill correcting a charge that should not have been billed.",
+  "scope": "All dollars are from account 4699664587-8 only (~46 metered SAs; latest cycle 2026-02-11 to 2026-03-12, winter). The Excel inventory's 183 meters / ~57 accounts are NOT priced here (no bills). Solar arrays total 1,932 kW (840 + 1,092).",
+  "computeNote": "Every dollar is deterministic arithmetic. The ONLY AI in the pipeline is the bill-PDF vision extraction in src/lib/extract; all pricing engines named below (src/lib/energy/*) are pure functions with no AI.",
+  "totalAnnualUsd": 2071.66,
+  "findings": [
+    {
+      "title": "P027 net-exporter charged a $2,461 NEM true-up; $2,072 disputable above the NBC floor",
+      "annualUsd": 2071.66,
+      "confidence": "medium",
+      "meters": ["4697755484"],
+      "formula": "disputable = trueUpUsd - (annualImportKwh x NBC_rate) = 2461.49 - (16949 x 0.023) = 2461.49 - 389.83 = 2071.66",
+      "computedBy": "summarizeNemMonths() + solarBillFloor() in src/lib/energy/solar-nem.ts (net-position and NBC floor are deterministic pure arithmetic, no AI). Shown inline as manual analytic.",
+      "needsData": "pge-allocation-summary",
+      "evidence": "P027 (PUMP # 27, AG5C, NEM2AA, ranch CHATEAU FRESNO) printed annual NEM: import 16,949 kWh, export 39,855 kWh, net -22,906 kWh (a clear net exporter), yet billed a +$2,461.49 true-up (true-up month 5). Effective $/import = 2461.49 / 16,949 = $0.1452/kWh, ~6.3x the ~2.3c/kWh NBC floor: the export credit is not reaching this meter's own bill. Monthly rows confirm the wrong-sign mess (e.g. 2025-07-10..08-10 net=-12,759 export billed as +$2,698.20). Max legitimate residue = NBC floor on gross import = 16,949 x $0.023 = $389.83; disputable = 2461.49 - 389.83 = $2,071.66. The NBC portion is genuinely owed so only the $2,071.66 above it is banked. Confidence medium: net-export direction is unambiguous on the printed bill, but exact recovery needs P027's Generation Allocation Summary / Form 79-1202 to confirm mis-application."
+    },
+    {
+      "title": "VINES 75HP $62,795.65 zero-credit true-up (real anomaly, $0 banked, recovery contingent on allocation summary)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4699664088"],
+      "formula": "recovery = trueUpUsd - allocatedGenerationCredit(SA); unknown until the Generation Allocation Summary is supplied. NBC floor = 230,223 x 0.023 = 5,295.13; contingent above-NBC band = 62,795.65 - 5,295.13 = 57,500.52 (NOT banked).",
+      "computedBy": "auditAllocation() in src/lib/energy/solar-allocation.ts (deterministic, no AI) once the Generation Allocation Summary is the input. Cannot be priced now.",
+      "needsData": "pge-allocation-summary",
+      "evidence": "Meter 4699664088 (VINES IRR 75HP NEW 75HP / P031, billed AGC, inventory AGB, NEMEXP, true-up month 12): import 230,223 kWh, export 39,718 kWh, net 190,505 kWh, true-up $62,795.65. Effective $/import = 62,795.65 / 230,223 = $0.273/kWh (~full retail), the signature of an orphaned NEMA allocation (NEMEXP SA receiving none of the arrangement's allocated generation; brief-nem-nema.md sect 5). Sibling P038 (4699664743, same AGC/NEMEXP profile) trued up to $0.26, proving the arrangement can zero out. BUT recovery is $0 to ~$57,500.52 CONTINGENT on the Generation Allocation Summary: if the 1,932 kW arrays are oversubscribed (aggregate load > generation) the allocation is zero-sum and crediting P031 debits another benefiting meter. Never banked; $0 defensible-now."
+    },
+    {
+      "title": "HAGA2 'demand $/kW over-rate vs peers (~$795)' FALSIFIED: candidates bill ~$21.43/kW, same as peers",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": ["4699664194", "4699664794"],
+      "formula": "effectiveRate = demandLineAmountUsd / demandLineKw. Candidates: 86.41/3.948 = $21.89/kW, 84.55/3.84 = $22.02/kW. Peers itemize 12.584 kW @ $21.43 and 7.4236 kW @ $21.43. Candidates ~= peers; excess = $0.",
+      "computedBy": "effectiveDemandRate() in src/lib/energy/demand.ts on the itemized demand line (deterministic). Falsification of the prior finding is manual analytic.",
+      "needsData": "other-account-bills",
+      "evidence": "A prior pass claimed 4699664194 and 4699664794 (both HAGA2) bill ~$22/kW vs a ~$13.45/kW peer rate (1.6x, ~$794.54/yr). That $13.45 'peer rate' was structuredDemandUsd/peakKw, but the structured demand sums TWO sub-period demand lines while peakKw is only the end-of-cycle peak, so the ratio is not a $/kW. The peers' actual itemized demand lines both read $21.43/kW (AG-A2 secondary max-demand): 4699664553 = 12.584 kW @ $21.43 = $107.87 (structured $184.16 includes a 2nd sub-line), 4699664599 = 7.4236 kW @ $21.43 = $63.64 (structured $127.81 includes a 2nd sub-line). The two candidates have no itemized demand line, so their implied rate is 86.41/3.948 = $21.89 and 84.55/3.84 = $22.02 per kW, within rounding of the peer $21.43. No over-rate exists; nothing to dispute. (Both candidates peak under 4 kW and are AG-A1 demote candidates, but that is the rate-arbitrage lever, not a billing error.) Confidence high that this is NOT a billing error."
+    },
+    {
+      "title": "A demand line on two AG-B meters, a schedule that has no demand charge per tariff ($0 banked, needs the itemized bill)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4699664429", "4699664416"],
+      "formula": "disputable = demandLineUsd (AG-B permits $0 demand), annualized x12 if recurring. Per cycle: 49.55 + 29.69 = $79.24; x12 = $950.88 worst-case ceiling.",
+      "computedBy": "verifyBill() in src/lib/energy/bill-verify.ts recomputes the AG-B bill from the tariff card (no demand component) and surfaces the demand line as the deviation (deterministic, no AI).",
+      "needsData": "other-account-bills",
+      "evidence": "Per brief-pge-ag-rates.md, Schedule AG-B has NO demand charge (energy-only). Both meters are genuinely AG-B (customer charge bills $0.91565/day, the AG-B rate): 4699664429 (FARM SHOP TURKEY-AL7, HAGB) structured demand $49.55 (peakKw 5.672); 4699664416 (P078, HAGB) structured demand $29.69 (peakKw 5.32). If genuine, the whole line is disputable (~$950/yr ceiling). BUT the parsed unit math does not reconcile (5.652 kW x $13.95 = $78.85 != $31.54 printed; 3.260 kW x $14.56 = $47.47 != $28.48 printed), and the $13.95/$14.56 rates are AG-A2 rows not AG-B, so the extraction has likely mislabeled a customer/other charge as demand. $0 banked: read the actual bill line; if literally labeled Demand/Max-Demand under AG-B it is disputable up to ~$950.88/yr, else fix the parser."
+    },
+    {
+      "title": "VINES 75HP billed 111.52 kW demand, 1.56x the electrical ceiling of a 75 HP motor (wrong-multiplier candidate, $0 banked)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4699664088"],
+      "formula": "disputable = demandUsd x (1 - meteredPeakKw / billedPeakKw) once the true 15-min peak and CT/PT multiplier are known. 75 HP electrical ceiling ~73.1 kW (75 x 0.746 / 0.88 x 1.15); billed 111.52 / 73.1 = 1.56x. If a 2x multiplier is proven, ~$556/cycle disputable.",
+      "computedBy": "verifyBill() in src/lib/energy/bill-verify.ts (recompute vs print) + maxDemand() in src/lib/energy/demand.ts (true 15-min peak from intervals) (deterministic, no AI).",
+      "needsData": "interval",
+      "evidence": "Meter 4699664088 latest cycle bills peakKw 111.52 with a $1,112.97 demand line (plus a $1,711.73 sub-line at 109.6 kW). Descriptor '75HP': 75 x 0.746 = 55.95 kW shaft; electrical full-load ~63.6 kW; 1.15 service-factor ceiling ~73.1 kW; billed 111.52 / 73.1 = 1.56x, the signature of a wrong CT/PT multiplier (e.g. 2x mis-applied). BUT the cycle is coverageState=needs_review (demand sub-lines do not internally reconcile vs peakKw) and a '75HP' descriptor is not connected load (comparison pump P054 '100HP' legitimately peaks at 278.88 kW). Needs the bill's CT/PT multiplier and 15-min interval data to confirm the true metered peak before any dollar is asserted. $0 banked; contingent ~$556/cycle if a 2x multiplier is proven."
+    }
+  ]
+}

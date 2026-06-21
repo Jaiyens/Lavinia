@@ -1,0 +1,114 @@
+{
+  "category": "rate-optimization",
+  "totalAnnualUsd": 843.48,
+  "$note": "Defensible bill-only total = $843.48/yr (R1 two safe small pumps $543.48 + R6 one low-load-factor AG-A2 $300.00). All larger numbers are OPPORTUNITY, not banked: with one idle winter cycle and no kWh intervals, energy is modeled as 0, the 35 kW eligibility ratchet is unobservable, and the engine's AG-C->AG-B comparison is a sign-ambiguous artifact suppressed by the no_usage_basis guard (rate-lever.ts:508). Every dollar is deterministic arithmetic in src/lib/energy (rateLever/rateOptimization) against fixtures/pge-ag-rate-card.json; NO AI is involved (the only AI in the product is bill-PDF vision extraction, which produces data rows, never a savings dollar).",
+  "findings": [
+    {
+      "title": "10 idle/near-zero AG-C (HAGC) pumps stranded on the 35+ high-use schedule; only 2 small ones safely demotable to AG-A1 on confirmation",
+      "annualUsd": 543.48,
+      "confidence": "medium",
+      "meters": [
+        "4692166716 (P075, 1000 GPM, HAGC)",
+        "4692424863 (PUMP #8, 800 GPM, HAGC)",
+        "4697631144 (HAGC)",
+        "4699142630 (HAGC)",
+        "4699664198 (P072, 300 GPM, HAGC)",
+        "4699664728 (P077, 1400 GPM, HAGC)",
+        "4691715828 (PUMP 73, AGC)",
+        "4699664441 (P041, 1300 GPM, AGC, NEMEXP solar)",
+        "4699664743 (P038, 1300 GPM, AGC, NEMEXPM solar)",
+        "4699664820 (PUMP #55, 250 GPM, HAGC)"
+      ],
+      "formula": "savings_per_meter = (custCharge_AGC_perDay - custCharge_AGA1_perDay) x 365 = ($1.43343 - $0.68895) x 365 = $271.74/yr/meter. Defensible = 2 safe small pumps (PUMP #55 @250 GPM + P072 @300 GPM) x $271.74 = $543.48/yr. Bill reproduction: AG-C $1.43343/day x 30 days = $43.00 = the exact printed total on the 7 pure-customer-charge meters. AG-A1 also eliminates the AG-C demand column ($21.43/kW max + $29.92/kW summer-peak).",
+      "computedBy": "rateLever() in src/lib/energy/rate-lever.ts (customer-charge term of priceCycleCents). Deterministic pure arithmetic, NOT AI. On this single idle winter cycle the engine's no_usage_basis guard (rate-lever.ts:508) actually suppresses any AG-C switch finding, because energy=0 makes the customer-charge delta non-defensible ('summer flips it').",
+      "needsData": "interval",
+      "evidence": "On account 4699664587-8 (cycle 2026-02-11 to 2026-03-12), 7 AGC meters print exactly $43.00 (pure customer charge, 0 kWh, 0 kW): P075, PUMP #8, 4697631144, 4699142630, P072, P077, PUMP 73 ($44.21 on 5.48 kWh). 3 more within ~$3 of floor: P041 ($45.50, 0.16 kW), P038 ($136.04 incl NEM true-up, 0.0148 kW), PUMP #55 ($45.89, 0.024 kW on 14 kWh). AG-C customer charge $1.43343/day = $523.20/yr vs AG-A1 $0.68895/day = $251.47/yr. CAVEAT: 8 of 10 are HAGC (transmission AG-C) and most are large pumps (P077 1400 GPM, P075 1000, P041/P038 1300) almost certainly >35 kW in summer, so NOT demotable under the trailing-12-month ratchet (one month >=35 kW disqualifies AG-A1 for a year). P041 and P038 are NEMEXP/NEMEXPM solar export agreements, not idle pumps. Only PUMP #55 (250 GPM) and P072 (300 GPM) are plausibly always-<35 kW; their $543.48/yr is the defensible-on-confirmation floor, the remaining ~$2,174 (toward a $2,717.40 ceiling) is opportunity contingent on interval proof per meter."
+    },
+    {
+      "title": "4 idle AG-5C legacy solar pumps carrying the highest customer charge on the farm ($1,938/yr); HOLD until the 2027 solar-legacy lapse",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "4693142227 (P028, NEM2AA, solarGroup 4433)",
+        "4695237170 (P062, NEM2AA, solarGroup 4433)",
+        "4695719808 (P052, NEM2AA, solarGroup 4433)",
+        "4697755484 (P027, NEM2AA, solarGroup 4433)"
+      ],
+      "formula": "AG-5C $5.30871/day x 30 days = $159.26 = exact printed total (P028). AG-5C $5.30871/day = $1,937.68/yr; naive differential to AG-A1 = ($5.30871 - $0.68895) x 365 = $1,686.21/yr/meter; x4 = $6,744.84/yr GROSS. ACT VALUE = $0 because the legacy noon-6pm TOU window overlapping midday solar is worth more than the fixed charge until the 2027 force-transition.",
+      "computedBy": "rateLever() legacy-exempt path (rate-lever.ts:498-499, 549). Deterministic arithmetic, NOT AI.",
+      "needsData": "interval",
+      "evidence": "P028/P062/P052/P027 on closed legacy AG-5C, each printing ~$159-$162 on 0 kWh = bare AG-5C customer charge. All NEM2-paired solar (solarGroup 4433, NEM2AA), deliberately parked on legacy TOU to hold the noon-6pm peak window that overlaps midday solar (brief-pge-ag-rates.md sec 2). Moving them to Schedule AG early would DESTROY solar value far exceeding the $1,686/yr fixed charge. They force-transition only when solar-legacy eligibility lapses (<= 2027-07-31). Re-run the R1 AG-A1 demotion analysis with interval data at that time for any then idle/<35 kW. Defensible savings today = $0."
+    },
+    {
+      "title": "4 idle AG-5B legacy solar pumps (plus 1 running at 171 kW); rate is intentional, HOLD until 2027",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "4690972110 (P018, NEM2AA)",
+        "4691688023 (P002, NEM2AA, -$149.11 NEM credit cycle)",
+        "4692494679 (P003, NEM2AA)",
+        "4694038660 (P067, NEM2AA, 1.02 kW winter demand)",
+        "4698660251 (P004, NEM2AA, RUNNING 171.52 kW, NOT a candidate)"
+      ],
+      "formula": "AG-5B $1.19446/day x 30 = $35.83 = exact printed total (P018, P003). AG-5B $1.19446/day = $435.98/yr; naive differential to AG-A1 = ($1.19446 - $0.68895) x 365 = $184.51/yr/meter; x4 idle = $738.04/yr GROSS. ACT VALUE = $0 (legacy solar TOU window, hold to 2027).",
+      "computedBy": "rateLever() legacy-exempt path. Deterministic arithmetic, NOT AI.",
+      "needsData": "interval",
+      "evidence": "P018/P002/P003/P067 idle on legacy AG-5B, all NEM2-paired solar (solarGroup 4433/4444). Same hold-to-2027 logic as the AG-5C meters. P004 is also AG-5B but RUNS hard (winter peak 171.52 kW, $1,409.21 demand, billed $3,642.22) and is correctly demand-rated; its 171 kW peak proves the AG-5 fleet legitimately exceeds 35 kW when running, so none is an AG-A1 candidate even post-2027 unless interval data shows a specific meter idle year-round. Defensible savings today = $0."
+    },
+    {
+      "title": "1 idle AG-4C legacy solar pump (P017, flagged BAD); HOLD until 2027",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "4699141870 (P017, PUMP #17, AG4C, NEM2AA, 500 GPM, status BAD)"
+      ],
+      "formula": "AG-4C $2.15003/day x 30 = $64.50 = exact printed total. AG-4C $2.15003/day = $784.76/yr; naive differential to AG-A1 = ($2.15003 - $0.68895) x 365 = $533.29/yr. ACT VALUE = $0 (legacy solar TOU window, hold to 2027).",
+      "computedBy": "rateLever() legacy-exempt path. Deterministic arithmetic, NOT AI.",
+      "needsData": "interval",
+      "evidence": "P017 idle on legacy AG-4C (billed $64.50, $1,911.35 NEM true-up), NEM2AA solar-paired, 500 GPM, inventory status BAD. Solar TOU window protected; hold to the 2027 lapse. Inventory BAD status makes its future a repair/retire decision, not a rate election. Post-2027, if confirmed idle/<35 kW (500 GPM plausibly demotable), the AG-4C->AG-A1 $533.29/yr differential would apply, contingent on interval data. Defensible savings today = $0."
+    },
+    {
+      "title": "5 AG-B meters: low winter demand, but AG-B has no demand charge so the only delta is a small sign-ambiguous customer charge",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "4698006011 (idle, $27.47)",
+        "4698074516 (P058, 0.012 kW, 5.3 kWh)",
+        "4699664416 (P078, 5.32 kW, 56.7 kWh)",
+        "4699664429 (5.672 kW, 252 kWh)",
+        "4699664561 (P057, idle, $27.47)"
+      ],
+      "formula": "Fixed differential to AG-A1 = ($0.91565 - $0.68895) x 365 = $82.75/yr/meter. But AG-A1 energy is HIGHER than AG-B (winter peak $0.33989 vs $0.33597; off-peak $0.31060 vs $0.30671), so for the metered meters (4699664429 252 kWh, P078 57 kWh) the extra energy offsets part/all of the $82.75. Net sign depends on full-year kWh we do not hold. Defensible = $0.",
+      "computedBy": "rateLever() -> no_usage_basis / no_savings (rate-lever.ts:508, 532). Deterministic arithmetic, NOT AI.",
+      "needsData": "interval",
+      "evidence": "AG-B already carries no demand charge (energy-only recovery), so there is no demand column to drop. The only differential is the $82.75/yr customer charge, which is the 'summer flips it' artifact for idle meters and is offset by AG-A1's higher energy for the metered ones. AG-B pumps reaching ~5.6 kW in winter may exceed 35 kW in summer, re-confirming the 35+ class and barring AG-A1. No defensible bill-only saving."
+    },
+    {
+      "title": "Low-load-factor AG-A2 meter cheaper on AG-A1 (drop the max-demand charge); 1 clear winner, blanket swap loses money",
+      "annualUsd": 300,
+      "confidence": "low",
+      "meters": [
+        "4699664794 (best candidate: $84.55 demand on 92.4 kWh)",
+        "4699664194 (NET LOSS ~$139/cycle, do NOT switch)",
+        "4699664599 (loses ~$20/cycle)",
+        "4699664553 (break-even)"
+      ],
+      "formula": "AG-A1 and AG-A2 share the same $0.68895/day customer charge, so this is a pure demand-vs-energy trade. For 4699664794: AG-A1 extra energy = 92.4 kWh x ($0.31060 - $0.21642) = $8.70; AG-A1 saves $84.55 demand - $8.70 = $75.85 THIS winter cycle. Defensible annual = ~$300 (sized down from the one-cycle delta to avoid annualizing a snapshot). Counter-check 4699664194: extra energy = 2391.646 x ($0.31060 - $0.21642) = $225.25 > $86.41 demand saved => NET LOSS ~$138.84/cycle.",
+      "computedBy": "rateOptimization() (rate-compare.ts:160) interval path / rateLever() arithmetic. Deterministic pure functions, NOT AI.",
+      "needsData": "interval",
+      "evidence": "AG-A2 carries an $11.79-$21.43/kW max-demand charge with lower energy; AG-A1 has no demand charge but higher energy. The swap wins ONLY for low-load-factor meters (high demand $, few kWh): 4699664794 paid $84.55 demand on only 92.4 kWh and saves ~$75.85 this cycle on AG-A1. It LOSES on steady-energy meters: 4699664194 (2,392 kWh) loses ~$139/cycle, 4699664599 ~$20, 4699664553 break-even. Do NOT blanket-switch AG-A2->AG-A1. The $300/yr defensible figure is the single clear winner (4699664794), conservatively sized, pending full-year interval confirmation."
+    },
+    {
+      "title": "~87 more AG-C/HAGC meters on ~45 other accounts likely hold the same stranded-demand arbitrage (no bills held)",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "~87 AGC/HAGC meters on ~45 accounts (largest pools: account 1909940814-8 ~21 meters, 6539944461-4 x11)"
+      ],
+      "formula": "If the on-account ratio holds (10 of 12 AGC meters idle/sub-1-kW), each demotable meter is worth (AGC $1.43343 - AGA1 $0.68895) x 365 = $271.74/yr in customer charge alone, plus removal of AG-C demand exposure. Cannot be computed without the other-account bills AND trailing-12-month intervals.",
+      "computedBy": "n/a until data lands; would be rateLever(). Deterministic arithmetic, NOT AI.",
+      "needsData": "other-account-bills",
+      "evidence": "The 183-meter inventory carries 96 meters on AGC/HAGC (13 AGC + 83 HAGC). Only ~12 fall on the one account we hold bills for (4699664587-8); the other ~87 sit on ~45 accounts with NO billing data in this dataset. HAGC = AG-C at transmission voltage (same $1.43343/day customer charge). No bills means no usage/demand/back-test; no intervals means no eligibility. Request the other-account bills, then trailing-12-month interval data, then re-run the R1 sweep. Not dollar-quantifiable here."
+    }
+  ]
+}

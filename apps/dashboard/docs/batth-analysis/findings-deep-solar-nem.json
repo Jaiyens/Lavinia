@@ -1,0 +1,46 @@
+{
+  "category": "Solar / NEM true-ups",
+  "totalAnnualUsd": 0,
+  "findings": [
+    {
+      "title": "P031 / VINES IRR 75HP zero-credit NEM true-up anomaly (recovery contingent on Generation Allocation Summary)",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": ["4699664088"],
+      "formula": "effective $/kWh = trueUpUsd / annualNetKwh = 62795.65 / 190505 = $0.3296/kWh (full retail, ~14x the $0.023 NBC floor => essentially zero allocated credit). Recovery ceiling = trueUpUsd - NBC_rate * annualImportKwh = 62795.65 - 0.023*230223 = 62795.65 - 5295.13 = $57,500.52. Recovery floor = $0 (zero-sum: if arrangement load > generation, re-pointing credit moves the deficit, net $0).",
+      "computedBy": "Deterministic pure arithmetic (NOT AI). Priced by auditAllocation + classifyProgramType in src/lib/energy/solar-allocation.ts and solarBillFloor in src/lib/energy/solar-nem.ts; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced billing.json.",
+      "needsData": "pge-allocation-summary",
+      "evidence": "SA 4699664088, AGC, inventory nemType=NEMEXP, solar group 'Solar', December true-up. Printed annual NEM table: import 230,223 kWh, export 39,718 kWh, net 190,505 kWh; December true-up cycle 2025-12-11 isTrueUpCycle=true printedTotal $62,856.01, meter true-up $62,795.65. 62795.65/190505 = $0.3296/kWh = full-retail ag TOU (AG-C winter off-peak $0.15981 / peak $0.18550), ~14x the $0.023/kWh NBC floor, so the SA received essentially no allocated generation credit (enrollment/linkage break, the 'NEMEXP yet near-zero export' tell). Ceiling if fully credited = 62795.65 - 0.023*230223 = $57,500.52. Floor = $0 because NEMA allocation is a zero-sum pool: 1,932 kW of arrays may be oversubscribed across the whole fleet, so re-pointing credit only recovers cash if the Generation Allocation Summary shows spare generation. carried = $0 (contingent, never banked)."
+    },
+    {
+      "title": "P038 sibling zero-sum proof (same account/rate/group fully zeroed a six-figure import; control case, $0 lever)",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": ["4699664743"],
+      "formula": "effective $/kWh = trueUpUsd / annualNetKwh = 0.26 / 124117 = $0.0000021/kWh (~zero). Proves allocation machinery works on this arrangement, isolating P031's anomaly to enrollment/linkage, not a dead array.",
+      "computedBy": "Deterministic pure arithmetic (NOT AI); summarizeNemMonths + solarBillFloor in src/lib/energy/solar-nem.ts. AI involvement = none beyond the upstream bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664743 'PUMP # 38', account 4699664587-8, AGC, inventory nemType=NEMEXPM, solar group 'Solar', December true-up (the closest possible sibling to P031). Printed annual NEM table: import 124,117 kWh, export 0, net 124,117 kWh; December true-up $0.26. 0.26/124117 = $0.0000021/kWh => virtually all of a 124,117 kWh import was absorbed by allocated credit. This is the control proving P031's $0.33/kWh is an anomaly, not the tariff. Defensible recovery $0 (P038 is correctly billed)."
+    },
+    {
+      "title": "4433 / 4444 / 5219 legacy NEM2AA partial-offset cohort (correctly-billed TOU-timing residuals, $0 recoverable)",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": ["4690972110", "4692494679", "4693142227", "4695237170", "4695719808", "4697755484", "4699141870", "4698660251", "4691688023"],
+      "formula": "For each: trueUpUsd is charged on annualNetKwh (import - export) + non-offsettable NBC/fixed, NOT on gross import. eff $/kWh = trueUpUsd/netKwh is high ONLY because the net is tiny (solar already absorbed ~90% of load). No orphaned credit exists to recover => recoverable = $0. Cohort positive true-ups already billed (context, not recovery) = 675.92+7130.31+3303.92+25.37+5020.03+2461.49+1911.35 = $20,528.39.",
+      "computedBy": "Deterministic pure arithmetic (NOT AI); summarizeNemMonths in src/lib/energy/solar-nem.ts. AI involvement = none beyond the upstream bill-PDF vision extraction.",
+      "needsData": "none",
+      "evidence": "9 NEM2AA legacy AG-4/AG-5 SAs (groups 4433/4444/5219). e.g. P003 (4692494679, AG5B): import 83,134 / export 76,916 / net 6,218 kWh, true-up $7,130.31 -> $1.147/kWh on net but solar already offset ~92% of the 83,134 kWh load; the $7,130 is the genuine 6,218 kWh net deficit plus non-offsettable NBC/fixed. P018 $675.92, P028 $3,303.92, P062 $25.37, P052 $5,020.03, P017 $1,911.35 all behave identically. P027 (16,949 import / 39,855 export, net -22,906) and P004 (91,267 import / 107,327 export, net -16,060) are net EXPORTERS whose residual is pure NBC/fixed. P002 & P004 carry no printed true-up and net-export, so any AG-5->AG-C 'savings' the rate engine emits for them without 15-min interval kWh is a sign-ambiguous artifact and is NOT claimed. Defensible recovery $0 (tariff working as designed; counting it would double-count a correct charge)."
+    },
+    {
+      "title": "Off-account solar orphans: the 840 kW + 1,092 kW named arrays and 42 solar SAs we cannot price from this bill",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["6534296787", "6534699050", "6531000280", "6532880573", "6116351334", "5407601648", "1203585402", "303286619", "8696448389", "9566109872", "4395569085", "9495121765", "3371044698", "6539944670", "9597876433", "8922820405", "5089901108", "3372050998"],
+      "formula": "Named arrays = 840 + 1092 = 1,932 kW (ground truth). Expected generation = 1932 kW * 1500-1900 kWh/kW/yr = 2,898,000 - 3,670,800 kWh/yr. P031's 190,505 kWh load = 190505/(1932*1700) = 5.8% of mid-estimate fleet production, so generation exists in abundance; the open question is allocation, answerable only from off-account bills + the allocation summary. No dollar priceable here => $0.",
+      "computedBy": "Deterministic pure arithmetic (NOT AI) for the capacity sanity; per-meter true-up dollars are unavailable (no billing.json record). AI involvement = none. No engine can price these without the other accounts' bills.",
+      "needsData": "other-account-bills",
+      "evidence": "Inventory: 42 solar-flagged SAs across 23 accounts carry solarFlag=true with NO record in billing.json (the extracted bill covers only account 4699664587-8). The two named arrays feed off-account meters: 1092kw group on accts 6539944461-4 and 57448094630 (P006/P013/P024/P099 + 1 unlabeled); 840kw group on accts 5401297941-2, 1202269697-0, 0305152088-4, 8693286367-2, 9568475552-3, 4391127618-6, 9493367026-0, 3375127040-7 (P106/P118/P119/P120/P121/P122/P142/P154). The 'Solar'-group siblings of P031/P038 that sit off-account (P033 6539944461-4, P083 9597876494-2, P034 8922820273-8, P074 5089901685-6, P026 3372050929-9) are exactly the meters whose true-up status answers the zero-sum question for Finding 1. Defensible recovery $0 until those bills are pulled."
+    }
+  ]
+}

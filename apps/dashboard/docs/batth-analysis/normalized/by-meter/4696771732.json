@@ -1,0 +1,187 @@
+{
+  "serviceId": "4696771732",
+  "idx": 66,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 67,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4696771732",
+    "meterSerial": "1011042812",
+    "growerPumpId": "P066",
+    "rateSchedule": "HAGA2",
+    "legacy": null,
+    "descriptor": null,
+    "latitude": 36.518176,
+    "longitude": -119.870184,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": true,
+    "solarNotes": "minimal use",
+    "gpm": 400,
+    "crop": "WINE GRAPES",
+    "installedOn": null,
+    "irrigation": "CONSOLIDATED",
+    "ranch": "PINOT GRIS",
+    "status": "GOOD"
+  },
+  "billing": {
+    "serviceId": "4696771732",
+    "meterNumber": "1011042812",
+    "growerPumpId": "P066",
+    "saIdDescriptor": "P066",
+    "latestTariff": "AGA2 Ag<35 kW High Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 26.48,
+      "totalKwh": 22.378,
+      "peakKw": 0.042,
+      "demandChargeUsd": 0.56
+    },
+    "totalKwh_latestCycle": 22.378,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "tariff": "AGA2 Ag<35 kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 0.042,
+        "demandChargeUsd_structured": 0.56,
+        "totalKwh": 22.378,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 2.793,
+            "amountUsd": 0.69
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 19.585,
+            "amountUsd": 4.25
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 20.67,
+          "demandChargeTextUsd": 0.31,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.43,
+            "quantity": 1.734,
+            "unit": "kWh",
+            "rate": 0.24635,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.24635
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 2.66,
+            "quantity": 12.24,
+            "unit": "kWh",
+            "rate": 0.21706,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.21706
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.26,
+            "quantity": 1.059,
+            "unit": "kWh",
+            "rate": 0.24571,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.24571
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 1.59,
+            "quantity": 7.3455,
+            "unit": "kWh",
+            "rate": 0.21642,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.21642
+          },
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 0.56,
+            "quantity": 0.042,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11-02/28 18 days @$0.68895",
+            "amountUsd": 12.4,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.68895
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge 03/01-03/12 Max Demand 0.036000 kW @$21.43000",
+            "amountUsd": 0.31,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 0.036,
+            "parsedRatePerKw": 21.43
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01-03/12 12 days @$0.68895",
+            "amountUsd": 8.27,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.68895
+          }
+        ],
+        "printedTotalUsd": 26.48,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 26.48
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGA2 Ag<35 kW High Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 0.56
+        }
+      ],
+      "demandChargeUsd": 0.56,
+      "totalBillUsd": 26.48
+    }
+  ],
+  "nem": null
+}

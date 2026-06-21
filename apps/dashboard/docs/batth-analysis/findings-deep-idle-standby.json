@@ -1,0 +1,174 @@
+{
+  "category": "Idle / standby meters (truly-idle NON-NEM service agreements paying customer/standby charges)",
+  "totalAnnualUsd": 1795.94,
+  "findings": [
+    {
+      "title": "Idle P075 on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4692166716 (P075)"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4692166716 (P075) on AGC/HAGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Inventory: status=GOOD, note='not using', ranch=OFFICE, gpm=1000."
+    },
+    {
+      "title": "Idle P008 (PUMP # 8) on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4692424863 (P008 (PUMP # 8))"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4692424863 (P008 (PUMP # 8)) on AGC/HAGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Inventory: status=GOOD, note=None, ranch=BIG BLOCK, gpm=800."
+    },
+    {
+      "title": "Idle (unlabeled SA) on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4697631144 ((unlabeled SA))"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4697631144 ((unlabeled SA)) on AGC/AGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Not in Excel inventory roster."
+    },
+    {
+      "title": "Idle (unlabeled SA) on AGB: demote to AG-A1 (reversible)",
+      "annualUsd": 82.75,
+      "confidence": "high",
+      "meters": [
+        "4698006011 ((unlabeled SA))"
+      ],
+      "formula": "annualUsd = (dailyCust_AGB[$0.91565/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.2267/day x 365 = $82.75/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4698006011 ((unlabeled SA)) on AGB/AGB, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $27.47/mo, all of it the customer (standby) charge. Demote AGB->AGA1: ($0.91565-$0.68895)/day x 365 = $82.75/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $27.47/mo eliminated = $334.21/yr. Not in Excel inventory roster."
+    },
+    {
+      "title": "Idle (unlabeled SA) on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4699142630 ((unlabeled SA))"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4699142630 ((unlabeled SA)) on AGC/HAGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Not in Excel inventory roster."
+    },
+    {
+      "title": "Idle P069 already on AGA1 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664012 (P069)"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA1[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664012 (P069) on AGA1/HAGA1, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=BAD, note='not using', ranch=KAMM CORNELIA, gpm=150."
+    },
+    {
+      "title": "Idle P072 on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4699664198 (P072)"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4699664198 (P072) on AGC/HAGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Inventory: status=GOOD, note='not using', ranch=HOME RANCH, gpm=300."
+    },
+    {
+      "title": "Idle P063 already on AGA2 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664286 (P063)"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA2[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664286 (P063) on AGA2/HAGA2, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=GOOD, note='not using', ranch=ELKHORN SHOP, gpm=1000."
+    },
+    {
+      "title": "Idle P048 already on AGA1 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664321 (P048)"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA1[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664321 (P048) on AGA1/HAGA1, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=GOOD, note='not using', ranch=SWANSON, gpm=800."
+    },
+    {
+      "title": "Idle P056 (PUMP #56) already on AGA1 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664538 (P056 (PUMP #56))"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA1[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664538 (P056 (PUMP #56)) on AGA1/HAGA1, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=GOOD, note=None, ranch=SWANSON, gpm=250."
+    },
+    {
+      "title": "Idle P057 on AGB: demote to AG-A1 (reversible)",
+      "annualUsd": 82.75,
+      "confidence": "high",
+      "meters": [
+        "4699664561 (P057)"
+      ],
+      "formula": "annualUsd = (dailyCust_AGB[$0.91565/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.2267/day x 365 = $82.75/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4699664561 (P057) on AGB/HAGB, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $27.47/mo, all of it the customer (standby) charge. Demote AGB->AGA1: ($0.91565-$0.68895)/day x 365 = $82.75/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $27.47/mo eliminated = $334.21/yr. Inventory: status=GOOD, note='not using', ranch=SWANSON, gpm=250."
+    },
+    {
+      "title": "Idle P077 on AGC: demote to AG-A1 (reversible)",
+      "annualUsd": 271.74,
+      "confidence": "high",
+      "meters": [
+        "4699664728 (P077)"
+      ],
+      "formula": "annualUsd = (dailyCust_AGC[$1.43343/day] - dailyCust_AGA1[$0.68895/day]) x 365 days = $0.74448/day x 365 = $271.74/yr (reversible demote at 0 kWh; energy term $0 on both schedules)",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI in the pipeline is the bill-PDF vision extraction in src/lib/extract that produced the customer-charge line items.",
+      "needsData": "none",
+      "evidence": "SA 4699664728 (P077) on AGC/HAGC, latest cycle totalKwh=0, demandChargeUsd_structured=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Printed cycle total = $43.00/mo, all of it the customer (standby) charge. Demote AGC->AGA1: ($1.43343-$0.68895)/day x 365 = $271.74/yr, reversible, zero operational change. CLOSE-SERVICE upside (permanent, not in total): full $43.00/mo eliminated = $523.20/yr. Inventory: status=GOOD, note=None, ranch=KAMM CORNELIA, gpm=1400."
+    },
+    {
+      "title": "Idle P045 already on AGA1 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664955 (P045)"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA1[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664955 (P045) on AGA1/HAGA1, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=GOOD, note=None, ranch=CEDAR RANCH, gpm=600."
+    },
+    {
+      "title": "Idle P043 already on AGA1 floor: close-service upside only",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664965 (P043)"
+      ],
+      "formula": "defensible demote annualUsd = $0 (already at AG-A1 $0.68895/day floor). Close-service UPSIDE = dailyCust_AGA1[$0.68895/day] x 365 = $251.47/yr (permanent, not in total).",
+      "computedBy": "src/lib/energy/rateCompare.ts at 0 kWh (customer-charge differential). Deterministic arithmetic, NOT AI; the only AI is bill-PDF vision extraction in src/lib/extract.",
+      "needsData": "none",
+      "evidence": "SA 4699664965 (P043) on AGA1/HAGA1, latest cycle totalKwh=0, demand=null, nemNetChargeUsd=0, nem.nemEnrolled=false -> truly idle, not NEM-netting. Already at the AG-A1 floor customer charge ($20.67/mo = $0.68895/day x 30), so the reversible demote lever yields $0 (nothing above the floor to shed; at 0 kWh any AG-A2 Max-Demand exposure is also $0). The ONLY remaining lever is CLOSE-SERVICE (permanent): $20.67/mo x 365/30 = $251.47/yr eliminated. Reported as upside, NOT in the defensible demote total because closing the SA is a permanent grower decision with reconnection downside. Inventory: status=GOOD, note=None, ranch=BIG BLOCK, gpm=1500."
+    }
+  ]
+}

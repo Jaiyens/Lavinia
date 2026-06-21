@@ -1,0 +1,512 @@
+{
+  "serviceId": "4699664088",
+  "idx": 52,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 53,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664088",
+    "meterSerial": "1010427495",
+    "growerPumpId": "P031",
+    "rateSchedule": "AGB",
+    "legacy": null,
+    "descriptor": "VINES IRR 75HP NEW 75HP (PUMP # 31)",
+    "latitude": 36.539437,
+    "longitude": -119.962949,
+    "hasCoordinates": true,
+    "solarFlag": true,
+    "solarGroupLabel": "Solar",
+    "solarKw": null,
+    "nemType": "NEMEXP",
+    "trueUpMonth": "December",
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": null,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": null,
+    "status": null
+  },
+  "billing": {
+    "serviceId": "4699664088",
+    "meterNumber": "1010427495",
+    "growerPumpId": null,
+    "saIdDescriptor": "VINES IRR 75HP NEW 75HP (PUMP",
+    "latestTariff": "AGC Ag35+ kW High Use",
+    "cycleCount": 4,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 2867.7,
+      "totalKwh": 0,
+      "peakKw": 111.52,
+      "demandChargeUsd": 1112.97
+    },
+    "totalKwh_latestCycle": 0,
+    "idleZeroKwh": true,
+    "cycles": [
+      {
+        "start": "2025-12-11",
+        "close": "2025-12-11",
+        "cycleClose": "2026-03-26",
+        "tariff": "AGC Ag35+ kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": true,
+        "peakKw": 2.08,
+        "demandChargeUsd_structured": 1.78,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 1.43,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 57.15,
+          "nemNetChargeUsd": 62795.65
+        },
+        "lineItems": [
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 1.78,
+            "quantity": 2.08,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge",
+            "amountUsd": 1.43,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": null,
+            "parsedRatePerDay": null
+          },
+          {
+            "kind": "other",
+            "label": "Total NEM Charges Before Taxes",
+            "amountUsd": 62795.65,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "nem_net_charge"
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax",
+            "amountUsd": 57.15,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          }
+        ],
+        "printedTotalUsd": 62856.01,
+        "coverageState": "needs_review"
+      },
+      {
+        "start": "2025-12-12",
+        "close": "2026-01-11",
+        "cycleClose": null,
+        "tariff": "AGC Ag35+ kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 3.36,
+        "demandChargeUsd_structured": 31.03,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 44.44,
+          "demandChargeTextUsd": 105.08,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 31.03,
+            "quantity": 3.36,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 12/12/2025 to 12/31/2025 (20 days @ $1.43343)",
+            "amountUsd": 28.67,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 20,
+            "parsedRatePerDay": 1.43343
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge 12/12/2025 to 12/31/2025 Max Demand 4.480000 kW @ $25.62000",
+            "amountUsd": 74.05,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 4.48,
+            "parsedRatePerKw": 25.62
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 01/01/2026 to 01/11/2026 (11 days @ $1.43343)",
+            "amountUsd": 15.77,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 11,
+            "parsedRatePerDay": 1.43343
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge 01/01/2026 to 01/11/2026 Max Demand 3.360000 kW @ $26.03000",
+            "amountUsd": 31.03,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 3.36,
+            "parsedRatePerKw": 26.03
+          }
+        ],
+        "printedTotalUsd": 149.52,
+        "coverageState": "needs_review"
+      },
+      {
+        "start": "2026-01-12",
+        "close": "2026-02-10",
+        "cycleClose": null,
+        "tariff": "AGC Ag35+ kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 3.2,
+        "demandChargeUsd_structured": 83.3,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 43.0,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 83.3,
+            "quantity": 3.2,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 30 days @ $1.43343",
+            "amountUsd": 43.0,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 30,
+            "parsedRatePerDay": 1.43343
+          }
+        ],
+        "printedTotalUsd": 126.3,
+        "coverageState": "needs_review"
+      },
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "tariff": "AGC Ag35+ kW High Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 111.52,
+        "demandChargeUsd_structured": 1112.97,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 43.0,
+          "demandChargeTextUsd": 2824.7,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 1112.97,
+            "quantity": 111.52,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 (18 days @ $1.43343)",
+            "amountUsd": 25.8,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 1.43343
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge - Max Demand 02/11/2026 to 02/28/2026 (109.600000 kW @ $26.03000)",
+            "amountUsd": 1711.73,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 109.6,
+            "parsedRatePerKw": 26.03
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 (12 days @ $1.43343)",
+            "amountUsd": 17.2,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 1.43343
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge - Max Demand 03/01/2026 to 03/12/2026 (111.520000 kW @ $24.95000)",
+            "amountUsd": 1112.97,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 111.52,
+            "parsedRatePerKw": 24.95
+          }
+        ],
+        "printedTotalUsd": 2867.7,
+        "coverageState": "needs_review"
+      }
+    ],
+    "nem": {
+      "nemEnrolled": true,
+      "trueUpAmountUsd": 62795.65,
+      "trueUpMonth": 12,
+      "trueUpDate": "2026-03-26",
+      "ytdRunningChargeUsd": 2320.61,
+      "annualImportKwh_printed": 230223,
+      "annualExportKwh_printed": 39718,
+      "annualNetKwh_printed": 190505,
+      "annualImportKwh_derived": 230233.1,
+      "annualExportKwh_derived": 39718,
+      "annualNetKwh_derived": 190515.1,
+      "monthlyNet": [
+        {
+          "start": "2024-12-16",
+          "close": "2025-01-15",
+          "netKwh": -10195,
+          "amountUsd": -1764.92
+        },
+        {
+          "start": "2025-01-16",
+          "close": "2025-02-13",
+          "netKwh": -12904,
+          "amountUsd": -2168.7
+        },
+        {
+          "start": "2025-02-14",
+          "close": "2025-03-17",
+          "netKwh": -16522,
+          "amountUsd": -2811.78
+        },
+        {
+          "start": "2025-03-18",
+          "close": "2025-04-15",
+          "netKwh": -97,
+          "amountUsd": -45.3
+        },
+        {
+          "start": "2025-04-16",
+          "close": "2025-05-14",
+          "netKwh": 29890,
+          "amountUsd": 5077.07
+        },
+        {
+          "start": "2025-05-15",
+          "close": "2025-06-16",
+          "netKwh": 44965,
+          "amountUsd": 7956.37
+        },
+        {
+          "start": "2025-06-17",
+          "close": "2025-07-16",
+          "netKwh": 33313,
+          "amountUsd": 12446.61
+        },
+        {
+          "start": "2025-07-17",
+          "close": "2025-09-10",
+          "netKwh": 88718,
+          "amountUsd": 33466.16
+        },
+        {
+          "start": "2025-09-11",
+          "close": "2025-10-10",
+          "netKwh": 13033,
+          "amountUsd": 4514.97
+        },
+        {
+          "start": "2025-10-11",
+          "close": "2025-11-10",
+          "netKwh": 15991,
+          "amountUsd": 5393.91
+        },
+        {
+          "start": "2025-11-11",
+          "close": "2025-12-11",
+          "netKwh": 4303,
+          "amountUsd": 729.51
+        },
+        {
+          "start": "2025-12-12",
+          "close": "2025-12-12",
+          "netKwh": 10,
+          "amountUsd": 1.75
+        },
+        {
+          "start": "2025-12-11",
+          "close": "2025-12-11",
+          "netKwh": 10.12,
+          "amountUsd": 1.75
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    "nemTrueUpUsd": 62795.65,
+    "billedAcrossCyclesUsd": 65999.53
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGC Ag35+ kW High Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 1112.97
+        }
+      ],
+      "demandChargeUsd": 1112.97,
+      "totalBillUsd": 2867.7
+    }
+  ],
+  "nem": {
+    "nemEnrolled": true,
+    "trueUpAmountUsd": 62795.65,
+    "trueUpMonth": 12,
+    "trueUpDate": "2026-03-26",
+    "ytdRunningChargeUsd": 2320.61,
+    "annualImportKwh_printed": 230223,
+    "annualExportKwh_printed": 39718,
+    "annualNetKwh_printed": 190505,
+    "annualImportKwh_derived": 230233.1,
+    "annualExportKwh_derived": 39718,
+    "annualNetKwh_derived": 190515.1,
+    "monthlyNet": [
+      {
+        "start": "2024-12-16",
+        "close": "2025-01-15",
+        "netKwh": -10195,
+        "amountUsd": -1764.92
+      },
+      {
+        "start": "2025-01-16",
+        "close": "2025-02-13",
+        "netKwh": -12904,
+        "amountUsd": -2168.7
+      },
+      {
+        "start": "2025-02-14",
+        "close": "2025-03-17",
+        "netKwh": -16522,
+        "amountUsd": -2811.78
+      },
+      {
+        "start": "2025-03-18",
+        "close": "2025-04-15",
+        "netKwh": -97,
+        "amountUsd": -45.3
+      },
+      {
+        "start": "2025-04-16",
+        "close": "2025-05-14",
+        "netKwh": 29890,
+        "amountUsd": 5077.07
+      },
+      {
+        "start": "2025-05-15",
+        "close": "2025-06-16",
+        "netKwh": 44965,
+        "amountUsd": 7956.37
+      },
+      {
+        "start": "2025-06-17",
+        "close": "2025-07-16",
+        "netKwh": 33313,
+        "amountUsd": 12446.61
+      },
+      {
+        "start": "2025-07-17",
+        "close": "2025-09-10",
+        "netKwh": 88718,
+        "amountUsd": 33466.16
+      },
+      {
+        "start": "2025-09-11",
+        "close": "2025-10-10",
+        "netKwh": 13033,
+        "amountUsd": 4514.97
+      },
+      {
+        "start": "2025-10-11",
+        "close": "2025-11-10",
+        "netKwh": 15991,
+        "amountUsd": 5393.91
+      },
+      {
+        "start": "2025-11-11",
+        "close": "2025-12-11",
+        "netKwh": 4303,
+        "amountUsd": 729.51
+      },
+      {
+        "start": "2025-12-12",
+        "close": "2025-12-12",
+        "netKwh": 10,
+        "amountUsd": 1.75
+      },
+      {
+        "start": "2025-12-11",
+        "close": "2025-12-11",
+        "netKwh": 10.12,
+        "amountUsd": 1.75
+      }
+    ],
+    "benefitingMeterSaIds": [],
+    "coverageState": "needs_review"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "category": "Account / entity / NEMA structure",
+  "totalAnnualUsd": 0,
+  "findings": [
+    {
+      "title": "P031 VINES IRR 75HP zero-credit true-up ($62,795.65) - audit recovery $0-$57k, contingent on the Generation Allocation Summary",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4699664088 (P031 VINES IRR 75HP, AGB, NEMEXP, account 4699664587-8)"],
+      "formula": "effectiveRate = trueUpUsd / netImportKwh = 62795.65 / 190505 = $0.3296/kWh (full retail, ~14x the ~2.3c NBC floor); NBC floor (unavoidable cost) = 190505 * $0.023 = $4,382; sibling proof P038 (124117 kWh net import, Exports=0) trues up to $0.26 = $0.000002/kWh = fully allocated; audit ceiling = 62795.65 - 4382 = $58,414, rounded down to ~$57,000 for surviving min/demand lines; DEFENSIBLE = $0 because (a) NBC residue is not recoverable and (b) if arrays are oversubscribed the credit is zero-sum across benefiting meters",
+      "computedBy": "src/lib/energy/nem.ts effective-$/kWh + NBC-floor arithmetic - deterministic pure function, NO AI (the only AI upstream is the bill-PDF vision extraction in src/lib/extract that produced billing.json; it does not price anything); reproduced here as manual analytic",
+      "needsData": "pge-allocation-summary",
+      "evidence": "billing.json SA 4699664088: annualImportKwh_printed=230223, annualExportKwh_printed=39718, annualNetKwh_printed=190505, nemTrueUpUsd=$62795.65, trueUpMonth=12, trueUpDate=2026-03-26 -> effective rate $62795.65/190505 = $0.3296/kWh = full-retail AG TOU, ~14x the 2.3c/kWh NBC floor, so the meter received essentially zero generation allocation. Sibling proof: SA 4699664743 (P038), SAME 'Solar' aggregation group, SAME bill account 4699664587-8, SAME NEMEXP/NEMEXPM family, carries an even larger raw deficit (annualImportKwh=124117, Exports=0) yet nemTrueUpUsd=$0.26 (= $0.000002/kWh, fully allocated). The allocation mechanism that zeroed P038 exists on this exact account and simply did not reach P031 -> brief-nem-nema failure mode (a): orphaned/never-added/dropped SA, not legitimate under-credit. Recovery floor $0 (NBC ~$4,382 unavoidable; arrays may be oversubscribed = zero-sum); ceiling ~$57k only if the Generation Allocation Summary shows P031 absent/0% AND the array group had unallocated kWh. NOT banked."
+    },
+    {
+      "title": "Cross-entity NEMA eligibility risk - 6 of 8 solar array groups span more than one legal billing entity (NEM2A requires single customer-of-record)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "group 4433: 11 meters, 4 accounts, 3 entities (BATTH CHARANJIT S + KANWARJIT & GAGANDIP + K S & G S PARTNERSHIP)",
+        "group 4444: 8 meters, 5 accounts, 3 entities",
+        "group 4939: 4 meters, 3 accounts, 2 entities",
+        "group 5219: 10 meters, 5 accounts, 4 entities (adds BATTH FARMS INC)",
+        "group 840kw: 8 meters, 8 accounts, 2 entities",
+        "group Solar: 9 meters, 6 accounts, 2 entities"
+      ],
+      "formula": "for each solarGroupLabel: distinctNonNullEntities = count(distinct billingName); VIOLATION if distinctNonNullEntities > 1 (NEM2A single-customer-of-record rule, brief-nem-nema sec.3). Result: 4433=3, 4444=3, 4939=2, 5219=4, 840kw=2, Solar=2 -> all > 1 = VIOLATION. No dollar quantity is priced; this is a boolean eligibility flag, sign-ambiguous (could be recoverable mis-billing OR could RAISE the bill if PG&E unwinds the arrangement)",
+      "computedBy": "analyzeFarm structural grouping (distinct-entity-per-group set count) - deterministic, NO AI",
+      "needsData": "other-account-bills",
+      "evidence": "inventory.json grouped by solarGroupLabel and billingName: 6 of 8 array groups have meters billed to multiple legal entities, which violates PG&E NEM2A's single-customer-of-record rule (brief-nem-nema sec.3). $0 defensible because the sign is ambiguous: it may be recoverable mis-billing, a stale Excel billingName artifact, or a structure PG&E could UNWIND and re-bill higher. Sizing requires the Form 79-1202 roster and the other-entity bills, which Terra does not hold. Surfaced as a dispute-readiness / legibility finding, not netted as savings."
+    },
+    {
+      "title": "True-up date misalignment inside the 'Solar' array group - December / January / October on one physical array",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "4699664441 (P041, TU=December)",
+        "5089901108 (P074, TU=January)",
+        "3372050998 (P026, TU=January)",
+        "6539944670 (P033, TU=December)",
+        "9597876433 (P083, TU=December)",
+        "4699664088 (P031, TU=December)",
+        "8922820405 (P034, TU=December)",
+        "4699664743 (P038, TU=December)",
+        "4699664172 (Office, NEMS, TU=October)"
+      ],
+      "formula": "distinctTrueUpMonths(group='Solar') = count(distinct trueUpMonth) = |{December, January, October}| = 3; a single NEMA arrangement on one physical array can hold only ONE 12-month anniversary, so >1 distinct true-up month means members were enrolled / re-arranged at different times (each membership change forces an early true-up and restarts the clock, brief-nem-nema sec.3). No dollar is priced; this is a symptom that corroborates the P031 orphan diagnosis",
+      "computedBy": "analyzeFarm (distinct true-up-month count per solarGroupLabel) - deterministic, NO AI",
+      "needsData": "pge-allocation-summary",
+      "evidence": "inventory.json 'Solar' group: 9 members carry 3 distinct trueUpMonth values (December x6, January x2, October x1). One physical array cannot legitimately have three anniversary dates under one arrangement; the spread is the textbook signature of staggered enrollment / mid-year rearrangement (brief-nem-nema sec.3-4), and P031's December date may itself be a re-pointed clock that orphaned it from the allocation. $0 directly (a misaligned anniversary is not a charge); value is in confirming Instance-1 recovery and preventing future surprise true-ups."
+    },
+    {
+      "title": "Entity-name fragmentation - 'BATHH FARMS INC' typo splits one entity into 4 extra accounts; a null-name and a non-Batth entity sit inside the array fleet",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "BATHH FARMS INC (typo): 4 rows across 4 accounts (1664841929-5, 2456362560-7, 4463803133-4, 7526105246-0)",
+        "57448094630: 1 row, null billingName, sits in the 1092kw group",
+        "BATTH,SURINDER K: 2 rows across 2 accounts"
+      ],
+      "formula": "distinctBillingNameStrings = 7 over 183 rows; 'BATHH FARMS INC' (4 rows) is a 1-character typo of 'BATTH FARMS INC' (22 rows) = almost certainly the same legal entity fragmented; null billingName on account 57448094630 = phantom member of the 1092kw group. No dollar priced; pure data-hygiene, but it directly affects the reliability of the cross-entity NEMA test (Instance 2)",
+      "computedBy": "analyzeFarm (string-distinct over billingName) - deterministic, NO AI",
+      "needsData": "other-account-bills",
+      "evidence": "inventory.json billingName counts: 'BATTH FARMS INC'=22, 'BATHH FARMS INC'=4 (typo), 'BATTH,SURINDER K'=2, null=1. A name typo silently fragments one entity into two for any logic keyed on the name string (rate rollups, the NEMA single-COR test, ownership reports) and can make a single-COR arrangement look multi-entity or vice-versa, so it must be reconciled before Instances 2-3 are trusted. $0 - data hygiene / legibility only."
+    },
+    {
+      "title": "Net-surplus (NSC) giveaway on net-exporter NEM meters - P027 and P004 finished net exporters while sibling meters owe true-ups",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "4697755484 (P027, annualNetKwh=-22906, surplus, still billed $2,461.49 true-up)",
+        "4698660251 (P004, annualNetKwh=-16059.88, surplus, no printed true-up)"
+      ],
+      "formula": "netExporter if annualNetKwh_printed < 0 (surplus paid at low NSC wholesale-tracking rate at true-up, never banked at retail, brief-nem-nema sec.1); P027 net = -22906 kWh, P004 net = -16059.88 kWh. Dollar value of the wasted-vs-reallocated surplus is UNCOMPUTABLE without interval kWh (TOU timing) and the Allocation Summary; P027 still showing a $2,461.49 true-up despite net export is itself sign-ambiguous without per-month TOU detail",
+      "computedBy": "src/lib/energy/nem.ts net-sign classification - deterministic, NO AI",
+      "needsData": "pge-allocation-summary",
+      "evidence": "billing.json: P027 (SA 4697755484) annualNetKwh_printed=-22906 yet nemTrueUpUsd=$2461.49; P004 (SA 4698660251) annualNetKwh_printed=-16059.88. Two meters export more than they import annually while sibling heavy-load meters in the same groups owe true-ups - exactly the allocation imbalance NEMA should fix. $0 defensible: bill summaries carry no interval kWh (so TOU dollar value of exports is unknown), and whether the surplus is wasted at NSC vs already reallocated to a deficit meter is precisely what the Allocation Summary would show. The AG-C->AG-B rate 'savings' the engine emits without intervals are sign-ambiguous artifacts and are excluded; interval kWh would be needed to value the TOU timing."
+    }
+  ]
+}

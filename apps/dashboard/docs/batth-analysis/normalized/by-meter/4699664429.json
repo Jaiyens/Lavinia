@@ -1,0 +1,205 @@
+{
+  "serviceId": "4699664429",
+  "idx": 151,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 152,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664429",
+    "meterSerial": "5000031084",
+    "growerPumpId": null,
+    "rateSchedule": "HAGB",
+    "legacy": null,
+    "descriptor": "FARM SHOP TURKEY-AL7",
+    "latitude": 36.521859,
+    "longitude": -119.899427,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": null,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": null,
+    "status": null
+  },
+  "billing": {
+    "serviceId": "4699664429",
+    "meterNumber": "5000031084",
+    "growerPumpId": null,
+    "saIdDescriptor": "FARM SHOP TURKEY-AL7",
+    "latestTariff": "AGB Ag35+ kW Med Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 187.57,
+      "totalKwh": 252.062,
+      "peakKw": 5.672,
+      "demandChargeUsd": 49.55
+    },
+    "totalKwh_latestCycle": 252.062,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": null,
+        "tariff": "AGB Ag35+ kW Med Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 5.672,
+        "demandChargeUsd_structured": 49.55,
+        "totalKwh": 252.062,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 36.183,
+            "amountUsd": 12.25
+          },
+          {
+            "period": "Off Peak",
+            "kWh": 215.879,
+            "amountUsd": 66.68
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 27.47,
+          "demandChargeTextUsd": 31.54,
+          "energyCommissionTaxUsd": 0.08,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 7.61,
+            "quantity": 22.365,
+            "unit": "kWh",
+            "rate": 0.34015,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.34015
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off Peak",
+            "amountUsd": 34.93,
+            "quantity": 112.35,
+            "unit": "kWh",
+            "rate": 0.31089,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.31089
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 4.64,
+            "quantity": 13.818,
+            "unit": "kWh",
+            "rate": 0.33597,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.33597
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off Peak",
+            "amountUsd": 31.75,
+            "quantity": 103.529,
+            "unit": "kWh",
+            "rate": 0.30671,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.30671
+          },
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 49.55,
+            "quantity": 5.672,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11-02/28 (18 days @$0.91565)",
+            "amountUsd": 16.48,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.91565
+          },
+          {
+            "kind": "other",
+            "label": "Demand Charge 03/01-03/12 (5.652000 kW @$13.95000)",
+            "amountUsd": 31.54,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "demand_charge",
+            "parsedKw": 5.652,
+            "parsedRatePerKw": 13.95
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 02/11-02/28",
+            "amountUsd": 0.04,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01-03/12 (12 days @$0.91565)",
+            "amountUsd": 10.99,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.91565
+          },
+          {
+            "kind": "other",
+            "label": "Energy Commission Tax 03/01-03/12",
+            "amountUsd": 0.04,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "energy_commission_tax"
+          }
+        ],
+        "printedTotalUsd": 187.57,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 187.57
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGB Ag35+ kW Med Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 49.55
+        }
+      ],
+      "demandChargeUsd": 49.55,
+      "totalBillUsd": 187.57
+    }
+  ],
+  "nem": null
+}

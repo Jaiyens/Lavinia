@@ -1,0 +1,287 @@
+{
+  "serviceId": "4692494679",
+  "idx": 8,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 9,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4692494679",
+    "meterSerial": "1010100559",
+    "growerPumpId": "P003",
+    "rateSchedule": "AG5B",
+    "legacy": true,
+    "descriptor": "PUMP # 3",
+    "latitude": 36.499155,
+    "longitude": -119.904811,
+    "hasCoordinates": true,
+    "solarFlag": true,
+    "solarGroupLabel": "4433",
+    "solarKw": null,
+    "nemType": "NEM2AA",
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": 1200,
+    "crop": "ALMONDS",
+    "installedOn": null,
+    "irrigation": "MURPHY SLOUGH",
+    "ranch": "ELKHORN SHOP",
+    "status": "GOOD"
+  },
+  "billing": {
+    "serviceId": "4692494679",
+    "meterNumber": "1010100559",
+    "growerPumpId": "P003",
+    "saIdDescriptor": "P003",
+    "latestTariff": "AG5B Large Time-of-Use Agricultural Power",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 35.83,
+      "totalKwh": 0,
+      "peakKw": null,
+      "demandChargeUsd": null
+    },
+    "totalKwh_latestCycle": 0,
+    "idleZeroKwh": true,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "tariff": "AG5B Large Time-of-Use Agricultural Power",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": null,
+        "demandChargeUsd_structured": null,
+        "totalKwh": 0,
+        "touRollup": [],
+        "subtotals": {
+          "customerChargeUsd": 35.83,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "other",
+            "label": "Customer Charge 18 days @ $1.19446 (02/11/2026 to 02/28/2026)",
+            "amountUsd": 21.5,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 1.19446
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 12 days @ $1.19446 (03/01/2026 to 03/12/2026)",
+            "amountUsd": 14.33,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 1.19446
+          }
+        ],
+        "printedTotalUsd": 35.83,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": {
+      "nemEnrolled": true,
+      "trueUpAmountUsd": 7130.31,
+      "trueUpMonth": 5,
+      "trueUpDate": null,
+      "ytdRunningChargeUsd": null,
+      "annualImportKwh_printed": 83134,
+      "annualExportKwh_printed": 76916,
+      "annualNetKwh_printed": 6218,
+      "annualImportKwh_derived": 83134,
+      "annualExportKwh_derived": 91429.9,
+      "annualNetKwh_derived": -8295.9,
+      "monthlyNet": [
+        {
+          "start": "/2025-05-10",
+          "close": "2025-06-09",
+          "netKwh": 12077,
+          "amountUsd": 3272.35
+        },
+        {
+          "start": "2025-06-10",
+          "close": "2025-07-10",
+          "netKwh": 48242,
+          "amountUsd": 11769.32
+        },
+        {
+          "start": "2025-07-11",
+          "close": "2025-08-10",
+          "netKwh": 22815,
+          "amountUsd": 6012.56
+        },
+        {
+          "start": "2025-08-11",
+          "close": "2025-09-10",
+          "netKwh": -11804,
+          "amountUsd": -2342.68
+        },
+        {
+          "start": "2025-09-11",
+          "close": "2025-10-10",
+          "netKwh": -14803,
+          "amountUsd": -2904.25
+        },
+        {
+          "start": "2025-10-11",
+          "close": "2025-11-10",
+          "netKwh": -13076,
+          "amountUsd": -2501.93
+        },
+        {
+          "start": "2025-11-11",
+          "close": "2025-12-11",
+          "netKwh": -4463,
+          "amountUsd": -799.71
+        },
+        {
+          "start": "2025-12-12",
+          "close": "2026-01-12",
+          "netKwh": -8406,
+          "amountUsd": -1428.99
+        },
+        {
+          "start": "2026-01-13",
+          "close": "2026-02-11",
+          "netKwh": -9850,
+          "amountUsd": -1595.75
+        },
+        {
+          "start": "2026-02-12",
+          "close": "2026-03-13",
+          "netKwh": -14514,
+          "amountUsd": -2350.61
+        },
+        {
+          "start": "2026-02-11",
+          "close": "2026-02-28",
+          "netKwh": -7894.64614,
+          "amountUsd": -1278.37
+        },
+        {
+          "start": "2026-03-01",
+          "close": "2026-03-12",
+          "netKwh": -6619.29576,
+          "amountUsd": -1072.24
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    "nemTrueUpUsd": 7130.31,
+    "billedAcrossCyclesUsd": 35.83
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AG5B Large Time-of-Use Agricultural Power",
+      "demandCharges": [],
+      "demandChargeUsd": null,
+      "totalBillUsd": 35.83
+    }
+  ],
+  "nem": {
+    "nemEnrolled": true,
+    "trueUpAmountUsd": 7130.31,
+    "trueUpMonth": 5,
+    "trueUpDate": null,
+    "ytdRunningChargeUsd": null,
+    "annualImportKwh_printed": 83134,
+    "annualExportKwh_printed": 76916,
+    "annualNetKwh_printed": 6218,
+    "annualImportKwh_derived": 83134,
+    "annualExportKwh_derived": 91429.9,
+    "annualNetKwh_derived": -8295.9,
+    "monthlyNet": [
+      {
+        "start": "/2025-05-10",
+        "close": "2025-06-09",
+        "netKwh": 12077,
+        "amountUsd": 3272.35
+      },
+      {
+        "start": "2025-06-10",
+        "close": "2025-07-10",
+        "netKwh": 48242,
+        "amountUsd": 11769.32
+      },
+      {
+        "start": "2025-07-11",
+        "close": "2025-08-10",
+        "netKwh": 22815,
+        "amountUsd": 6012.56
+      },
+      {
+        "start": "2025-08-11",
+        "close": "2025-09-10",
+        "netKwh": -11804,
+        "amountUsd": -2342.68
+      },
+      {
+        "start": "2025-09-11",
+        "close": "2025-10-10",
+        "netKwh": -14803,
+        "amountUsd": -2904.25
+      },
+      {
+        "start": "2025-10-11",
+        "close": "2025-11-10",
+        "netKwh": -13076,
+        "amountUsd": -2501.93
+      },
+      {
+        "start": "2025-11-11",
+        "close": "2025-12-11",
+        "netKwh": -4463,
+        "amountUsd": -799.71
+      },
+      {
+        "start": "2025-12-12",
+        "close": "2026-01-12",
+        "netKwh": -8406,
+        "amountUsd": -1428.99
+      },
+      {
+        "start": "2026-01-13",
+        "close": "2026-02-11",
+        "netKwh": -9850,
+        "amountUsd": -1595.75
+      },
+      {
+        "start": "2026-02-12",
+        "close": "2026-03-13",
+        "netKwh": -14514,
+        "amountUsd": -2350.61
+      },
+      {
+        "start": "2026-02-11",
+        "close": "2026-02-28",
+        "netKwh": -7894.64614,
+        "amountUsd": -1278.37
+      },
+      {
+        "start": "2026-03-01",
+        "close": "2026-03-12",
+        "netKwh": -6619.29576,
+        "amountUsd": -1072.24
+      }
+    ],
+    "benefitingMeterSaIds": [],
+    "coverageState": "needs_review"
+  }
+}

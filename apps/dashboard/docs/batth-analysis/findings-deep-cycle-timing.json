@@ -1,0 +1,65 @@
+{
+  "category": "Billing-cycle / serial-code timing",
+  "totalAnnualUsd": 0,
+  "summary": "Lever 5 (CLAUDE.md): the serial-code meter-read calendar. It is a LEGIBILITY / calendar hook ('the visible hook Batth asked for'), not a savings engine. Its core functions carry no dollar by design; the one dollar-shaped sub-lever (cycleEdge) needs 15-minute interval data the bill summaries do not have AND would double-count the demand-charge category if it ever fired; and the per-meter serial/cycle code that would populate the forward calendar is absent from the extracted Batth data entirely. All arithmetic is deterministic pure functions in src/lib/energy and src/lib/pge - NO AI. Defensible category total: $0.",
+  "findings": [
+    {
+      "title": "Forward billing-cycle calendar (per-meter cycle-close grid) - the hook Batth asked for, $0 by design and un-populatable today",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "All 46 metered SAs on account 4699664587-8 (e.g. 4690972110/P018, 4696826125/P054, 4699664088/P031, 4698660251/P004)"
+      ],
+      "formula": "close = closeOnOrAfter(readDates, today); {start, close} = billingCycleFor(readDates, today) where start = (day after prior read); days = daysToClose(close, today). readDates come from cycleClose(serialCode, month, 2026, schedule) keyed on the bill's serial letter (B..Z). NO dollar term in any of these equations.",
+      "computedBy": "src/lib/energy/billing.ts (closeOnOrAfter, billingCycleFor, daysToClose) + src/lib/pge/schedule.ts (cycleClose, nextCycleClose, isKnownSerial), via the fs loaders in src/lib/pge/schedule-load.ts. DETERMINISTIC pure date arithmetic over fixtures/pge-meter-read-schedule.json - explicitly NOT AI (grep for any LLM/gateway call in these files returns nothing).",
+      "computedByAi": false,
+      "needsData": "other",
+      "evidence": "A calendar produces no dollar - it tells the grower WHEN each bill locks in, not how to reduce it. Beyond that, it cannot even be populated per-meter from the current Batth data: cycleClose() requires the single-letter serial / cycle code printed in the bill's Service Information block, and grepping batth-real-billing.json and the inventory returns NO serial / cycleCode / readDate field on any meter (meter records carry serviceId and the physical meterSerial number, e.g. 1010259637, not the cycle letter). With serialCode=null, isKnownSerial() is false for all 46 meters and the engine correctly places no scheduled mark (no fabricated date). Additionally all 46 SAs on this one consolidated statement share the IDENTICAL window 2026-02-11 -> 2026-03-12 (statement closed 2026-03-26), so there is not even a spread of distinct closes to draw from the bill alone. needsData='other' = extract the serial letter into Pump.billingSerial (the AI vision step in src/lib/extract would read it off the bill); still $0 because it is legibility infrastructure, not a saving."
+    },
+    {
+      "title": "Cycle-edge 'hold your sets' nudge (cycleEdge) - the only dollar-shaped sub-lever; $0 here: interval-gated, double-counts demand charges, and demoted per CLAUDE.md",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "Would apply only to demand-charged meters with a fresh-peak risk near cycle close: P054/4696826125 (278.88 kW), P004/4698660251 (171.52 kW), P031/4699664088 (111.52 kW). Emits nothing for all 46 on this bill."
+      ],
+      "formula": "days = daysToClose(cycleClose, asOf); fire iff 0 <= days <= 3 AND cycleToDatePeakKw < typicalPeakKw*0.8; avoidableKw = typicalPeakKw - cycleToDatePeakKw; impactUsd = roundUsd(avoidableKw * rateUsdPerKw), where rateUsdPerKw = the meter's OWN bill-derived $/kW (effectiveDemandRate = demandChargeUsd / peakKw), never hardcoded.",
+      "computedBy": "src/lib/energy/cycle-edge.ts (cycleEdge) -> src/lib/energy/recommend.ts (pumpTimingDraft, roundUsd), pricing at the meter's own effectiveDemandRate from src/lib/energy/demand.ts. DETERMINISTIC pure arithmetic - NOT AI (no LLM/gateway import in cycle-edge.ts).",
+      "computedByAi": false,
+      "needsData": "interval",
+      "evidence": "cycleEdge needs cycleToDatePeakKw (the RUNNING 15-min peak this cycle) and typicalPeakKw (a historical 15-min reference) - both come only from 15-minute INTERVAL data. The Batth bill summaries carry one end-of-cycle peakKw and no interval series, so cycleEdge receives no valid input and returns an empty array for every meter: avoidableKw = typicalPeakKw - cycleToDatePeakKw is unevaluable -> impactUsd = $0 (for P031, P038, P054, P004, all others). Illustrative-only (NOT a claim): if intervals existed and P031 closed in 2 days having set only ~20 kW vs its ~111 kW typical, at its own AG-C rate $1,112.97/111.52kW = $9.98/kW, the avoided fresh spike would be ~(111-20)*9.98 = ~$908 for that ONE cycle, ONCE - and it is the SAME demand dollar already annualized conservatively in findings-demand-charge-exposure.json, so adding it here would double-count. CLAUDE.md also demotes this timing/staggering class ('Keep any staggering code but demote it') and forbids real-time spike promises ('Planner, not live meter'). It is a watch-list nudge, not a banked annual saving."
+    },
+    {
+      "title": "Scheduled-close vs actual-close discipline on multi-cycle meters (P031, P038) - pure legibility, $0; dollars owned by other categories",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "4699664088 / 1010427495 / P031 (VINES IRR 75HP, AGC, NEMEXP) - 4 cycles on this bill",
+        "4699664743 / 1010782725 / P038 (AGC, NEMEXPM) - 4 cycles, the sibling true-up proof meter"
+      ],
+      "formula": "Legibility only: the schedule engine keeps the cycle-window close (cycle.close) and the statement close (cycle.cycleClose) as SEPARATE fields (AR-14: never conflate scheduled vs actual). No dollar equation.",
+      "computedBy": "src/lib/energy/billing.ts + src/lib/pge/schedule.ts (window placement and close lookup). DETERMINISTIC, NOT AI.",
+      "computedByAi": false,
+      "needsData": "none",
+      "evidence": "P031 carries 4 cycles whose window closes and statement close differ: 2025-12-11 (true-up cycle, statement-closed 2026-03-26), 2025-12-12->2026-01-11, 2026-01-12->2026-02-10, 2026-02-11->2026-03-12; peaks climb 2.08->3.36->3.20->111.52 kW with demand $1.78->$31.03->$83.30->$1,112.97. This is exactly the scheduled-vs-actual conflation the schedule engine is built to avoid, and it is pure legibility: knowing WHICH close a charge belongs to carries no dollar. The $1,112.97 latest-cycle demand charge is owned by the demand-charge category; P031's NEMEXP zero-credit true-up ($62,795.65, $0-$57k CONTINGENT on the Generation Allocation Summary, never banked) is owned by the solar-NEM category. Neither is a cycle-timing saving."
+    },
+    {
+      "title": "True-up-month calendar marks (14 solar meters carry trueUpMonth) - the one real calendar datum in the data; $0 in THIS category",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "14 solar meters in normalized/inventory.json with trueUpMonth set: December x6 (incl. P031, P038, P041, P033, P083, P034), May x3, January x2, July, August, October"
+      ],
+      "formula": "Calendar mark only: place the NEM annual-settlement month on the home calendar. No rate-timing dollar equation.",
+      "computedBy": "Read directly from inventory.json trueUpMonth (Excel-sourced); surfaced on the calendar by the home view. The dollars of any true-up are computed in the solar-NEM engine (src/lib/energy/solar-nem.ts), DETERMINISTIC, NOT AI.",
+      "computedByAi": false,
+      "needsData": "none",
+      "evidence": "trueUpMonth is the one genuine 'billing-cycle timing' fact present in the Batth data (14 of 183 meters), and it is the correct anchor for the home calendar's solar rows. But the dollars of a true-up belong to the solar-NEM category, not to rate-timing - and even there the headline P031 anomaly is contingent ($0-$57k on the Generation Allocation Summary), never banked. Showing the true-up MONTH on the calendar is legibility (the visible hook); it carries no cycle-timing dollar of its own."
+    }
+  ],
+  "notes": {
+    "groundTruthHeld": "Solar arrays total 1,932 kW (840 + 1,092). Bill account 4699664587-8 = 46 metered SAs; Excel inventory = 183 meters across ~57 accounts / ~6 entities. Savings are deterministic pure functions in src/lib/energy (no AI); the only AI is bill-PDF vision extraction in src/lib/extract (which is also what WOULD read the serial letter off the bill). Rate optimization needs 15-min interval kWh; bill summaries carry none. P031 $62,795.65 true-up is real but $0-$57k CONTINGENT, never banked. None of these are cycle-timing dollars.",
+    "whyZero": "This category is explicitly framed in CLAUDE.md as 'Real at the margins; the visible hook Batth asked for.' Its deliverable is a CALENDAR (legibility), which moves no charge. The only dollar-shaped function (cycleEdge) is (1) interval-data-gated with no valid input on bill summaries, (2) a demand-charge-timing nudge that would double-count the demand-charge category, and (3) the timing/staggering class CLAUDE.md says to demote and never lead with. Honest defensible total: $0.",
+    "noDoubleCount": "Demand-charge dollars (P054 $19,483/yr, P004 $11,274/yr, P031 $7,791/yr conservative) live in findings-demand-charge-exposure.json. Solar/NEM true-up dollars live in findings-solar-nem-trueup.json. This category deliberately claims none of them."
+  }
+}

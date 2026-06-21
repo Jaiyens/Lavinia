@@ -1,0 +1,156 @@
+{
+  "serviceId": "4699664991",
+  "idx": 140,
+  "billed": true,
+  "inventory": {
+    "rowNumber": 141,
+    "billingName": "BATTH,CHARANJIT S",
+    "actualOwner": null,
+    "account": "4699664587-8",
+    "serviceId": "4699664991",
+    "meterSerial": "1006467347",
+    "growerPumpId": null,
+    "rateSchedule": "HAGA1",
+    "legacy": null,
+    "descriptor": "FARM SHOP 400AC-AL11",
+    "latitude": 36.489049,
+    "longitude": -119.889409,
+    "hasCoordinates": true,
+    "solarFlag": false,
+    "solarGroupLabel": null,
+    "solarKw": null,
+    "nemType": null,
+    "trueUpMonth": null,
+    "contiguous": null,
+    "solarNotes": null,
+    "gpm": null,
+    "crop": null,
+    "installedOn": null,
+    "irrigation": null,
+    "ranch": null,
+    "status": null
+  },
+  "billing": {
+    "serviceId": "4699664991",
+    "meterNumber": "1006467347",
+    "growerPumpId": null,
+    "saIdDescriptor": "FARM SHOP 400AC-AL11",
+    "latestTariff": "AGA1 Ag<35 kW Low Use",
+    "cycleCount": 1,
+    "latestCycle": {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "printedTotalUsd": 21.03,
+      "totalKwh": 0.602,
+      "peakKw": 0.0228,
+      "demandChargeUsd": 0.17
+    },
+    "totalKwh_latestCycle": 0.602,
+    "idleZeroKwh": false,
+    "cycles": [
+      {
+        "start": "2026-02-11",
+        "close": "2026-03-12",
+        "cycleClose": "2026-03-26",
+        "tariff": "AGA1 Ag<35 kW Low Use",
+        "isLegacyTou": false,
+        "isTrueUpCycle": false,
+        "peakKw": 0.0228,
+        "demandChargeUsd_structured": 0.17,
+        "totalKwh": 0.602,
+        "touRollup": [
+          {
+            "period": "Peak",
+            "kWh": 0.052,
+            "amountUsd": 0.02
+          },
+          {
+            "period": "Off-Peak",
+            "kWh": 0.55,
+            "amountUsd": 0.17
+          }
+        ],
+        "subtotals": {
+          "customerChargeUsd": 20.67,
+          "demandChargeTextUsd": 0.0,
+          "energyCommissionTaxUsd": 0.0,
+          "nemNetChargeUsd": 0.0
+        },
+        "lineItems": [
+          {
+            "kind": "tou_energy",
+            "label": "Peak",
+            "amountUsd": 0.02,
+            "quantity": 0.0523,
+            "unit": "kWh",
+            "rate": 0.3453,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.3453
+          },
+          {
+            "kind": "tou_energy",
+            "label": "Off-Peak",
+            "amountUsd": 0.17,
+            "quantity": 0.55,
+            "unit": "kWh",
+            "rate": 0.31601,
+            "chargeType": "tou_energy",
+            "ratePerKwh": 0.31601
+          },
+          {
+            "kind": "demand",
+            "label": null,
+            "amountUsd": 0.17,
+            "quantity": 0.0228,
+            "unit": "kW",
+            "rate": null,
+            "chargeType": "demand_charge_structured"
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 02/11/2026 to 02/28/2026 18 days @$0.68895",
+            "amountUsd": 12.4,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 18,
+            "parsedRatePerDay": 0.68895
+          },
+          {
+            "kind": "other",
+            "label": "Customer Charge 03/01/2026 to 03/12/2026 12 days @$0.68895",
+            "amountUsd": 8.27,
+            "quantity": null,
+            "unit": null,
+            "rate": null,
+            "chargeType": "customer_charge",
+            "parsedDays": 12,
+            "parsedRatePerDay": 0.68895
+          }
+        ],
+        "printedTotalUsd": 21.03,
+        "coverageState": "reconciled"
+      }
+    ],
+    "nem": null,
+    "nemTrueUpUsd": null,
+    "billedAcrossCyclesUsd": 21.03
+  },
+  "summaries": [
+    {
+      "start": "2026-02-11",
+      "close": "2026-03-12",
+      "tariff": "AGA1 Ag<35 kW Low Use",
+      "demandCharges": [
+        {
+          "note": "Maximum Demand",
+          "usd": 0.17
+        }
+      ],
+      "demandChargeUsd": 0.17,
+      "totalBillUsd": 21.03
+    }
+  ],
+  "nem": null
+}

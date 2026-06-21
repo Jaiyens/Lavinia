@@ -1,0 +1,97 @@
+{
+  "category": "Demand charges",
+  "totalAnnualUsd": 0,
+  "scope": "Bill account 4699664587-8, statement 2026-03-26, one billing cycle per SA (02/11/2026 -> 03/12/2026, a PG&E WINTER cycle). 23 SAs carry a structured peak-demand charge; structured total ties exactly to rollup.totalDemandCharge_structuredUsd = 6058.73.",
+  "defensibilityNote": "totalAnnualUsd is the defensible RECOVERABLE dollars = 0. Every recovery path (DR enrollment PDP/CBP/BIP, eligible rate move, or avoidable-spike reduction) is gated on 15-minute interval data and/or DR program terms not present in the bill. The MEASURED exposure billed this winter cycle is 6058.73 and is carried in the exposure finding's annualUsd field as a measured-not-recoverable figure. All dollars are deterministic arithmetic over billing.json; no AI (the only AI in the system is upstream bill-PDF vision extraction in src/lib/extract).",
+  "findings": [
+    {
+      "title": "Measured demand-charge exposure, this winter cycle (the recovery target, not yet recoverable)",
+      "annualUsd": 6058.73,
+      "confidence": "high",
+      "meters": [
+        "4696826125 (P054)",
+        "4698660251 (P004)",
+        "4699664088 (VINES 75HP)",
+        "+20 more SAs"
+      ],
+      "formula": "exposure = sum_over_meters( demandChargeUsd_structured per cycle ) = 6058.73; concentration: P054 2783.22 + P004 1409.21 + VINES 1112.97 = 5305.40 = 87.6% of total",
+      "computedBy": "manual analytic: deterministic sum over billing.json demandChargeUsd_structured (the canonical per-cycle peak-demand field), reconciling against rollup.totalDemandCharge_structuredUsd. Same field the src/lib/energy reconciliation rollup produces. NOT AI.",
+      "needsData": "interval",
+      "evidence": "23 SAs carry a structured peak-demand charge in the 02/11->03/12/2026 cycle, summing to 6058.73 which ties EXACTLY to rollup.totalDemandCharge_structuredUsd=6058.73. Ranked: P054 (4696826125, AGC) peak 278.88 kW -> 2783.22 ($9.98/kW); P004 (4698660251, AG5B) peak 171.52 kW -> 1409.21 ($8.22/kW, 03/01-03/12 sub-period @ $20.54/kW); VINES 75HP (4699664088, AGC) peak 111.52 kW -> 1112.97 ($9.98/kW, @ $24.95/kW). Top 3 = 87.6%; the other 20 SAs = 753.33 and 10 of 23 are under $5 (standby pumps). This is a WINTER cycle: AG summer Jun-Sep and legacy AG-4/AG-5 summer May-Oct both carry HIGHER max-demand rates, and AG-C adds a $29.92/kW Summer Peak-Demand charge (5-8pm) that does NOT apply this winter cycle, so 6058.73 is a winter FLOOR, not annualized. annualUsd here is the MEASURED billed exposure, not a recoverable saving."
+    },
+    {
+      "title": "P054 (SA 4696826125, AGC) demand recovery via DR enrollment / interval-proven peak shaving",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4696826125 (P054)"],
+      "formula": "recovery_DR = curtailable_kW x program_capacity_$_per_kW  (PDP/CBP/BIP); recovery_spike = (billed_peak_kW - achievable_peak_kW) x demand_$_per_kW, billed_peak_kW=278.88, demand_$_per_kW=$9.98 effective",
+      "computedBy": "would be priced by src/lib/energy demand.ts (peak kW) x the program/tariff $/kW; deterministic arithmetic, NOT AI. Unpriceable today because curtailable_kW and achievable_peak_kW require the 15-min interval series.",
+      "needsData": "interval",
+      "evidence": "Largest demand meter on the account: peak 278.88 kW, structured demand 2783.22 this cycle (free-text 02/11-02/28 line 244.32 kW @ $26.03/kW = 3815.79). Also the largest-energy meter (31,828 kWh, $11,727 cycle total) so it is a hard-running pump, not standby. A 278.88 kW peak is far above the 35 kW AG-C threshold, so the meter legitimately belongs on a demand schedule; the lever is DR enrollment + peak shaving, NOT a rate demotion. The bill cannot say whether 278.88 kW is one pump alone (nothing to recover) or coincident overlap (recoverable) -- that split needs interval data. No defensible dollar."
+    },
+    {
+      "title": "P004 (SA 4698660251, legacy AG5B) demand recovery; also faces 2027 force-transition off legacy",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4698660251 (P004)"],
+      "formula": "recovery_DR = curtailable_kW x program_$_per_kW; recovery_spike = (171.52 - achievable_peak_kW) x demand_$_per_kW; legacy AG5B Max-Demand winter $20.54/kW (03/01-03/12) and $21.43/kW (02/11-02/28) per bill lines",
+      "computedBy": "src/lib/energy demand.ts x tariff $/kW (deterministic, NOT AI); interval-gated for the avoidable portion.",
+      "needsData": "interval",
+      "evidence": "Peak 171.52 kW; structured demand 1409.21 this cycle. Two sub-period demand lines inside the one cycle: 02/11-02/28 170.88 kW @ $21.43 = 2197.18 and 03/01-03/12 171.52 kW @ $20.54 = 1409.21 (so demandChargeTextUsd=3606.39 double-counts within the cycle; structured 1409.21 is canonical). NEM2 solar-paired almond well. AG5B is a CLOSED legacy schedule expiring 2027; on force-transition to Schedule AG the AG-C Summer Peak-Demand ($29.92/kW) would newly apply -- a rate-migration item tracked under rate-optimization, not double-counted here. Recovery is interval-gated; no defensible dollar."
+    },
+    {
+      "title": "VINES IRR 75HP (SA 4699664088, AGC) demand recovery (demand component only; NEM true-up tracked separately)",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": ["4699664088 (VINES 75HP)"],
+      "formula": "recovery_DR = curtailable_kW x program_$_per_kW; recovery_spike = (111.52 - achievable_peak_kW) x demand_$_per_kW; AGC Max-Demand $24.95/kW (03/01-03/12) and $26.03/kW (02/11-02/28) per bill lines",
+      "computedBy": "src/lib/energy demand.ts x tariff $/kW (deterministic, NOT AI); interval-gated.",
+      "needsData": "interval",
+      "evidence": "Peak 111.52 kW; structured demand 1112.97 (03/01-03/12 @ $24.95/kW). Free text also 02/11-02/28 109.6 kW @ $26.03 = 1711.73 plus two small true-up-cycle demand sub-periods (4.48 kW @ $25.62 = 74.05; 3.36 kW @ $26.03 = 31.03). This is the SAME SA that carries the $62,795.65 NEM zero-credit true-up anomaly (sibling P038 proof) -- that anomaly is a NEM/solar finding (recovery $0-$57k CONTINGENT on the Generation Allocation Summary, never to be overstated as banked) and is EXCLUDED here; this line is only its demand component. Recovery interval-gated; no defensible dollar."
+    },
+    {
+      "title": "Tail demand meters (ranks 4-23): immaterial per-meter exposure",
+      "annualUsd": 0,
+      "confidence": "high",
+      "meters": [
+        "4699664553 (ELKHORN-18, 184.16)",
+        "4699664599 (127.81)",
+        "4699664194 (VINES 15HP, 86.41)",
+        "4699664794 (SWANSON, 84.55)",
+        "+16 more"
+      ],
+      "formula": "per-meter demand = peak_kW x AGA1/AGA2/AGB/AG5C $/kW; combined tail = 6058.73 - 5305.40 = 753.33",
+      "computedBy": "manual analytic: deterministic sum over billing.json (NOT AI).",
+      "needsData": "interval",
+      "evidence": "20 SAs below the top-3 sum to 753.33; the two largest tail meters are AGA2 shops ELKHORN-18 (13.70 kW, 184.16) and SA 4699664599 (9.51 kW, 127.81). 10 of 23 demand meters bill under $5 (standby pumps barely registering a 15-min peak). Per-meter recovery is immaterial and dominated by fixed AGA2 Max-Demand ($11.79-$21.43/kW) on tiny kW. No defensible recoverable dollar; reported for completeness."
+    },
+    {
+      "title": "Billing anomaly: AG-B meters carrying a demand charge (AG-B is the energy-only 35+ schedule)",
+      "annualUsd": 0,
+      "confidence": "medium",
+      "meters": [
+        "4699664429 (TURKEY-AL7, 49.55)",
+        "4699664416 (P078, 29.69)",
+        "4698074516 (P058, 0.17)"
+      ],
+      "formula": "flag where tariff startswith 'AGB' AND demandChargeUsd_structured > 0; combined = 49.55 + 29.69 + 0.17 = 79.41",
+      "computedBy": "manual analytic: deterministic filter over billing.json cross-referenced to the PG&E AG-rate brief (AG-B = NO demand charge). NOT AI.",
+      "needsData": "interval",
+      "evidence": "Per brief-pge-ag-rates.md the Schedule AG table shows AG-B 'Demand charge? None' (it is the 35+ energy-only schedule; only AG-A2 and AG-C carry demand). Yet three AG-B meters show structured demand lines: TURKEY-AL7 49.55 (line 5.652 kW @ $13.95 -> note $13.95 is the AG-A2 PRIMARY Max-Demand rate, not an AG-B rate), P078 29.69 (3.26 kW @ $14.56), P058 0.17. Either an extraction artifact or a genuine mis-classification/mis-billing. Combined ~79.41 -- small, logged for review, NOT totaled as recovery. If confirmed mis-billing, it would be a refund, not a demand-recovery saving."
+    },
+    {
+      "title": "Demand-response enrollment (PDP / CBP / BIP) across the demand fleet",
+      "annualUsd": 0,
+      "confidence": "low",
+      "meters": [
+        "4696826125 (P054)",
+        "4698660251 (P004)",
+        "4699664088 (VINES 75HP)"
+      ],
+      "formula": "recovery = sum_over_enrolled_meters( curtailable_kW x program_capacity_$_per_kW ); needs program rate + curtailable_kW from interval data",
+      "computedBy": "would be deterministic arithmetic (program $/kW x curtailable kW) once inputs exist; NOT AI. Cannot be priced from the bill.",
+      "needsData": "interval",
+      "evidence": "Growers like Batth already curtail in the 4-9pm window; PDP/CBP/BIP pay for that committed curtailment. Recovery scales with curtailable kW, which is only knowable from the 15-min interval series, and with each program's capacity $/kW, which is not in the bill. The three big meters (278.88 + 171.52 + 111.52 = 561.92 kW of billed peak) are the enrollment candidates. No defensible dollar without interval data and program terms; this is the most promising path but is fully gated."
+    }
+  ]
+}
