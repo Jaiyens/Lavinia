@@ -67,6 +67,23 @@ export type ParcelResult = {
   fields: ParcelFields;
 };
 
+/** One parcel in a bulk viewport query: just the APN + boundary (no enrichment, no geo math). */
+export type BBoxParcel = {
+  apn: string;
+  /** WGS84 lng/lat rings. */
+  geometry: ParcelGeometry;
+};
+
+/**
+ * The result of a viewport (bbox) query: the parcels intersecting the box, plus whether the source
+ * hit its record cap (so the caller can subdivide / show a "zoom in" notice).
+ */
+export type BBoxResult = {
+  parcels: BBoxParcel[];
+  /** True when the source returned more than its per-request limit (results are truncated). */
+  capped: boolean;
+};
+
 /**
  * A county-specific parcel source. Given a point KNOWN to be inside this county's bbox, return
  * the containing (or nearest) parcel, or null if the county truly has none there. Adding a
@@ -78,6 +95,12 @@ export interface CountyParcelAdapter {
   /** Rough county extent, for point dispatch. */
   readonly bbox: BBox;
   lookupByPoint(point: LatLng): Promise<RawParcelHit | null>;
+  /**
+   * Return every parcel whose boundary intersects `box` (a viewport), APN + geometry only. Optional
+   * so a county without bulk-query support (or a test stub) still satisfies the interface; the core
+   * `lookupParcelsByBbox` skips adapters that don't implement it.
+   */
+  lookupByBbox?(box: BBox): Promise<BBoxResult>;
 }
 
 export type ParcelErrorCode =

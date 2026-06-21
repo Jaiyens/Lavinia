@@ -109,9 +109,9 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
   const hasOverrides = Object.keys(overrides).length > 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-5 py-6 lg:px-12">
+    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-6xl flex-col gap-4 overflow-hidden px-5 py-4 lg:px-12">
       {/* Header: title + the representative-data marking + the freshness line (the ~1-day lag). */}
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
           <p className="type-label-caps text-on-surface-variant">{m.eyebrow}</p>
           <h1 className="type-display-lg text-on-surface">{m.title}</h1>
@@ -129,10 +129,12 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
         </div>
       </header>
 
-      <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+      <div className="shrink-0">
+        <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+      </div>
 
       {/* The legend that teaches the color mechanic. */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest px-4 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest px-4 py-3">
         <span className="type-label-caps text-on-surface-variant">{m.legend.title}</span>
         {(["danger", "watch", "safe"] as const).map((level) => (
           <span key={level} className="flex items-center gap-1.5">
@@ -156,8 +158,8 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
         )}
       </div>
 
-      {/* Groups, worst-first, collapsible. */}
-      <div className="flex flex-col gap-4">
+      {/* Groups, worst-first, collapsible. Only this region scrolls, so the page stays one screen. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
         {groups.map((group) => (
           <GroupCard
             key={group.name}

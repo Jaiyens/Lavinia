@@ -1,10 +1,17 @@
 import { ParcelsGis } from "@/app/(app)/_components/parcels-gis/parcels-gis";
+import { loadBatthFarm } from "@/lib/parcel/farm/seed";
 
-// The public Tour's Parcels tab: the same full-screen GIS land-mapping surface as the signed-in
-// app, on placeholder data (it reads only public records + free public layers). Renders the same
-// self-contained full-bleed map + floating panels, so the tour and the product look identical.
+// The public Tour's Parcels tab: the same GIS land-mapping surface as the signed-in app, beside the
+// global rail. The farmer's blocks come from the committed Batth fixture (public records only); every
+// other parcel streams live from the free public county layers. Identical look to the product.
 export const dynamic = "force-dynamic";
 
+function todayPacific(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+}
+
 export default function TourParcelsPage() {
-  return <ParcelsGis />;
+  const today = todayPacific();
+  const farm = loadBatthFarm(today);
+  return <ParcelsGis myFarm={farm} year={Number(today.slice(0, 4))} />;
 }

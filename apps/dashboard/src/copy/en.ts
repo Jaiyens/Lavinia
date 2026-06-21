@@ -1709,23 +1709,54 @@ export const en = {
   // Parcels GIS: the full-screen land-mapping surface. Original Terra copy only; no third-party
   // brand names or wording. Plain operator English, no exclamation marks, no em dashes.
   parcelsGis: {
-    // Left nav rail items (icon + label).
-    nav: {
-      baseMaps: "Base Maps",
-      listings: "Listings",
-      soldLand: "Sold Land",
-      mortgage: "Mortgage",
-      insights: "Insights",
-      layers: "Layers",
-      portfolio: "Portfolio",
-      account: "Your account",
+    searchPlaceholder: "Search by address, APN, or coordinates",
+    // Search resolution notes (shown in the dropdown under the search pill).
+    search: {
+      noParcel: "No parcel found at that spot.",
+      badCoord: "Enter a latitude between -90 and 90 and a longitude between -180 and 180.",
+      noApn: "No parcel found for that APN. APN search currently covers Fresno County.",
+      noAddress: "No match for that address in the Central Valley.",
+      error: "Search is unavailable right now. Try again.",
     },
-    searchPlaceholder: "Search parcels",
+    // Viewport streaming status (a small pill over the map).
+    status: {
+      zoomIn: "Zoom in to see parcel boundaries",
+      loading: "Loading parcels",
+      dense: "Dense area. Zoom in for every parcel.",
+      error: "Couldn't load parcels here",
+    },
+    // The farmer's own blocks panel (replaces the for-sale listings). Hybrid: a "Blocks" tab of the
+    // farmer's own land (ops data), plus a "Market" tab of nearby comparable land values.
+    blocks: {
+      title: "Your blocks",
+      close: "Close panel",
+      info: "Your mapped blocks",
+      empty: "No blocks loaded yet.",
+      acresLabel: "ac",
+      colorByLabel: "Color by",
+      searchHint: "Search to jump anywhere in the Central Valley.",
+      tabBlocks: "Blocks",
+      tabMarket: "Market",
+      marketNote: "Recent comparable land values near your blocks.",
+      owned: "Owned",
+      leased: "Leased",
+      count: (n: number): string => `${n} ${n === 1 ? "block" : "blocks"}`,
+    },
+    // The right-side "farm at a glance" card.
+    summaryCard: {
+      county: (county: string): string => `${county} County`,
+      close: "Close summary",
+      acres: "Acres",
+      blocks: "Blocks",
+      leased: "Leased",
+      attention: "Need a look",
+      cropMix: "Crop mix",
+    },
     listings: {
-      title: "Listings",
+      title: "Your blocks",
       close: "Close listings",
       info: "About listings",
-      breadcrumb: "Home / Plat Map / California",
+      breadcrumb: "Batth Farms / Fresno County",
       tabAll: "All",
       tabSaved: "Saved",
       filters: "Filters",

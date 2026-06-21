@@ -1,9 +1,8 @@
-// Loads the seeded representative farm. The committed fixture holds only the parts that need the
-// network (real parcel geometry from the county + baked live enrichment); the full operational
-// model is regenerated deterministically at render time (representative.ts), so relative dates
-// (lease expiry, overdue tasks) stay current without re-baking. Server-only; reads the fixture
-// from process.cwd() per the repo's runtime-fixture convention (shipped via
-// outputFileTracingIncludes in next.config.ts).
+// Loads a seeded farm fixture. A committed fixture holds only the parts that need the network (real
+// parcel geometry from the county + baked live enrichment); the full operational model is regenerated
+// deterministically at render time (representative.ts), so relative dates (lease expiry, overdue
+// tasks) stay current without re-baking. Server-only; reads the fixture from process.cwd() per the
+// repo's runtime-fixture convention (shipped via outputFileTracingIncludes in next.config.ts).
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +16,7 @@ export type FixtureParcel = {
   enrichment: Enrichment;
 };
 
-export type RepresentativeFarmFixture = {
+export type FarmFixture = {
   /** ISO timestamp the fixture was generated (provenance only). */
   generatedAt: string;
   name: string;
@@ -26,25 +25,37 @@ export type RepresentativeFarmFixture = {
   parcels: FixtureParcel[];
 };
 
-const FIXTURE_PATH = join(process.cwd(), "fixtures", "representative-farm.json");
+/** Back-compat alias for the original representative-farm fixture type. */
+export type RepresentativeFarmFixture = FarmFixture;
 
-function readFixture(): RepresentativeFarmFixture {
-  const raw = readFileSync(FIXTURE_PATH, "utf8");
-  return JSON.parse(raw) as RepresentativeFarmFixture;
+function readFixture(fileName: string): FarmFixture {
+  const raw = readFileSync(join(process.cwd(), "fixtures", fileName), "utf8");
+  return JSON.parse(raw) as FarmFixture;
+}
+
+/** Build a Farm from a committed fixture, with every block's ops data built fresh for `todayIso`. */
+function buildFarm(fixture: FarmFixture, todayIso: string): Farm {
+  const parcels = fixture.parcels.map((p, i) => buildFarmParcel(p.base, p.enrichment, i, todayIso));
+  return { name: fixture.name, county: fixture.county, parcels, representative: true };
 }
 
 /**
- * The seeded representative operation, with every block's full farm-ops data built fresh for
- * `todayIso` (the grower's Pacific date). Request-cached so the page and any sibling reads share
- * one build.
+ * The seeded representative operation ("Cordova Ranches"), built fresh for `todayIso` (the grower's
+ * Pacific date). Request-cached so the page and any sibling reads share one build.
  */
-export const loadRepresentativeFarm = cache((todayIso: string): Farm => {
-  const fixture = readFixture();
-  const parcels = fixture.parcels.map((p, i) => buildFarmParcel(p.base, p.enrichment, i, todayIso));
-  return {
-    name: fixture.name,
-    county: fixture.county,
-    parcels,
-    representative: true,
-  };
+export const loadRepresentativeFarm = cache((todayIso: string): Farm =>
+  buildFarm(readFixture("representative-farm.json"), todayIso),
+);
+
+/**
+ * The Batth Farms demo operation: real Fresno County parcels around the Caruthers home ranch, baked
+ * by scripts/seed-batth-parcels.ts. Falls back to the representative fixture if the Batth fixture
+ * isn't present yet (so the app never hard-fails on a missing seed). Request-cached.
+ */
+export const loadBatthFarm = cache((todayIso: string): Farm => {
+  try {
+    return buildFarm(readFixture("batth-parcels.json"), todayIso);
+  } catch {
+    return loadRepresentativeFarm(todayIso);
+  }
 });

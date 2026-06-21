@@ -123,3 +123,55 @@ describe("createEsriParcelAdapter", () => {
     expect(await withFetch(fetchImpl).lookupByPoint({ lat: 36.6, lng: -119.78 })).toBeNull();
   });
 });
+
+function fcWith(features: unknown[], extra: Record<string, unknown> = {}): Response {
+  return new Response(JSON.stringify({ type: "FeatureCollection", features, ...extra }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const BOX = { minLat: 36.5, maxLat: 36.6, minLng: -119.9, maxLng: -119.8 };
+
+describe("createEsriParcelAdapter.lookupByBbox", () => {
+  it("queries the envelope (xmin,ymin,xmax,ymax = lng,lat) and returns APN + geometry", async () => {
+    const fetchImpl = vi.fn(async (_i: RequestInfo | URL) =>
+      fcWith([squareFeature({ APN: "a-1" }), squareFeature({ APN: "a-2" })]),
+    );
+    const res = await withFetch(fetchImpl).lookupByBbox!(BOX);
+
+    expect(res.parcels.map((p) => p.apn)).toEqual(["a-1", "a-2"]);
+    expect(res.parcels[0]!.geometry.type).toBe("Polygon");
+    expect(res.capped).toBe(false);
+    const url = String(fetchImpl.mock.calls[0]![0]);
+    expect(url).toContain("geometryType=esriGeometryEnvelope");
+    expect(url).toContain("geometry=-119.9%2C36.5%2C-119.8%2C36.6"); // minLng,minLat,maxLng,maxLat
+    expect(url).toContain("outFields=APN"); // the county's first apnField
+  });
+
+  it("flags capped when Esri reports exceededTransferLimit", async () => {
+    const fetchImpl = vi.fn(async (_i: RequestInfo | URL) =>
+      fcWith([squareFeature({ APN: "a-1" })], { exceededTransferLimit: true }),
+    );
+    const res = await withFetch(fetchImpl).lookupByBbox!(BOX);
+    expect(res.capped).toBe(true);
+  });
+
+  it("flags capped when the feature count reaches the record cap", async () => {
+    const many = Array.from({ length: 3 }, (_v, i) => squareFeature({ APN: `a-${i}` }));
+    const fetchImpl = vi.fn(async (_i: RequestInfo | URL) => fcWith(many));
+    const adapter = createEsriParcelAdapter({ ...baseConfig, maxRecordCount: 3, fetchImpl: fetchImpl as typeof fetch });
+    const res = await adapter.lookupByBbox!(BOX);
+    expect(res.capped).toBe(true);
+  });
+
+  it("skips null-geometry and APN-less rows without throwing", async () => {
+    const noGeom = { type: "Feature", properties: { APN: "x" }, geometry: null };
+    const noApn = squareFeature({ APN: 0 }); // all-zero sentinel -> skipped
+    const fetchImpl = vi.fn(async (_i: RequestInfo | URL) =>
+      fcWith([noGeom, noApn, squareFeature({ APN: "keep" })]),
+    );
+    const res = await withFetch(fetchImpl).lookupByBbox!(BOX);
+    expect(res.parcels.map((p) => p.apn)).toEqual(["keep"]);
+  });
+});

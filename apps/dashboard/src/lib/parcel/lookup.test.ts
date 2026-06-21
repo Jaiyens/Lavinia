@@ -42,8 +42,22 @@ describe("adapterForPoint (dispatch)", () => {
     expect(adapterForPoint({ lat: 34.05, lng: -118.24 })).toBeNull();
   });
 
-  it("ships exactly one county today (Fresno)", () => {
-    expect(COUNTY_ADAPTERS.map((a) => a.county)).toEqual(["Fresno"]);
+  it("ships the Central Valley counties, Fresno first", () => {
+    const counties = COUNTY_ADAPTERS.map((a) => a.county);
+    expect(counties[0]).toBe("Fresno");
+    expect(counties).toEqual(
+      expect.arrayContaining([
+        "Fresno",
+        "Madera",
+        "Kings",
+        "Tulare",
+        "Kern",
+        "Merced",
+        "Stanislaus",
+        "San Joaquin",
+        "Sacramento",
+      ]),
+    );
   });
 });
 
@@ -79,6 +93,33 @@ describe("lookupParcelByPoint", () => {
       adapters: [fakeAdapter(null)],
     });
     expect(result).toBeNull();
+  });
+
+  it("falls through to the next covering county when the first has no parcel (overlapping bboxes)", async () => {
+    const bbox = { minLat: 35, maxLat: 38, minLng: -121, maxLng: -118 };
+    const first: CountyParcelAdapter = { county: "First", bbox, lookupByPoint: async () => null };
+    const second: CountyParcelAdapter = { county: "Second", bbox, lookupByPoint: async () => squareHit };
+    const result = await lookupParcelByPoint(FRESNO_POINT.lat, FRESNO_POINT.lng, {
+      adapters: [first, second],
+    });
+    expect(result!.county).toBe("Second");
+    expect(result!.apn).toBe("33803239S");
+  });
+
+  it("returns a neighbor's hit even when an earlier covering county errors", async () => {
+    const bbox = { minLat: 35, maxLat: 38, minLng: -121, maxLng: -118 };
+    const erroring: CountyParcelAdapter = {
+      county: "Erroring",
+      bbox,
+      lookupByPoint: async () => {
+        throw new ParcelLookupError("upstream", "down");
+      },
+    };
+    const working: CountyParcelAdapter = { county: "Working", bbox, lookupByPoint: async () => squareHit };
+    const result = await lookupParcelByPoint(FRESNO_POINT.lat, FRESNO_POINT.lng, {
+      adapters: [erroring, working],
+    });
+    expect(result!.county).toBe("Working");
   });
 
   it("throws out_of_coverage when no adapter covers the point", async () => {
