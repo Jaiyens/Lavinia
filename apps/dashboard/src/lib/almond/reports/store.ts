@@ -26,7 +26,7 @@ import { newReportBlobKey, putPrivateBlob, XLSX_CONTENT_TYPE } from "@/lib/stora
  *  spreadsheet shapes match the exportSpreadsheet skill's EXPORT_TABLES so a persisted kind
  *  round-trips to the same builder; `"report"` is the generateReport skill's PDF (Story 9.3). The
  *  column stays a free String, so storing a new kind needs no migration. */
-export const GENERATED_REPORT_KINDS = ["meters", "billDue", "report"] as const;
+export const GENERATED_REPORT_KINDS = ["meters", "billDue", "report", "bill_dispute"] as const;
 export type GeneratedReportKind = (typeof GENERATED_REPORT_KINDS)[number];
 
 /** The deps the store closes over: a Prisma client, the resolved farm scope, and (optionally) the
