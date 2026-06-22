@@ -121,6 +121,26 @@ function trueUpMonthNum(meta: FixtureMeta): number | null {
 /** The two real arrays the fixture labels with their nameplate ("840kw" / "1092kw"). */
 const ARRAY_NAMEPLATE_BY_LABEL: Record<string, number> = { "840kw": 840, "1092kw": 1092 };
 
+/**
+ * The [start, close) of the 12-month true-up period that SETTLES in `trueUpMonth` of `settleYear`.
+ * NEM true-up is an ANNUAL reconciliation: the statement nets a year of monthly net-metering into one
+ * settle figure. The fixture carries only that ANNUAL roll-up (annualNetKwh + trueUpAmountUsd), never
+ * the 12 individual months, so we persist ONE NemPeriod row spanning the whole true-up year, dated to
+ * close at the settle month. SIMPLIFICATION (documented per the build note): the engine's
+ * `summarizeNemMonths` dedupes by calendar month and sums, so a single annual row carries the same
+ * net position and charge a full 12-month set would, which is all `nemDemandInsight` reads. The day is
+ * pinned to the 1st of the month (no clock); the period spans the prior 12 months up to the settle.
+ */
+function trueUpYearSpan(
+  trueUpMonth: number,
+  settleYear: number,
+): { start: Date; close: Date } {
+  // Close on the 1st of the settle month; start exactly one year earlier (a full true-up cycle).
+  const close = new Date(Date.UTC(settleYear, trueUpMonth - 1, 1));
+  const start = new Date(Date.UTC(settleYear - 1, trueUpMonth - 1, 1));
+  return { start, close };
+}
+
 export type SeededBatthReal = Awaited<ReturnType<typeof seedBatthRealFarm>>;
 
 /**
@@ -148,6 +168,10 @@ export async function seedBatthRealFarm(prisma: PrismaClient) {
       // grower account on the authed dashboard. Flip to false + set userId to render it
       // as a real connected farm for a signed-in owner (see dashboard-wiring.md).
       isDemo: true,
+      // DM4 (Solar tab, FR6): the 840 kW + 1,092 kW = 1,932 kW layout is confirmed ground
+      // truth (CLAUDE.md), so the array-code vs nameplate layout is verified up front. This
+      // suppresses the Solar tab's "unverified" qualifier on the populated nameplates.
+      solarLayoutVerifiedAt: new Date(),
       connections: {
         create: [
           {
@@ -251,6 +275,11 @@ export async function seedBatthRealFarm(prisma: PrismaClient) {
   // dashboard reads entity via Pump.account.entity). Accounts already exist (importMeters
   // upserted them); we only assign their entityId here.
   let pumpsEnriched = 0;
+  let nemPeriodsCreated = 0;
+  // Settle year for the annual NEM roll-up: the fixture carries no statement YEAR, so we anchor the
+  // true-up close to the same year as the (most recent) billed cycles. 2026 here matches the fixture's
+  // 2026 cycle dates and the engines' asOf, so the persisted period is contemporaneous, not stale.
+  const NEM_SETTLE_YEAR = 2026;
   for (const m of fx.meters) {
     const meta = metaByServiceId.get(m.serviceId);
     if (!meta) continue;
@@ -295,6 +324,46 @@ export async function seedBatthRealFarm(prisma: PrismaClient) {
     });
     pumpsEnriched += 1;
 
+    // Persist the annual NEM reconciliation as a NemPeriod row for every billed NEM meter that
+    // carries nem data. This is what the canonical solar engine (run-solar-insight.ts ->
+    // nemDemandInsight) reads to judge the meter's energy position: a NEGATIVE netKwh = net export.
+    // The fixture's `annualNetKwh` already uses that sign convention (verified: the net exporters are
+    // negative), so it maps STRAIGHT through to NemPeriod.netKwh with no flip. amountCents comes from
+    // trueUpAmountUsd via centsFromDollars (positive = a true-up CHARGE, the engine's convention).
+    //
+    // This is the data that lets the "net exporter (negative netKwh) yet charged a positive true-up"
+    // dispute fire. SIMPLIFICATION: we have only the ANNUAL roll-up, not the 12 monthly statement
+    // rows, so we persist ONE row spanning the true-up year (see trueUpYearSpan). The engine sums and
+    // dedupes months by calendar bucket, so one annual row yields the same net position + charge as a
+    // full month set for its position check. NOTE the engine ALSO gates on isSolar + AG-C family +
+    // reconciled demand owed; in today's fixture no meter clears all of those AND is a net exporter,
+    // so this row is correct, persisted, and ready, but the dispute does not surface yet (see report).
+    const nemMonth = trueUpMonthNum(meta);
+    if (
+      meta.nem &&
+      meta.nem.nemEnrolled &&
+      nemMonth != null &&
+      (meta.nem.annualNetKwh != null || meta.nem.trueUpAmountUsd != null)
+    ) {
+      const { start, close } = trueUpYearSpan(nemMonth, NEM_SETTLE_YEAR);
+      await prisma.nemPeriod.upsert({
+        where: { pumpId_start: { pumpId: pump.id, start } },
+        update: {},
+        create: {
+          pumpId: pump.id,
+          start,
+          close,
+          // Negative = net export (engine convention), straight from the fixture's annual roll-up.
+          netKwh: meta.nem.annualNetKwh ?? 0,
+          // Positive = a true-up charge; the printed annual settle dollar in integer cents.
+          amountCents:
+            meta.nem.trueUpAmountUsd != null ? centsFromDollars(meta.nem.trueUpAmountUsd) : 0,
+          source: "scanned_bill",
+        },
+      });
+      nemPeriodsCreated += 1;
+    }
+
     // Connect this meter to its array when it lists one of the two known nameplate labels.
     if (label && nameplate != null) {
       const arrayId = await resolveArray(
@@ -320,6 +389,7 @@ export async function seedBatthRealFarm(prisma: PrismaClient) {
     billingPeriods: imported.billingPeriods,
     metersSkipped: imported.metersSkipped,
     pumpsEnriched,
+    nemPeriodsCreated,
     entities: entityIdByOwner.size,
     accounts: new Set(fx.meters.map((m) => m.accountNumber).filter(Boolean)).size,
     ranches: ranchIdByName.size,

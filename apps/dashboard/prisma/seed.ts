@@ -7,10 +7,29 @@
 import { PrismaClient } from "@prisma/client";
 import { runEngines } from "@/lib/recommendations/run";
 import { seedBatthFarm } from "./batth-farm";
+import { seedBatthRealFarm } from "./batth-real-farm";
 
 async function main() {
   const prisma = new PrismaClient();
   try {
+    // Opt-in REAL-farm seed: SEED_BATTH_REAL=1 lands the actual Batth export
+    // (fixtures/batth-real-meters.json) INSTEAD of the synthetic demo, then runs the SAME
+    // engine pass on it (identical function + args as the default path, just a different
+    // farm id). The default (flag unset) behavior is unchanged.
+    if (process.env.SEED_BATTH_REAL === "1") {
+      const farm = await seedBatthRealFarm(prisma);
+      const engine = await runEngines(prisma, farm.id);
+      console.log(
+        `Seeded REAL ${farm.name} (account ${farm.account}): ${farm.pumpsCreated} meters, ` +
+          `${farm.billingPeriods} billing periods, ${farm.entities} entities, ` +
+          `${farm.accounts} accounts, ${farm.arrays} arrays, ${farm.nemPeriodsCreated} NEM periods.`,
+      );
+      console.log(
+        `Engine: ${engine.created} recommendations (${JSON.stringify(engine.byTool)}).`,
+      );
+      return;
+    }
+
     const farm = await seedBatthFarm(prisma);
     const engine = await runEngines(prisma, farm.id);
     console.log(
