@@ -69,6 +69,7 @@ model Farm {
   recommendations Recommendation[]
   generatedReports GeneratedReport[]
   almondConversations AlmondConversation[]
+  almondUsageEvents AlmondUsageEvent[]
 
   @@index([userId])
 }
@@ -642,6 +643,56 @@ model AlmondConversation {
   @@index([userId, farmId, updatedAt])
 }
 
+// --- Almond usage accounting (durable per-user token budget) -------------------
+// One append-only row per LLM turn Almond runs for a signed-in grower. This is BOTH the
+// durable counter behind the per-user token cap (src/lib/almond/usage-budget.ts sums
+// totalTokens over a rolling window, keyed on the immutable User.id) AND the real
+// per-user/per-model consumption ledger the founder needs to set pricing. It lives in
+// Postgres, never the browser or server memory, so the cap survives reload, restart,
+// cleared cookies, incognito, and a different serverless instance: a user cannot escape
+// their own limit short of minting a brand-new account. Anonymous demo/Tour turns (no
+// userId) are NOT recorded here (the per-IP limiter bounds them); the stub responder
+// makes no model call, so it writes nothing.
+model AlmondUsageEvent {
+  id String @id @default(cuid())
+
+  // The signed-in operator who spent the tokens: the budget key. This is the TRUE session
+  // user (never gated on persist capability), so a read-only viewer is metered too. Cascade
+  // with the user.
+  userId String
+
+  // The farm the turn was about, for attribution and per-farm analytics only (the budget is
+  // on the USER, not the farm). SetNull on farm delete so removing a farm never erases a
+  // user's ledger; nullable for that SetNull.
+  farmId String?
+
+  // What spent the tokens: "chat" (the streamed responder) or "codegen" (the nested PDF/Excel
+  // generation). String + a TS union, matching the repo's union-as-String convention.
+  source String
+
+  // The resolved Gateway model id that was billed (e.g. "anthropic/claude-opus-4.8"), for
+  // per-model cost analysis.
+  model String
+
+  // Turn totals, summed across all model steps (the chat loop runs up to stepCountIs(6)).
+  // `estimated` marks a row whose real usage was unavailable and fell back to an estimate,
+  // so real vs estimated spend can be separated later.
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  estimated    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+
+  // The budget query: sum a user's tokens within the rolling window, newest-first.
+  @@index([userId, createdAt])
+  // Per-farm consumption analytics.
+  @@index([farmId, createdAt])
+}
+
 // --- Auth.js v5 (@auth/prisma-adapter) ----------------------------------------
 // The four tables the Prisma adapter needs for sign-in (Story 5.1). One twist: the
 // adapter calls a delegate named `account` for OAuth links, but Terra ALREADY has a
@@ -668,6 +719,7 @@ model User {
   farms              Farm[]
   generatedReports   GeneratedReport[]
   almondConversations AlmondConversation[]
+  almondUsageEvents  AlmondUsageEvent[]
   farmMemberships    FarmMembership[] @relation("FarmMemberships")
   invitedMemberships FarmMembership[] @relation("SentFarmInvites")
   sentInvites        FarmInvite[]     @relation("InviteInviter")

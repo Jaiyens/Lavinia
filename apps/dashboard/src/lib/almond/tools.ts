@@ -81,6 +81,13 @@ export type AlmondToolDeps = {
   prisma: PrismaClient;
   farmId: string;
   farmName: string;
+  // The TRUE signed-in user id for USAGE METERING (the durable per-user token budget), or null for the
+  // public Tour / demo (anonymous turns are not metered here). Distinct from `AlmondActor.userId`, which
+  // is gated on persist capability — billing must count every authed user, INCLUDING a read-only viewer,
+  // so it cannot piggy-back on that gated field. Carried on `deps` because it must reach BOTH accounting
+  // sites: the chat responder's `onFinish` and the nested codegen `generateText` (which receives `deps`,
+  // not `actor`). Used only to attribute usage rows; never a scope or auth gate.
+  meterUserId: string | null;
 };
 
 /**
