@@ -78,6 +78,74 @@ describe("bucketUsage", () => {
     const { cycles } = bucketUsage([r("2026-07-15T01:00:00.000Z", 28)], bills, TZ, CARD);
     expect(cycles[0]!.maxDemandKw).toBe(200); // floored up to the bill peak
   });
+
+  it("buckets by the export's authoritative TOU Code, not the wall-clock window", () => {
+    // A real AG-C cohort: the WPK rate peak runs ~16:15-19:00, but isInPeakWindow
+    // is the 4-9pm DR window, so a code-less recompute sweeps the 20:00 off-peak
+    // interval into peak. The export labels each interval, so the code must win.
+    const c = (start: string, kWh: number, touCode: string): IntervalReading => ({
+      start,
+      durationSec: 900,
+      kWh,
+      touCode,
+    });
+    const intervals: IntervalReading[] = [
+      c("2026-07-15T23:30:00.000Z", 30, "WPK"), // 16:30 PDT, in-window, coded peak
+      c("2026-07-16T01:30:00.000Z", 40, "WPK"), // 18:30 PDT, in-window, coded peak
+      c("2026-07-16T03:30:00.000Z", 50, "WOP"), // 20:30 PDT, IN the 16-21 window but coded off-peak
+      c("2026-07-16T09:30:00.000Z", 7, "WOP"), // 02:30 PDT, off-peak both ways
+    ];
+    const bills: CycleBill[] = [
+      { start: "2026-07-01", close: "2026-07-31", demandChargeUsd: null, peakKw: 100 },
+    ];
+    const { cycles } = bucketUsage(intervals, bills, TZ, CARD);
+    const cyc = cycles[0]!;
+    // Peak = the WPK sum (30 + 40 = 70), NOT the 16-21 window sum (which would be 120).
+    expect(cyc.energyKwh.peak).toBe(70);
+    expect(cyc.energyKwh.off_peak).toBe(57); // the two WOP intervals
+    // Peak-window demand is gated on the coded-peak intervals: the 20:30 WOP interval
+    // (50 kWh -> 200 kW, in the wall-clock window) must NOT set it; 40 kWh -> 160 kW does.
+    expect(cyc.peakWindowDemandKw).toBe(160);
+    // Max demand still sees every interval (the 20:30 WOP 200 kW is the cycle max).
+    expect(cyc.maxDemandKw).toBe(200);
+  });
+
+  it("routes WPP-coded intervals to partial_peak", () => {
+    const c = (start: string, kWh: number, touCode: string): IntervalReading => ({
+      start,
+      durationSec: 900,
+      kWh,
+      touCode,
+    });
+    const intervals: IntervalReading[] = [
+      c("2026-07-15T22:00:00.000Z", 12, "WPP"), // 15:00 PDT, coded partial peak
+      c("2026-07-15T23:30:00.000Z", 30, "WPK"), // 16:30 PDT, coded peak
+      c("2026-07-16T09:30:00.000Z", 7, "WOP"), // off-peak
+    ];
+    const bills: CycleBill[] = [
+      { start: "2026-07-01", close: "2026-07-31", demandChargeUsd: null, peakKw: 0 },
+    ];
+    const { cycles } = bucketUsage(intervals, bills, TZ, CARD);
+    const cyc = cycles[0]!;
+    expect(cyc.energyKwh.peak).toBe(30);
+    expect(cyc.energyKwh.partial_peak).toBe(12);
+    expect(cyc.energyKwh.off_peak).toBe(7);
+  });
+
+  it("falls back to the wall-clock window when an interval carries no TOU Code (ESPI/Bayou)", () => {
+    // Code-less intervals (the XML feed) keep the legacy 4-9pm bucketing untouched.
+    const intervals: IntervalReading[] = [
+      r("2026-07-15T01:00:00.000Z", 28), // 18:00 PDT, in 16-21 window -> peak
+      r("2026-07-15T09:00:00.000Z", 5), // 02:00 PDT -> off-peak
+    ];
+    const bills: CycleBill[] = [
+      { start: "2026-07-01", close: "2026-07-31", demandChargeUsd: null, peakKw: 100 },
+    ];
+    const { cycles } = bucketUsage(intervals, bills, TZ, CARD);
+    expect(cycles[0]!.energyKwh.peak).toBe(28);
+    expect(cycles[0]!.energyKwh.off_peak).toBe(5);
+    expect(cycles[0]!.energyKwh.partial_peak).toBe(0);
+  });
 });
 
 // A demand-heavy, low-energy summer cycle: the classic low-load-factor pump that

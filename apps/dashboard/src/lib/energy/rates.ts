@@ -119,16 +119,68 @@ export function sizeClassFor(peakKw: number, card: RateCard): SizeClass {
 }
 
 /**
+ * Canonicalize a raw rate code to a hyphenated card schedule.
+ *
+ * PG&E's bills, the "Download My Data" export's Rate Code column, and the grower's
+ * master sheet all print UN-hyphenated billing-determinant codes ("HAGC", "AGC",
+ * "HAGA2", "AG5B", "AG4C"), often with a leading "H" (the SmartRate/historical
+ * prefix). The card and `familyOf` speak only hyphenated canonical schedules
+ * ("AG-C2", "AG-5"), so without this step every real code falls through unpriceable.
+ *
+ * Steps: trim + uppercase + take the leading token (drop a "P0xx"/label descriptor);
+ * strip a SINGLE leading "H" only when the remainder begins "AG" (so "HAGC"->"AGC"
+ * but the non-ag "HB1"/"HB6" keep their H and never masquerade as ag); then map the
+ * un-hyphenated token to its canonical hyphenated schedule. Legacy AG4x/AG5x fold to
+ * the bare "AG-4"/"AG-5" families (the card carries no per-tier legacy rows). An "FB"
+ * tail is the AG-B fixed variant -> AG-B2. Anything unrecognized (A1X, B1, E19P, OL1,
+ * HB1, HB6 ...) returns its own trimmed uppercase token unchanged - it must stay
+ * non-ag and unpriceable, never guessed onto a card row.
+ */
+export function canonicalSchedule(raw: string): string {
+  const token = raw.trim().toUpperCase().split(/[\s(]/)[0] ?? "";
+  if (token === "") return "";
+  // Already hyphenated (card labels, or a bill that prints "AG-C2"): leave as-is.
+  if (token.startsWith("AG-")) return token;
+  // Strip a single leading H only when it fronts an "AG..." code (HAGC -> AGC).
+  const t = token.startsWith("H") && token.slice(1).startsWith("AG") ? token.slice(1) : token;
+  switch (t) {
+    case "AGA1":
+      return "AG-A1";
+    case "AGA2":
+      return "AG-A2";
+    case "AGB":
+    case "AGB1":
+    case "AGB2":
+    case "AGFB":
+      return "AG-B2";
+    case "AGC":
+    case "AGC1":
+    case "AGC2":
+      return "AG-C2";
+    default:
+      break;
+  }
+  // Legacy AG-4* / AG-5* (un-hyphenated, any tier letter): fold to the bare family.
+  const legacy = t.match(/^AG([45])[A-E]?$/);
+  if (legacy) return `AG-${legacy[1] as string}`;
+  return token;
+}
+
+/**
  * Normalize a stored rate schedule to its family:
  *  - current ag: "AG-C2"/"AG-C1"/"AG-C" → "AG-C" (a trailing size digit);
  *  - legacy ag: "AG-4B"/"AG-4"/"AG-5C"/"AG-5" → "AG-4"/"AG-5" (a trailing tier letter).
  * The legacy schedules print as AG-4A..AG-4E and AG-5A..AG-5E (and bare AG-4/AG-5); they
  * MUST fold to the "AG-4"/"AG-5" families so the runner's LEGACY_FAMILIES set classifies a
  * real meter on a closed rate, instead of leaving e.g. AG-4B unmatched and finding-less.
- * Anything else returns its own trimmed uppercase label unchanged.
+ *
+ * `canonicalSchedule` runs FIRST so the raw billing codes the real data actually
+ * carries ("HAGC", "AGC", "HAGA2", "AG5B", "AG4C") fold here too: HAGC/AGC -> AG-C,
+ * AG5B -> AG-5, etc. Anything `canonicalSchedule` cannot place returns its own trimmed
+ * uppercase token unchanged.
  */
 export function familyOf(schedule: string): string {
-  const s = schedule.trim().toUpperCase();
+  const s = canonicalSchedule(schedule);
   const current = s.match(/^(AG-[ABC])\d?$/);
   if (current) return current[1] as string;
   const legacy = s.match(/^(AG-[45])[A-E]?$/);

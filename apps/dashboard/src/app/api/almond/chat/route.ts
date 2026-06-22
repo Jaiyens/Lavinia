@@ -6,10 +6,17 @@ import { activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
-import { resolveModel } from "@/lib/almond/models";
+import { resolveModel, isAutoChoice } from "@/lib/almond/models";
+import { routeAutoModel } from "@/lib/almond/auto/route";
+import { attachmentKindsFromMessages } from "@/lib/almond/auto/intent";
+import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 import { parseSpreadsheetAttachments, stripFileAttachments } from "@/lib/almond/attachments/parse";
 import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
+import { hasGatewayKey } from "@/lib/ai/gateway";
+import { isCodegenExportAvailable } from "@/lib/almond/codegen/flags";
+import { resolveExportParams } from "@/lib/almond/skills/export-spreadsheet";
+import { resolveReportParams } from "@/lib/almond/skills/generate-report";
 
 /**
  * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
@@ -116,13 +123,45 @@ export async function POST(req: Request): Promise<Response> {
   const preparedMessages = canPersist
     ? await parseSpreadsheetAttachments(uiMessages)
     : stripFileAttachments(uiMessages);
-  // Validate the requested model against the allowlist (a bad/forged value falls back to Opus 4.8) so
-  // an arbitrary model string can never reach the gateway. The stub path ignores it (offline/CI).
-  const responder = defaultAlmondResponder(resolveModel(requestedModel));
+  // Resolve the model. Two paths:
+  //   - Auto (the sentinel "auto"): the grower let Almond pick. The Auto router classifies the turn
+  //     server-side (text + server-derived attachment kinds + a cache probe) and returns a CONCRETE
+  //     allowlisted id PLUS the predicted decided-line headline — the classifier never names a model
+  //     (ADR-A08), so a forged intent cannot steer the gateway. The decided line rides through to the
+  //     responder so the user sees one honest "what Auto decided" line.
+  //   - Otherwise: validate the client's requested id against the allowlist (`resolveModel`), so a
+  //     bad/forged value falls back to Opus 4.8 and an arbitrary string never reaches the gateway. The
+  //     stub path ignores it (offline/CI). A forged "auto" reaching this path is not allowlisted, so it
+  //     too falls back to the default.
+  let modelId: string;
+  let decided: { headline: AutoHeadlineKey } | undefined;
+  if (isAutoChoice(requestedModel)) {
+    const lastText = lastUserTextFor(preparedMessages);
+    const attachmentKinds = attachmentKindsFromMessages(preparedMessages);
+    // Codegen (a bespoke one-off artifact) is only reachable when the caller can persist AND the
+    // Gateway key + flag are present; otherwise a bespoke ask degrades to a deterministic build.
+    const codegenOn = canPersist && isCodegenExportAvailable(hasGatewayKey());
+    const decision = await routeAutoModel({
+      text: lastText,
+      attachmentKinds,
+      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
+      codegenOn,
+      resolveExportRequest: () => resolveExportParams({}),
+      resolveReportRequest: () => resolveReportParams({}),
+      resolveCodegenRequest: () => ({ request: null, format: "pdf" }),
+    });
+    modelId = decision.modelId;
+    decided = { headline: decision.headline };
+  } else {
+    modelId = resolveModel(requestedModel);
+    decided = undefined;
+  }
+  const responder = defaultAlmondResponder(modelId, decided);
   try {
     return await responder.toResponse({
       uiMessages: preparedMessages,
       system: buildSystemPrompt(farmName),
+      decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
       // separate "who authored this export" concern.
@@ -138,4 +177,20 @@ export async function POST(req: Request): Promise<Response> {
     // clean 500 the client renders as the inline error state, never an unhandled crash.
     return Response.json({ error: "almond failed" }, { status: 500 });
   }
+}
+
+/**
+ * The latest user turn's text, lower-cased and trimmed — the Auto router's text input. Mirrors the
+ * responder's private `lastUserText` (kept local so the route does not reach into responder internals):
+ * walk messages from the end, take the first `user` turn, concatenate its text parts, lower-case, trim.
+ */
+function lastUserTextFor(messages: UIMessage[]): string {
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (lastUser === undefined) return "";
+  return (lastUser.parts ?? [])
+    .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join(" ")
+    .toLowerCase()
+    .trim();
 }

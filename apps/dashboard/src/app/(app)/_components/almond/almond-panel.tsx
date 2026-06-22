@@ -27,6 +27,7 @@ export function AlmondPanel() {
     status,
     navByMessage,
     reportsByMessage,
+    decidedByMessage,
     onReplay,
     send,
     retry,
@@ -110,6 +111,7 @@ export function AlmondPanel() {
           starters={starters}
           navByMessage={navByMessage}
           reportsByMessage={reportsByMessage}
+          decidedByMessage={decidedByMessage}
           onReplay={onReplay}
           onStarter={(q) => send(q)}
           onRetry={retry}

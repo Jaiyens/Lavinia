@@ -24,6 +24,7 @@ import {
   type MeterUsageProfile,
   type RatePlan,
   type RateCard,
+  type TouPeriod,
 } from "./rates";
 import type { CycleBill, IntervalReading } from "./types";
 
@@ -43,16 +44,45 @@ function endBound(iso: string): number {
 }
 
 /**
- * Bucket one cycle's intervals into TOU energy + the billed peaks. v1 uses two TOU
- * buckets: peak (4-9pm local) and off-peak (everything else); partial_peak stays 0
- * until a partial-peak window is modeled. Max demand is the highest 15-min kW in
- * the cycle, floored by the bill's stored peak so a thin sample never understates
- * it (same trick classify.ts uses). Peak-window demand is the highest in-window kW.
+ * Classify a PG&E export TOU code into a card bucket, or null when the code is
+ * absent/unrecognized (the caller then falls back to the wall-clock window). The
+ * "Download My Data" CSV ships an authoritative per-interval code with a season
+ * prefix (W = winter, S = summer) and a period suffix: PK = peak, PP = partial
+ * peak, SO/OP = (super) off-peak. We classify on the period suffix only - the
+ * season is already settled by seasonFor(bill.start) - so WPK and SPK both bucket
+ * to peak, WOP/SOP/WSO/SSO all to off_peak. Unprefixed PK/PP/OP are accepted too.
+ */
+function touPeriodForCode(touCode: string | null | undefined): TouPeriod | null {
+  if (touCode == null) return null;
+  const c = touCode.trim().toUpperCase();
+  if (c === "") return null;
+  // Drop a leading season prefix (W/S) so only the period suffix is matched.
+  const suffix = /^[WS]/.test(c) ? c.slice(1) : c;
+  if (suffix === "PK") return "peak";
+  if (suffix === "PP") return "partial_peak";
+  if (suffix === "SO" || suffix === "OP") return "off_peak";
+  return null;
+}
+
+/**
+ * Bucket one cycle's intervals into TOU energy + the billed peaks. When an interval
+ * carries the export's authoritative TOU Code (touCode), classify by it: WPK/SPK ->
+ * peak, WPP/SPP -> partial_peak, WSO/SSO/WOP/SOP -> off_peak. This is the correct
+ * source - the code is what the bill priced against. Only when touCode is
+ * null/absent (the ESPI/Bayou feeds carry no per-interval code) do we fall back to
+ * isInPeakWindow, the LEGACY DEMO path below.
  *
- * LEGACY DEMO PATH ONLY: this 4-9pm bucketing predates src/lib/energy/tou.ts and
- * conflates the DR event window with the rate peak (5-8pm per AR-14). The 3.3
- * lever rebuild replaces this interval path with cycle-level priceCycleCents and
- * the tou.ts clocks; do not extend this window.
+ * LEGACY DEMO FALLBACK ONLY: the 4-9pm wall-clock bucketing predates
+ * src/lib/energy/tou.ts and conflates the DR event window with the rate peak (5-8pm
+ * per AR-14); it also over-counts AG-C peak kWh by ~60% versus the WPK code, which
+ * is exactly why a coded interval must never reach it. The 3.3 lever rebuild
+ * replaces this interval path with cycle-level priceCycleCents and the tou.ts
+ * clocks; do not extend this window.
+ *
+ * Max demand is the highest 15-min kW in the cycle, floored by the bill's stored
+ * peak so a thin sample never understates it (same trick classify.ts uses).
+ * Peak-window demand is the highest kW the cycle saw inside the peak period (the
+ * WPK-coded intervals when coded, else the wall-clock window).
  */
 function bucketCycle(
   intervals: readonly IntervalReading[],
@@ -63,6 +93,7 @@ function bucketCycle(
   const lo = startBound(bill.start);
   const hi = endBound(bill.close);
   let peakKwh = 0;
+  let partialKwh = 0;
   let offKwh = 0;
   let maxKw = 0;
   let windowMaxKw = 0;
@@ -71,9 +102,14 @@ function bucketCycle(
     if (t < lo || t >= hi) continue;
     const kw = intervalKw(iv);
     maxKw = Math.max(maxKw, kw);
-    if (isInPeakWindow(iv.start, timezone)) {
+    // Prefer the export's authoritative code; only window-bucket a code-less interval.
+    const coded = touPeriodForCode(iv.touCode);
+    const period = coded ?? (isInPeakWindow(iv.start, timezone) ? "peak" : "off_peak");
+    if (period === "peak") {
       peakKwh += iv.kWh;
       windowMaxKw = Math.max(windowMaxKw, kw);
+    } else if (period === "partial_peak") {
+      partialKwh += iv.kWh;
     } else {
       offKwh += iv.kWh;
     }
@@ -82,7 +118,7 @@ function bucketCycle(
     start: bill.start,
     close: bill.close,
     season: seasonFor(bill.start, card),
-    energyKwh: { peak: peakKwh, partial_peak: 0, off_peak: offKwh },
+    energyKwh: { peak: peakKwh, partial_peak: partialKwh, off_peak: offKwh },
     maxDemandKw: Math.max(maxKw, bill.peakKw ?? 0),
     peakWindowDemandKw: windowMaxKw,
   };

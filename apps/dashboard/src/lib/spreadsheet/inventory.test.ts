@@ -31,7 +31,8 @@ describe("parseInventory, real-world header spellings", () => {
     expect(well.growerPumpId).toBe("P001");
     expect(well.name).toBe("Home Ranch Well 1");
     expect(well.entityName).toBe("Batth Farms LLC");
-    expect(well.accountNumber).toBe("07302408880");
+    // Canonicalized for dedupe: leading zeros stripped (a check-digit suffix would be too).
+    expect(well.accountNumber).toBe("7302408880");
     expect(well.rateSchedule).toBe("AG-C");
     expect(well.serialCode).toBe("3-07");
     expect(well.blockName).toBe("Home Ranch");
@@ -72,6 +73,64 @@ describe("parseInventory, real-world header spellings", () => {
     expect(legacy.rateSchedule).toBe("AG-5B"); // stored verbatim, never rewritten
     expect(legacy.isLegacy).toBe(true);
     expect(rows[0]!.isLegacy).toBe(false); // AG-C is current
+  });
+});
+
+describe("parseInventory, the REAL Batth master 'All' headers", () => {
+  // Verbatim header row from the real "Batth Farms 2025 Master Meter List (1).xlsx" sheet
+  // "All", which earlier silently dropped Full Acct #, Active Rate Schedule, Prem lat/long,
+  // Billing Name and Solar into unmappedColumns (account/entity/rate/lat/long null for all
+  // 183 meters). Two data rows: a non-solar pump and a "1092kw"/empty-NEMA solar array.
+  const realHeader =
+    "Billing Name,Actual owner,Full Acct #,SA ID,Meter #,Pump ID,Active Rate Schedule,Legacy," +
+    "Existing descriptor,Prem lat,Prem long,Solar,NEMA,True-up,Contiguous,Solar notes,GPM," +
+    "Crop,Installed on,Irrigation,RANCH,Status";
+  const pumpRow =
+    "Batth Farms LLC,Gurtej Batth,4507020255-6,91898735,M-101,P001,HAGC,No,," +
+    "36.539,-119.83,,,,Y,,1200,Almonds,2019,Drip,Home Ranch,GOOD";
+  const solarRow =
+    "Batth Farms LLC,Gurtej Batth,4699664587-8,96005793,M-202,P002,AG5B,Yes,," +
+    "36.541,-119.84,1092kw,,April,Y,,,Almonds,2020,Drip,West Ranch,GOOD";
+  const csv = [realHeader, pumpRow, solarRow].join("\n");
+  const { rows, mappedColumns, unmappedColumns } = parseInventory(csv);
+
+  it("maps the load-bearing columns that were silently dropped before", () => {
+    // The product columns must land in mappedColumns, not be lost as unmapped.
+    for (const col of ["Full Acct #", "Active Rate Schedule", "Prem lat", "Prem long", "Billing Name", "Solar"]) {
+      expect(mappedColumns).toContain(col);
+      expect(unmappedColumns).not.toContain(col);
+    }
+    // Columns with no data-model home stay surfaced (not faked into a field).
+    expect(unmappedColumns).toContain("Existing descriptor");
+  });
+
+  it("populates accountNumber/entityName/rateSchedule/latitude/longitude for all rows", () => {
+    for (const row of rows) {
+      expect(row.entityName).toBe("Batth Farms LLC");
+      expect(row.rateSchedule).not.toBeNull();
+      expect(row.accountNumber).not.toBeNull();
+      expect(row.latitude).not.toBeNull();
+      expect(row.longitude).not.toBeNull();
+    }
+  });
+
+  it("canonicalizes the Full Acct # check digit so accounts dedupe", () => {
+    expect(rows[0]!.accountNumber).toBe("4507020255"); // "4507020255-6" -> check digit stripped
+    expect(rows[1]!.accountNumber).toBe("4699664587"); // "4699664587-8"
+  });
+
+  it("derives isSolar from the Solar column even when NEMA is empty, parsing kW", () => {
+    expect(rows[0]!.isSolar).toBe(false); // empty Solar cell, no NEM signal
+    expect(rows[1]!.solarKw).toBe(1092); // "1092kw" -> nameplate
+    expect(rows[1]!.isSolar).toBe(true); // Solar cell present though NEMA is blank
+    expect(rows[1]!.nemaCode).toBeNull();
+  });
+
+  it("treats a bare 'Solar' marker (or array code) as a signal without faking a kW", () => {
+    const markerCsv = [realHeader, pumpRow.replace(",,,Y,", ",Solar,,,Y,")].join("\n");
+    const marker = parseInventory(markerCsv).rows[0]!;
+    expect(marker.isSolar).toBe(true);
+    expect(marker.solarKw).toBeNull(); // "Solar" is a signal, not a nameplate size
   });
 });
 

@@ -14,7 +14,13 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
 import type { AlmondReportData } from "@/lib/almond/responder";
-import { DEFAULT_ALMOND_MODEL, isAllowedModel, type AlmondModelId } from "@/lib/almond/models";
+import {
+  AUTO_SENTINEL,
+  isAllowedModel,
+  isAutoChoice,
+  type AlmondModelChoice,
+} from "@/lib/almond/models";
+import type { AutoDecided, AutoHeadlineKey } from "@/lib/almond/auto/types";
 import {
   sanitizeHistoryMessages,
   isSaveable,
@@ -40,7 +46,7 @@ import { useAlmondNavigation } from "./use-almond-navigation";
  */
 export type AlmondUIMessage = UIMessage<
   unknown,
-  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData }
+  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData; decided: AutoDecided }
 >;
 
 type AlmondChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -61,8 +67,8 @@ type AlmondChatValue = {
   /** Whether the caller may attach files (authed owner only; the public Tour cannot). */
   canAttach: boolean;
   // Model picker.
-  model: AlmondModelId;
-  setModel: (id: AlmondModelId) => void;
+  model: AlmondModelChoice;
+  setModel: (id: AlmondModelChoice) => void;
   // The conversation, shared by the panel and the page.
   messages: AlmondUIMessage[];
   status: AlmondChatStatus;
@@ -77,6 +83,8 @@ type AlmondChatValue = {
   editMessage: (messageId: string, newText: string) => void;
   navByMessage: Map<string, AlmondNavChip[]>;
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
+  decidedByMessage: Map<string, AutoHeadlineKey>;
   onReplay: (chip: AlmondNavChip) => void;
   announcement: { text: string; seq: number };
   // --- Saved history (per-user, per-farm). Off on the public Tour (no session) -------------------
@@ -197,22 +205,23 @@ export function AlmondChatProvider({
   const openAlmond = useCallback(() => setOpen(true), []);
   const closeAlmond = useCallback(() => setOpen(false), []);
 
-  // Chosen model. Starts at the default for an SSR-safe first render, then hydrates from
+  // Chosen model. Starts at Auto (the default) for an SSR-safe first render, then hydrates from
   // localStorage so a grower's pick sticks between visits (a farmer specifically liked switching).
-  const [model, setModelState] = useState<AlmondModelId>(DEFAULT_ALMOND_MODEL);
+  const [model, setModelState] = useState<AlmondModelChoice>(AUTO_SENTINEL);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(MODEL_STORAGE_KEY);
       // One-time hydration of the persisted pick after mount. setState-in-effect is the correct
       // pattern here (localStorage can't be read during SSR/render without a hydration mismatch);
       // SSR and the first client render both show the default, then this syncs the saved choice.
+      // Accept a concrete allowlisted id or the Auto sentinel; anything else falls through to Auto.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (isAllowedModel(saved)) setModelState(saved);
+      if (isAllowedModel(saved) || isAutoChoice(saved)) setModelState(saved);
     } catch {
       // localStorage may be unavailable (privacy mode) — the default is fine.
     }
   }, []);
-  const setModel = useCallback((id: AlmondModelId) => {
+  const setModel = useCallback((id: AlmondModelChoice) => {
     setModelState(id);
     try {
       localStorage.setItem(MODEL_STORAGE_KEY, id);
@@ -264,9 +273,11 @@ export function AlmondChatProvider({
   const { apply: applyNavigation } = useAlmondNavigation();
   const [navByMessage, setNavByMessage] = useState<Map<string, AlmondNavChip[]>>(new Map());
   const [reportsByMessage, setReportsByMessage] = useState<Map<string, AlmondReportCard[]>>(new Map());
+  const [decidedByMessage, setDecidedByMessage] = useState<Map<string, AutoHeadlineKey>>(new Map());
   const [announcement, setAnnouncement] = useState<{ text: string; seq: number }>({ text: "", seq: 0 });
   const pendingChips = useRef<AlmondNavChip[]>([]);
   const pendingReports = useRef<AlmondReportCard[]>([]);
+  const pendingDecided = useRef<AutoHeadlineKey | null>(null);
   const [flushTick, setFlushTick] = useState(0);
 
   const announce = useCallback((label: string) => {
@@ -294,6 +305,12 @@ export function AlmondChatProvider({
       if (part.type === "data-report") {
         pendingReports.current.push(part.data);
         setFlushTick((n) => n + 1);
+        return;
+      }
+      if (part.type === "data-decided") {
+        pendingDecided.current = part.data.headline;
+        setFlushTick((n) => n + 1);
+        return;
       }
     },
   });
@@ -332,6 +349,22 @@ export function AlmondChatProvider({
       }
       if (reportsToFlush.length > 0 && assistantId) {
         next.set(assistantId, dedupeReports([...(next.get(assistantId) ?? []), ...reportsToFlush]));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+
+    const decidedToFlush = assistantId ? pendingDecided.current : null;
+    if (decidedToFlush !== null) pendingDecided.current = null;
+    setDecidedByMessage((prev) => {
+      let changed = false;
+      const next = new Map<string, AutoHeadlineKey>();
+      for (const [id, headline] of prev) {
+        if (liveIds.has(id)) next.set(id, headline);
+        else changed = true;
+      }
+      if (decidedToFlush !== null && assistantId) {
+        next.set(assistantId, decidedToFlush);
         changed = true;
       }
       return changed ? next : prev;
@@ -455,8 +488,10 @@ export function AlmondChatProvider({
   const resetConversationState = useCallback(() => {
     setNavByMessage(new Map());
     setReportsByMessage(new Map());
+    setDecidedByMessage(new Map());
     pendingChips.current = [];
     pendingReports.current = [];
+    pendingDecided.current = null;
     savedFingerprintRef.current = "";
   }, []);
 
@@ -563,6 +598,7 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      decidedByMessage,
       onReplay,
       announcement,
       historyEnabled,
@@ -590,6 +626,7 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      decidedByMessage,
       onReplay,
       announcement,
       historyEnabled,

@@ -145,7 +145,15 @@ export function mapScheduleLabel(
   card: RateCard,
   billedMaxKw: number | null,
 ): MappedSchedule | null {
-  const token = label.trim().toUpperCase().split(/\s+/)[0]?.replace(/-/g, "") ?? "";
+  // Strip a single leading "H" (PG&E's SmartRate/historical-interval prefix on
+  // the Download-My-Data export: HAGC, HAGA2, ...) ONLY when the bare token is
+  // not already a known plan key. This recovers HAGC->AGC, HAGA2->AGA2,
+  // HAGA1->AGA1, HAGB->AGB, HAG5B->AG5B (the bulk of Batth's meters). It cannot
+  // mis-map a non-ag H-code: HE1->E1, HB1->B1, HEM->EM etc. land outside
+  // LABEL_TO_PLAN and stay correctly NULL (fail closed). No LABEL_TO_PLAN key
+  // starts with "H", so the guard's only effect is on H-prefixed inputs.
+  const raw = label.trim().toUpperCase().split(/\s+/)[0]?.replace(/-/g, "") ?? "";
+  const token = LABEL_TO_PLAN[raw] ? raw : raw.replace(/^H/, "");
   const entry = LABEL_TO_PLAN[token];
   if (!entry) return null;
   const demandTier: SizeClass =
@@ -165,6 +173,38 @@ export function planFromLabel(
   billedMaxKw: number | null,
 ): RatePlan | null {
   return mapScheduleLabel(label, card, billedMaxKw)?.plan ?? null;
+}
+
+/**
+ * Why a label did not map, so an intentional exclusion (a non-ag schedule the
+ * AG card cannot price) reads distinctly from an AG-mapping failure the founder
+ * should chase. ONLY meaningful for labels mapScheduleLabel already returned
+ * null for; it must never re-label a recovered AG code (HAGC/HAGA1/HAGA2/HAGB/
+ * HAG5B map after the leading-H strip and so never reach here).
+ *
+ * - "non_ag": a known non-agricultural schedule (A1x small commercial, B1/B6
+ *   and their H-prefixed historical spellings, the HE family / E19 commercial
+ *   TOU family). The AG card has no plan for these; they need a non-ag
+ *   reference, not an AG switch.
+ * - "ag_no_card": an AG-shaped token with no plan family on this card (HAGFB ->
+ *   no FB family). Fail closed: a real ag meter the card simply cannot price.
+ * - "unknown": anything else.
+ */
+export type UnmappedScheduleClass = "non_ag" | "ag_no_card" | "unknown";
+
+export function classifyUnmappedSchedule(label: string): UnmappedScheduleClass {
+  // Same leading-token derivation as mapScheduleLabel (hyphen-stripped, upper).
+  const raw = label.trim().toUpperCase().split(/\s+/)[0]?.replace(/-/g, "") ?? "";
+  // AG-shaped but unmapped: the H-strip already recovered every AG family the
+  // card carries, so a still-unmapped AG token has no card plan (HAGFB->AGFB).
+  if (/^H?AG/.test(raw)) return "ag_no_card";
+  // Known non-ag schedules the AG card cannot price.
+  if (/^A\d/.test(raw)) return "non_ag"; // A1X (small commercial)
+  if (/^HB\d/.test(raw)) return "non_ag"; // HB1, HB6 (historical commercial)
+  if (/^B\d/.test(raw)) return "non_ag"; // B1, B6
+  if (/^HE/.test(raw)) return "non_ag"; // HE1, HE1N, HEM, HETOUC, HETOUCN
+  if (/^E\d/.test(raw)) return "non_ag"; // E19P
+  return "unknown";
 }
 
 /**
@@ -428,6 +468,13 @@ export type RateLeverNone = {
     | "no_testable_cycles"
     | "no_usage_basis"
     | "no_savings";
+  /**
+   * Set only when reason is "unmapped_schedule": why the label did not map, so an
+   * intentional exclusion (a non-ag schedule the AG card cannot price) is reported
+   * distinctly from an AG-mapping failure. Additive and fail-closed: still no
+   * finding either way.
+   */
+  unmappedClass?: UnmappedScheduleClass;
   excluded: CycleExclusion[];
 };
 
@@ -472,7 +519,13 @@ export function rateLever(
 
   const mapped = mapScheduleLabel(input.scheduleLabel, card, maxBilledKw);
   if (mapped === null) {
-    return { kind: "none", isLegacy: null, reason: "unmapped_schedule", excluded };
+    return {
+      kind: "none",
+      isLegacy: null,
+      reason: "unmapped_schedule",
+      unmappedClass: classifyUnmappedSchedule(input.scheduleLabel),
+      excluded,
+    };
   }
   const { plan } = mapped;
 

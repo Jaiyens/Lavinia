@@ -21,6 +21,7 @@
 import type { IntervalReading } from "@/lib/energy/types";
 import { parseCsv } from "@/lib/spreadsheet/parse";
 import { normalizeEspi } from "./espi";
+import { canonSaId, normalizeAccountNumber } from "./sa-id";
 import type { NormalizedMeter } from "./types";
 
 /** Canonical export field -> the normalized header spellings PG&E uses for it. */
@@ -60,14 +61,16 @@ function toNumber(v: string | undefined): number | null {
 }
 
 /**
- * PG&E reports interval length in MINUTES in the CSV (15), but ESPI/Green Button uses
- * SECONDS (900). Normalize both to seconds; treat a value < 60 as minutes. Defaults to
- * 900 (15 min) when the column is absent or unparseable.
+ * PG&E reports interval length in MINUTES in the CSV (15 and 60 - some meters are hourly),
+ * but ESPI/Green Button uses SECONDS (900/3600/86400). Normalize both to seconds; treat a
+ * value <= 60 as minutes (a 60-minute hourly interval is still minutes, not 60 seconds, and
+ * ESPI seconds are never literally 60). Defaults to 900 (15 min) when the column is absent or
+ * unparseable.
  */
 function toDurationSec(v: string | undefined): number {
   const n = toNumber(v);
   if (n === null || n <= 0) return 900;
-  return n < 60 ? Math.round(n * 60) : Math.round(n);
+  return n <= 60 ? Math.round(n * 60) : Math.round(n);
 }
 
 /** D = delivered (to customer) = import; R / Received / ESPI flowDirection 19 = export. */
@@ -166,6 +169,12 @@ type Accumulator = {
  * Time column read as the interval end), and carries direction + TOU code per reading.
  */
 export function normalizeDownloadMyDataCsv(csv: string): NormalizedMeter[] {
+  // MEMORY CEILING: this materializes the whole file as a string[][] grid held live for the
+  // entire pass (a real ~81MB / 1-month export peaks ~850MB heap; the grid alone is ~680MB).
+  // It is safe for a single file up to roughly 6 months at PG&E's 15-min density, but the
+  // source `csv` string hits V8's hard MAX_STRING_LENGTH (~536MB chars) at ~6.5 months and the
+  // grid heap scales linearly past any serverless ceiling beyond that. Split longer exports, or
+  // move the importer to a streaming (line-by-line) reader before ingesting a multi-year file.
   const grid = parseCsv(csv);
   const located = indexColumns(grid);
   if (!located) return [];
@@ -180,7 +189,11 @@ export function normalizeDownloadMyDataCsv(csv: string): NormalizedMeter[] {
 
   for (let r = headerRow + 1; r < grid.length; r += 1) {
     const cells = grid[r]!;
-    const serviceId = cleanText(cell(cells, "serviceId"));
+    // Canonicalize the SA ID: the export zero-pads it to 10 digits ("0091898735") but the
+    // master sheet (and the Pump upsert key) use the natural id ("91898735"). Stripping here is
+    // what lets a CSV import join the master meters instead of forking duplicate Pumps.
+    const rawServiceId = cleanText(cell(cells, "serviceId"));
+    const serviceId = rawServiceId === null ? null : canonSaId(rawServiceId);
     const usage = toNumber(cell(cells, "usage"));
     if (!serviceId || usage === null) continue;
 
@@ -218,7 +231,10 @@ export function normalizeDownloadMyDataCsv(csv: string): NormalizedMeter[] {
       acc = {
         serviceId,
         meterSerial: cleanText(cell(cells, "meter")),
-        accountNumber: cleanText(cell(cells, "account")),
+        // Canonicalize the account the same way inventory.ts does (strip the "-N" check
+        // digit + leading zeros), so the CSV "0096005793" and the master sheet
+        // "0096005793-3" resolve to ONE Account row instead of forking a duplicate.
+        accountNumber: normalizeAccountNumber(cleanText(cell(cells, "account"))),
         tariff: cleanText(cell(cells, "rate")),
         fuel,
         readings: new Map(),
@@ -227,7 +243,7 @@ export function normalizeDownloadMyDataCsv(csv: string): NormalizedMeter[] {
     }
     // Fill identity fields from the first row that carries them.
     acc.meterSerial ??= cleanText(cell(cells, "meter"));
-    acc.accountNumber ??= cleanText(cell(cells, "account"));
+    acc.accountNumber ??= normalizeAccountNumber(cleanText(cell(cells, "account")));
     acc.tariff ??= cleanText(cell(cells, "rate"));
 
     acc.readings.set(`${start}|${direction}`, {

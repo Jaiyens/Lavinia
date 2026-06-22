@@ -5,8 +5,8 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import {
-  ALMOND_MODELS,
-  type AlmondModelId,
+  MODEL_PICKER_OPTIONS,
+  type AlmondModelChoice,
   type AlmondModelProvider,
 } from "@/lib/almond/models";
 import { useAlmondChat } from "./almond-launcher-provider";
@@ -41,6 +41,14 @@ function ProviderMark({
     focusable: false as const,
     className,
   };
+  if (provider === "Auto")
+    // Neutral 4-point sparkle in the brand green: Auto is Almond deciding, not a vendor, so it gets a
+    // house mark (no provider logo) sized like the others. A single diamond-star path on the 24x24 grid.
+    return (
+      <svg {...common} fill="#2fa84f">
+        <path d="M12 1.5 14.6 9.4 22.5 12 14.6 14.6 12 22.5 9.4 14.6 1.5 12 9.4 9.4 12 1.5Z" />
+      </svg>
+    );
   if (provider === "Anthropic")
     return (
       <svg {...common} fill="#D97757">
@@ -74,7 +82,7 @@ export function AlmondModelPicker({ className }: { className?: string }) {
   const { model, setModel } = useAlmondChat();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const current = ALMOND_MODELS.find((m) => m.id === model) ?? ALMOND_MODELS[0];
+  const current = MODEL_PICKER_OPTIONS.find((m) => m.id === model) ?? MODEL_PICKER_OPTIONS[0];
 
   // Close on outside click or Escape (only while open).
   useEffect(() => {
@@ -93,7 +101,7 @@ export function AlmondModelPicker({ className }: { className?: string }) {
     };
   }, [open]);
 
-  function pick(id: AlmondModelId) {
+  function pick(id: AlmondModelChoice) {
     setModel(id);
     setOpen(false);
   }
@@ -126,7 +134,7 @@ export function AlmondModelPicker({ className }: { className?: string }) {
           <p className="px-2.5 pb-1 pt-1.5 type-label-caps text-on-surface-variant/60">
             {t.modelLabel}
           </p>
-          {ALMOND_MODELS.map((m) => {
+          {MODEL_PICKER_OPTIONS.map((m) => {
             const selected = m.id === model;
             return (
               <button

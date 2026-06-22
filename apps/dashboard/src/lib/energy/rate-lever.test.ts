@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BACK_TEST_BAND_PCT,
   backTestMeter,
+  classifyUnmappedSchedule,
   costUnderPlanCents,
   cycleFromPeriod,
   mapScheduleLabel,
@@ -105,11 +106,55 @@ describe("planFromLabel / mapScheduleLabel", () => {
     expect(planFromLabel("", CARD, null)).toBeNull();
   });
 
+  it("recovers the H-prefixed AG spellings the export prints (HAGC->AG-C2 etc.)", () => {
+    // The real Download-My-Data export prints the SmartRate/historical "H" prefix
+    // on the bulk of Batth's ag meters (HAGC=85 SAs, HAGA2=19, HAGA1=14, HAGB=12,
+    // HAG5B=1 = 131 SAs). They must map to the same plans as the bare codes.
+    expect(planFromLabel("HAGC", CARD, null)?.schedule).toBe("AG-C2");
+    expect(planFromLabel("HAGA2", CARD, null)?.schedule).toBe("AG-A2");
+    expect(planFromLabel("HAGA1", CARD, null)?.schedule).toBe("AG-A1");
+    expect(planFromLabel("HAGB", CARD, null)?.schedule).toBe("AG-B2");
+    expect(planFromLabel("HAG5B", CARD, null)?.schedule).toBe("AG-5");
+  });
+
+  it("the H-strip never corrupts a non-ag H-code or an unfamilied AG code", () => {
+    // HE1->E1, HB1->B1 (the bare B1 token, NOT the AGB key), HEM->EM: all stay null.
+    expect(planFromLabel("HE1", CARD, null)).toBeNull();
+    expect(planFromLabel("HB1", CARD, null)).toBeNull();
+    expect(planFromLabel("HEM", CARD, null)).toBeNull();
+    expect(planFromLabel("HETOUC", CARD, null)).toBeNull();
+    // HAGFB->AGFB: ag-shaped but no FB family on the card -> null (fail closed).
+    expect(planFromLabel("HAGFB", CARD, null)).toBeNull();
+  });
+
   it("carries the REAL tier separate from the card row: AGA2 is a small schedule", () => {
     const mapped = mapScheduleLabel("AGA2 Ag<35 kW High Use", CARD, null);
     expect(mapped?.plan.schedule).toBe("AG-A2");
     expect(mapped?.plan.sizeClass).toBe("large"); // the card row it bills under
     expect(mapped?.realTier).toBe("small"); // the published <35 kW eligibility
+  });
+});
+
+describe("classifyUnmappedSchedule", () => {
+  it("tags the export's non-ag codes as non_ag (33 SAs across these codes)", () => {
+    for (const code of ["A1X", "B1", "HB1", "HB6", "HE1", "HE1N", "HEM", "HETOUC", "HETOUCN", "E19P"]) {
+      expect(classifyUnmappedSchedule(code), code).toBe("non_ag");
+    }
+  });
+
+  it("tags an ag-shaped token with no card family as ag_no_card, never non_ag", () => {
+    // HAGFB has no FB family on the card; it is an ag meter, not an intentional
+    // non-ag exclusion, so it must NOT be rubber-stamped as non_ag.
+    expect(classifyUnmappedSchedule("HAGFB")).toBe("ag_no_card");
+    expect(classifyUnmappedSchedule("AGFB")).toBe("ag_no_card");
+  });
+
+  it("does not reach for recovered AG codes (they map, so are never classified)", () => {
+    // Defensive: even if asked, an H-prefix AG code is ag-shaped (ag_no_card),
+    // never silently non_ag. In practice mapScheduleLabel maps these first.
+    for (const code of ["HAGC", "HAGA1", "HAGA2", "HAGB", "HAG5B"]) {
+      expect(classifyUnmappedSchedule(code), code).not.toBe("non_ag");
+    }
   });
 });
 
@@ -460,12 +505,39 @@ describe("rateLever", () => {
       kind: "none",
       isLegacy: null,
       reason: "unmapped_schedule",
+      unmappedClass: "non_ag",
     });
     expect(rateLever({ scheduleLabel: null, periods: [] }, CARD)).toMatchObject({
       kind: "none",
       isLegacy: null,
       reason: "no_schedule",
     });
+  });
+
+  it("carries the sub-class on an unmapped result so exclusions read distinctly", () => {
+    // A non-ag commercial schedule (HE1) vs an ag-shaped one with no card family
+    // (HAGFB): both stay none, but the founder can tell them apart.
+    expect(rateLever({ scheduleLabel: "HE1", periods: [] }, CARD)).toMatchObject({
+      reason: "unmapped_schedule",
+      unmappedClass: "non_ag",
+    });
+    expect(rateLever({ scheduleLabel: "HAGFB", periods: [] }, CARD)).toMatchObject({
+      reason: "unmapped_schedule",
+      unmappedClass: "ag_no_card",
+    });
+  });
+
+  it("an H-prefixed AG meter now produces a real finding, not an unmapped none", () => {
+    // HAGC is the largest cohort (85 SAs); before the H-strip it fell to NULL and
+    // got no rate finding. It must now map and run the lever like bare AGC.
+    const res = rateLever(
+      { scheduleLabel: "HAGC", periods: [exactPeriod("AG-C2", { peak: 100, off_peak: 1000 }, 100)] },
+      CARD,
+    );
+    expect(res.kind).not.toBe("none");
+    if (res.kind === "estimate") {
+      expect(res.currentSchedule).toBe("AG-C2");
+    }
   });
 
   it("does not mutate its inputs", () => {

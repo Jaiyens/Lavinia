@@ -70,6 +70,11 @@ export type AlmondRequest = {
    *  (ADR-A08). The stub ignores it (read-only, grounded directly); the model path passes it
    *  to `buildAlmondSkills`. */
   actor: AlmondActor;
+  /** The Auto router's decision for this turn (when the grower picked "Auto"). Carries the PREDICTED
+   *  decided-line headline; the responder writes it once and may correct a stale cache prediction from
+   *  the real file outcome (see `writeDecidedPart`). Absent for a hand-picked model, in which case no
+   *  decided line is written and every existing behavior is unchanged. */
+  decided?: AutoDecided;
 };
 
 export interface AlmondResponder {
@@ -119,6 +124,35 @@ function writeNavigatePart(
 /** Narrow an unknown tool output (the live path inspects `onStepFinish` tool results). */
 function isNavigateResult(output: unknown): output is NavigateResult {
   return typeof output === "object" && output !== null && "kind" in output;
+}
+
+// --- The Auto "what it decided" line (the Auto router) -------------------------------------------
+//
+// When the grower picks "Auto", the server-side router classifies the turn and hands the responder a
+// PREDICTED `decided.headline` (the copy KEY, not text — resolved client-side from `en.shell.almond.auto`).
+// The responder writes that headline onto the SAME UI-message stream as a transient `data-decided` part,
+// so the client buffers it once (like navigate/report parts) and never replays it. The concrete model id
+// stays server-side (already recorded on the usage row); only the headline key crosses the wire.
+//
+// ONCE + CORRECTED: the live path writes the part in `streamText`'s `onFinish` (after ALL tool-loop
+// steps), which is exactly-once by construction and reflects any correction made along the way. The one
+// correction: a file ask the router predicted as a cache HIT (`pulledCached`) but whose tool result comes
+// back with `fromCache !== true` (the predicted hit went stale and built fresh) is swapped to
+// `buildingNew`, so the line never claims bytes were pulled when they were actually built. A hand-picked
+// model passes no `decided`, so no part is written and behavior is unchanged.
+
+/** The data-part type the client Auto badge listens for. */
+const DECIDED_PART_TYPE = "data-decided" as const;
+/** A stable part id (a turn decides at most one headline; non-reconciling, like the other parts). */
+const DECIDED_PART_ID = "almond-decided";
+
+function writeDecidedPart(writer: UIMessageStreamWriter, headline: AutoHeadlineKey): void {
+  writer.write({
+    type: DECIDED_PART_TYPE,
+    id: DECIDED_PART_ID,
+    data: { headline },
+    transient: true,
+  });
 }
 
 // --- The file download bridge (Story 8.5 / 9.3) + Reports persistence (Story 8.6) ---------------
@@ -339,9 +373,15 @@ export function createModelResponder(
   // A `LanguageModel` can be an opaque object (or a bare string), so the id is threaded explicitly
   // rather than read off `model`. Defaults to the menu default for tests that pass a mock model.
   modelId: string = DEFAULT_ALMOND_MODEL,
+  // The Auto router's decision, when constructed for an Auto turn. The per-REQUEST `decided` (below)
+  // wins over this closure default so a single responder instance can serve either; absent on both
+  // means no decided line is written.
+  decided?: AutoDecided,
 ): AlmondResponder {
   return {
-    async toResponse({ uiMessages, system, deps, actor }) {
+    async toResponse(req) {
+      const { uiMessages, system, deps, actor } = req;
+      const turnDecided = req.decided ?? decided;
       const messages = await convertToModelMessages(uiMessages);
       // The grower's most recent turn, recorded with a persisted export (8.6) as the request that
       // produced it. Captured once per turn; the export branch below reads it.
@@ -357,6 +397,10 @@ export function createModelResponder(
           // result twice previously rendered (and for an owner, persisted) the SAME file twice. One file
           // name = one card and one Reports row.
           const writtenFiles = new Set<string>();
+          // The Auto decided-line headline for this turn (the router's prediction). Mutable so a stale
+          // cache prediction can be corrected to `buildingNew` when a clean file result comes back fresh
+          // (fromCache !== true). Written ONCE in `onFinish` below; undefined for a hand-picked model.
+          let finalHeadline = turnDecided?.headline;
           const result = streamText({
             model,
             system,
@@ -391,6 +435,10 @@ export function createModelResponder(
                   const file = exportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
+                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
+                      // The router predicted a cache HIT but the build came back fresh: correct the line.
+                      finalHeadline = "buildingNew";
+                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -400,6 +448,9 @@ export function createModelResponder(
                   const file = reportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
+                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
+                      finalHeadline = "buildingNew";
+                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -411,6 +462,9 @@ export function createModelResponder(
                   const file = codegenFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
+                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
+                      finalHeadline = "buildingNew";
+                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -423,6 +477,9 @@ export function createModelResponder(
                   const file = codegenFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
+                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
+                      finalHeadline = "buildingNew";
+                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -437,6 +494,10 @@ export function createModelResponder(
             // falls back to a flagged estimate so a hidden-usage provider cannot zero-charge its way
             // around the cap.
             onFinish: async ({ totalUsage }) => {
+              // Write the Auto decided line ONCE, after every tool-loop step, so it reflects any
+              // correction (`pulledCached` -> `buildingNew`) made in `onStepFinish` above. Writing here
+              // (not per step) is exactly-once by construction. Undefined for a hand-picked model.
+              if (finalHeadline) writeDecidedPart(writer, finalHeadline);
               if (deps.meterUserId === null) return;
               await recordUsage(deps.prisma, {
                 userId: deps.meterUserId,
@@ -456,10 +517,11 @@ export function createModelResponder(
 }
 
 /** The live responder over the Vercel AI Gateway. Only construct when `hasGatewayKey()`. */
-export function createGatewayResponder(modelId?: string): AlmondResponder {
+export function createGatewayResponder(modelId?: string, decided?: AutoDecided): AlmondResponder {
   // Pass the resolved id (or the menu default when absent — createGatewayModel itself defaults to
-  // Opus 4.8) so usage rows record exactly which model was billed.
-  return createModelResponder(createGatewayModel(modelId), modelId ?? DEFAULT_ALMOND_MODEL);
+  // Opus 4.8) so usage rows record exactly which model was billed. `decided` (when an Auto turn) rides
+  // through to the model responder so the decided line is written for the live path.
+  return createModelResponder(createGatewayModel(modelId), modelId ?? DEFAULT_ALMOND_MODEL, decided);
 }
 
 /** Split the stub answer into word-sized deltas (each word plus its trailing whitespace) so the
@@ -583,7 +645,7 @@ export async function composeStubAnswer(
 // enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
 // (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
 
-const NAV_VERB = /\b(open|show|see|view|go to)\b/;
+export const NAV_VERB = /\b(open|show|see|view|go to)\b/;
 
 /** Whether the latest user turn is a request to drive the screen (vs. a data question). A lens word
  *  ("map"/"table"/...) also counts, so "switch to the map" is caught without `switch` being a verb. */
@@ -613,10 +675,10 @@ export function deriveNavigateInput(text: string): NavigateInput {
 // only ever drives the export for an authenticated owner (capability parity with the factory gate):
 // the public Tour, like the model, never gets an export.
 
-const EXPORT_VERB = /\b(export|download|spreadsheet|excel|xlsx|csv)\b/;
+export const EXPORT_VERB = /\b(export|download|spreadsheet|excel|xlsx|csv)\b/;
 // A PDF/report request. Checked BEFORE the export verb so "download a pdf" / "make me a report" drive
 // the report skill, while "export"/"spreadsheet"/"csv" still drive the spreadsheet (8.5).
-const REPORT_VERB = /\b(pdf|report|printout|print out|write[- ]?up|one[- ]?pager)\b/;
+export const REPORT_VERB = /\b(pdf|report|printout|print out|write[- ]?up|one[- ]?pager)\b/;
 
 /** Whether the latest user turn asks for a PDF report (vs a spreadsheet). */
 export function isReportTurn(text: string): boolean {
@@ -670,9 +732,12 @@ function navigationStubText(result: NavigateResult): string {
 }
 
 /** The offline, deterministic responder. Default when no Gateway key is present. */
-export function createStubResponder(): AlmondResponder {
+export function createStubResponder(decided?: AutoDecided): AlmondResponder {
   return {
-    async toResponse({ uiMessages, deps, actor }) {
+    async toResponse(req) {
+      const { uiMessages, deps, actor } = req;
+      // The per-request decision wins over the closure default (parity with the model responder).
+      const turnDecided = req.decided ?? decided;
       // Turn routing, in capability order: a PDF-report turn builds a report (offline); an export
       // turn builds a spreadsheet (offline); a navigation turn drives the screen; any other turn gets
       // the grounded data answer. The report and export branches are gated on `actor.canExport` for
@@ -740,6 +805,16 @@ export function createStubResponder(): AlmondResponder {
           if (file !== null) {
             await persistAndWriteReportPart(writer, file, deps, actor, text);
           }
+          // The Auto decided line (when the grower picked Auto): a pass-through of the predicted headline,
+          // corrected from the stub's own file outcome when trivially available (a predicted cache HIT
+          // that built fresh becomes `buildingNew`). Written once, after the text/file parts.
+          if (turnDecided) {
+            const headline: AutoHeadlineKey =
+              turnDecided.headline === "pulledCached" && file !== null && file.fromCache !== true
+                ? "buildingNew"
+                : turnDecided.headline;
+            writeDecidedPart(writer, headline);
+          }
         },
       });
       return createUIMessageStreamResponse({ stream });
@@ -751,8 +826,10 @@ export function createStubResponder(): AlmondResponder {
  * The default responder: live Gateway when a key is present, else the offline stub. This is the
  * single selection point — the route just calls this. `modelId` is the grower's chosen model (an
  * allowlisted Gateway `provider/model` string, already validated in the route); the stub ignores it
- * so dev/CI stays offline regardless of the picked model.
+ * so dev/CI stays offline regardless of the picked model. `decided` is the Auto router's decision for
+ * an Auto turn (absent for a hand-picked model); it rides through to whichever responder is built so
+ * the decided line is written on both the live and offline paths.
  */
-export function defaultAlmondResponder(modelId?: string): AlmondResponder {
-  return hasGatewayKey() ? createGatewayResponder(modelId) : createStubResponder();
+export function defaultAlmondResponder(modelId?: string, decided?: AutoDecided): AlmondResponder {
+  return hasGatewayKey() ? createGatewayResponder(modelId, decided) : createStubResponder(decided);
 }

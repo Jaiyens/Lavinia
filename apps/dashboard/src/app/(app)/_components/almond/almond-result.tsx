@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import { ChevronRight, CornerUpLeft } from "lucide-react";
 import { en } from "@/copy/en";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
+import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 
 const labels = en.shell.almond.lookedAt;
 const shortLabels = en.shell.almond.lookedAtShort;
@@ -47,6 +48,17 @@ export function AlmondToolChips({ message }: { message: UIMessage }) {
       {en.shell.almond.lookedAtPrefix} {names.map((n) => shortLabels[n]).join(" · ")}
     </p>
   );
+}
+
+/**
+ * The one quiet "what Auto decided" line, shown only in Auto mode under a reply (Perplexity-Auto for
+ * Almond). It restates in plain operator English what Almond chose to do this turn (pulled a saved
+ * file, built a new one, answered from farm data, moved the view, or read an attachment). Same visual
+ * register as the "Looked at ..." line above: a small, low-contrast caption, intentionally static (no
+ * motion), so there is nothing to degrade under prefers-reduced-motion.
+ */
+export function AlmondDecidedLine({ headline }: { headline: AutoHeadlineKey }) {
+  return <p className="mb-1 type-caption text-on-surface-variant/80">{en.shell.almond.auto[headline]}</p>;
 }
 
 /** The model's reasoning, if it streamed any, joined into one block (best-effort). */

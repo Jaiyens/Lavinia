@@ -10,6 +10,7 @@
 // strip non-alphanumerics) and match against alias sets. serviceId (the PG&E SA ID) is
 // the stable identity the importer upserts on, the same key the ESPI/Bayou feeds use.
 
+import { normalizeAccountNumber } from "@/lib/normalize/sa-id";
 import type { PumpStatus } from "@/lib/recommendations/types";
 import { parseCsv } from "./parse";
 
@@ -66,14 +67,14 @@ const ALIASES: Record<keyof Omit<InventoryRow, "kind">, string[]> = {
   serviceId: ["serviceid", "said", "sa", "saidno", "serviceagreement", "serviceagreementid", "spid"],
   meterSerial: ["meter", "meterserial", "meternumber", "meterno", "badge", "badgenumber"],
   name: ["name", "pumpname", "metername", "label", "description", "well", "wellname"],
-  accountNumber: ["account", "accountnumber", "accountno", "acct", "acctno", "pgeaccount"],
-  entityName: ["entity", "legalentity", "company", "businessentity", "owner", "billingentity"],
-  rateSchedule: ["rate", "rateschedule", "tariff", "rateplan", "schedule"],
+  accountNumber: ["account", "accountnumber", "accountno", "acct", "acctno", "pgeaccount", "fullacct", "fullaccount", "fullacctno"],
+  entityName: ["entity", "legalentity", "company", "businessentity", "owner", "billingentity", "billingname", "billing"],
+  rateSchedule: ["rate", "rateschedule", "tariff", "rateplan", "schedule", "activerateschedule", "currentrate"],
   serialCode: ["serialcode", "billingserial", "cyclecode", "billingcycle", "meterreadcode", "serial", "cycle"],
   rotatingOutageBlock: ["rotatingoutageblock", "outageblock", "rotatingblock", "outage"],
   location: ["location", "address", "serviceaddress", "where", "site"],
-  latitude: ["lat", "latitude"],
-  longitude: ["lon", "lng", "long", "longitude"],
+  latitude: ["lat", "latitude", "premlat"],
+  longitude: ["lon", "lng", "long", "longitude", "premlong"],
   gpm: ["gpm", "gallonsperminute", "flow", "flowrate"],
   horsepower: ["hp", "horsepower"],
   nemType: ["nem", "nemtype", "netmetering", "nemprogram"],
@@ -89,6 +90,13 @@ const ALIASES: Record<keyof Omit<InventoryRow, "kind">, string[]> = {
 };
 
 const KIND_ALIASES = ["kind", "type", "metertype", "use", "category"];
+
+// The grower's "Solar" column is NOT the explicit isSolar flag: its cells carry array
+// codes ("4433") and nameplate strings ("1092kw"), neither of which deriveIsSolar's
+// explicit branch recognizes. We read it separately and feed it into the solar SIGNALS
+// (any non-empty value flags solar; a "kw" value also yields a nameplate solarKw), which
+// catches the 16 rows that have a Solar cell but an empty NEMA aggregation column.
+const SOLAR_COLUMN_ALIASES = ["solar"];
 
 function normHeader(h: string): string {
   return h.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -168,17 +176,30 @@ export function deriveIsLegacy(
 
 /**
  * Solar flag. An explicit Solar column wins; otherwise true when the row carries any
- * solar/NEM signal (nameplate kW, a NEM program, or a NEMA aggregation code). Mirrors
- * the Story 1.1 seed convention (isSolar driven by solarKw presence).
+ * solar/NEM signal (nameplate kW, a NEM program, a NEMA aggregation code, or a value in
+ * the grower's "Solar" column). Mirrors the Story 1.1 seed convention (isSolar driven by
+ * solarKw presence). NOTE: a value in the master sheet's "Solar" column is a signal here,
+ * not the `explicit` flag - its cells hold array codes/"1092kw", which the explicit branch
+ * (TRUTHY / "solar") would not recognize.
  */
 export function deriveIsSolar(
   explicit: string | undefined,
-  signals: { solarKw: number | null; nemType: string | null; nemaCode: string | null },
+  signals: {
+    solarKw: number | null;
+    nemType: string | null;
+    nemaCode: string | null;
+    solarColumn?: boolean;
+  },
 ): boolean {
   const e = (explicit ?? "").trim().toLowerCase();
   if (TRUTHY.has(e) || e === "solar") return true;
   if (FALSY.has(e)) return false;
-  return signals.solarKw != null || signals.nemType != null || signals.nemaCode != null;
+  return (
+    signals.solarKw != null ||
+    signals.nemType != null ||
+    signals.nemaCode != null ||
+    signals.solarColumn === true
+  );
 }
 
 /**
@@ -196,6 +217,8 @@ export function parseInventory(csv: string): InventoryParse {
 
   // Build column index -> canonical field (first alias match wins per column).
   const colField = new Map<number, keyof InventoryRow>();
+  // The "Solar" column is matched separately (it feeds solar signals, not a row field).
+  let solarCol: number | null = null;
   const mappedColumns: string[] = [];
   const unmappedColumns: string[] = [];
 
@@ -211,6 +234,9 @@ export function parseInventory(csv: string): InventoryParse {
     if (!placed && KIND_ALIASES.includes(key)) placed = "kind";
     if (placed) {
       colField.set(col, placed);
+      mappedColumns.push(raw.trim());
+    } else if (SOLAR_COLUMN_ALIASES.includes(key)) {
+      solarCol = col;
       mappedColumns.push(raw.trim());
     } else if (raw.trim() !== "") {
       unmappedColumns.push(raw.trim());
@@ -233,15 +259,22 @@ export function parseInventory(csv: string): InventoryParse {
 
     // Read the raw signals the derived flags depend on once, then derive.
     const rateSchedule = cleanText(cellFor(cells, "rateSchedule"));
-    const solarKw = toNumber(cellFor(cells, "solarKw"));
     const nemType = cleanText(cellFor(cells, "nemType"));
     const nemaCode = cleanText(cellFor(cells, "nemaCode"));
+    // The "Solar" column (when present) is a solar signal and may carry a nameplate kW
+    // ("1092kw" -> 1092). Only pull a kW number from a cell that names "kw"; bare array
+    // codes like "4433" or the literal "Solar" still flag solar without faking a size.
+    const solarCell = solarCol !== null ? cleanText(cells[solarCol]) : null;
+    const solarKw =
+      toNumber(cellFor(cells, "solarKw")) ??
+      (solarCell !== null && /kw/i.test(solarCell) ? toNumber(solarCell) : null);
+    const hasSolarColumnSignal = solarCell !== null;
 
     rows.push({
       serviceId,
       meterSerial,
       name,
-      accountNumber: cleanText(cellFor(cells, "accountNumber")),
+      accountNumber: normalizeAccountNumber(cellFor(cells, "accountNumber")),
       entityName: cleanText(cellFor(cells, "entityName")),
       rateSchedule,
       serialCode: cleanText(cellFor(cells, "serialCode")),
@@ -256,7 +289,12 @@ export function parseInventory(csv: string): InventoryParse {
       solarKw,
       growerPumpId: cleanText(cellFor(cells, "growerPumpId")),
       isLegacy: deriveIsLegacy(rateSchedule, cellFor(cells, "isLegacy")),
-      isSolar: deriveIsSolar(cellFor(cells, "isSolar"), { solarKw, nemType, nemaCode }),
+      isSolar: deriveIsSolar(cellFor(cells, "isSolar"), {
+        solarKw,
+        nemType,
+        nemaCode,
+        solarColumn: hasSolarColumnSignal,
+      }),
       status: toPumpStatus(cellFor(cells, "status")),
       cropName: cleanText(cellFor(cells, "cropName")),
       nemaCode,

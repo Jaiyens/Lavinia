@@ -60,6 +60,30 @@ describe("normalizeDownloadMyDataCsv", () => {
     expect(m.intervals).toHaveLength(2);
   });
 
+  it("strips PG&E's zero-padded SA ID to the natural form the master sheet joins on", () => {
+    // The real export pads every SA to 10 digits ("0091898735"); the master uses "91898735".
+    // Without the strip these land as two different Pumps for the same physical meter.
+    const csv = [HEADER, row({ sa: "0091898735" })].join("\n");
+    const m = normalizeDownloadMyDataCsv(csv)[0]!;
+    expect(m.serviceId).toBe("91898735");
+  });
+
+  it("canonicalizes the zero-padded Account ID the same way inventory.ts does (one Account row)", () => {
+    // The export pads Account ID to 10 digits with no check digit ("0096005793"); the master
+    // sheet prints "0096005793-3". Both must collapse to "96005793" or they fork two Accounts.
+    const csv = [HEADER, row({ acct: "0096005793" })].join("\n");
+    const m = normalizeDownloadMyDataCsv(csv)[0]!;
+    expect(m.accountNumber).toBe("96005793");
+  });
+
+  it("treats Interval Length 60 as 60 MINUTES (durationSec 3600), not 60 seconds", () => {
+    // Some Batth meters report hourly. 60 is minutes in this CSV, so durationSec must be 3600;
+    // a durationSec of 60 inflates the computed demand kW 60x (the basis of every rate finding).
+    const csv = [HEADER, row({ len: "60" })].join("\n");
+    const m = normalizeDownloadMyDataCsv(csv)[0]!;
+    expect(m.intervals[0]!.durationSec).toBe(3600);
+  });
+
   it("derives a UTC start from Usage Hour + Interval Number using the DST flag (PST=-8)", () => {
     const csv = [HEADER, row({ hour: "1", interval: "1", dst: "N" })].join("\n");
     const m = normalizeDownloadMyDataCsv(csv)[0]!;
@@ -92,6 +116,18 @@ describe("normalizeDownloadMyDataCsv", () => {
     const m = normalizeDownloadMyDataCsv(csv)[0]!;
     // 01:00 PDT (-7) end -> 08:00Z; start = end - 15 min = 07:45Z.
     expect(m.intervals[0]!.start).toBe("2026-07-01T07:45:00.000Z");
+  });
+
+  it("falls back to the Time column for an HOURLY interval (start = end - 1 hour, durationSec 3600)", () => {
+    // Same lean shape but a 60-minute meter: the fallback must subtract a full hour, which only
+    // happens when 60 is read as minutes (3600s). If 60 were read as 60s the start would be off
+    // by ~59 minutes.
+    const header = "Service Agreement ID,Rate Code,Time,Interval Length,Daylight Savings Flag,Direction of Energy,Unit of Measure,Usage Value";
+    const csv = [header, "91898735,AG-B,2026-07-01 02:00,60,Y,D,KWH,1.000000"].join("\n");
+    const m = normalizeDownloadMyDataCsv(csv)[0]!;
+    // 02:00 PDT (-7) end -> 09:00Z; start = end - 60 min = 08:00Z.
+    expect(m.intervals[0]!.start).toBe("2026-07-01T08:00:00.000Z");
+    expect(m.intervals[0]!.durationSec).toBe(3600);
   });
 
   it("returns nothing when the header cannot be located", () => {

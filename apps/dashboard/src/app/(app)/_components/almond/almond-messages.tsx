@@ -10,12 +10,14 @@ import { AlmondMarkdown } from "./almond-markdown";
 import { AlmondMessageActions } from "./almond-message-actions";
 import {
   AlmondActionChips,
+  AlmondDecidedLine,
   AlmondThought,
   AlmondToolChips,
   type AlmondNavChip,
 } from "./almond-result";
 import { AlmondDownloadCard, type AlmondReportCard } from "./almond-download-card";
 import type { AlmondUsageLimit } from "./almond-launcher-provider";
+import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 
 const t = en.shell.almond;
 
@@ -67,6 +69,8 @@ type Props = {
   navByMessage: Map<string, AlmondNavChip[]>;
   /** Download cards per assistant message id (Story 8.5). */
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
+  decidedByMessage: Map<string, AutoHeadlineKey>;
   /** Re-apply a chip's navigation (the chip is a link back to that view). */
   onReplay: (chip: AlmondNavChip) => void;
   onStarter: (question: string) => void;
@@ -89,6 +93,7 @@ export function AlmondMessages({
   starters,
   navByMessage,
   reportsByMessage,
+  decidedByMessage,
   onReplay,
   onStarter,
   onRetry,
@@ -165,6 +170,7 @@ export function AlmondMessages({
         }
         const chips = navByMessage.get(m.id) ?? [];
         const reports = reportsByMessage.get(m.id) ?? [];
+        const decided = decidedByMessage.get(m.id);
         const looking = isLookingUp(m);
         // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
         // no action chip, no download card).
@@ -178,6 +184,7 @@ export function AlmondMessages({
             looking={looking}
             chips={chips}
             reports={reports}
+            decided={decided}
             onReplay={onReplay}
             onRegenerate={onRetry}
           />
@@ -288,6 +295,7 @@ function AssistantMessage({
   looking,
   chips,
   reports,
+  decided,
   onReplay,
   onRegenerate,
 }: {
@@ -296,6 +304,7 @@ function AssistantMessage({
   looking: boolean;
   chips: AlmondNavChip[];
   reports: AlmondReportCard[];
+  decided?: AutoHeadlineKey;
   onReplay: (chip: AlmondNavChip) => void;
   onRegenerate: () => void;
 }) {
@@ -305,6 +314,7 @@ function AssistantMessage({
       <div className="min-w-0 flex-1">
         <div className={cn("max-w-[92%] type-body-md text-on-surface")}>
           <AlmondThought message={message} />
+          {decided ? <AlmondDecidedLine headline={decided} /> : null}
           <AlmondToolChips message={message} />
           {looking ? (
             <AnimatedShinyText className="text-on-surface-variant">{t.streaming}</AnimatedShinyText>

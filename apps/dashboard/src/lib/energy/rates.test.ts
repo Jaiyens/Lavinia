@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   annualCostUnderRate,
+  canonicalSchedule,
   cycleCostUnderPlan,
   familyOf,
   planFor,
@@ -79,6 +80,91 @@ describe("seasonFor / sizeClassFor / familyOf", () => {
     expect(familyOf("AG-C")).toBe("AG-C");
     expect(familyOf("ag-a1")).toBe("AG-A");
     expect(familyOf("AG-4")).toBe("AG-4");
+  });
+
+  it("folds the real un-hyphenated billing codes (HAGC/AGC/AG5B...) to their family", () => {
+    // The export's Rate Code column + the master sheet print these spellings, not
+    // the hyphenated card labels: every one must still land on a card family.
+    expect(familyOf("HAGC")).toBe("AG-C");
+    expect(familyOf("AGC")).toBe("AG-C");
+    expect(familyOf("HAGA2")).toBe("AG-A");
+    expect(familyOf("HAGA1")).toBe("AG-A");
+    expect(familyOf("HAGB")).toBe("AG-B");
+    expect(familyOf("AGB")).toBe("AG-B");
+    expect(familyOf("HAGFB")).toBe("AG-B"); // the AG-B fixed variant
+    expect(familyOf("AG5B")).toBe("AG-5");
+    expect(familyOf("AG5C")).toBe("AG-5");
+    expect(familyOf("AG4C")).toBe("AG-4");
+  });
+
+  it("leaves a non-ag code as its own token (never folded onto an ag family)", () => {
+    // HB1/HB6 front an H but the remainder is not AG, so the H is NOT stripped.
+    for (const nonAg of ["HB1", "HB6", "A1X", "B1", "E19P", "OL1"]) {
+      expect(familyOf(nonAg)).toBe(nonAg);
+    }
+  });
+});
+
+describe("canonicalSchedule", () => {
+  it("strips a single leading H only when it fronts an AG code", () => {
+    expect(canonicalSchedule("HAGC")).toBe("AG-C2");
+    expect(canonicalSchedule("HAGA2")).toBe("AG-A2");
+    expect(canonicalSchedule("HAGA1")).toBe("AG-A1");
+    expect(canonicalSchedule("HAGB")).toBe("AG-B2");
+    expect(canonicalSchedule("HAGFB")).toBe("AG-B2");
+    // Non-ag H codes keep their H and pass through unchanged.
+    expect(canonicalSchedule("HB1")).toBe("HB1");
+    expect(canonicalSchedule("HB6")).toBe("HB6");
+  });
+
+  it("maps un-hyphenated billing tokens to the canonical hyphenated schedule", () => {
+    expect(canonicalSchedule("AGA1")).toBe("AG-A1");
+    expect(canonicalSchedule("AGA2")).toBe("AG-A2");
+    expect(canonicalSchedule("AGB")).toBe("AG-B2");
+    expect(canonicalSchedule("AGFB")).toBe("AG-B2");
+    expect(canonicalSchedule("AGC")).toBe("AG-C2");
+    expect(canonicalSchedule("AG5B")).toBe("AG-5");
+    expect(canonicalSchedule("AG5C")).toBe("AG-5");
+    expect(canonicalSchedule("AG4C")).toBe("AG-4");
+  });
+
+  it("trims, uppercases, and drops a trailing Pump-ID descriptor", () => {
+    expect(canonicalSchedule(" hagc ")).toBe("AG-C2");
+    expect(canonicalSchedule("AG5B P012")).toBe("AG-5");
+    expect(canonicalSchedule("AGC (P001 - WEST WELL)")).toBe("AG-C2");
+    expect(canonicalSchedule("")).toBe("");
+  });
+
+  it("leaves an already-hyphenated card label untouched", () => {
+    expect(canonicalSchedule("AG-C2")).toBe("AG-C2");
+    expect(canonicalSchedule("AG-C")).toBe("AG-C");
+    expect(canonicalSchedule("AG-4")).toBe("AG-4");
+  });
+
+  it("returns an unrecognized non-ag token unchanged so it stays unpriceable", () => {
+    for (const nonAg of ["A1X", "B1", "E19P", "OL1"]) {
+      expect(canonicalSchedule(nonAg)).toBe(nonAg);
+    }
+  });
+});
+
+describe("planFor resolves the real billing codes", () => {
+  it("prices HAGC/AGC against the AG-C card row", () => {
+    // The pilot's load-bearing assert: the raw code the data actually carries
+    // must resolve to a card plan, where it previously returned null.
+    expect(planFor(CARD, "HAGC", "large")?.schedule).toBe("AG-C2");
+    expect(planFor(CARD, "AGC", "large")?.schedule).toBe("AG-C2");
+  });
+
+  it("prices HAGA2/HAGA1 against the AG-A card rows", () => {
+    expect(planFor(CARD, "HAGA2", "large")?.schedule).toBe("AG-A2");
+    // The test CARD carries only the AG-A2 (large) row; small folds to family AG-A.
+    expect(planFor(CARD, "HAGA1", "large")?.schedule).toBe("AG-A2");
+  });
+
+  it("still returns null for a non-ag code", () => {
+    expect(planFor(CARD, "A1X", "large")).toBeNull();
+    expect(planFor(CARD, "HB1", "large")).toBeNull();
   });
 });
 
