@@ -110,4 +110,26 @@ describe("claimInvitesForUser", () => {
     const user = await prisma.user.create({ data: { email: "late@x.com" } });
     expect(await claimInvitesForUser(prisma, { id: user.id, email: user.email })).toBe(0);
   });
+
+  it("re-admits a previously removed member at the freshly invited role", async () => {
+    const farmId = await farm("Re-admit Farm");
+    const user = await prisma.user.create({ data: { email: "back@x.com" } });
+    // They were on the farm as a manager, then removed.
+    await prisma.farmMembership.create({
+      data: { farmId, userId: user.id, role: "manager", status: "removed", removedAt: new Date() },
+    });
+    // An admin re-invites them, this time as a viewer.
+    await pendingInvite(farmId, "back@x.com", "viewer");
+
+    const claimed = await claimInvitesForUser(prisma, { id: user.id, email: user.email });
+    expect(claimed).toBe(1);
+
+    const membership = await prisma.farmMembership.findUnique({
+      where: { farmId_userId: { farmId, userId: user.id } },
+    });
+    // Re-activated (not left "removed") at the invited role, with the removal cleared.
+    expect(membership?.status).toBe("active");
+    expect(membership?.role).toBe("viewer");
+    expect(membership?.removedAt).toBeNull();
+  });
 });

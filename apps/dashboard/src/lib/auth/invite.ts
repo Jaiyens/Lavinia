@@ -47,8 +47,12 @@ export async function emailHasFarmAccess(
  * later sign-in is a no-op. Returns how many invites were newly claimed.
  *
  * The role written is the one RECORDED ON THE INVITE (capped at issue time by assertCanGrantRole),
- * never re-derived from any client input. If the user is already a member of that farm, their
- * existing role is kept (update: {}), so a stale invite can never silently change a role.
+ * never re-derived from any client input. Three cases, mirroring approveJoinRequest:
+ *   - no membership yet      -> create at the invited role,
+ *   - a REMOVED membership   -> re-admit at the invited role (a fresh invite is a deliberate
+ *                               re-grant; without this a removed-then-reinvited person stayed
+ *                               removed and silently kept out despite a valid invite),
+ *   - an ACTIVE membership   -> keep their existing role, so a stale invite never silently re-roles.
  */
 export async function claimInvitesForUser(
   prisma: PrismaClient,
@@ -62,17 +66,29 @@ export async function claimInvitesForUser(
   let claimed = 0;
   for (const inv of invites) {
     await prisma.$transaction(async (tx) => {
-      await tx.farmMembership.upsert({
+      const existing = await tx.farmMembership.findUnique({
         where: { farmId_userId: { farmId: inv.farmId, userId: user.id } },
-        update: {}, // already a member: keep their existing role, never downgrade/upgrade silently
-        create: {
-          farmId: inv.farmId,
-          userId: user.id,
-          role: inv.role,
-          status: "active",
-          invitedById: inv.invitedById,
-        },
+        select: { id: true, status: true },
       });
+      if (!existing) {
+        await tx.farmMembership.create({
+          data: {
+            farmId: inv.farmId,
+            userId: user.id,
+            role: inv.role,
+            status: "active",
+            invitedById: inv.invitedById,
+          },
+        });
+      } else if (existing.status === "removed") {
+        // Re-admit: an admin re-inviting a removed person is a deliberate re-grant, so honor the
+        // invited role and clear the removal (an empty update would leave them locked out).
+        await tx.farmMembership.update({
+          where: { id: existing.id },
+          data: { status: "active", role: inv.role, removedAt: null, invitedById: inv.invitedById },
+        });
+      }
+      // existing && active -> keep their current role, never downgrade/upgrade from a stale invite.
       await tx.farmInvite.update({
         where: { id: inv.id },
         data: { status: "accepted", acceptedAt: new Date(), acceptedByUserId: user.id },

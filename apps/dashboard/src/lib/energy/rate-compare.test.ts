@@ -273,12 +273,13 @@ describe("rateOptimization against the shipped rate card", () => {
     cycles: [...Array(6)].map(summer).concat([...Array(6)].map(winter)),
   };
 
-  it("finds the hero case: a low-load-factor AG-C pump should move to AG-A and save thousands a year", () => {
-    // Hand-computed from the 2026-06.1 card (bill-sourced winter + representative
-    // summer values): AG-C2 cycle = 2000x0.22 + 10000x0.18 + 112x24.95 + 95x9 +
-    // 43.60 = 5933.00 summer, 500x0.15861 + 12x24.95 + 43.60 = 422.305 winter ->
-    // 6x5933.00 + 6x422.305 = 38131.83. AG-A2 = 6x5501.12 + 6x386.33 = 35324.70.
-    const modeledAgC = 38131.83;
+  it("finds the hero case: a low-load-factor AG-C pump should move to AG-B and save thousands a year", () => {
+    // Hand-computed from the 2026-06.2 card (OFFICIAL secondary-voltage rates eff
+    // 2026-03-01): AG-C2 summer = 2000x0.21329 + 10000x0.17385 + 112x21.43 + 95x29.92
+    // + 43.60 = 7451.24; winter = 500x0.15981 + 12x21.43 + 43.60 = 380.665 ->
+    // 6x7451.24 + 6x380.665 = 46991.43. The cheapest eligible alternative is now AG-B
+    // (corrected to NO demand charge), not AG-A2 (which carries an 11.79/kW max-demand).
+    const modeledAgC = 46991.43;
     const res = rateOptimization({
       farmId: "batth",
       pumpId: "hero",
@@ -291,9 +292,9 @@ describe("rateOptimization against the shipped rate card", () => {
     });
     expect(res.modeledCurrentUsd).toBe(modeledAgC);
     expect(res.reproductionError).toBe(0);
-    expect(res.bestSchedule).toBe("AG-A");
+    expect(res.bestSchedule).toBe("AG-B");
     expect(res.savingsUsd).toBeGreaterThan(2000);
-    expect(res.savingsUsd).toBe(2807.13);
+    expect(res.savingsUsd).toBe(19180.02);
     expect(res.recommendation?.severity).toBe("act");
   });
 

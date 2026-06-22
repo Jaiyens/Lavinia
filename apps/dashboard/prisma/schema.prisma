@@ -96,7 +96,10 @@ model FarmMembership {
   // The accepted member. Set only when an invited person signs in as the invited email
   // (the verified-email claim in lib/auth.ts), never at invite time.
   userId      String
-  role        FarmRole         @default(manager)
+  // Least privilege by default (matches FarmJoinRequest.proposedRole). Every code path sets role
+  // EXPLICITLY (team-ops/invite/join-request/onboarding); this default is only a safety net so a
+  // future path that forgets grants the safest role, never silent manager access.
+  role        FarmRole         @default(viewer)
   status      MembershipStatus @default(active)
   // Who added them (audit / "added by" provenance). SetNull so a deleted inviter never
   // cascades the membership away.
@@ -121,7 +124,8 @@ model FarmInvite {
   // ALWAYS stored via normalizeEmail() (lowercased) so the sign-in claim matches reliably; the
   // partial unique index in the migration keeps one live invite per email per farm.
   invitedEmail     String
-  role             FarmRole @default(manager)
+  // Least privilege by default; inviteMembers always passes an explicit role (this is the safety net).
+  role             FarmRole @default(viewer)
   // pending | accepted | revoked | declined. A revoke is TERMINAL (a re-grant is a new row).
   status           String   @default("pending")
   invitedById      String?

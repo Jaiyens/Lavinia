@@ -33,7 +33,9 @@ export function JoinRequests({
   const [error, setError] = useState<string | null>(null);
   // The role to grant, per request (default View only - least privilege for an unvouched stranger).
   const [roles, setRoles] = useState<Record<string, FarmRole>>({});
-  const roleOptions: FarmRole[] = canGrantOwner ? ["viewer", "manager", "owner"] : ["viewer", "manager"];
+  // Owner-first, matching add-people + team-list (the visual order; the safe default stays "viewer"
+  // via the controlled `value` below, not the option order).
+  const roleOptions: FarmRole[] = canGrantOwner ? ["owner", "manager", "viewer"] : ["manager", "viewer"];
 
   function run(fn: () => Promise<TeamActionResult>): void {
     setError(null);

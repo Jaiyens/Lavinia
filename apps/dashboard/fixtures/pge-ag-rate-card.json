@@ -1,9 +1,9 @@
 {
-  "$comment": "PG&E agricultural rate card. REFERENCE DATA used ONLY to compute counterfactuals (what a meter WOULD cost on another rate) and to independently recompute posted bills. The farmer's ACTUAL cost is always read from their own bills, never from this file. Two TOU clocks, never conflated (see src/lib/energy/tou.ts): the AG RATE peak is 5-8pm year-round daily (drives energy/demand pricing); 4-9pm is the PDP/DR EVENT window only. Value provenance is per plan (sourceNote): 'bill' values are printed on the real demo account's Feb-Mar 2026 PG&E bills (these capture the 2026-03-01 rate change; energy and demand figures are the post-change winter prints), 'representative' values (all summer energy, partial_peak carriers, AG-C peak-period demand, AG-4 energy/demand) are published-style placeholders awaiting a summer bill or the official tariff sheet (pge.com/tariffs ELEC_SCHEDS_AG.pdf). partial_peak is carried for legacy three-tier rates but receives 0 kWh until a partial-peak window is modeled. summerMonths is the legacy May-Oct ag season; only winter values are bill-sourced today, and the 3.3 back-test gate is the guard against any card inaccuracy.",
+  "$comment": "PG&E agricultural rate card. REFERENCE DATA used to compute counterfactuals (what a meter WOULD cost on another rate), to recompute posted bills, and to MODEL spend for usage-only meters with no bill (src/lib/energy/modeled-cost.ts). The farmer's ACTUAL cost is always read from their own bills when present. Two TOU clocks, never conflated (src/lib/energy/tou.ts): the AG RATE peak is 5-8pm year-round daily (modern AG) or noon-6pm (legacy AG-4/AG-5); 4-9pm is the PDP/DR EVENT window only. MODERN AG (A1/A2/B/C) energy + demand are now the OFFICIAL bundled-total SECONDARY-voltage rates eff 2026-03-01 (Advice 7846-E), sourced from docs/batth-analysis/brief-pge-ag-rates.md (PG&E ELEC_SCHEDS_AG.pdf, cross-checked vs the 3CE rate sheet). KNOWN LIMITATION: HAGC/HAGA1/HAGA2/HAGB are AG taken at TRANSMISSION voltage and carry LOWER max-demand charges (AG-C transmission max-demand is 6.45/kW vs the 21.43 secondary used here), so this single-voltage card OVERSTATES max-demand for H-prefixed meters; the summer peak-period demand (29.92/kW) is voltage-independent and correct for all. LEGACY AG-4/AG-5 demand charges are official; their energy rates remain representative (PG&E publishes legacy energy as generation-only; total bundled awaits a summer bill). partial_peak only receives kWh on legacy three-tier rates (AG-4C/AG-5C); modern AG carries it equal to off_peak and receives 0 kWh there.",
   "utility": "PGE",
-  "version": "2026-06.1",
+  "version": "2026-06.2",
   "effectiveDate": "2026-03-01",
-  "source": "Customer charge per day, max-demand $/kW, and winter TOU energy $/kWh for AG-A/B/C and AG-5 (and the AG-4 customer charge) are printed on the real demo account's 2026 bills. Summer energy, partial_peak, AG-C peak-period demand, the AG-4 energy/demand figures, and the per-month derivations are representative placeholders pending the official tariff sheet (pge.com/tariffs).",
+  "source": "Modern AG (A1/A2/B/C) customer charge, demand charges, and TOU energy are the official bundled-total secondary-voltage rates eff 2026-03-01 per docs/batth-analysis/brief-pge-ag-rates.md (PG&E ELEC_SCHEDS_AG.pdf + 3CE rate sheet). AG-C summer peak-period demand corrected to 29.92/kW (was a placeholder 8-9); AG-A1 and AG-B demand charges removed (those schedules have none); AG-A2 max-demand corrected to 11.79 secondary. Legacy AG-4/AG-5 demand charges are official; legacy energy is representative pending a summer bill.",
   "summerMonths": [
     5,
     6,
@@ -24,25 +24,21 @@
       "customerChargePerMonth": 20.96,
       "summer": {
         "energy": {
-          "peak": 0.4,
-          "partial_peak": 0.37,
-          "off_peak": 0.35
+          "peak": 0.5162,
+          "partial_peak": 0.35026,
+          "off_peak": 0.35026
         },
-        "demand": {
-          "maxDemandPerKw": 12.33
-        }
+        "demand": {}
       },
       "winter": {
         "energy": {
           "peak": 0.33989,
-          "partial_peak": 0.325,
+          "partial_peak": 0.3106,
           "off_peak": 0.3106
         },
-        "demand": {
-          "maxDemandPerKw": 12.33
-        }
+        "demand": {}
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 0.68895, winter peak 0.33989 / off-peak 0.31060 (AGA1). Max demand 12.33 is bill-sourced from the PRE-change 02/11-02/28 AGA1 prints; no post-change AGA1 demand print exists in the ingested bills, and paired schedules all decreased at 03/01, so 12.33 may run slightly high. Summer energy + partial_peak representative."
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): customer/day 0.68895, NO demand charge, summer peak 0.51620 / off 0.35026, winter peak 0.33989 / off 0.31060. AG-A1 recovers everything through energy (highest energy of the AG family, zero demand)."
     },
     {
       "schedule": "AG-A2",
@@ -54,25 +50,25 @@
       "customerChargePerMonth": 20.96,
       "summer": {
         "energy": {
-          "peak": 0.29,
-          "partial_peak": 0.27,
-          "off_peak": 0.25
+          "peak": 0.40475,
+          "partial_peak": 0.23882,
+          "off_peak": 0.23882
         },
         "demand": {
-          "maxDemandPerKw": 21.43
+          "maxDemandPerKw": 11.79
         }
       },
       "winter": {
         "energy": {
           "peak": 0.24571,
-          "partial_peak": 0.23,
+          "partial_peak": 0.21642,
           "off_peak": 0.21642
         },
         "demand": {
-          "maxDemandPerKw": 21.43
+          "maxDemandPerKw": 11.79
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 0.68895, max demand 21.43, winter peak 0.24571 / off-peak 0.21642 (AGA2). Summer energy + partial_peak representative."
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): customer/day 0.68895, max demand 11.79 (secondary; primary 13.95, transmission 4.68), NO peak-period demand, summer peak 0.40475 / off 0.23882, winter peak 0.24571 / off 0.21642."
     },
     {
       "schedule": "AG-B1",
@@ -84,25 +80,21 @@
       "customerChargePerMonth": 27.85,
       "summer": {
         "energy": {
-          "peak": 0.39,
-          "partial_peak": 0.375,
-          "off_peak": 0.36
+          "peak": 0.51289,
+          "partial_peak": 0.34004,
+          "off_peak": 0.34004
         },
-        "demand": {
-          "maxDemandPerKw": 13.95
-        }
+        "demand": {}
       },
       "winter": {
         "energy": {
           "peak": 0.33597,
-          "partial_peak": 0.32,
+          "partial_peak": 0.30671,
           "off_peak": 0.30671
         },
-        "demand": {
-          "maxDemandPerKw": 13.95
-        }
+        "demand": {}
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 0.91565, max demand 13.95, winter peak 0.33597 / off-peak 0.30671 (AGB; PG&E does not tier AGB by size, both tiers carry the same prints). Summer energy + partial_peak representative."
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): customer/day 0.91565, NO demand charge (energy-only recovery), summer peak 0.51289 / off 0.34004, winter peak 0.33597 / off 0.30671. PG&E does not tier AG-B by size; both tiers share these rates."
     },
     {
       "schedule": "AG-B2",
@@ -114,25 +106,21 @@
       "customerChargePerMonth": 27.85,
       "summer": {
         "energy": {
-          "peak": 0.39,
-          "partial_peak": 0.375,
-          "off_peak": 0.36
+          "peak": 0.51289,
+          "partial_peak": 0.34004,
+          "off_peak": 0.34004
         },
-        "demand": {
-          "maxDemandPerKw": 13.95
-        }
+        "demand": {}
       },
       "winter": {
         "energy": {
           "peak": 0.33597,
-          "partial_peak": 0.32,
+          "partial_peak": 0.30671,
           "off_peak": 0.30671
         },
-        "demand": {
-          "maxDemandPerKw": 13.95
-        }
+        "demand": {}
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 0.91565, max demand 13.95, winter peak 0.33597 / off-peak 0.30671 (AGB; same prints as AG-B1). Summer energy + partial_peak representative."
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): same as AG-B1 (PG&E does not tier AG-B by size). NO demand charge."
     },
     {
       "schedule": "AG-C1",
@@ -144,26 +132,26 @@
       "customerChargePerMonth": 43.6,
       "summer": {
         "energy": {
-          "peak": 0.22,
-          "partial_peak": 0.2,
-          "off_peak": 0.18
+          "peak": 0.21329,
+          "partial_peak": 0.17385,
+          "off_peak": 0.17385
         },
         "demand": {
-          "maxDemandPerKw": 24.95,
-          "peakPeriodDemandPerKw": 8
+          "maxDemandPerKw": 21.43,
+          "peakPeriodDemandPerKw": 29.92
         }
       },
       "winter": {
         "energy": {
-          "peak": 0.1843,
-          "partial_peak": 0.17,
-          "off_peak": 0.15861
+          "peak": 0.1855,
+          "partial_peak": 0.15981,
+          "off_peak": 0.15981
         },
         "demand": {
-          "maxDemandPerKw": 24.95
+          "maxDemandPerKw": 21.43
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 1.43343, max demand 24.95, winter peak 0.18430 / off-peak 0.15861 (AGC; both tiers carry the same prints). Summer energy, partial_peak, and peak-period demand representative. Demand charge limiter 0.50/kWh per the published AG-C tariff.",
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): customer/day 1.43343, max demand 21.43 (secondary; primary 24.95, transmission 6.45), SUMMER peak-period demand 29.92/kW (5-8pm, all voltages), summer peak 0.21329 / off 0.17385, winter peak 0.18550 / off 0.15981, demand-charge limiter 0.50/kWh. NOTE: HAGC meters are AG-C at transmission voltage -> max demand is 6.45, not 21.43 (peak-period demand 29.92 is the same); this card uses the secondary value and overstates HAGC max-demand.",
       "demandChargeLimiterPerKwh": 0.5
     },
     {
@@ -176,26 +164,26 @@
       "customerChargePerMonth": 43.6,
       "summer": {
         "energy": {
-          "peak": 0.22,
-          "partial_peak": 0.2,
-          "off_peak": 0.18
+          "peak": 0.21329,
+          "partial_peak": 0.17385,
+          "off_peak": 0.17385
         },
         "demand": {
-          "maxDemandPerKw": 24.95,
-          "peakPeriodDemandPerKw": 9
+          "maxDemandPerKw": 21.43,
+          "peakPeriodDemandPerKw": 29.92
         }
       },
       "winter": {
         "energy": {
-          "peak": 0.1843,
-          "partial_peak": 0.17,
-          "off_peak": 0.15861
+          "peak": 0.1855,
+          "partial_peak": 0.15981,
+          "off_peak": 0.15981
         },
         "demand": {
-          "maxDemandPerKw": 24.95
+          "maxDemandPerKw": 21.43
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 1.43343, max demand 24.95, winter peak 0.18430 / off-peak 0.15861 (AGC; same prints as AG-C1). Summer energy, partial_peak, and peak-period demand representative. Demand charge limiter 0.50/kWh per the published AG-C tariff.",
+      "sourceNote": "OFFICIAL eff 2026-03-01 (ELEC_SCHEDS_AG, secondary, bundled): same as AG-C1 (PG&E does not tier AG-C by size). Max demand 21.43 secondary, summer peak-period demand 29.92/kW, limiter 0.50/kWh. HAGC = AG-C at transmission voltage (max demand 6.45, overstated here).",
       "demandChargeLimiterPerKwh": 0.5
     },
     {
@@ -208,25 +196,26 @@
       "customerChargePerMonth": 65.4,
       "summer": {
         "energy": {
-          "peak": 0.25,
-          "partial_peak": 0.18,
-          "off_peak": 0.145
+          "peak": 0.2362,
+          "partial_peak": 0.23567,
+          "off_peak": 0.22387
         },
         "demand": {
-          "maxDemandPerKw": 15
+          "maxDemandPerKw": 16.22,
+          "peakPeriodDemandPerKw": 7.08
         }
       },
       "winter": {
         "energy": {
-          "peak": 0.18,
-          "partial_peak": 0.15,
-          "off_peak": 0.13
+          "peak": 0.21302,
+          "partial_peak": 0.21302,
+          "off_peak": 0.21231
         },
         "demand": {
-          "maxDemandPerKw": 15
+          "maxDemandPerKw": 16.22
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 2.15003 (AG4C). Energy and demand representative (the AG4C bill prints no demand line; closed legacy schedule)."
+      "sourceNote": "AG-4C eff 2026-03-01 (ELEC_SCHEDS_AG-4, Sheet 6): customer/day 2.15003, max demand 16.22 su/wi, summer peak-period demand 7.08, energy peak-su 0.23620 / part-su 0.23567 / off-su 0.22387 / part-wi 0.21302 / off-wi 0.21231 (total bundled). Legacy summer = May-Oct, peak noon-6pm. Closed schedule."
     },
     {
       "schedule": "AG-4",
@@ -238,25 +227,26 @@
       "customerChargePerMonth": 65.4,
       "summer": {
         "energy": {
-          "peak": 0.235,
-          "partial_peak": 0.17,
-          "off_peak": 0.135
+          "peak": 0.2362,
+          "partial_peak": 0.23567,
+          "off_peak": 0.22387
         },
         "demand": {
-          "maxDemandPerKw": 17
+          "maxDemandPerKw": 16.22,
+          "peakPeriodDemandPerKw": 7.08
         }
       },
       "winter": {
         "energy": {
-          "peak": 0.17,
-          "partial_peak": 0.14,
-          "off_peak": 0.12
+          "peak": 0.21302,
+          "partial_peak": 0.21302,
+          "off_peak": 0.21231
         },
         "demand": {
-          "maxDemandPerKw": 17
+          "maxDemandPerKw": 16.22
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 2.15003 (AG4C). Energy and demand representative (closed legacy schedule)."
+      "sourceNote": "AG-4C eff 2026-03-01 (ELEC_SCHEDS_AG-4, Sheet 6): same as the small tier (Batth's legacy AG-4 meters are AG-4C). Max demand 16.22, summer peak-period demand 7.08."
     },
     {
       "schedule": "AG-5",
@@ -274,7 +264,7 @@
         },
         "demand": {
           "maxDemandPerKw": 14.9,
-          "peakPeriodDemandPerKw": 9
+          "peakPeriodDemandPerKw": 14.57
         }
       },
       "winter": {
@@ -287,7 +277,7 @@
           "maxDemandPerKw": 14.9
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 5.30871, max demand 14.90 (AG5C, whose meters are small). Energy + peak-period demand representative (closed legacy schedule)."
+      "sourceNote": "AG-5C eff 2026-03-01 (ELEC_SCHEDS_AG-5, Sheet 6): customer/day 5.30871, max demand 14.90 su/wi (OFFICIAL), summer peak-period demand 14.57 (OFFICIAL, was placeholder 9). Energy remains representative (PG&E publishes legacy energy as generation-only; total bundled awaits a summer bill). Legacy summer = May-Oct, peak noon-6pm."
     },
     {
       "schedule": "AG-5",
@@ -304,8 +294,8 @@
           "off_peak": 0.12
         },
         "demand": {
-          "maxDemandPerKw": 20.54,
-          "peakPeriodDemandPerKw": 10
+          "maxDemandPerKw": 27.89,
+          "peakPeriodDemandPerKw": 10.45
         }
       },
       "winter": {
@@ -318,7 +308,7 @@
           "maxDemandPerKw": 20.54
         }
       },
-      "sourceNote": "bill 2026-03 (post 03/01/2026 change): customer/day 1.19446, max demand 20.54 (AG5B, whose meter is large). Energy + peak-period demand representative (closed legacy schedule)."
+      "sourceNote": "AG-5B eff 2026-03-01 (ELEC_SCHEDS_AG-5, Sheet 6): customer/day 1.19446, max demand 27.89 summer / 20.54 winter (OFFICIAL; was 20.54 both), summer peak-period demand 10.45 (OFFICIAL, was placeholder 10). Energy remains representative pending a summer bill."
     }
   ]
 }
