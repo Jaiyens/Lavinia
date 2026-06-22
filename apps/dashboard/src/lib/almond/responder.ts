@@ -405,6 +405,18 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
+                // The bespoke WORKBOOK codegen (Phase 3) follows the SAME path: a verified, model-authored
+                // .xlsx persisted (kind "codegen") and streamed as a download card. A reject/error already
+                // fell back to the deterministic workbook inside the skill, so what arrives is a real file
+                // or a typed empty/error (which writes no card). The card is content-type driven, so the
+                // .xlsx renders with the spreadsheet download label unchanged.
+                if (tr.toolName === "codegenWorkbook" && isCodegenResult(tr.output)) {
+                  const file = codegenFile(tr.output);
+                  if (file && !writtenFiles.has(file.fileName)) {
+                    writtenFiles.add(file.fileName);
+                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                  }
+                }
               }
             },
           });

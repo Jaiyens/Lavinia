@@ -51,6 +51,12 @@ import {
   type CodegenExportResult,
 } from "./skills/codegen-export";
 import {
+  codegenWorkbookInputSchema,
+  runCodegenWorkbook,
+  type CodegenWorkbookInput,
+  type CodegenWorkbookResult,
+} from "./skills/codegen-workbook";
+import {
   computeCacheKey,
   computeFarmDataFingerprint,
   lookupCachedReport,
@@ -398,8 +404,9 @@ export async function codegenExportSkill(
     return { kind: "error", message: throttledMessage() };
   }
   // The bespoke path is the big cache win: an identical ask on unchanged data returns the verified
-  // bytes without re-running the model + Vercel Sandbox (20-60s saved).
-  const request = { request: input.request ?? null };
+  // bytes without re-running the model + Vercel Sandbox (20-60s saved). The `format` discriminator
+  // keeps the PDF and xlsx codegen in one cache namespace without colliding on an identical request.
+  const request = { request: input.request ?? null, format: "pdf" };
   const { cacheKey, hit } = await findCachedFile(deps, "codegen", request);
   if (hit !== null) {
     return {
@@ -416,6 +423,41 @@ export async function codegenExportSkill(
     };
   }
   const result = await runCodegenExport(deps, input, signal);
+  return result.kind === "file" ? { ...result, cacheKey } : result;
+}
+
+/**
+ * The `codegenWorkbook` skill executor (Phase 3) — the xlsx twin of `codegenExportSkill`. Builds the
+ * snapshot, has the model WRITE a declarative workbook spec, renders it with openpyxl in a Vercel
+ * Sandbox, and verifies it fail-closed (falling back to the deterministic Phase 1 workbook on any
+ * failure). Same per-farm generation throttle, same Phase 2 cache (with the `format: "xlsx"`
+ * discriminator), same abort-signal threading as the PDF codegen.
+ */
+export async function codegenWorkbookSkill(
+  deps: AlmondToolDeps,
+  input: CodegenWorkbookInput,
+  signal?: AbortSignal,
+): Promise<CodegenWorkbookResult> {
+  if (!checkGenerationThrottle(deps.farmId).allowed) {
+    return { kind: "error", message: throttledMessage() };
+  }
+  const request = { request: input.request ?? null, format: "xlsx" };
+  const { cacheKey, hit } = await findCachedFile(deps, "codegen", request);
+  if (hit !== null) {
+    return {
+      kind: "file",
+      fromCache: true,
+      cacheKey: hit.cacheKey,
+      preview: en.shell.almond.export.skill.cached,
+      fileName: hit.fileName,
+      contentType: hit.contentType,
+      bytes: hit.bytes,
+      meterCount: hit.meterCount,
+      coverageAsOf: hit.coverageAsOf,
+      params: hit.params as Prisma.InputJsonValue,
+    };
+  }
+  const result = await runCodegenWorkbook(deps, input, signal);
   return result.kind === "file" ? { ...result, cacheKey } : result;
 }
 
@@ -486,6 +528,19 @@ function codegenSkills(deps: AlmondToolDeps) {
       execute: (input, { abortSignal }) => codegenExportSkill(deps, input, abortSignal),
       // Keep the PDF bytes OUT of the model's context — the bytes reach the grower via the responder's
       // `data-report` card, not the prompt window.
+      toModelOutput: ({ output }) => {
+        if (output.kind === "file") {
+          return { type: "text", value: `Made ${output.fileName}.` };
+        }
+        return { type: "text", value: output.message };
+      },
+    }),
+    codegenWorkbook: tool({
+      description:
+        "Build a CUSTOM, multi-tab Excel workbook by writing its layout from the farm's data — use this ONLY for a bespoke spreadsheet request that the standard exportSpreadsheet shapes do not cover (an unusual set of tabs, a chart, or a selection the grower describes). For an ordinary meters/bill-dates/overview spreadsheet, use exportSpreadsheet instead (it is instant). Every figure is verified against the farm's real numbers before the file is handed over; you choose only the request, never any value.",
+      inputSchema: codegenWorkbookInputSchema,
+      // Thread the abort signal so a closed tab cancels the nested model loop + the Vercel Sandbox.
+      execute: (input, { abortSignal }) => codegenWorkbookSkill(deps, input, abortSignal),
       toModelOutput: ({ output }) => {
         if (output.kind === "file") {
           return { type: "text", value: `Made ${output.fileName}.` };

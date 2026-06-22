@@ -132,6 +132,45 @@ describe("composeReportSnapshot", () => {
   });
 });
 
+describe("composeReportSnapshot (Phase 3: workbook projection)", () => {
+  it("carries the per-meter projection + coverage counts, and defaults them empty for the PDF path", () => {
+    const withMeters = composeReportSnapshot({
+      farm: { id: "farm1", name: "Batth Farms" },
+      meterCount: 2,
+      coverageAsOf: null,
+      latestMonthSpendCents: null,
+      opportunities: [],
+      meters: [
+        { id: "m1", name: "Westside Pump 17", rate: "AG-B", costCents: 1_172_733, demandCents: 278_322 },
+        { id: "m2", name: "Lateral 3 Booster", rate: "AG-C", costCents: null, demandCents: null },
+      ],
+      coverage: { reconciled: 1, needsReview: 1, noBill: 0 },
+    });
+    expect(withMeters.meters).toHaveLength(2);
+    expect(withMeters.meters[0]).toEqual({
+      id: "m1",
+      name: "Westside Pump 17",
+      rate: "AG-B",
+      costCents: 1_172_733,
+      demandCents: 278_322,
+    });
+    expect(withMeters.totals.reconciledCount).toBe(1);
+    expect(withMeters.totals.needsReviewCount).toBe(1);
+    expect(withMeters.totals.noBillCount).toBe(0);
+
+    // The PDF path omits the new args -> empty projection + zero counts (back-compat, additive).
+    const pdfShape = composeReportSnapshot({
+      farm: { id: "f", name: "F" },
+      meterCount: 0,
+      coverageAsOf: null,
+      latestMonthSpendCents: null,
+      opportunities: [],
+    });
+    expect(pdfShape.meters).toEqual([]);
+    expect(pdfShape.totals.reconciledCount).toBe(0);
+  });
+});
+
 describe("formatCentsUsd", () => {
   it("renders cent precision with thousands separators", () => {
     expect(formatCentsUsd(6_141_776)).toBe("$61,417.76");

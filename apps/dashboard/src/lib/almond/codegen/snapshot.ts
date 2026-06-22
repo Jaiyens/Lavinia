@@ -22,6 +22,7 @@
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { loadFindings, type FindingView } from "@/lib/dashboard/findings";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
+import { toMeterRow } from "@/lib/dashboard/table";
 import { summarizeExportState } from "@/lib/almond/export/load";
 import type { AlmondToolDeps } from "@/lib/almond/tools";
 
@@ -43,6 +44,21 @@ export type SnapshotOpportunity = {
   kind: "rate_switch" | "demand_charge" | "bill_audit" | "solar";
 };
 
+/** A per-meter projection carried for a generalized WORKBOOK codegen (Phase 3): the literal values a
+ *  Meters/Summary tab can legitimately print, so the verifier's reverse scan allowlists them. The PDF
+ *  codegen ignores this; it is additive. Money is integer cents, gated on coverage exactly like the
+ *  dashboard table (an unreconciled meter's money is null, never a fabricated $0). */
+export type SnapshotMeter = {
+  id: string;
+  name: string;
+  /** The meter's rate schedule (digits mined into the allowlist), or null when unknown. */
+  rate: string | null;
+  /** Latest reconciled bill in integer cents, or null (unreconciled / no posted bill). */
+  costCents: number | null;
+  /** Latest reconciled demand charge in integer cents, or null. */
+  demandCents: number | null;
+};
+
 /** The canonical snapshot the sandbox renders over and the verifier checks against. */
 export type ReportSnapshot = {
   farm: { id: string; name: string };
@@ -55,9 +71,16 @@ export type ReportSnapshot = {
     latestMonthSpendCents: number | null;
     /** Sum of the shown opportunities' savings, integer cents. */
     rateSwitchSavingsCents: number;
+    /** Coverage counts the Summary tab prints (structural integers; additive for Phase 3). */
+    reconciledCount: number;
+    needsReviewCount: number;
+    noBillCount: number;
   };
   /** The top opportunities by savings (POC: rate switches), the report's subject + verification source. */
   opportunities: SnapshotOpportunity[];
+  /** The per-meter projection a generalized workbook can print (Phase 3; additive). The PDF codegen
+   *  does not read it, but its values are folded into the verifier allowlist. */
+  meters: SnapshotMeter[];
 };
 
 /** The minimal meter shape the opportunity join needs (MeterView satisfies it). */
@@ -129,6 +152,11 @@ export function composeReportSnapshot(args: {
   coverageAsOf: string | null;
   latestMonthSpendCents: number | null;
   opportunities: readonly OpportunitySource[];
+  /** The per-meter projection for the workbook codegen (Phase 3). Defaults to empty so the PDF
+   *  codegen's existing callers/tests (which omit it) are unaffected. */
+  meters?: readonly SnapshotMeter[];
+  /** Coverage counts for the Summary tab. Default 0 (additive, back-compat). */
+  coverage?: { reconciled: number; needsReview: number; noBill: number };
 }): ReportSnapshot {
   const ranked = [...args.opportunities]
     .sort((a, b) => b.savingsCents - a.savingsCents)
@@ -145,6 +173,7 @@ export function composeReportSnapshot(args: {
       }),
     );
 
+  const coverage = args.coverage ?? { reconciled: 0, needsReview: 0, noBill: 0 };
   return {
     farm: args.farm,
     meterCount: args.meterCount,
@@ -152,8 +181,12 @@ export function composeReportSnapshot(args: {
     totals: {
       latestMonthSpendCents: args.latestMonthSpendCents,
       rateSwitchSavingsCents: ranked.reduce((sum, o) => sum + o.savingsCents, 0),
+      reconciledCount: coverage.reconciled,
+      needsReviewCount: coverage.needsReview,
+      noBillCount: coverage.noBill,
     },
     opportunities: ranked,
+    meters: [...(args.meters ?? [])],
   };
 }
 
@@ -174,11 +207,25 @@ export async function buildReportSnapshot(deps: AlmondToolDeps): Promise<ReportS
   const latestMonthSpendCents =
     state.coverage.reconciled === 0 ? null : computeKpiStrip([...meters]).spend.cents;
 
+  // The per-meter projection for the workbook codegen: the SAME coverage-gated money the dashboard
+  // table / deterministic workbook print (toMeterRow, AR-15), so the verifier allowlists exactly the
+  // values a Meters/Summary tab can legitimately show.
+  const meterProjection: SnapshotMeter[] = meters.map((m) => {
+    const row = toMeterRow(m);
+    return { id: m.id, name: row.name, rate: row.rate, costCents: row.costCents, demandCents: row.demandCents };
+  });
+
   return composeReportSnapshot({
     farm: { id: deps.farmId, name: deps.farmName },
     meterCount: meters.length,
     coverageAsOf: state.asOf,
     latestMonthSpendCents,
     opportunities: extractOpportunities(meters, findings),
+    meters: meterProjection,
+    coverage: {
+      reconciled: state.coverage.reconciled,
+      needsReview: state.coverage.needsReview,
+      noBill: state.coverage.noBill,
+    },
   });
 }

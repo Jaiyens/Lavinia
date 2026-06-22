@@ -6,9 +6,11 @@
  *   Local creds (for running this script):  VERCEL_TOKEN + VERCEL_TEAM_ID + VERCEL_PROJECT_ID
  *   Run:                                     npx tsx scripts/codegen-sandbox-snapshot.ts
  *
- * It creates a python3.13 sandbox, installs WeasyPrint's system libraries + the package, installs the
- * three Terra fonts (best-effort — WeasyPrint falls back to a default face if a font fails, which does
- * not affect number verification), snapshots, and prints the snapshot id.
+ * It creates a python3.13 sandbox, installs WeasyPrint's system libraries + the package, installs
+ * openpyxl (the WORKBOOK codegen renderer; pure Python, no extra system deps — one image serves both
+ * the PDF and the .xlsx codegen paths), installs the three Terra fonts (best-effort — WeasyPrint falls
+ * back to a default face if a font fails, which does not affect number verification), snapshots, and
+ * prints the snapshot id.
  *
  * NOTE: the dnf package names + font URLs below are a sensible starting point for the Amazon-Linux
  * sandbox base; verify them on the first run and adjust if a package/font 404s. Live verification of the
@@ -80,6 +82,11 @@ async function main(): Promise<void> {
 
     await run(sandbox, "install weasyprint", "python3", ["-m", "pip", "install", "--user", "weasyprint"]);
 
+    // openpyxl powers the WORKBOOK codegen (Phase 3). It is pure Python (writes the .xlsx zip itself),
+    // so it needs no extra system deps — one snapshot image serves BOTH renderers (WeasyPrint -> PDF,
+    // openpyxl -> .xlsx). A separate labelled step gives a clear error if openpyxl specifically fails.
+    await run(sandbox, "install openpyxl", "python3", ["-m", "pip", "install", "--user", "openpyxl"]);
+
     // Fonts are best-effort: download each into the user font dir, then refresh the font cache.
     await run(sandbox, "make font dir", "mkdir", ["-p", "/home/vercel-sandbox/.fonts"]);
     for (const font of FONTS) {
@@ -100,6 +107,13 @@ async function main(): Promise<void> {
     await run(sandbox, "smoke-test weasyprint", "python3", [
       "-c",
       "from weasyprint import HTML; HTML(string='<p>ok</p>').write_pdf('/tmp/smoke.pdf'); print('weasyprint ok')",
+    ]);
+
+    // Smoke-test openpyxl + its chart API (BarChart/Reference/add_chart), so a broken xlsx renderer
+    // aborts the snapshot here rather than silently falling back forever in the live workbook path.
+    await run(sandbox, "smoke-test openpyxl", "python3", [
+      "-c",
+      "from openpyxl import Workbook; from openpyxl.chart import BarChart, Reference; wb=Workbook(); ws=wb.active; ws['A1']='ok'; ws['A2']=1; c=BarChart(); c.add_data(Reference(ws,min_col=1,min_row=2,max_row=2)); ws.add_chart(c,'C1'); wb.save('/tmp/smoke.xlsx'); print('openpyxl ok')",
     ]);
 
     process.stdout.write("\nSnapshotting…\n");
