@@ -770,12 +770,19 @@ export const en = {
         ranch: "Ranch",
         entity: "Entity",
         rate: "Rate",
-        legacy: "Legacy",
+        peak: "Peak kW",
         cost: "This cycle",
         demand: "Demand charge",
         status: "Status",
         coverage: "Coverage",
       },
+      // Search + group controls (meters folded into the Energy table).
+      searchPlaceholder: "Search meters",
+      searchClear: "Clear search",
+      groupToggle: "Group by group",
+      ungrouped: "Other meters",
+      groupCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      peakUnit: "kW",
       // One label per coverage state, reused by the drawer (2.5), CSV (2.7), map (2.9).
       coverage: {
         reconciled: "Loaded",
@@ -881,6 +888,14 @@ export const en = {
       account: "Account",
       rate: "Rate",
       legacyFlag: "Legacy",
+      // Peak demand (shown in the header in place of the old legacy flag).
+      peakValue: (kw: number): string => `${kw} kW peak`,
+      // Intra-day load-curve graph (the meters-tab graph, reused here).
+      curveTitle: "Today's draw",
+      curveAria: "Representative daily load curve",
+      curveNote: "Representative 15-minute shape, pinned to this meter's peak.",
+      curveCeiling: (kw: number): string => `Peak ${kw} kW`,
+      curveNoPeak: "No demand reading yet.",
       // Billing detail section.
       billingHeader: "This cycle",
       periodRange: (start: string, close: string): string => `${start} to ${close}`,

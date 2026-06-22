@@ -19,6 +19,7 @@ import { FindingCard } from "./finding-card";
 import { SpikeSection } from "./spike-section";
 import { ProofSection } from "./proof-section";
 import { RefundFindingCard } from "./refund-finding-card";
+import { MeterCurveGraph } from "./meter-curve-graph";
 
 // The meter drawer (Story 2.5): the ONE shared drill-in surface, opened from any table row
 // (and later any chart bar / map pin) by the nuqs `meter` key. Open/close is pure URL state,
@@ -184,6 +185,15 @@ export function MeterDrawer({
   // The rate the header shows: the latest bill's printed tariff first (what PG&E actually
   // billed), falling back to the inventory rate schedule when no reconciled period exists.
   const rateShown = d.latest?.tariff ?? meter.rateSchedule;
+  // The meter's peak demand kW (the billed 15-min peak): latest period's, else the highest on file.
+  // Drives the header chip (in place of the old legacy flag) and the intra-day curve's ceiling.
+  const peakKw = ((): number | null => {
+    let mx: number | null = null;
+    for (const p of meter.periods) {
+      if (p.peakKw != null) mx = mx === null ? p.peakKw : Math.max(mx, p.peakKw);
+    }
+    return mx;
+  })();
   const close = () => void setMeter(null);
 
   // Demand visuals (Features A + B), reconciled meters only. The spike detail is the latest
@@ -227,9 +237,9 @@ export function MeterDrawer({
               {rateShown !== null && rateShown !== "" ? (
                 <>
                   {t.rate}: {rateShown}
-                  {meter.isLegacy && (
-                    <span className="type-label-caps ml-2 rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
-                      {t.legacyFlag}
+                  {peakKw !== null && (
+                    <span className="type-label-caps tnum ml-2 rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
+                      {t.peakValue(Math.round(peakKw))}
                     </span>
                   )}
                 </>
@@ -258,6 +268,19 @@ export function MeterDrawer({
             <FieldRow label={t.saId} value={meter.serviceId} />
             <FieldRow label={t.account} value={meter.accountNumber} />
           </dl>
+
+          {/* Today's draw: the intra-day load curve (the meters-tab graph), with the ceiling at this
+              meter's peak. Representative shape pinned to the real peak; renders whenever a peak is
+              on file, else a short note. */}
+          <SectionHeader>{t.curveTitle}</SectionHeader>
+          {peakKw !== null ? (
+            <>
+              <MeterCurveGraph peakKw={peakKw} seed={meter.id} />
+              <p className="type-caption mt-1 text-on-surface-variant">{t.curveNote}</p>
+            </>
+          ) : (
+            <p className="type-body-md text-on-surface-variant">{t.curveNoPeak}</p>
+          )}
 
           {/* Billing detail: figures only when reconciled (the gate lives in toDrawerDetail). */}
           <SectionHeader>{t.billingHeader}</SectionHeader>

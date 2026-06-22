@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { useQueryState } from "nuqs";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en, rateGloss } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
@@ -15,16 +15,17 @@ import {
   type SortKey,
   type SortDir,
 } from "@/lib/dashboard/table";
+import { inferGroupFromName } from "@/lib/meters/group";
 import { metersCsv } from "@/lib/dashboard/csv";
 import { CoveragePill, coverageLabel } from "./coverage-pill";
 import { isActiveFilterValue } from "./filter-bar";
 
 // The Table lens (Story 2.4): the dense, sortable Excel-style view the grower trusts. One row per
 // meter; every figure gated on coverage (a withheld cell reads its state, never a fabricated $0).
-// Reads ONLY the canonical MeterView[] + the nuqs entity/ranch/rate filter keys; a row click sets
-// the `meter` key (the open-drawer seam the 2.5 drawer reads). Sort is ephemeral local state, not
-// a URL key (the canonical nuqs keys are fixed at lens|entity|ranch|rate|meter). Desktop renders a
-// dense table; mobile degrades to a simplified sortable card list.
+// Reads the canonical MeterView[] + the nuqs entity/ranch/rate filter keys; a row click sets the
+// `meter` key (the drawer seam). The Meters tab was folded in here: a name SEARCH, an optional
+// GROUP-BY (by ranch, name-inferred fallback), and a peak-kW column with an inline bar; the drawer
+// shows the intra-day load curve. Sort/search/group are ephemeral local state, not URL keys.
 
 const t = en.shell.table;
 
@@ -33,16 +34,21 @@ const COLUMNS = [
   { key: "ranch", align: "left" },
   { key: "entity", align: "left" },
   { key: "rate", align: "left" },
-  { key: "legacy", align: "left" },
+  { key: "peak", align: "left" },
   { key: "cost", align: "right" },
   { key: "demand", align: "right" },
   { key: "status", align: "left" },
   { key: "coverage", align: "left" },
 ] as const satisfies readonly { key: SortKey; align: "left" | "right" }[];
 
-// New numeric columns open biggest-first (where the money is); the rest open A-Z.
+// Numeric columns open biggest-first (where the money / load is); the rest open A-Z.
 function defaultDir(key: SortKey): SortDir {
-  return key === "cost" || key === "demand" ? "desc" : "asc";
+  return key === "cost" || key === "demand" || key === "peak" ? "desc" : "asc";
+}
+
+/** The group a row belongs to: its ranch, else inferred from the meter name, else "Other meters". */
+function groupKey(row: MeterRow): string {
+  return row.ranch?.trim() || inferGroupFromName(row.name) || t.ungrouped;
 }
 
 function EmptyCell() {
@@ -69,11 +75,22 @@ function RateCell({ rate }: { rate: string | null }) {
   );
 }
 
-function LegacyCell({ isLegacy }: { isLegacy: boolean }) {
-  if (!isLegacy) return <EmptyCell />;
+// Peak demand kW (replaces the old legacy flag): the number plus a thin bar scaled to the largest
+// peak among the shown meters, so relative demand size reads at a glance.
+function PeakCell({ kw, max }: { kw: number | null; max: number }) {
+  if (kw === null) return <EmptyCell />;
+  const pct = max > 0 ? Math.max(4, Math.round((kw / max) * 100)) : 0;
   return (
-    <span className="type-label-caps inline-flex items-center rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
-      {t.legacyFlag}
+    <span className="inline-flex items-center gap-2">
+      <span className="type-num tnum w-14 shrink-0 text-on-surface">
+        {Math.round(kw)} {t.peakUnit}
+      </span>
+      <span
+        aria-hidden
+        className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-container-high sm:inline-block"
+      >
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+      </span>
     </span>
   );
 }
@@ -84,8 +101,6 @@ function StatusCell({ status, flagged }: { status: string | null; flagged: boole
     <span
       className={cn(
         "type-label-caps inline-flex items-center rounded-[var(--radius-control)] px-2 py-0.5",
-        // A flagged-BAD pump is the one inventory concern signal today: clay + the verbatim
-        // status word (color never the only signal). All others read calm.
         flagged ? "bg-alert-container text-on-alert-container" : "text-on-surface-variant",
       )}
     >
@@ -94,9 +109,9 @@ function StatusCell({ status, flagged }: { status: string | null; flagged: boole
   );
 }
 
-// Cost / demand: a real dollar figure ONLY for a reconciled meter. An unreconciled meter reads
-// its coverage state (withheld, muted), never a fabricated $0 (AR-15). A reconciled meter with no
-// demand charge this cycle reads a neutral "None" (honest absence, distinct from withheld).
+// Cost / demand: a real dollar figure ONLY for a reconciled meter (AR-15); an unreconciled meter
+// reads its coverage state, never a fabricated $0. A reconciled meter with no demand charge reads
+// a neutral "None".
 function MoneyCell({ row, kind }: { row: MeterRow; kind: "cost" | "demand" }) {
   if (row.coverageState !== "reconciled") {
     return (
@@ -105,8 +120,6 @@ function MoneyCell({ row, kind }: { row: MeterRow; kind: "cost" | "demand" }) {
   }
   const cents = kind === "cost" ? row.costCents : row.demandCents;
   if (cents === null) {
-    // demand: a reconciled meter genuinely carrying no demand charge. cost: the impossible
-    // reconciled-without-total case (a 1.7 invariant) renders the no-value dash, never $0.
     return (
       <span className="type-num text-on-surface-variant">
         {kind === "demand" ? t.none : t.emptyShort}
@@ -116,7 +129,7 @@ function MoneyCell({ row, kind }: { row: MeterRow; kind: "cost" | "demand" }) {
   return <span className="type-num tnum text-on-surface">{formatUsd(cents)}</span>;
 }
 
-function renderCell(key: SortKey, row: MeterRow): ReactNode {
+function renderCell(key: SortKey, row: MeterRow, maxPeak: number): ReactNode {
   switch (key) {
     case "ranch":
       return <TextCell value={row.ranch} />;
@@ -124,8 +137,8 @@ function renderCell(key: SortKey, row: MeterRow): ReactNode {
       return <TextCell value={row.entity} />;
     case "rate":
       return <RateCell rate={row.rate} />;
-    case "legacy":
-      return <LegacyCell isLegacy={row.isLegacy} />;
+    case "peak":
+      return <PeakCell kw={row.peakKw} max={maxPeak} />;
     case "cost":
       return <MoneyCell row={row} kind="cost" />;
     case "demand":
@@ -145,52 +158,117 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
   const [rate, setRate] = useQueryState("rate");
   const [meterId, setMeter] = useQueryState("meter");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "name", dir: "asc" });
+  const [query, setQuery] = useState("");
+  const [grouped, setGrouped] = useState(false);
 
   const rows = useMemo(() => {
-    const filtered = filterMeters(meters, { entity, ranch, rate });
+    const q = query.trim().toLowerCase();
+    const filtered = filterMeters(meters, { entity, ranch, rate }).filter(
+      (m) => q === "" || m.name.toLowerCase().includes(q),
+    );
     return sortRows(filtered.map(toMeterRow), sort.key, sort.dir);
-  }, [meters, entity, ranch, rate, sort.key, sort.dir]);
+  }, [meters, entity, ranch, rate, query, sort.key, sort.dir]);
 
-  // Open the shared drawer (Story 2.5 reads this `meter` key). The desktop row is a
-  // mouse-convenience target; the focusable name button is the keyboard / assistive-tech path.
+  const maxPeak = useMemo(
+    () => rows.reduce((mx, r) => (r.peakKw != null ? Math.max(mx, r.peakKw) : mx), 0),
+    [rows],
+  );
+
+  // When grouping is on, bucket the (already-sorted) rows by group and order groups A-Z; otherwise a
+  // single unlabeled section so the render path is uniform.
+  const sections = useMemo((): { group: string | null; rows: MeterRow[] }[] => {
+    if (!grouped) return [{ group: null, rows }];
+    const map = new Map<string, MeterRow[]>();
+    for (const r of rows) {
+      const g = groupKey(r);
+      const arr = map.get(g);
+      if (arr) arr.push(r);
+      else map.set(g, [r]);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))
+      .map(([group, groupRows]) => ({ group, rows: groupRows }));
+  }, [grouped, rows]);
+
   const open = (id: string) => void setMeter(id);
   const onHeader = (key: SortKey) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: defaultDir(key) }));
 
+  // Search + group controls, shared by the empty state and the populated views.
+  const controls = (
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="relative min-w-[12rem] flex-1">
+        <Search
+          size={16}
+          aria-hidden
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchPlaceholder}
+          className="min-h-[44px] w-full rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest pl-9 pr-9 type-body-md text-on-surface"
+        />
+        {query !== "" && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label={t.searchClear}
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-surface-container-low"
+          >
+            <X size={15} aria-hidden />
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => setGrouped((g) => !g)}
+        aria-pressed={grouped}
+        className={cn(
+          "press min-h-[44px] rounded-[var(--radius-control)] border px-4 type-body-md transition-colors",
+          grouped
+            ? "border-primary bg-primary-container text-on-primary-container"
+            : "border-outline-variant text-on-surface hover:bg-surface-container-low",
+        )}
+      >
+        {t.groupToggle}
+      </button>
+    </div>
+  );
+
   if (rows.length === 0) {
-    // Distinguish a farm with no meters at all (honest empty inventory) from a filter that
-    // excluded everyone ("No meters match" + the clear-filter affordance, Story 2.6).
-    const filteredOut = meters.length > 0;
     const hasActiveFilter =
-      isActiveFilterValue(entity) || isActiveFilterValue(ranch) || isActiveFilterValue(rate);
+      isActiveFilterValue(entity) || isActiveFilterValue(ranch) || isActiveFilterValue(rate) || query.trim() !== "";
+    // No meters at all (honest empty inventory) vs a filter/search that excluded everyone.
+    const filteredOut = meters.length > 0 && hasActiveFilter;
     const clearAll = () => {
       void setEntity(null);
       void setRanch(null);
       void setRate(null);
+      setQuery("");
     };
     return (
-      <div
-        id="energy-lens"
-        className="flex min-h-[16rem] scroll-mt-6 flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8"
-      >
-        <p className="type-body-md text-on-surface-variant">
-          {filteredOut ? t.noMatch : t.emptyFarm}
-        </p>
-        {filteredOut && hasActiveFilter && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
-          >
-            {en.shell.filter.clear}
-          </button>
-        )}
-      </div>
+      <section id="energy-lens" className="scroll-mt-6">
+        {meters.length > 0 && controls}
+        <div className="flex min-h-[16rem] flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8">
+          <p className="type-body-md text-on-surface-variant">{filteredOut ? t.noMatch : t.emptyFarm}</p>
+          {filteredOut && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+            >
+              {en.shell.filter.clear}
+            </button>
+          )}
+        </div>
+      </section>
     );
   }
 
-  // One-click export of exactly what the table shows: same filtered rows, same sort order
-  // (Story 2.7, FR-22). Built client-side; no nuqs key is written.
+  // One-click export of exactly what the table shows: same filtered rows, same sort order.
   const exportCsv = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -203,12 +281,12 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    // Deferred: a same-task revoke can abort the queued download in Safari/older Firefox.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
     <section id="energy-lens" aria-label={t.caption} className="scroll-mt-6">
+      {controls}
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="type-caption text-on-surface-variant">{t.rowCount(rows.length)}</p>
         <button
@@ -252,39 +330,45 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
           </button>
         </div>
         <ul className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-e1">
-          {rows.map((row) => (
-            <li key={row.meter.id} className="border-t border-outline-variant first:border-t-0">
-              <button
-                type="button"
-                onClick={() => open(row.meter.id)}
-                aria-label={
-                  row.isFlagged && row.status !== null
-                    ? t.openMeterFlagged(row.name, row.status)
-                    : t.openMeter(row.name)
-                }
-                aria-current={row.meter.id === meterId ? "true" : undefined}
-                className={cn(
-                  "flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
-                  row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
-                )}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate type-num font-medium text-on-surface">{row.name}</span>
-                  <span className="block truncate type-caption text-on-surface-variant">
-                    {row.rate ? row.rate : t.emptyShort}
-                  </span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
-                  {/* Reconciled: the figure + the calm "Loaded" pill. Unreconciled: the pill alone
-                      carries the coverage state, so its label is not stacked-duplicated. */}
-                  {row.coverageState === "reconciled" && <MoneyCell row={row} kind="cost" />}
-                  <CoveragePill state={row.coverageState} />
-                  {/* The one health concern signal on the calm card (Story 3.6): a flagged-BAD
-                      pump shows the same clay chip as the desktop status column; healthy
-                      statuses stay on the desktop column and in the drawer, one tap away. */}
-                  {row.isFlagged && <StatusCell status={row.status} flagged />}
-                </span>
-              </button>
+          {sections.map((section) => (
+            <li key={section.group ?? "__all"}>
+              {section.group !== null && (
+                <p className="border-t border-outline-variant bg-surface-container-low px-4 py-1.5 type-label-caps text-on-surface-variant first:border-t-0">
+                  {section.group} &middot; {t.groupCount(section.rows.length)}
+                </p>
+              )}
+              <ul>
+                {section.rows.map((row) => (
+                  <li key={row.meter.id} className="border-t border-outline-variant first:border-t-0">
+                    <button
+                      type="button"
+                      onClick={() => open(row.meter.id)}
+                      aria-label={
+                        row.isFlagged && row.status !== null
+                          ? t.openMeterFlagged(row.name, row.status)
+                          : t.openMeter(row.name)
+                      }
+                      aria-current={row.meter.id === meterId ? "true" : undefined}
+                      className={cn(
+                        "flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
+                        row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate type-num font-medium text-on-surface">{row.name}</span>
+                        <span className="block truncate type-caption text-on-surface-variant">
+                          {row.peakKw !== null ? `${Math.round(row.peakKw)} ${t.peakUnit}` : (row.rate ?? t.emptyShort)}
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        {row.coverageState === "reconciled" && <MoneyCell row={row} kind="cost" />}
+                        <CoveragePill state={row.coverageState} />
+                        {row.isFlagged && <StatusCell status={row.status} flagged />}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
@@ -302,10 +386,7 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
                     key={col.key}
                     scope="col"
                     aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-                    className={cn(
-                      "whitespace-nowrap px-3 py-2.5",
-                      col.align === "right" ? "text-right" : "text-left",
-                    )}
+                    className={cn("whitespace-nowrap px-3 py-2.5", col.align === "right" ? "text-right" : "text-left")}
                   >
                     <button
                       type="button"
@@ -319,11 +400,7 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
                     >
                       <span>{t.columns[col.key]}</span>
                       {active &&
-                        (sort.dir === "asc" ? (
-                          <ArrowUp size={12} aria-hidden />
-                        ) : (
-                          <ArrowDown size={12} aria-hidden />
-                        ))}
+                        (sort.dir === "asc" ? <ArrowUp size={12} aria-hidden /> : <ArrowDown size={12} aria-hidden />)}
                     </button>
                   </th>
                 );
@@ -331,43 +408,49 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.meter.id}
-                onClick={() => open(row.meter.id)}
-                // The open meter (a focused finding traces here, AC4): tinted + aria-current,
-                // so color is never the only signal.
-                aria-current={row.meter.id === meterId ? "true" : undefined}
-                className={cn(
-                  "cursor-pointer border-t border-outline-variant transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
-                  row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
+            {sections.map((section) => (
+              <Fragment key={section.group ?? "__all"}>
+                {section.group !== null && (
+                  <tr className="bg-surface-container-low">
+                    <td colSpan={COLUMNS.length} className="px-3 py-1.5 type-label-caps text-on-surface-variant">
+                      {section.group} &middot; {t.groupCount(section.rows.length)}
+                    </td>
+                  </tr>
                 )}
-              >
-                <td className="px-3 py-2.5">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      open(row.meter.id);
-                    }}
-                    aria-label={t.openMeter(row.name)}
-                    className="type-num font-medium text-on-surface transition-colors hover:text-primary"
-                  >
-                    {row.name}
-                  </button>
-                </td>
-                {COLUMNS.slice(1).map((col) => (
-                  <td
-                    key={col.key}
+                {section.rows.map((row) => (
+                  <tr
+                    key={row.meter.id}
+                    onClick={() => open(row.meter.id)}
+                    aria-current={row.meter.id === meterId ? "true" : undefined}
                     className={cn(
-                      "px-3 py-2.5 type-num",
-                      col.align === "right" ? "text-right" : "text-left",
+                      "cursor-pointer border-t border-outline-variant transition-[background-color,box-shadow] duration-[180ms] hover:bg-surface-container-low hover:[box-shadow:inset_3px_0_0_0_var(--primary)]",
+                      row.meter.id === meterId && "bg-surface-container-high [box-shadow:inset_3px_0_0_0_var(--primary)]",
                     )}
                   >
-                    {renderCell(col.key, row)}
-                  </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          open(row.meter.id);
+                        }}
+                        aria-label={t.openMeter(row.name)}
+                        className="type-num font-medium text-on-surface transition-colors hover:text-primary"
+                      >
+                        {row.name}
+                      </button>
+                    </td>
+                    {COLUMNS.slice(1).map((col) => (
+                      <td
+                        key={col.key}
+                        className={cn("px-3 py-2.5 type-num", col.align === "right" ? "text-right" : "text-left")}
+                      >
+                        {renderCell(col.key, row, maxPeak)}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>

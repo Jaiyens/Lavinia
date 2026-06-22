@@ -13,7 +13,7 @@ export type SortKey =
   | "ranch"
   | "entity"
   | "rate"
-  | "legacy"
+  | "peak"
   | "cost"
   | "demand"
   | "status"
@@ -36,6 +36,8 @@ export type MeterRow = {
   entity: string | null;
   rate: string | null;
   isLegacy: boolean;
+  /** Latest cycle's peak demand kW (the billed 15-min peak); null when no period carries one. */
+  peakKw: number | null;
   /** Master-sheet pump health, verbatim; null when unknown. */
   status: string | null;
   coverageState: CoverageState;
@@ -56,6 +58,17 @@ function latestPeriod(m: MeterView) {
   return m.periods[m.periods.length - 1];
 }
 
+/** The meter's peak demand kW: the latest period's billed peak, else the highest across periods. */
+function meterPeakKw(m: MeterView): number | null {
+  const latest = latestPeriod(m);
+  if (latest?.peakKw != null) return latest.peakKw;
+  let max: number | null = null;
+  for (const p of m.periods) {
+    if (p.peakKw != null) max = max === null ? p.peakKw : Math.max(max, p.peakKw);
+  }
+  return max;
+}
+
 /** Project a meter to its table row. Cost/demand are gated on coverage (AR-15). */
 export function toMeterRow(m: MeterView): MeterRow {
   const reconciled = m.coverageState === RECONCILED;
@@ -67,6 +80,7 @@ export function toMeterRow(m: MeterView): MeterRow {
     entity: m.entityName,
     rate: m.rateSchedule,
     isLegacy: m.isLegacy,
+    peakKw: meterPeakKw(m),
     status: m.status,
     coverageState: m.coverageState,
     costCents: reconciled ? (latest?.printedTotalCents ?? null) : null,
@@ -138,8 +152,8 @@ function primaryCompare(a: MeterRow, b: MeterRow, key: SortKey, dir: SortDir): n
       return cmpNullsLast(a.costCents, b.costCents, (x, y) => x - y, dir);
     case "demand":
       return cmpNullsLast(a.demandCents, b.demandCents, (x, y) => x - y, dir);
-    case "legacy":
-      return applyDir(Number(a.isLegacy) - Number(b.isLegacy), dir);
+    case "peak":
+      return cmpNullsLast(a.peakKw, b.peakKw, (x, y) => x - y, dir);
     case "coverage":
       return applyDir(COVERAGE_ORDER[a.coverageState] - COVERAGE_ORDER[b.coverageState], dir);
   }

@@ -100,17 +100,38 @@ test.describe("Tour stress click-through", () => {
     expect(errors, errors.join("\n")).toEqual([]);
   });
 
-  test("meters: top tile, gauges, detail drawer, edit mode", async ({ page }) => {
+  test("energy meters: table search, group, peak-kW, click -> load-curve graph", async ({ page }) => {
     const errors = attachGuards(page);
-    await page.goto("/tour/meters");
-
-    // The board renders meter tiles (gauges) without needing to expand a group.
-    await expect(page.getByRole("heading", { name: /meters/i }).first()).toBeVisible();
-    const meterButtons = page.locator("button[aria-label*='Open meter'], button[title]");
+    await page.goto("/tour/energy");
     await page.waitForTimeout(800);
 
-    // Open the first meter tile -> detail dialog -> close.
-    const firstMeter = page.locator("button").filter({ hasText: /kW/ }).first();
+    // Switch to the Table lens (where the meter list lives).
+    const tableTab = page.getByRole("button", { name: /^table$/i }).first();
+    if (await tableTab.count()) {
+      await tableTab.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Search for meters by name.
+    const search = page.getByPlaceholder(/search meters/i);
+    if (await search.count()) {
+      await search.fill("pump");
+      await page.waitForTimeout(400);
+      await search.fill("");
+      await page.waitForTimeout(300);
+    }
+
+    // Toggle group-by-group.
+    const groupBtn = page.getByRole("button", { name: /group by group/i }).first();
+    if (await groupBtn.count()) {
+      await groupBtn.click();
+      await page.waitForTimeout(400);
+      await groupBtn.click();
+      await page.waitForTimeout(300);
+    }
+
+    // Open a meter -> the drawer with the intra-day load-curve graph -> close.
+    const firstMeter = page.getByRole("button", { name: /open .* detail|open meter/i }).first();
     if (await firstMeter.count()) {
       await firstMeter.click();
       await page.waitForTimeout(800);
@@ -121,16 +142,6 @@ test.describe("Tour stress click-through", () => {
       }
     }
 
-    // Edit mode via the group pencil, then leave.
-    const pencil = page.getByRole("button", { name: /edit group/i }).first();
-    if (await pencil.count()) {
-      await pencil.click();
-      await page.waitForTimeout(400);
-      const done = page.getByRole("button", { name: /done editing/i }).first();
-      if (await done.count()) await done.click();
-    }
-
-    void meterButtons;
     expect(errors, errors.join("\n")).toEqual([]);
   });
 
