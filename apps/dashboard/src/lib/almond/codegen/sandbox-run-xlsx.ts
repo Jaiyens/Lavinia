@@ -51,8 +51,34 @@ CURRENCY_FMT = '"$"#,##0.00'
 INTEGER_FMT  = "#,##0"
 FORBIDDEN    = set('\\\\/*?:[]')
 
+# Bomb / runaway-output bounds: a normal farm workbook is tens of KB. Capping cell length + row/sheet
+# counts bounds the produced file at the source (the in-process verifier also rejects an over-large
+# decompressed total, but bounding here keeps the file small in the first place).
+MAX_CELL_LEN = 1000
+MAX_ROWS     = 10000
+MAX_SHEETS   = 20
+MAX_FOOTER   = 50
+FORMULA_LEAD = set("=+-@")
+
+def clip(s):
+    s = str(s)
+    return s if len(s) <= MAX_CELL_LEN else s[:MAX_CELL_LEN]
+
+def set_text(cell, raw):
+    # Write a model string as TEXT, length-capped, and never as a formula: openpyxl treats a leading
+    # =,+,-,@ string as a formula (data_type 'f'); force string type so a smuggled "=99999" stays a
+    # literal whose digits the verifier's reverse scan still sees (and the verifier rejects any cell
+    # that does end up a formula anyway).
+    s = clip(raw)
+    cell.value = s
+    if s[:1] in FORMULA_LEAD:
+        cell.data_type = "s"
+    return cell
+
 def safe_sheet_name(name):
-    s = "".join(c for c in str(name if name is not None else "") if c not in FORBIDDEN)
+    # Mirror export/workbook.ts safeSheetName: REPLACE each forbidden char with a space (a word
+    # separator), collapse whitespace, cap 31, never blank.
+    s = "".join(" " if c in FORBIDDEN else c for c in str(name if name is not None else ""))
     s = " ".join(s.split())[:31]
     return s if s else "Sheet"
 
@@ -96,7 +122,7 @@ def write_cell(ws, r, c, cell, bold=False, top_rule=False, fill=None):
         target.number_format = num_fmt_for(fmt)
         target.alignment = Alignment(horizontal="right")
     else:
-        target.value = str(raw)
+        set_text(target, raw)
     color = MUTED_TEXT if fmt == "label" else TITLE_TEXT
     target.font = Font(color=color, bold=bool(bold))
     if fill:
@@ -109,17 +135,19 @@ def render_sheet(wb, spec, first):
     ws = wb.active if first else wb.create_sheet()
     ws.title = safe_sheet_name(spec.get("name"))
     columns = spec.get("columns") or []
-    rows    = spec.get("rows") or []
+    rows    = (spec.get("rows") or [])[:MAX_ROWS]
     freeze  = spec.get("freezeHeader") is not False
     afilter = spec.get("autoFilter") is not False
     zebra   = spec.get("zebra") is not False
 
-    t = ws.cell(row=1, column=1, value=str(spec.get("title", "")))
+    t = ws.cell(row=1, column=1)
+    set_text(t, spec.get("title", ""))
     t.font = Font(bold=True, size=13, color=TITLE_TEXT)
     header_row = 3
 
     for i, col in enumerate(columns):
-        hc = ws.cell(row=header_row, column=i + 1, value=str(col.get("header", "")))
+        hc = ws.cell(row=header_row, column=i + 1)
+        set_text(hc, col.get("header", ""))
         hc.font = Font(bold=True, color=HEADER_TEXT)
         hc.fill = PatternFill(fill_type="solid", fgColor=BRAND_GREEN)
         hc.alignment = Alignment(vertical="center")
@@ -140,8 +168,9 @@ def render_sheet(wb, spec, first):
             write_cell(ws, r, c + 1, cell if isinstance(cell, dict) else {"value": cell}, bold=True, top_rule=True)
 
     r += 2
-    for line in (spec.get("footer") or []):
-        fc = ws.cell(row=r, column=1, value=str(line))
+    for line in (spec.get("footer") or [])[:MAX_FOOTER]:
+        fc = ws.cell(row=r, column=1)
+        set_text(fc, line)
         fc.font = Font(italic=True, color=MUTED_TEXT)
         r += 1
 
@@ -156,7 +185,10 @@ def render_sheet(wb, spec, first):
         try:
             kind = chart_spec.get("type")
             chart = LineChart() if kind == "line" else BarChart()
-            chart.title = str(chart_spec.get("title", ""))
+            # A chart TITLE is model free-text NOT covered by the cell reverse scan, so strip its digits
+            # (a fabricated number can never ride in a chart title). Chart DATA references verified cells.
+            raw_title = clip(chart_spec.get("title", ""))
+            chart.title = "".join(ch for ch in raw_title if not ch.isdigit())
             data = Reference(ws,
                 min_col=int(chart_spec["dataMinCol"]), max_col=int(chart_spec["dataMaxCol"]),
                 min_row=int(chart_spec["dataMinRow"]), max_row=int(chart_spec["dataMaxRow"]))
@@ -177,7 +209,7 @@ def main():
     if not isinstance(sheets, list) or len(sheets) == 0:
         print("workbook.json has no sheets", file=sys.stderr); sys.exit(1)
     wb = Workbook()
-    for i, sheet in enumerate(sheets):
+    for i, sheet in enumerate(sheets[:MAX_SHEETS]):
         if not isinstance(sheet, dict):
             print("sheet %d is not an object" % i, file=sys.stderr); sys.exit(1)
         render_sheet(wb, sheet, first=(i == 0))

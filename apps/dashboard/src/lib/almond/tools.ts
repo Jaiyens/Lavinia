@@ -431,7 +431,9 @@ export async function codegenExportSkill(
     };
   }
   const result = await runCodegenExport(deps, input, signal);
-  return result.kind === "file" ? { ...result, cacheKey } : result;
+  // Cache ONLY the verified bespoke render, never the deterministic fallback (else a one-off sandbox
+  // outage pins the generic report under the bespoke key until the data changes / 30d).
+  return result.kind === "file" && !result.fromFallback ? { ...result, cacheKey } : result;
 }
 
 /**
@@ -466,7 +468,8 @@ export async function codegenWorkbookSkill(
     };
   }
   const result = await runCodegenWorkbook(deps, input, signal);
-  return result.kind === "file" ? { ...result, cacheKey } : result;
+  // Cache ONLY the verified bespoke render, never the deterministic fallback.
+  return result.kind === "file" && !result.fromFallback ? { ...result, cacheKey } : result;
 }
 
 /**

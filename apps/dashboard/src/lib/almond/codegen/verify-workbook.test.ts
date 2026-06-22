@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import ExcelJS from "exceljs";
 import { composeReportSnapshot, type ReportSnapshot, type SnapshotMeter } from "./snapshot";
 import { extractXlsxNumbers, verifyWorkbookArtifact } from "./verify";
 import { buildStyledWorkbook, type SheetCell } from "@/lib/almond/export/workbook";
@@ -88,6 +89,44 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
     expect(verifyWorkbookArtifact(SNAPSHOT, [{ kind: "magic", label: "x", value: 1 }], honestCellText).ok).toBe(false);
     expect(verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "x", value: 1, op: "sum", sourcePaths: [] }], honestCellText).ok).toBe(false);
   });
+
+  it("REJECTS a derived sum with a DUPLICATE sourcePath (anti double-count)", () => {
+    // Listing the same path twice would let the verifier compute a doubled total it then trusts.
+    const manifest = [
+      { kind: "derived", label: "doubled", value: 12_283_552, op: "sum", sourcePaths: ["opportunities[0].savingsCents", "opportunities[0].savingsCents"] },
+    ];
+    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, "Total\n122835.52").ok).toBe(false);
+  });
+
+  it("REJECTS a derived sum over a NON-money (structural) field", () => {
+    // meterCount / ranks are not cents; a sum can only aggregate money fields (paths ending in 'Cents').
+    const manifest = [{ kind: "derived", label: "bad", value: 183, op: "sum", sourcePaths: ["meterCount"] }];
+    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, "183").ok).toBe(false);
+  });
+
+  it("REJECTS a SIGN-FLIPPED figure: a cell showing -$X when the snapshot holds +$X", () => {
+    // The model renders the real savings as a negative (a fake credit) and omits it from the manifest.
+    // The sign-aware reverse scan must catch it (the allowlist holds only the positive form).
+    const manifest = [{ label: "s0", value: 6_141_776, sourcePath: "opportunities[0].savingsCents" }];
+    const v = verifyWorkbookArtifact(SNAPSHOT, manifest, "Westside Pump 17\n-61417.76");
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
+  });
+
+  it("ACCEPTS an HONEST negative currency value (a NEM credit / refund) against its signed allowlist form", () => {
+    const creditSnap = composeReportSnapshot({
+      farm: { id: "f", name: "F" },
+      meterCount: 1,
+      coverageAsOf: null,
+      latestMonthSpendCents: null,
+      opportunities: [],
+      meters: [{ id: "m1", name: "Solar Pump", rate: "AG-B", costCents: -5_000, demandCents: null }],
+      coverage: { reconciled: 1, needsReview: 0, noBill: 0 },
+    });
+    // The Meters tab shows the credit as -$50.00; a literal manifest entry ties it to the snapshot.
+    const v = verifyWorkbookArtifact(creditSnap, [{ label: "credit", value: -5_000, sourcePath: "meters[0].costCents" }], "Solar Pump\n-50.00");
+    expect(v).toEqual({ ok: true });
+  });
 });
 
 describe("extractXlsxNumbers + verifyWorkbookArtifact (end-to-end over real .xlsx bytes)", () => {
@@ -117,11 +156,12 @@ describe("extractXlsxNumbers + verifyWorkbookArtifact (end-to-end over real .xls
       [{ value: "Total" }, { value: 68_243.64, format: "currency" }],
     );
     const cellText = await extractXlsxNumbers(bytes);
+    expect(cellText).not.toBeNull();
     const manifest = [
       ...SAVINGS_LITERALS,
       { kind: "derived", label: "total", value: 6_824_364, op: "sum", sourcePaths: ["opportunities[0].savingsCents", "opportunities[1].savingsCents"] },
     ];
-    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, cellText)).toEqual({ ok: true });
+    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, cellText!)).toEqual({ ok: true });
   });
 
   it("REJECTS a workbook that prints a fabricated currency value", async () => {
@@ -129,14 +169,13 @@ describe("extractXlsxNumbers + verifyWorkbookArtifact (end-to-end over real .xls
       [{ value: "Phantom Pump" }, { value: 4_242.42, format: "currency" }], // $4,242.42 is in no snapshot field
     ]);
     const cellText = await extractXlsxNumbers(bytes);
-    const v = verifyWorkbookArtifact(SNAPSHOT, SAVINGS_LITERALS, cellText);
+    expect(cellText).not.toBeNull();
+    const v = verifyWorkbookArtifact(SNAPSHOT, SAVINGS_LITERALS, cellText!);
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
   });
 
   it("emits the cent-precise form for a currency value ending in a zero cent (no trailing-zero mismatch)", async () => {
-    // $61,417.70 stored as 61417.7 must still scan as the allowlisted "61417.70". Use a snapshot whose
-    // savings is exactly 6_141_770c so the value is grounded.
     const snap = composeReportSnapshot({
       farm: { id: "f", name: "F" },
       meterCount: 1,
@@ -146,7 +185,22 @@ describe("extractXlsxNumbers + verifyWorkbookArtifact (end-to-end over real .xls
     });
     const bytes = await workbook([[{ value: "P" }, { value: 61_417.7, format: "currency" }]]);
     const cellText = await extractXlsxNumbers(bytes);
-    expect(cellText).toContain("61417.70");
-    expect(verifyWorkbookArtifact(snap, [{ label: "s", value: 6_141_770, sourcePath: "opportunities[0].savingsCents" }], cellText)).toEqual({ ok: true });
+    expect(cellText).not.toBeNull();
+    expect(cellText!).toContain("61417.70");
+    expect(verifyWorkbookArtifact(snap, [{ label: "s", value: 6_141_770, sourcePath: "opportunities[0].savingsCents" }], cellText!)).toEqual({ ok: true });
+  });
+
+  it("returns null (=> caller falls back) for a non-zip / unparsable buffer", async () => {
+    expect(await extractXlsxNumbers(Buffer.from("this is not a zip file at all"))).toBeNull();
+  });
+
+  it("returns null for a FORMULA cell (a smuggled '=...' the cell-value scan would miss)", async () => {
+    // Build a workbook with a real formula cell via ExcelJS directly (the openpyxl shim turns a model
+    // '=99999' string into exactly this). Excel would DISPLAY the result, so the verifier must reject.
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("S");
+    ws.getCell("A1").value = { formula: "1+1", result: 99999 } as unknown as ExcelJS.CellValue;
+    const bytes = Buffer.from((await wb.xlsx.writeBuffer()) as unknown as ArrayBuffer);
+    expect(await extractXlsxNumbers(bytes)).toBeNull();
   });
 });

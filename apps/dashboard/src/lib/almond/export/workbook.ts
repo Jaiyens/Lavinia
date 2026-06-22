@@ -183,9 +183,11 @@ function renderSheet(workbook: ExcelJS.Workbook, spec: SheetSpec): void {
     row.getCell(1).font = { italic: true, color: { argb: MUTED_TEXT } };
   }
 
-  // Freeze the header (so it stays pinned), add an autofilter, and size every column.
-  if (freeze) sheet.views = [{ state: "frozen", ySplit: headerIndex }];
-  if (filter) {
+  // Freeze the header (so it stays pinned), add an autofilter, and size every column. Both are guarded
+  // on having columns: a 0-column sheet otherwise builds a malformed autofilter range ("A3:3", since
+  // colLetter(0) is ""). The deterministic callers always emit columns; this guards a degenerate spec.
+  if (freeze && spec.columns.length > 0) sheet.views = [{ state: "frozen", ySplit: headerIndex }];
+  if (filter && spec.columns.length > 0) {
     sheet.autoFilter = `${colLetter(1)}${headerIndex}:${colLetter(spec.columns.length)}${headerIndex}`;
   }
   sheet.columns = spec.columns.map((c, i) => ({ width: autoWidth(c, i, spec.rows) }));
