@@ -42,6 +42,8 @@ export type Enrichment = {
   water_district?: Sourced<string>;
   soil_class?: Sourced<string>;
   slope_pct?: Sourced<number>;
+  well_depth_ft?: Sourced<number>;
+  well_capacity_gpm?: Sourced<number>;
   et_estimate_af?: Sourced<number>;
 };
 
@@ -385,9 +387,13 @@ export function buildFarmParcel(
     "district",
   ] as const);
   const hasWell = waterSource !== "district";
-  const wellDepth = hasWell ? intRange(rng, 280, 920) : null;
+  // Real nearby well-completion-report values (DWR OSWCR) override the representative draws; well_hp
+  // has no public source so it stays representative.
+  const wellDepth = enrichment.well_depth_ft?.value ?? (hasWell ? intRange(rng, 280, 920) : null);
+  if (enrichment.well_depth_ft) sources.well_depth_ft = enrichment.well_depth_ft.source;
   const wellHp = hasWell ? pick(rng, [40, 50, 60, 75, 100, 125, 150]) : null;
-  const wellCapacity = hasWell ? intRange(rng, 350, 1400) : null;
+  const wellCapacity = enrichment.well_capacity_gpm?.value ?? (hasWell ? intRange(rng, 350, 1400) : null);
+  if (enrichment.well_capacity_gpm) sources.well_capacity_gpm = enrichment.well_capacity_gpm.source;
   const gsaName = enrichment.gsa_name?.value ?? pick(rng, GSAS);
   if (enrichment.gsa_name) sources.gsa_name = enrichment.gsa_name.source;
   const groundwaterAlloc = round(range(rng, 1.4, 2.6), 2);

@@ -166,6 +166,64 @@ async function enrichSoil(lat: number, lng: number): Promise<SoilEnrichment> {
   }
 }
 
+// --- wells (DWR OSWCR well completion reports) ------------------------------------------------
+// The nearest agricultural well's reported completion depth + yield, from the public Well Completion
+// Report layer. Per-well points (location precision varies; older records snap to section center),
+// so this is framed as the NEAREST well, reported AT DRILLING - not "this parcel's well". Pump
+// horsepower is never collected by the state, so it stays representative.
+
+const OSWCR_LAYER =
+  "https://gis.water.ca.gov/arcgis/rest/services/Environment/i07_WellCompletionReports/FeatureServer/0";
+const OSWCR_SOURCE = "DWR OSWCR (nearest well, reported at drilling)";
+
+type WellEnrichment = { depthFt: Sourced<number> | null; capacityGpm: Sourced<number> | null };
+
+async function enrichWells(lat: number, lng: number): Promise<WellEnrichment> {
+  const d = 0.018; // ~2 km half-envelope around the parcel centroid
+  const params = new URLSearchParams({
+    geometry: `${lng - d},${lat - d},${lng + d},${lat + d}`,
+    geometryType: "esriGeometryEnvelope",
+    inSR: "4326",
+    spatialRel: "esriSpatialRelIntersects",
+    outFields:
+      "TotalCompletedDepth,WellYield,WellYieldUnitofMeasure,PlannedUseFormerUse,B118WellUse,DecimalLatitude,DecimalLongitude",
+    returnGeometry: "false",
+    resultRecordCount: "100",
+    f: "json",
+  });
+  try {
+    const json = await fetchJson(`${OSWCR_LAYER}/query?${params.toString()}`);
+    const feats =
+      json && typeof json === "object" && Array.isArray((json as { features?: unknown }).features)
+        ? (json as { features: Array<{ attributes?: Record<string, unknown> }> }).features
+        : [];
+    let best: { dist: number; depth: number | null; gpm: number | null } | null = null;
+    for (const f of feats) {
+      const a = f.attributes ?? {};
+      const use = `${str(a.PlannedUseFormerUse) ?? ""} ${str(a.B118WellUse) ?? ""}`.toLowerCase();
+      if (!/irrigation|agricultur/.test(use)) continue; // ag wells only
+      const wlat = Number(a.DecimalLatitude);
+      const wlng = Number(a.DecimalLongitude);
+      if (!Number.isFinite(wlat) || !Number.isFinite(wlng)) continue;
+      const depthRaw = a.TotalCompletedDepth === null || a.TotalCompletedDepth === undefined ? NaN : Number(a.TotalCompletedDepth);
+      const depth = Number.isFinite(depthRaw) && depthRaw > 0 ? Math.round(depthRaw) : null;
+      const unit = (str(a.WellYieldUnitofMeasure) ?? "").toLowerCase();
+      const yieldNum = Number(String(a.WellYield ?? "").replace(/[^0-9.]/g, ""));
+      const gpm = /gpm|gallons per minute/.test(unit) && Number.isFinite(yieldNum) && yieldNum > 0 ? Math.round(yieldNum) : null;
+      if (depth === null && gpm === null) continue;
+      const dist = (wlat - lat) ** 2 + (wlng - lng) ** 2;
+      if (best === null || dist < best.dist) best = { dist, depth, gpm };
+    }
+    if (best === null) return { depthFt: null, capacityGpm: null };
+    return {
+      depthFt: best.depth !== null ? { value: best.depth, source: OSWCR_SOURCE } : null,
+      capacityGpm: best.gpm !== null ? { value: best.gpm, source: OSWCR_SOURCE } : null,
+    };
+  } catch {
+    return { depthFt: null, capacityGpm: null };
+  }
+}
+
 // --- ET (OpenET) — stubbed --------------------------------------------------------------------
 // TODO: OpenET is NOT keyless. Wire POST https://openet-api.org/raster/timeseries/point with an
 // Authorization header from a server-side OPENET_API_KEY env var (variable=ET, model=Ensemble),
@@ -180,11 +238,12 @@ async function enrichEt(_lat: number, _lng: number): Promise<Sourced<number> | n
  * or at live ingest.
  */
 export async function enrichParcel(lat: number, lng: number): Promise<Enrichment> {
-  const [crop, gsa, waterDistrict, soil, et] = await Promise.all([
+  const [crop, gsa, waterDistrict, soil, wells, et] = await Promise.all([
     enrichCrop(lat, lng).catch(() => null),
     enrichGsa(lat, lng).catch(() => null),
     enrichWaterDistrict(lat, lng).catch(() => null),
     enrichSoil(lat, lng).catch((): SoilEnrichment => ({ soilClass: null, slopePct: null })),
+    enrichWells(lat, lng).catch((): WellEnrichment => ({ depthFt: null, capacityGpm: null })),
     enrichEt(lat, lng).catch(() => null),
   ]);
   const out: Enrichment = {};
@@ -193,6 +252,8 @@ export async function enrichParcel(lat: number, lng: number): Promise<Enrichment
   if (waterDistrict) out.water_district = waterDistrict;
   if (soil.soilClass) out.soil_class = soil.soilClass;
   if (soil.slopePct) out.slope_pct = soil.slopePct;
+  if (wells.depthFt) out.well_depth_ft = wells.depthFt;
+  if (wells.capacityGpm) out.well_capacity_gpm = wells.capacityGpm;
   if (et) out.et_estimate_af = et;
   return out;
 }
