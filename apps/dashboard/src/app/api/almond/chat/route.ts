@@ -9,6 +9,7 @@ import { defaultAlmondResponder } from "@/lib/almond/responder";
 import { resolveModel } from "@/lib/almond/models";
 import { parseSpreadsheetAttachments, stripFileAttachments } from "@/lib/almond/attachments/parse";
 import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
+import { checkUsageBudget } from "@/lib/almond/usage-budget";
 
 /**
  * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
