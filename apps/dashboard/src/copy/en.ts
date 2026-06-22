@@ -307,8 +307,26 @@ export const en = {
     // --- PRE-STUBBED feature blocks: each feature worktree FILLS its own block here. ---
     // Bill dispute agent. TODO(feature: bill-dispute): fill this block.
     billDispute: {},
-    // Rate switch agent. TODO(feature: rate-switch): fill this block.
-    rateAgent: {},
+    // Rate switch agent (daily, recommend-only). It surfaces wrong-rate findings the
+    // engines already proved and offers a one-tap "request this switch" the founder sees
+    // in this audit list. Nothing auto-switches; no email yet. Plain operator English, no
+    // em dashes.
+    rateAgent: {
+      label: "Rate check",
+      // Summary line on the proposed action (the audit row). Reuses the grounded
+      // current/target rate codes; the dollar figure is the engine's annual estimate.
+      summary: (pump: string, from: string, to: string, savings: string): string =>
+        `${pump} is on ${from}. Moving it to ${to} saves about ${savings} a year.`,
+      // The one-tap control on a proposed rate-switch action (owner only).
+      request: "Request this rate switch",
+      requestAria: (summary: string): string => `Request this rate switch: ${summary}`,
+      // Confirmation shown after the request is recorded. It is logged for the Terra team
+      // to file with PG&E; nothing switches on its own.
+      requested:
+        "Requested. The Terra team files this rate change with PG&E. Nothing switches on its own.",
+      // Calm error if the request did not save (mirrors the shared agents tone).
+      requestError: "That did not save. Try it again.",
+    },
     // Solar watch agent: a monthly, low-stakes finding that an array looks like it is slowly
     // putting out less than it used to. HONEST: the signal is a net-export proxy from your NEM
     // statements, not metered panel output, so the copy says "worth a look", never a dollar
