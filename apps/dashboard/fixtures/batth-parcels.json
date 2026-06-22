@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-21T01:53:03.230Z",
+  "generatedAt": "2026-06-22T08:02:12.726Z",
   "name": "Batth Farms",
   "county": "Fresno",
   "center": {
@@ -51,6 +51,18 @@
         "water_district": {
           "value": "Raisin City Water District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Calhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 535,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -154,6 +166,18 @@
         "water_district": {
           "value": "Raisin City Water District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Calhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 400,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -221,6 +245,14 @@
         "soil_class": {
           "value": "Hesperia fine sandy loam",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 440,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -280,6 +312,14 @@
         "soil_class": {
           "value": "Calhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 6,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 138,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -343,6 +383,14 @@
         "soil_class": {
           "value": "Hesperia fine sandy loam",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 203,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -398,6 +446,14 @@
         "soil_class": {
           "value": "Calhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 535,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -453,6 +509,18 @@
         "water_district": {
           "value": "Consolidated Irrigation District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Calhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 203,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -544,6 +612,14 @@
         "soil_class": {
           "value": "Calhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 203,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -599,6 +675,14 @@
         "soil_class": {
           "value": "Calhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 440,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -658,6 +742,14 @@
         "soil_class": {
           "value": "Hesperia fine sandy loam",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 440,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -713,6 +805,14 @@
         "soil_class": {
           "value": "Hesperia fine sandy loam",
           "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 203,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -772,6 +872,18 @@
         "water_district": {
           "value": "Liberty Water District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Calhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 138,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -839,6 +951,18 @@
         "water_district": {
           "value": "Consolidated Irrigation District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hesperia fine sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 200,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     },
@@ -906,6 +1030,18 @@
         "water_district": {
           "value": "Raisin City Water District",
           "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Calhi loamy sand",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 2,
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "well_depth_ft": {
+          "value": 560,
+          "source": "DWR OSWCR (nearest well, reported at drilling)"
         }
       }
     }
