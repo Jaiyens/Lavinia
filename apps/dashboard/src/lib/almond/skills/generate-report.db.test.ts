@@ -54,7 +54,7 @@ beforeAll(async () => {
   // as it does in production (where the id is always a real authenticated user). Without it the
   // best-effort persist silently swallows a foreign-key violation and no row is written.
   await prisma.user.create({ data: { id: "user_owner", name: "Sample Owner" } });
-  depsA = { prisma, farmId: farmA.id, farmName: farmA.name };
+  depsA = { prisma, farmId: farmA.id, farmName: farmA.name, meterUserId: null };
 }, 120_000);
 
 afterAll(async () => {

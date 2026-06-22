@@ -14,6 +14,7 @@ const deps: AlmondToolDeps = {
   prisma: {} as unknown as PrismaClient,
   farmId: "farm_test",
   farmName: "Test Farm",
+  meterUserId: null,
 };
 
 // The read-safe set: the six read tools + `navigate` (Story 7.3). `navigate` only sets URL state,

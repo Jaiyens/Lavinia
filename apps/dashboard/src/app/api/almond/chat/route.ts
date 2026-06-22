@@ -53,6 +53,23 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const userId = await sessionUserId();
+
+  // Durable per-user TOKEN budget (Story 10.4): the un-bypassable cost ceiling, checked here BEFORE
+  // any farm read or model call so an over-budget user costs zero Gateway spend. Unlike the per-IP
+  // limiter above (in-memory, per-instance, resets on restart), this is summed from Postgres rows
+  // keyed on the immutable User.id — so reload, restart, cleared cookies, incognito, and a different
+  // serverless instance all read the SAME ledger and cannot reset it. The public Tour / demo (no
+  // userId) is not metered per-user; the per-IP limit bounds it instead.
+  if (userId) {
+    const budget = await checkUsageBudget(prisma, userId);
+    if (!budget.allowed) {
+      return Response.json(
+        { error: "usage_limit", window: budget.window, resetAt: budget.resetAt },
+        { status: 429, headers: { "Retry-After": String(budget.retryAfterSeconds) } },
+      );
+    }
+  }
+
   // Signed-in: a farm they are an active member of, selected by the validated active-farm
   // cookie. Public Tour (no session): the demo farm, read-only — Almond is part of the full tour
   // now, never a leak (demoFarm is isDemo-only, never real data).
@@ -106,7 +123,10 @@ export async function POST(req: Request): Promise<Response> {
     return await responder.toResponse({
       uiMessages: preparedMessages,
       system: buildSystemPrompt(farmName),
-      deps: { prisma, farmId: farm.id, farmName },
+      // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
+      // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
+      // separate "who authored this export" concern.
+      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
       // `authedOwner` is the persistence capability (now owner OR manager via canPersist). userId
       // rides along so a persisted export (Story 8.6) records who asked; null when the caller
       // cannot persist (a viewer or the public Tour), so a read-only caller is never recorded as

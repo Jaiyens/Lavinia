@@ -162,7 +162,7 @@ function fakePrisma(pumps: FakePump[], recs: FakeRec[] = []): PrismaClient {
 }
 
 function depsFor(pumps: FakePump[], recs: FakeRec[] = [], farmName = "Batth Farms"): AlmondToolDeps {
-  return { prisma: fakePrisma(pumps, recs), farmId: "farm_1", farmName };
+  return { prisma: fakePrisma(pumps, recs), farmId: "farm_1", farmName, meterUserId: null };
 }
 
 const PDF = "%PDF-";
@@ -394,7 +394,7 @@ describe("runGenerateReport (the file path, real PDF, zero external calls)", () 
       recommendation: { findMany: async () => [] },
     } as unknown as PrismaClient;
     const result = await runGenerateReport(
-      { prisma: broken, farmId: "farm_1", farmName: "Batth Farms" },
+      { prisma: broken, farmId: "farm_1", farmName: "Batth Farms", meterUserId: null },
       { sections: ["summary", "meterTable"] },
     );
     expect(result.kind).toBe("error");
