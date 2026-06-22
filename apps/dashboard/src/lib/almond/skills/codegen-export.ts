@@ -71,6 +71,10 @@ export type CodegenExportResult =
       /** True when these bytes were served from the cache, so the responder streams them without
        *  persisting a duplicate row and without re-running the model + sandbox. */
       fromCache?: boolean;
+      /** True when these bytes are the DETERMINISTIC fallback (not the verified bespoke render), so the
+       *  skill wrapper does not cache them under the bespoke key (a one-off outage must not pin the
+       *  generic report for 30 days). */
+      fromFallback?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
@@ -98,8 +102,11 @@ function truncate(text: string, max: number): string {
  * path cannot SAFELY produce a verified file, so the grower always gets a real document. The result is
  * assignable to `CodegenExportResult` (the file `params` widen to `Prisma.InputJsonValue`).
  */
-function fallbackToTemplate(deps: AlmondToolDeps): Promise<CodegenExportResult> {
-  return runGenerateReport(deps, { sections: ["savings", "summary"] });
+async function fallbackToTemplate(deps: AlmondToolDeps): Promise<CodegenExportResult> {
+  const r = await runGenerateReport(deps, { sections: ["savings", "summary"] });
+  // Mark the fallback so the skill wrapper does not cache it under the bespoke key. runGenerateReport
+  // has its OWN try/catch (returns a typed error, never throws), so this never throws to the responder.
+  return r.kind === "file" ? { ...r, fromFallback: true } : r;
 }
 
 /** The codegen system prompt: the Terra brand tokens, the rules that keep every number grounded, and

@@ -102,11 +102,16 @@ function canon(token: string): string {
   return token.replace(/[$,]/g, "").replace(/\.$/, "");
 }
 
-/** Extract number tokens from arbitrary text. Matches an optional `$`, then a digit group with optional
- *  thousands separators and an optional decimal — but NOT a run of digits that is part of an
- *  alphanumeric token (e.g. the "1" in a rate code like "AG-A1"), via the leading boundary. */
+/** Extract number tokens from arbitrary text. Matches an optional leading minus and `$`, then a digit
+ *  group with optional thousands separators and an optional decimal — but NOT a run of digits that is
+ *  part of an alphanumeric token (e.g. the "1" in a rate code like "AG-A1"), via the leading boundary.
+ *  The optional `-?` makes the scan SIGN-AWARE: a negative cell renders "-50.00" and tokenizes to
+ *  "-50.00" (canon keeps the sign), so a sign-flipped fabrication can no longer pass as its positive
+ *  snapshot value, and an honest negative (a NEM credit / refund) matches its signed allowlist form. A
+ *  hyphen INSIDE an identifier ("Pump-17") is not a sign: the match there starts at "17" (the char
+ *  before it is "-", a non-alphanumeric boundary), exactly as before. */
 function numberTokens(text: string): string[] {
-  const re = /(?<![A-Za-z0-9])\$?\d[\d,]*(?:\.\d+)?/g;
+  const re = /(?<![A-Za-z0-9])-?\$?\d[\d,]*(?:\.\d+)?/g;
   return text.match(re) ?? [];
 }
 
@@ -242,9 +247,16 @@ function recomputeDerived(snapshot: ReportSnapshot, entry: { op: DerivedOp; sour
     const target = resolvePath(snapshot, entry.sourcePaths[0] ?? "");
     return Array.isArray(target) ? target.length : null;
   }
-  // sum: every path must resolve to a finite number (integer cents); sum them.
+  // sum: every path must (a) be DISTINCT — no path may repeat, so a model cannot double-count one
+  // real value into an inflated total — (b) point at a money field (its key ends in "Cents"), so a
+  // sum can only aggregate dollars, never structural integers (rank / meterCount / coverage counts),
+  // and (c) resolve to a finite number (integer cents). Any violation fails closed.
+  const seen = new Set<string>();
   let total = 0;
   for (const path of entry.sourcePaths) {
+    if (seen.has(path)) return null; // duplicate path -> reject (anti double-count)
+    seen.add(path);
+    if (!path.endsWith("Cents")) return null; // sum only money fields
     const resolved = resolvePath(snapshot, path);
     if (typeof resolved !== "number" || !Number.isFinite(resolved)) return null;
     total += resolved;
@@ -297,42 +309,109 @@ export function verifyWorkbookArtifact(
   return { ok: true };
 }
 
+/** The largest COMPRESSED .xlsx we will even open (a normal farm workbook is tens of KB). */
+const MAX_XLSX_COMPRESSED = 10 * 1024 * 1024;
+/** The largest total UNCOMPRESSED size we will decompress in-process (decompression-bomb guard). */
+const MAX_XLSX_UNCOMPRESSED = 50 * 1024 * 1024;
+
+/**
+ * Sum the DECLARED uncompressed size of every entry in a .xlsx (a zip) by parsing the central
+ * directory, WITHOUT decompressing anything — so a decompression bomb is caught before ExcelJS ever
+ * inflates it. Returns null when the zip cannot be parsed or uses a ZIP64 size marker (0xFFFFFFFF) we
+ * refuse to trust — both fail closed in the caller. Pure Buffer arithmetic, no allocation of payloads.
+ */
+function zipUncompressedTotal(bytes: Buffer): number | null {
+  const EOCD_SIG = 0x06054b50;
+  const CDH_SIG = 0x02014b50;
+  const ZIP64_MARK = 0xffffffff;
+  try {
+    // Find the End Of Central Directory record, scanning back from the tail (xlsx carries no comment,
+    // but bound the scan to the 64KB max-comment window regardless).
+    let eocd = -1;
+    const earliest = Math.max(0, bytes.length - 22 - 0xffff);
+    for (let i = bytes.length - 22; i >= earliest; i--) {
+      if (bytes.readUInt32LE(i) === EOCD_SIG) {
+        eocd = i;
+        break;
+      }
+    }
+    if (eocd < 0) return null;
+
+    const count = bytes.readUInt16LE(eocd + 10);
+    let offset = bytes.readUInt32LE(eocd + 16);
+    if (offset === ZIP64_MARK || count === 0xffff) return null; // ZIP64: refuse to trust
+    let total = 0;
+    for (let n = 0; n < count; n++) {
+      if (offset + 46 > bytes.length || bytes.readUInt32LE(offset) !== CDH_SIG) return null;
+      const uncompressed = bytes.readUInt32LE(offset + 24);
+      if (uncompressed === ZIP64_MARK) return null; // a ZIP64-marked size could hide a bomb: reject
+      total += uncompressed;
+      if (total > MAX_XLSX_UNCOMPRESSED) return total; // already over the cap; no need to keep summing
+      const nameLen = bytes.readUInt16LE(offset + 28);
+      const extraLen = bytes.readUInt16LE(offset + 30);
+      const commentLen = bytes.readUInt16LE(offset + 32);
+      offset += 46 + nameLen + extraLen + commentLen;
+    }
+    return total;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Extract every number/string token from the ACTUAL produced .xlsx, in our trusted Next.js process
  * (never the sandbox), by reopening it with the already-shipped ExcelJS and walking every cell. This is
- * STRONGER than PDF text scanning: xlsx cells are structured, so there is no OCR/reflow loss — a
- * fabricated number cannot hide. A currency cell is emitted as its cent-precise form (toFixed(2)) to
- * match the allowlist's money forms; an integer/plain number as its String form; strings verbatim (so
- * their digits, e.g. "17" in "Westside Pump 17", are mined). Over-sized bytes or a parse failure degrade
- * to "" (the forward manifest still gates), mirroring extractPdfText's safe-degrade contract.
+ * STRONGER than PDF text scanning: xlsx cells are structured, so there is no OCR/reflow loss.
+ *
+ * Returns NULL = "do not trust this file" (the caller falls back to the deterministic workbook), for:
+ *   - a COMPRESSED file over the cap, or a DECLARED-UNCOMPRESSED total over the cap / unparsable zip /
+ *     ZIP64 marker — the decompression-bomb guard, BEFORE ExcelJS inflates anything (a V8 OOM is a
+ *     fatal, uncatchable process abort, so the size must be bounded up front, not via try/catch);
+ *   - a FORMULA / Date / rich-text / hyperlink (object-valued) cell — the trusted shim never writes
+ *     one, so its presence means the model smuggled a formula (e.g. a "=99999" string openpyxl turned
+ *     into a formula) whose computed value Excel would DISPLAY but a cell-value scan would miss;
+ *   - any parse failure.
+ * Returns a STRING of tokens on success: a currency cell as its cent-precise form (toFixed(2), so a
+ * trailing-zero cent never mismatches); an integer-format cell as its ROUNDED display value (Excel
+ * rounds "#,##0"); strings verbatim (so their digits, e.g. "17" in "Westside Pump 17", are mined). An
+ * empty (but valid) workbook yields "" (the forward manifest still gates).
  */
-export async function extractXlsxNumbers(xlsxBytes: Buffer): Promise<string> {
-  const MAX_BYTES = 5 * 1024 * 1024; // a normal farm workbook is tens of KB; cap as a zip-bomb guard
-  if (xlsxBytes.byteLength > MAX_BYTES) return "";
+export async function extractXlsxNumbers(xlsxBytes: Buffer): Promise<string | null> {
+  if (xlsxBytes.byteLength > MAX_XLSX_COMPRESSED) return null;
+  const uncompressed = zipUncompressedTotal(xlsxBytes);
+  if (uncompressed === null || uncompressed > MAX_XLSX_UNCOMPRESSED) return null;
   try {
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(xlsxBytes as unknown as ArrayBuffer);
     const out: string[] = [];
+    let opaque = false;
     wb.eachSheet((ws) => {
       ws.eachRow({ includeEmpty: false }, (row) => {
         row.eachCell({ includeEmpty: false }, (cell) => {
           const v = cell.value;
           if (typeof v === "number") {
-            const fmt = cell.numFmt;
-            // Currency: the displayed cent-precise form (so "$X,XXX.X0" never mismatches String's
-            // dropped trailing zero). Integer/plain: the raw String. Both canon to an allowlisted form.
-            out.push(typeof fmt === "string" && fmt.includes("$") ? v.toFixed(2) : String(v));
+            const fmt = typeof cell.numFmt === "string" ? cell.numFmt : "";
+            // Currency ($): the displayed cent-precise form. Integer-style numFmt (contains a "0"
+            // pattern, no "$"): the ROUNDED display value (Excel rounds "#,##0"), so the scanned token
+            // equals what the grower sees. General/no-format: the raw value.
+            if (fmt.includes("$")) out.push(v.toFixed(2));
+            else if (fmt.includes("0")) out.push(String(Math.round(v)));
+            else out.push(String(v));
           } else if (typeof v === "string") {
             out.push(v);
+          } else if (v !== null && v !== undefined && typeof v !== "boolean") {
+            // A formula/Date/rich-text/hyperlink cell: the trusted shim never emits one, so treat its
+            // presence as a smuggled value and fail closed (the displayed result would not be scanned).
+            opaque = true;
           }
-          // null / formula / rich-text cells carry no verifiable figure (the shim never writes them).
         });
       });
     });
+    if (opaque) return null;
     return out.join("\n");
   } catch {
-    return ""; // safe degrade: a parse failure leaves the forward manifest as the gate
+    return null; // a parse failure on a trusted-shim file is anomalous: fail closed, not forward-only
   }
 }
 

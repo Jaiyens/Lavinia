@@ -314,11 +314,19 @@ async function findCachedFile(
   deps: AlmondToolDeps,
   skill: "export" | "report" | "codegen",
   request: unknown,
-): Promise<{ cacheKey: string; hit: CachedFile | null }> {
-  const fingerprint = await computeFarmDataFingerprint(deps.prisma, deps.farmId);
-  const cacheKey = computeCacheKey({ farmId: deps.farmId, fingerprint, skill, request });
-  const hit = await lookupCachedReport(deps.prisma, deps.farmId, cacheKey);
-  return { cacheKey, hit };
+): Promise<{ cacheKey: string | undefined; hit: CachedFile | null }> {
+  // Throw-safe: the cache is a fast path, never a gate. A flaky DB/Blob read here must degrade to a
+  // MISS (build fresh) rather than throw out of the skill — a thrown tool.execute becomes a tool-error
+  // with no download card and no deterministic fallback. On failure we return no cacheKey (so the
+  // fresh build is simply not cached) and no hit.
+  try {
+    const fingerprint = await computeFarmDataFingerprint(deps.prisma, deps.farmId);
+    const cacheKey = computeCacheKey({ farmId: deps.farmId, fingerprint, skill, request });
+    const hit = await lookupCachedReport(deps.prisma, deps.farmId, cacheKey);
+    return { cacheKey, hit };
+  } catch {
+    return { cacheKey: undefined, hit: null };
+  }
 }
 
 export async function exportSpreadsheetSkill(

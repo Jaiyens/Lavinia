@@ -1,6 +1,7 @@
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { en } from "@/copy/en";
 import { createGatewayModel } from "@/lib/ai/gateway";
 import type { AlmondToolDeps } from "@/lib/almond/tools";
 import { loadExportData } from "@/lib/almond/export/load";
@@ -66,6 +67,10 @@ export type CodegenWorkbookResult =
       params: Prisma.InputJsonValue;
       cacheKey?: string;
       fromCache?: boolean;
+      /** True when these bytes are the DETERMINISTIC fallback (not the verified bespoke render), so the
+       *  skill wrapper does NOT cache them under the bespoke key (a one-off sandbox outage must not pin
+       *  the generic workbook for 30 days). */
+      fromFallback?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
@@ -108,7 +113,7 @@ const chartSchema = z.object({
 const sheetSchema = z.object({
   name: z.string(),
   title: z.string(),
-  columns: z.array(z.object({ header: z.string(), width: z.number().optional() })),
+  columns: z.array(z.object({ header: z.string(), width: z.number().optional() })).min(1),
   rows: z.array(z.array(cellSchema)),
   footer: z.array(z.string()),
   totals: z.array(cellSchema).optional(),
@@ -180,19 +185,28 @@ type RenderCapture = { xlsxBytes: Buffer; manifest: unknown };
  * polished workbook. `ExportLoadDeps` (prisma+farmId+farmName) is a subset of `AlmondToolDeps`.
  */
 async function fallbackToWorkbook(deps: AlmondToolDeps): Promise<CodegenWorkbookResult> {
-  const data = await loadExportData(deps);
-  const findings = await loadFindings(deps.prisma, deps.farmId);
-  const bytes = await buildFullWorkbook(data, findings);
-  return {
-    kind: "file",
-    preview: "Here is your farm workbook.",
-    fileName: workbookFileName(deps.farmName),
-    contentType: XLSX_CONTENT_TYPE,
-    bytes,
-    meterCount: data.meters.length,
-    coverageAsOf: data.state.asOf,
-    params: { ask: HARDCODED_ASK },
-  };
+  try {
+    const data = await loadExportData(deps);
+    const findings = await loadFindings(deps.prisma, deps.farmId);
+    const bytes = await buildFullWorkbook(data, findings);
+    return {
+      kind: "file",
+      preview: "Here is your farm workbook.",
+      fileName: workbookFileName(deps.farmName),
+      contentType: XLSX_CONTENT_TYPE,
+      bytes,
+      meterCount: data.meters.length,
+      coverageAsOf: data.state.asOf,
+      params: { ask: HARDCODED_ASK },
+      // Mark as the fallback so the skill wrapper never caches it under the bespoke key.
+      fromFallback: true,
+    };
+  } catch {
+    // The fallback itself failed (a transient DB error / corrupt fixture). Return a TYPED error rather
+    // than throwing out of the skill — a thrown tool.execute becomes a tool-error with no card and no
+    // fallback. Mirrors the PDF twin's runGenerateReport contract (never throws to the responder).
+    return { kind: "error", message: en.shell.almond.export.skill.error };
+  }
 }
 
 /**
@@ -252,8 +266,12 @@ export async function runCodegenWorkbook(
     }
 
     // FAIL-CLOSED: reopen the produced .xlsx in-process and require every cell number to trace to the
-    // snapshot (literal) or a verifier-recomputed derived value. A reject falls back deterministically.
+    // snapshot (literal) or a verifier-recomputed derived value. A null (oversized / decompression-bomb
+    // / formula cell / parse failure) or a verify reject both fall back to the deterministic workbook.
     const cellText = await extractXlsxNumbers(finalRender.xlsxBytes);
+    if (cellText === null) {
+      return await fallbackToWorkbook(deps);
+    }
     const verdict = verifyWorkbookArtifact(snapshot, finalRender.manifest, cellText);
     if (!verdict.ok) {
       return await fallbackToWorkbook(deps);
