@@ -1,58 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { en } from "@/copy/en";
-import {
-  buildBoardSummary,
-  buildGroups,
-  groupNames,
-  type GroupOverrides,
-  type MetersFeedResult,
-} from "@/lib/meters";
+import { buildBoardSummary, byUrgency, type MetersFeedResult } from "@/lib/meters";
 import { TopTile } from "./top-tile";
-import { GroupCard } from "./group-card";
+import { MeterTile } from "./meter-tile";
 import { MeterDetail } from "./meter-detail";
 
-// The Meters board: the client orchestrator. It pulls the representative feed (the V2 seam:
-// swap this one line for a live feed later), assesses every meter PER METER, groups them
-// dynamically, and persists the farmer's manual grouping corrections in localStorage so they
-// survive re-renders and later uploads (mirrors how the Home bento order persists). The board
-// itself never pools demand: every kW shown is one meter's own; groups show only dollars + counts.
+// The Meters board: the client orchestrator. It pulls the representative feed (the V2 seam: swap
+// this one line for a live feed later) and assesses every meter PER METER. The board itself never
+// pools demand: every kW shown is one meter's own.
 //
-// Layout: a minimal header, then a two-column board - the meter groups (main) and a slim side rail
-// with the "Most urgent" + "Today's read" stat cards. The page scrolls naturally; nothing is locked
-// to one screen, so all content stays reachable on any height.
+// Layout: a minimal header, the two answer-first squares (Most urgent + Today's read) centered on
+// top, then EVERY meter as a square gauge tile in one flat grid - no groups, no collapse, all on
+// one screen. Meters are ordered most-at-risk first so the eye lands on the problem.
 
 const m = en.meters;
-
-// Manual grouping corrections persist here, keyed like the bento order key. New meters slot into
-// existing groups automatically (resolveGroupName runs every render); only meters the farmer
-// explicitly moved carry an override, so a re-upload never wipes manual fixes.
-const STORAGE_KEY = "terra.meters.group.overrides.v1";
-
-function loadOverrides(): GroupOverrides {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== "object") return {};
-    const out: GroupOverrides = {};
-    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof v === "string") out[k] = v;
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function saveOverrides(next: GroupOverrides): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // ignore storage failures (private mode, quota)
-  }
-}
 
 export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; now: string }) {
   // A stable reference clock for this render. The server page passes the real now (ISO) + the
@@ -60,108 +23,42 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
   // card during render, so SSR and first client render agree and nothing fs-bound runs in the browser.
   const now = useMemo(() => new Date(nowProp), [nowProp]);
   const summary = useMemo(() => buildBoardSummary(feed, now), [feed, now]);
-
-  // Overrides start empty (matches SSR), then hydrate from localStorage after mount.
-  const [overrides, setOverrides] = useState<GroupOverrides>({});
-  useEffect(() => {
-    const saved = loadOverrides();
-    if (Object.keys(saved).length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOverrides(saved);
-    }
-  }, []);
+  const meters = useMemo(() => byUrgency(summary.risks), [summary.risks]);
 
   const [openMeterId, setOpenMeterId] = useState<string | null>(null);
-
-  const groups = useMemo(() => buildGroups(feed.meters, overrides), [feed.meters, overrides]);
-  const allNames = useMemo(() => groupNames(groups), [groups]);
-
-  const moveMeter = (meterId: string, toGroup: string) => {
-    setOverrides((cur) => {
-      const next = { ...cur, [meterId]: toGroup };
-      saveOverrides(next);
-      return next;
-    });
-  };
-
-  const renameGroup = (from: string, to: string) => {
-    const target = to.trim();
-    if (target.length === 0 || target === from) return;
-    // Renaming pins every meter currently in `from` to the new name via an explicit override,
-    // so the rename survives re-uploads exactly like a move (the inferred name no longer wins).
-    setOverrides((cur) => {
-      const next = { ...cur };
-      for (const g of groups) {
-        if (g.name !== from) continue;
-        for (const r of g.risks) next[r.meter.id] = target;
-      }
-      saveOverrides(next);
-      return next;
-    });
-  };
-
-  const resetGroups = () => {
-    setOverrides({});
-    saveOverrides({});
-  };
-
   const openRisk = useMemo(
     () => summary.risks.find((r) => r.meter.id === openMeterId) ?? null,
     [summary.risks, openMeterId],
   );
-  const hasOverrides = Object.keys(overrides).length > 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-6 lg:px-12">
+    <div className="mx-auto w-full max-w-6xl px-5 py-5 lg:px-12">
       {/* Header: title + the representative-data marking + the freshness line (the ~1-day lag). */}
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="type-display-lg text-on-surface">{m.title}</h1>
           <time dateTime={summary.asOfIso} className="mt-1 block type-caption text-on-surface-variant">
             {m.asOf(summary.asOfPhrase)}
           </time>
         </div>
-        <div className="flex items-center gap-3">
-          {hasOverrides && (
-            <button
-              type="button"
-              onClick={resetGroups}
-              title={m.group.resetGroupsHint}
-              className="type-caption text-on-surface-variant underline-offset-2 hover:underline"
-            >
-              {m.group.resetGroups}
-            </button>
-          )}
-          {summary.representative && (
-            <span className="rounded-full bg-surface-container px-2.5 py-1 type-label-caps text-on-surface-variant">
-              {m.representativeTag}
-            </span>
-          )}
-        </div>
+        {summary.representative && (
+          <span className="rounded-full bg-surface-container px-2.5 py-1 type-label-caps text-on-surface-variant">
+            {m.representativeTag}
+          </span>
+        )}
       </header>
 
-      {/* A calm dashboard of SQUARE tiles: the two answer-first squares (Most urgent + Today's read)
-          on top, then every meter on screen at once - each group is a section with ALL its square
-          gauges shown, no collapse. */}
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
-        </div>
+      {/* Most urgent + Today's read, centered at the top. */}
+      <div className="mb-4 flex flex-wrap justify-center gap-3">
+        <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+      </div>
 
-        {/* PHASE TWO (not built yet): a "Board" / "Map" view toggle goes here, beside the title.
-            "Map" would render each meter as a colored dot or mini-gauge pinned at its real lat/lng
-            (MeterSnapshot.lat/lng) on the shared farm map (see farm-map.tsx), so the farmer can find
-            the red pump by where it physically sits. Keep the per-meter gauge as the dot/popover.
-            Add the toggle in the header above; swap these group sections for a <MetersMap> when "Map". */}
-        {groups.map((group) => (
-          <GroupCard
-            key={group.name}
-            group={group}
-            allGroupNames={allNames}
-            onOpenMeter={setOpenMeterId}
-            onMoveMeter={moveMeter}
-            onRenameGroup={renameGroup}
-          />
+      {/* Every meter, flat (no grouping), all on one screen, centered. Most-at-risk first. */}
+      <div className="flex flex-wrap justify-center gap-2.5">
+        {meters.map((risk) => (
+          <div key={risk.meter.id} className="w-40 sm:w-44">
+            <MeterTile risk={risk} groupName="" onOpen={() => setOpenMeterId(risk.meter.id)} />
+          </div>
         ))}
       </div>
 

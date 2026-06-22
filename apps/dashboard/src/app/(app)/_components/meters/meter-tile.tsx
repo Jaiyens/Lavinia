@@ -89,8 +89,8 @@ export function MeterTile({
     >
       {/* Name + a small status dot (the only always-on color). */}
       <div className="flex items-center gap-1.5">
-        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: style.dot }} />
-        <span className="min-w-0 truncate type-body-sm font-semibold text-on-surface">{name}</span>
+        <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: style.dot }} />
+        <span className="min-w-0 line-clamp-2 type-body-sm font-semibold leading-tight text-on-surface">{name}</span>
       </div>
 
       {/* Headline: current draw. Neutral, except the rare meter actually over its peak. */}
