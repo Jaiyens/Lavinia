@@ -41,6 +41,7 @@ export type Enrichment = {
   gsa_name?: Sourced<string>;
   water_district?: Sourced<string>;
   soil_class?: Sourced<string>;
+  slope_pct?: Sourced<number>;
   et_estimate_af?: Sourced<number>;
 };
 
@@ -410,7 +411,8 @@ export function buildFarmParcel(
   // Soil.
   const soilClass = enrichment.soil_class?.value ?? pick(rng, SOILS);
   if (enrichment.soil_class) sources.soil_class = enrichment.soil_class.source;
-  const slope = round(range(rng, 0, 4), 1);
+  const slope = enrichment.slope_pct?.value ?? round(range(rng, 0, 4), 1);
+  if (enrichment.slope_pct) sources.slope_pct = enrichment.slope_pct.source;
   const salinity = chance(rng, 0.25)
     ? pick(rng, ["Mild salinity on the east edge, monitor ECe", "Slight boron, no action needed"])
     : null;

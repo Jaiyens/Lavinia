@@ -132,10 +132,16 @@ async function enrichWaterDistrict(lat: number, lng: number): Promise<Sourced<st
 
 const SDA_ENDPOINT = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest";
 
-async function enrichSoil(lat: number, lng: number): Promise<Sourced<string> | null> {
+type SoilEnrichment = { soilClass: Sourced<string> | null; slopePct: Sourced<number> | null };
+const SSURGO_SOURCE = "USDA SSURGO (Soil Data Access)";
+
+async function enrichSoil(lat: number, lng: number): Promise<SoilEnrichment> {
+  // The soil series (mapunit name) + the dominant component's representative slope, in one query.
   const query =
-    `SELECT mu.muname FROM mapunit mu WHERE mu.mukey IN ` +
-    `(SELECT mukey FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('point(${lng} ${lat})'))`;
+    `SELECT TOP 1 mu.muname, c.slope_r FROM mapunit mu ` +
+    `INNER JOIN component c ON c.mukey = mu.mukey ` +
+    `WHERE mu.mukey IN (SELECT mukey FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('point(${lng} ${lat})')) ` +
+    `ORDER BY c.comppct_r DESC`;
   try {
     const json = await fetchJson(SDA_ENDPOINT, {
       method: "POST",
@@ -144,13 +150,19 @@ async function enrichSoil(lat: number, lng: number): Promise<Sourced<string> | n
     });
     const table = (json as { Table?: unknown[][] }).Table;
     // Row 0 is the column-name header; row 1 is the first data row.
-    const muname = Array.isArray(table) && table[1] ? str(table[1][0]) : null;
-    if (!muname) return null;
+    const row = Array.isArray(table) && table[1] ? table[1] : null;
+    if (!row) return { soilClass: null, slopePct: null };
     // "Delhi loamy sand, 0 to 3 percent slopes, MLRA 17" -> "Delhi loamy sand".
-    const series = muname.split(",")[0]!.trim();
-    return { value: series, source: "USDA SSURGO (Soil Data Access)" };
+    const muname = str(row[0]);
+    const series = muname ? muname.split(",")[0]!.trim() : null;
+    const slopeRaw = row[1] === null || row[1] === undefined ? null : Number(row[1]);
+    const slope = slopeRaw !== null && Number.isFinite(slopeRaw) ? Math.round(slopeRaw * 10) / 10 : null;
+    return {
+      soilClass: series ? { value: series, source: SSURGO_SOURCE } : null,
+      slopePct: slope !== null ? { value: slope, source: SSURGO_SOURCE } : null,
+    };
   } catch {
-    return null;
+    return { soilClass: null, slopePct: null };
   }
 }
 
@@ -172,14 +184,15 @@ export async function enrichParcel(lat: number, lng: number): Promise<Enrichment
     enrichCrop(lat, lng).catch(() => null),
     enrichGsa(lat, lng).catch(() => null),
     enrichWaterDistrict(lat, lng).catch(() => null),
-    enrichSoil(lat, lng).catch(() => null),
+    enrichSoil(lat, lng).catch((): SoilEnrichment => ({ soilClass: null, slopePct: null })),
     enrichEt(lat, lng).catch(() => null),
   ]);
   const out: Enrichment = {};
   if (crop) out.crop = crop;
   if (gsa) out.gsa_name = gsa;
   if (waterDistrict) out.water_district = waterDistrict;
-  if (soil) out.soil_class = soil;
+  if (soil.soilClass) out.soil_class = soil.soilClass;
+  if (soil.slopePct) out.slope_pct = soil.slopePct;
   if (et) out.et_estimate_af = et;
   return out;
 }
