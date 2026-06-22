@@ -309,8 +309,27 @@ export const en = {
     billDispute: {},
     // Rate switch agent. TODO(feature: rate-switch): fill this block.
     rateAgent: {},
-    // Solar watch agent. TODO(feature: solar-watch): fill this block.
-    solarWatch: {},
+    // Solar watch agent: a monthly, low-stakes finding that an array looks like it is slowly
+    // putting out less than it used to. HONEST: the signal is a net-export proxy from your NEM
+    // statements, not metered panel output, so the copy says "worth a look", never a dollar
+    // claim. No em dashes; plain operator English.
+    solarWatch: {
+      label: "Solar watch",
+      // The finding the grower sees. `pumpName` is the solar-paired meter; `monthsCounted` is
+      // how many statement months backed the read; `worstPercent` is the biggest single
+      // same-month-last-year drop (a whole number, already a proxy).
+      situation: (pumpName: string): string =>
+        `${pumpName} looks like it is putting out less than it did this time last year.`,
+      // States plainly that this is a net-export proxy, not metered panel output, and that it
+      // is a slow seasonal read, not a same-day fault.
+      note: (worstPercent: number, monthsCounted: number): string =>
+        `Compared month for month against last year, your net export is down about ${worstPercent}% at the worst point, across ${monthsCounted} months of PG&E solar statements. This is read from your net export, not from the panels directly, so it is a slow seasonal sign and not a same-day fault. Worth having someone look at the array.`,
+      // The action is a look, not an automated step. Stays a finding (no approval gate).
+      action: "Have the array checked",
+      // Short note explaining the solar-watch agent on the audit page.
+      audit:
+        "Each month Terra compares your solar export against the same months last year and flags an array that looks like it is slowly putting out less. This is a net export proxy, not metered panel output.",
+    },
     // Rebate / incentives agent (monthly, NO LLM, NO dollar). Honest-blank program
     // leads matched from a static catalog of real CA ag programs. The copy names the
     // program and what it is for, and is explicit that the dollar is not yet known: a

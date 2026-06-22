@@ -9,3 +9,4 @@
 
 import "./refresh";
 import "./rebate";
+import "./solar-watch";
