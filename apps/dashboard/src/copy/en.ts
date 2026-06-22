@@ -769,6 +769,18 @@ export const en = {
       // built too many heavy artifacts (spreadsheet / PDF) in a short window. Calm, retryable, never a
       // hard error. Plain operator English, no exclamation mark.
       busy: "You have made several files in a row. Give it a minute and ask again.",
+      // Durable per-user TOKEN budget (Story 10.4): shown when a grower has used up their Almond
+      // allowance for the window. A hard stop until the window resets (unlike `busy`, which is a brief
+      // throttle), so there is no retry button. Calm, plain operator English, no exclamation marks.
+      usage: {
+        // The limit-reached banner. `window` is the active reset cadence.
+        limitReached: (window: "daily" | "weekly"): string =>
+          window === "weekly"
+            ? "You have reached your weekly limit for Almond. It resets in a few days."
+            : "You have reached your daily limit for Almond. It resets tomorrow.",
+        // The composer placeholder while locked out.
+        composerDisabled: "Almond limit reached. Try again later.",
+      },
       // Accessible label for the live conversation region.
       conversationLabel: "Conversation with Almond",
       // Saved history (per-user, per-farm): a new-chat affordance and the list of past threads.
