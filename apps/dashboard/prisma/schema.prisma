@@ -340,11 +340,22 @@ model UsageInterval {
   start       DateTime // interval start, UTC
   durationSec Int      @default(900) // PG&E intervals are 900s (15 min)
   kWh         Float
+  // Energy flow direction. "import" = delivered to the customer (PG&E "Direction of
+  // Energy = D" / ESPI flowDirection 1); "export" = received from the customer's
+  // solar (Direction = R / flowDirection 19). A NEM meter carries BOTH an import and
+  // an export reading at the same `start`, so direction is part of the unique key.
+  // Demand/usage math reads the import stream only; export feeds solar volume.
+  direction   String   @default("import") // "import" | "export"
+  // Raw PG&E time-of-use code for the interval (e.g. "WOP", "WPK"). Null for sources
+  // that do not label intervals (ESPI/Bayou). Drives interval-level TOU rate work.
+  touCode     String?
   createdAt   DateTime @default(now())
 
   pump Pump @relation(fields: [pumpId], references: [id], onDelete: Cascade)
 
-  @@unique([pumpId, start]) // one reading per interval; makes re-import idempotent
+  // One reading per (interval, direction); makes re-import idempotent and lets a NEM
+  // meter keep its import and export streams at the same timestamp without colliding.
+  @@unique([pumpId, start, direction])
   @@index([pumpId, start])
 }
 

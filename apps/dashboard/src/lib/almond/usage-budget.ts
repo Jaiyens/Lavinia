@@ -27,10 +27,17 @@ import type { PrismaClient } from "@prisma/client";
 export type UsageWindow = "daily" | "weekly";
 
 /**
- * The per-user token cap. PLACEHOLDER until pricing is decided — set `ALMOND_USAGE_TOKEN_CAP` in the
- * Vercel env to the real number then. Counts input + output tokens across chat and AI file exports.
+ * The per-user DAILY token cap (input + output, across chat and AI file exports).
+ *
+ * Default 2,000,000 tokens/day — deliberately generous so a heavy grower never hits it (a 200-meter
+ * farm's context makes a substantive turn ~15-30k tokens, so 2M/day is ~70-130 turns plus exports,
+ * well above any real day's use), while still bounding runaway/abuse. Worst case, a user who pinned
+ * the full 2M every single day costs roughly $18/day blended at Opus-tier rates (~1.6M in x $5/M +
+ * ~0.4M out x $25/M), about a farmer's annual plan price at full abuse — and real expected use (a few
+ * dollars a day) leaves a wide margin. Tune `ALMOND_USAGE_TOKEN_CAP` in the Vercel env once pricing
+ * is finalized; this is a sane default, not a final business decision.
  */
-export const USAGE_TOKEN_CAP = Number(process.env.ALMOND_USAGE_TOKEN_CAP) || 200_000;
+export const USAGE_TOKEN_CAP = Number(process.env.ALMOND_USAGE_TOKEN_CAP) || 2_000_000;
 
 /** Reset cadence. Daily by default; set `ALMOND_USAGE_WINDOW=weekly` to switch with no migration. */
 export const USAGE_WINDOW: UsageWindow = process.env.ALMOND_USAGE_WINDOW === "weekly" ? "weekly" : "daily";
@@ -46,6 +53,29 @@ export const USAGE_WINDOW_MS = USAGE_WINDOW === "weekly" ? 7 * DAY_MS : DAY_MS;
  * row `estimated`. Round toward over-charging — the safe direction for a cost ceiling.
  */
 export const USAGE_ESTIMATE_FALLBACK_TOKENS = Number(process.env.ALMOND_USAGE_ESTIMATE_FALLBACK_TOKENS) || 2_000;
+
+/**
+ * Rough tokens for one substantive Almond turn over a large farm (a 200-meter farm's context plus a
+ * few tool calls). Used ONLY to translate the token budget into a friendly "about N messages left"
+ * count in the account usage meter — enforcement stays strictly token-based. Env-tunable.
+ */
+export const USAGE_TOKENS_PER_TURN = Number(process.env.ALMOND_USAGE_TOKENS_PER_TURN) || 20_000;
+
+/**
+ * Translate the token budget decision into the friendly, approximate message counts the usage meter
+ * shows a grower. `fractionUsed` is clamped to [0,1]; `remaining` floors at 0 (and is 0 when denied).
+ * Pure (no DB, no clock) for easy testing.
+ */
+export function usageMeterCounts(
+  budget: UsageBudgetDecision,
+  tokensPerTurn: number = USAGE_TOKENS_PER_TURN,
+): { total: number; remaining: number; fractionUsed: number } {
+  const perTurn = Math.max(1, tokensPerTurn);
+  const total = Math.max(1, Math.round(budget.cap / perTurn));
+  const fractionUsed = budget.cap > 0 ? Math.min(1, Math.max(0, budget.used / budget.cap)) : 0;
+  const remaining = budget.allowed ? Math.max(0, Math.round(total * (1 - fractionUsed))) : 0;
+  return { total, remaining, fractionUsed };
+}
 
 /** The outcome of one budget check. `retryAfterSeconds` is 0 when allowed; `resetAt` is an ISO string. */
 export type UsageBudgetDecision = {

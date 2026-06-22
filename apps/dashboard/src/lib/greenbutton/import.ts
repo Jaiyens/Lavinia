@@ -10,6 +10,7 @@ import { maxDemandInWindow } from "@/lib/energy";
 import { centsFromDollars } from "@/lib/format/money";
 import {
   normalizeBayou,
+  normalizeDownloadMyData,
   normalizeEspi,
   normalizeUtilityApi,
   type BayouResponses,
@@ -222,16 +223,21 @@ async function importOneMeter(
       },
     });
 
+    // Demand and consumption read the IMPORT (delivered) stream only: a NEM meter
+    // also carries export (received) intervals at the same timestamps, and counting
+    // those would corrupt both the max-demand peak and the cycle's metered kWh.
+    const importIntervals = m.intervals.filter((r) => (r.direction ?? "import") === "import");
+
     // One BillingPeriod per cycle, carrying the derived peak that sets the charge AND
     // the reconciled money fields. Replace the period's line items on each upsert so a
     // re-import does not accrete duplicate lines.
     let billingPeriods = 0;
     for (const summary of m.summaries) {
-      const peak = maxDemandInWindow(m.intervals, summary.start, summary.close);
+      const peak = maxDemandInWindow(importIntervals, summary.start, summary.close);
       // Total cycle energy, summed from the real metered intervals in the window.
       // Stays null for summary-only meters (no interval history to sum), which is
       // the honest state: fleet usage reads what is actually metered.
-      const cycleKwh = sumKwhInWindow(m.intervals, summary.start, summary.close);
+      const cycleKwh = sumKwhInWindow(importIntervals, summary.start, summary.close);
       // printedTotalCents is the integer-cents canonical total the table and KPI strip
       // read (AR-6); derive it from the summary's billed dollars. cycleClose mirrors the
       // source period end (the Calendar lens reads it), the same choice the seed makes.
@@ -288,6 +294,11 @@ async function importOneMeter(
         start: new Date(r.start),
         durationSec: r.durationSec,
         kWh: r.kWh,
+        // Persist both streams for a NEM meter; the 3-part unique key keeps the
+        // import and export readings at the same timestamp distinct. Defaults keep
+        // the existing ESPI/Bayou paths (no per-interval direction/TOU) unchanged.
+        direction: r.direction ?? "import",
+        touCode: r.touCode ?? null,
       }));
       for (let i = 0; i < rows.length; i += INTERVAL_CHUNK) {
         await tx.usageInterval.createMany({ data: rows.slice(i, i + INTERVAL_CHUNK) });
@@ -377,6 +388,32 @@ export async function importBayou(
     meters: normalizeBayou(pull),
     farmId,
     source: "bayou",
+  });
+}
+
+export type ImportDownloadMyDataOptions = {
+  /** Raw file contents: a Download My Data CSV (usual) or Green Button XML. */
+  content: string;
+  farmId: string;
+  /** Force the parser when the format is not obvious; sniffed by default. */
+  format?: "csv" | "xml";
+};
+
+/**
+ * Normalize a PG&E Download My Data / Share My Data usage export (CSV or Green Button
+ * XML) and land it. Usage-only: each meter lands its 15-minute UsageIntervals (import
+ * and, for solar meters, export streams) and stays coverageState "no_bill" until a
+ * scanned bill reconciles dollars. Idempotent: a re-pull (the daily subscription's
+ * corrections) overwrites the same window.
+ */
+export async function importDownloadMyData(
+  prisma: PrismaClient,
+  { content, farmId, format }: ImportDownloadMyDataOptions,
+): Promise<ImportResult> {
+  return importMeters(prisma, {
+    meters: normalizeDownloadMyData(content, { format }),
+    farmId,
+    source: "download_my_data",
   });
 }
 

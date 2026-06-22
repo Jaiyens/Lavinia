@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { billableTokens, decideUsageBudget, USAGE_ESTIMATE_FALLBACK_TOKENS } from "./usage-budget";
+import {
+  billableTokens,
+  decideUsageBudget,
+  usageMeterCounts,
+  USAGE_ESTIMATE_FALLBACK_TOKENS,
+  type UsageBudgetDecision,
+} from "./usage-budget";
 
 /**
  * Pure (no DB, no clock) tests of the per-user budget MATH and the usage normalization, mirroring the
@@ -114,5 +120,35 @@ describe("billableTokens", () => {
       outputTokens: 0,
       estimated: false,
     });
+  });
+});
+
+describe("usageMeterCounts", () => {
+  function decision(o: { used: number; cap: number; allowed: boolean; window?: "daily" | "weekly" }): UsageBudgetDecision {
+    return {
+      allowed: o.allowed,
+      used: o.used,
+      cap: o.cap,
+      remaining: Math.max(0, o.cap - o.used),
+      retryAfterSeconds: o.allowed ? 0 : 3600,
+      resetAt: new Date(NOW).toISOString(),
+      window: o.window ?? "daily",
+    };
+  }
+
+  it("derives the friendly total and remaining message counts from the token budget", () => {
+    const m = usageMeterCounts(decision({ used: 25_000, cap: 100_000, allowed: true }), 20_000);
+    expect(m).toEqual({ total: 5, remaining: 4, fractionUsed: 0.25 });
+  });
+
+  it("reports full remaining when nothing has been used", () => {
+    const m = usageMeterCounts(decision({ used: 0, cap: 100_000, allowed: true }), 20_000);
+    expect(m).toEqual({ total: 5, remaining: 5, fractionUsed: 0 });
+  });
+
+  it("reports zero remaining and a full bar once the budget is spent", () => {
+    const m = usageMeterCounts(decision({ used: 120_000, cap: 100_000, allowed: false }), 20_000);
+    expect(m.remaining).toBe(0);
+    expect(m.fractionUsed).toBe(1); // clamped, even though used exceeds cap
   });
 });

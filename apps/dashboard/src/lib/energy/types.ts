@@ -9,6 +9,20 @@ export type IntervalReading = {
   durationSec: number;
   /** Energy consumed in the interval, kWh. */
   kWh: number;
+  /**
+   * Energy flow direction for the interval. "import" = energy delivered to the
+   * customer (PG&E "Direction of Energy = D" / ESPI flowDirection 1); "export" =
+   * energy received from the customer's solar (Direction = R / flowDirection 19).
+   * Optional and defaults to "import" everywhere it is consumed, so the existing
+   * ESPI/Bayou paths (which carry no per-interval direction) are unaffected.
+   */
+  direction?: "import" | "export";
+  /**
+   * Raw PG&E time-of-use code for the interval (e.g. "WOP", "WPK"), carried through
+   * so interval-level TOU rate optimization does not have to re-derive the period
+   * from each timestamp. Null/absent when the source does not label intervals.
+   */
+  touCode?: string | null;
 };
 
 /** A billing cycle window for a pump, derived from its meter-read schedule. */

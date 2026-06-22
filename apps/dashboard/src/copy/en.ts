@@ -453,6 +453,27 @@ export const en = {
     // Whole-new-farm entry (distinct from connecting more sources to THIS farm).
     addFarm: "Start or join another farm",
     signOut: "Sign out",
+    // Almond usage meter (like the usage panel in Claude's account). Per-user, resets on a rolling
+    // window. Research-backed for low-software-literacy growers: a concrete "messages left" COUNT plus
+    // a bar reads far better than a percentage or raw token counts. The count is approximate (the real
+    // limit is token-based); "About" makes that honest. Plain operator English, no jargon, no
+    // exclamation marks, no em dashes.
+    usage: {
+      heading: "Almond usage",
+      // Concrete count above the bar. `period` is "today" or "this week".
+      remaining: (left: number, total: number, period: string): string =>
+        `About ${left} of ${total} messages left ${period}`,
+      periodDaily: "today",
+      periodWeekly: "this week",
+      // Reset line under the bar.
+      resetsDaily: "Resets tomorrow",
+      resetsWeekly: "Resets next week",
+      // Shown in place of the count once the budget is spent.
+      limitReachedDaily: "You have used all of today's messages. More tomorrow.",
+      limitReachedWeekly: "You have used all of this week's messages. More next week.",
+      // Reassurance line so a grower is not alarmed by the meter.
+      hint: "Almond is included with your plan. The limit keeps usage fair across your team.",
+    },
   },
   // Team management (the multi-user farm membership feature). Plain operator English; the trust
   // promise ("only this farm") is stated plainly. No em dashes, no exclamation marks.
