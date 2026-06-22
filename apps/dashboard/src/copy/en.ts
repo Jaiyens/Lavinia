@@ -1375,6 +1375,7 @@ export const en = {
       urgentEyebrow: "Most urgent",
       // The dollar consequence if the most urgent meter beats its own highest point.
       urgentAmount: (amount: string): string => `${amount} at risk`,
+      atRiskLabel: "at risk",
     },
 
     // Group containers.

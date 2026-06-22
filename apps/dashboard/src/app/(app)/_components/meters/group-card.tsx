@@ -22,14 +22,12 @@ const m = en.meters;
 export function GroupCard({
   group,
   allGroupNames,
-  now,
   onOpenMeter,
   onMoveMeter,
   onRenameGroup,
 }: {
   group: MeterGroup;
   allGroupNames: string[];
-  now: Date;
   onOpenMeter: (meterId: string) => void;
   onMoveMeter: (meterId: string, toGroup: string) => void;
   onRenameGroup: (from: string, to: string) => void;
@@ -44,7 +42,7 @@ export function GroupCard({
   return (
     <section className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low">
       {/* Slim header: worst-meter dot, name, meter count, demand-so-far dollar, edit. */}
-      <div className="flex items-center gap-3 px-3.5 py-3">
+      <div className="flex items-center gap-3 px-3 py-2.5">
         <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: style.dot }} />
         {editing ? (
           <input
@@ -89,16 +87,11 @@ export function GroupCard({
         </button>
       </div>
 
-      {/* Every meter, always visible. */}
-      <div className="grid grid-cols-1 gap-2.5 border-t border-outline-variant p-3.5 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Every meter, always visible, as square tiles. */}
+      <div className="grid grid-cols-2 gap-2 border-t border-outline-variant p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {ordered.map((risk) => (
           <div key={risk.meter.id} className="flex flex-col gap-1.5">
-            <MeterTile
-              risk={risk}
-              groupName={group.name}
-              now={now}
-              onOpen={() => onOpenMeter(risk.meter.id)}
-            />
+            <MeterTile risk={risk} groupName={group.name} onOpen={() => onOpenMeter(risk.meter.id)} />
             {editing && (
               <MoveControl
                 current={group.name}

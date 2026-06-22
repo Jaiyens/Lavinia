@@ -140,10 +140,13 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
         </div>
       </header>
 
-      {/* A dashboard, not an accordion: the wide top tile (Most urgent + Today's read), then every
-          meter on screen at once - each group is a section with ALL its gauges shown, no collapse. */}
+      {/* A calm dashboard of SQUARE tiles: the two answer-first squares (Most urgent + Today's read)
+          on top, then every meter on screen at once - each group is a section with ALL its square
+          gauges shown, no collapse. */}
       <div className="flex flex-col gap-4">
-        <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <TopTile summary={summary} onOpenUrgent={setOpenMeterId} />
+        </div>
 
         {/* PHASE TWO (not built yet): a "Board" / "Map" view toggle goes here, beside the title.
             "Map" would render each meter as a colored dot or mini-gauge pinned at its real lat/lng
@@ -155,7 +158,6 @@ export function MetersBoard({ feed, now: nowProp }: { feed: MetersFeedResult; no
             key={group.name}
             group={group}
             allGroupNames={allNames}
-            now={now}
             onOpenMeter={setOpenMeterId}
             onMoveMeter={moveMeter}
             onRenameGroup={renameGroup}
