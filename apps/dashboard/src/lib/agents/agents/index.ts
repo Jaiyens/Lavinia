@@ -8,3 +8,4 @@
 // side-effect imports (no `from ... import {}`), in registration order.
 
 import "./refresh";
+import "./bill-audit/run";

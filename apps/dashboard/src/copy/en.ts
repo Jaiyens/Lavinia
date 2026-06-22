@@ -305,8 +305,97 @@ export const en = {
       note: "Terra re-checks your PG&E data every day and updates your findings.",
     },
     // --- PRE-STUBBED feature blocks: each feature worktree FILLS its own block here. ---
-    // Bill dispute agent. TODO(feature: bill-dispute): fill this block.
-    billDispute: {},
+    // Bill dispute agent: watches the "act"-severity bill-audit findings, drafts a plain
+    // PG&E dispute letter, waits for one-tap OWNER approval, and on approval renders an
+    // immutable PDF dispute packet. v1 NEVER files with PG&E. Plain operator English, the
+    // grower's words; no em dashes, no exclamation marks.
+    billDispute: {
+      // The agent's label in the audit UI / logs.
+      label: "Bill dispute",
+      // The Home card chrome shown beside a flagged bill-audit finding.
+      card: {
+        eyebrow: "Bill dispute",
+        // The card heading names the meter and the cycle month.
+        heading: (pump: string, month: string): string => `Dispute ${pump}'s ${month} bill`,
+        // One calm sentence: what the agent drafted and that it is waiting for the owner.
+        proposedBody: (excessUsd: number): string =>
+          `Terra drafted a letter to PG&E about the roughly ${usd(excessUsd)} this bill ran over a usual month. Review it and approve to prepare a dispute packet you can file.`,
+        // The one-tap owner control that approves and renders the packet.
+        approve: "Approve and prepare dispute packet",
+        approveAria: (pump: string, month: string): string =>
+          `Approve and prepare the dispute packet for ${pump}'s ${month} bill`,
+        // The decline control (rejects the proposal, nothing is filed).
+        reject: "Not now",
+        rejectAria: (pump: string, month: string): string =>
+          `Skip the dispute for ${pump}'s ${month} bill`,
+        // After approval: the packet is ready to download, then file by hand.
+        readyHeading: "Dispute packet ready",
+        readyBody:
+          "Your dispute packet is saved to Reports. Download it, then send it to PG&E to open the dispute. Terra never files for you.",
+        download: "Download the packet",
+        // After the owner skips it.
+        skipped: "Skipped. No dispute was prepared.",
+        // Read-only note on the public Tour (a visitor cannot approve a real dispute).
+        readOnlyNote: "This is a sample. Approving a dispute is available on your own farm.",
+        // Calm error if the approve did not save (mirrors resolveFinding's tone).
+        error: "That did not save. Try it again.",
+      },
+      // The one-line audit summary recorded with the proposed action.
+      actionSummary: (pump: string, month: string, excessUsd: number): string =>
+        `Draft a PG&E dispute for ${pump}'s ${month} bill, about ${usd(excessUsd)} over a usual month.`,
+      // The deterministic /copy dispute LETTER. This is the LOAD-BEARING path: the packet
+      // must be filable from this alone (the LLM is optional polish that may only reword,
+      // never re-number). Every figure is passed in from the engine-authored action.params.
+      letter: {
+        subject: (pump: string, month: string): string =>
+          `Billing dispute, ${pump}, ${month} statement`,
+        // A plain block letter. Lines are joined with newlines by the drafter. No em dashes.
+        body: (input: {
+          pump: string;
+          month: string;
+          cycleRange: string;
+          totalBillUsd: number;
+          medianTotalUsd: number;
+          excessUsd: number;
+        }): string =>
+          [
+            "To the PG&E Billing Department,",
+            "",
+            `I am writing to dispute a charge on the statement for my agricultural meter ${input.pump}, for the service period ${input.cycleRange}.`,
+            "",
+            `This statement totaled about ${usd(input.totalBillUsd)}. For a comparable ${input.month} cycle this meter usually runs about ${usd(input.medianTotalUsd)}, so this bill is roughly ${usd(input.excessUsd)} higher than usual. The metered usage on this cycle did not rise to match the higher charge, which is why I believe the bill is overstated.`,
+            "",
+            "Please review this statement and the meter's usage for the period. If the charge is not supported by the metered usage, I am requesting a corrected bill and a credit for the difference.",
+            "",
+            "Thank you for looking into this.",
+            "",
+            "Sincerely,",
+            "The account holder",
+          ].join("\n"),
+      },
+      // The PDF dispute packet (the immutable Report rendered on approval).
+      packet: {
+        // The download file's title basis and the Report row title.
+        title: (pump: string, month: string): string => `Bill dispute, ${pump}, ${month}`,
+        // The packet header chrome.
+        eyebrow: "PG&E bill dispute",
+        heading: (pump: string): string => `Dispute packet for ${pump}`,
+        // A labeled facts block on the packet (every value engine-authored).
+        meterLabel: "Meter",
+        periodLabel: "Service period",
+        billedLabel: "Statement total",
+        usualLabel: "Usual comparable cycle",
+        excessLabel: "Amount disputed",
+        // The letter section heading on the packet.
+        letterHeading: "Draft letter to PG&E",
+        // The honest footer: Terra prepared this, the grower files it.
+        footer:
+          "Prepared by Terra from your own bills. Review the figures, then file this with PG&E. Terra does not file disputes for you.",
+        // The request text recorded on the Report row (the Reports history line).
+        requestText: (pump: string, month: string): string =>
+          `Bill dispute packet for ${pump}, ${month} statement`,
+      },
+    },
     // Rate switch agent. TODO(feature: rate-switch): fill this block.
     rateAgent: {},
     // Solar watch agent. TODO(feature: solar-watch): fill this block.

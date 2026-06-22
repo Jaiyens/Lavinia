@@ -8,8 +8,14 @@ import { cardClass } from "@/components/ui";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { DotPattern } from "@/components/ui/dot-pattern";
-import { resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
+import {
+  resolveFarm,
+  resolveFindings,
+  resolveMeters,
+  resolveBillDisputeCards,
+} from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
+import { BillDisputeCard } from "./bill-dispute-card";
 
 // HOME: the farm known at a glance (the north star). Deliberately NOT the Energy dashboard -
 // it is a calm overview that opens into the agents, so the Home and Energy tabs are now
@@ -38,10 +44,24 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   }
 
   const { farm } = resolved;
-  const [meters, findings] = await Promise.all([
+  const [meters, findings, disputeCards] = await Promise.all([
     resolveMeters(farm.id),
     resolveFindings(farm.id),
+    resolveBillDisputeCards(farm.id),
   ]);
+  // A dispute card is read-only on any non-owned data (the public Tour, or the badged demo):
+  // a visitor sees the agent's shape but cannot approve a real PG&E dispute.
+  const disputeReadOnly = demoOnly || resolved.dataKind === "representative";
+  // Place each surfacing dispute card beside the finding it acts on (keyed on recommendationId).
+  const disputeByRecId = new Map(
+    disputeCards
+      .filter((c) => c.recommendationId !== null)
+      .map((c) => [c.recommendationId as string, c]),
+  );
+  // A ready packet whose source finding has already cleared still shows once, on its own.
+  const orphanDisputeCards = disputeCards.filter(
+    (c) => c.recommendationId === null || !findings.some((f) => f.id === c.recommendationId),
+  );
 
   const meterCount = meters.length;
   const accountCount = new Set(
@@ -168,35 +188,47 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
               </Link>
             )}
           </div>
-          {topFindings.length === 0 ? (
+          {topFindings.length === 0 && orphanDisputeCards.length === 0 ? (
             <p className="rounded-2xl border border-outline-variant bg-surface-container-low px-5 py-6 type-body-md text-on-surface-variant">
               {en.home.attentionEmpty}
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {topFindings.map((f) => (
-                <li key={f.id}>
-                  <Link
-                    href={f.meterId ? `${energyHref}?meter=${f.meterId}` : energyHref}
-                    className={cardClass({
-                      interactive: true,
-                      className: "flex items-center justify-between gap-4 px-5 py-4",
-                    })}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate type-body-md text-on-surface">{f.situation}</p>
-                      {f.meterName && (
-                        <p className="truncate type-caption text-on-surface-variant">
-                          {f.meterName}
-                        </p>
+              {topFindings.map((f) => {
+                const dispute = disputeByRecId.get(f.id);
+                return (
+                  <li key={f.id} className="flex flex-col gap-2">
+                    <Link
+                      href={f.meterId ? `${energyHref}?meter=${f.meterId}` : energyHref}
+                      className={cardClass({
+                        interactive: true,
+                        className: "flex items-center justify-between gap-4 px-5 py-4",
+                      })}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate type-body-md text-on-surface">{f.situation}</p>
+                        {f.meterName && (
+                          <p className="truncate type-caption text-on-surface-variant">
+                            {f.meterName}
+                          </p>
+                        )}
+                      </div>
+                      {f.impactUsd != null && f.impactUsd > 0 && (
+                        <span className="shrink-0 type-num font-semibold text-money-positive">
+                          {formatUsdWhole(Math.round(f.impactUsd * 100))}
+                        </span>
                       )}
-                    </div>
-                    {f.impactUsd != null && f.impactUsd > 0 && (
-                      <span className="shrink-0 type-num font-semibold text-money-positive">
-                        {formatUsdWhole(Math.round(f.impactUsd * 100))}
-                      </span>
+                    </Link>
+                    {dispute && (
+                      <BillDisputeCard view={dispute} readOnly={disputeReadOnly} />
                     )}
-                  </Link>
+                  </li>
+                );
+              })}
+              {/* Ready packets whose source finding already cleared still surface once. */}
+              {orphanDisputeCards.map((c) => (
+                <li key={c.agentActionId}>
+                  <BillDisputeCard view={c} readOnly={disputeReadOnly} />
                 </li>
               ))}
             </ul>
