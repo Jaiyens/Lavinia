@@ -94,7 +94,10 @@ async function main(): Promise<void> {
 
   const parcels: FixtureParcel[] = [];
   for (const c of chosen) {
-    const enrichment = await enrichParcel(c.centroidLat, c.centroidLng);
+    const enrichment = await enrichParcel(c.centroidLat, c.centroidLng, {
+      geometry: c.geometry,
+      acres: round(c.acres, 1),
+    });
     const base: EngineParcel = {
       apn: c.apn,
       county: "Fresno",

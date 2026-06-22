@@ -13,6 +13,7 @@
 //   - ET             OpenET. TODO: wire raster/timeseries/point behind OPENET_API_KEY.
 
 import type { Enrichment, Sourced } from "./representative";
+import type { ParcelGeometry } from "../types";
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
@@ -224,27 +225,77 @@ async function enrichWells(lat: number, lng: number): Promise<WellEnrichment> {
   }
 }
 
-// --- ET (OpenET) — stubbed --------------------------------------------------------------------
-// TODO: OpenET is NOT keyless. Wire POST https://openet-api.org/raster/timeseries/point with an
-// Authorization header from a server-side OPENET_API_KEY env var (variable=ET, model=Ensemble),
-// then store acre-feet over the season. Until then the representative generator fills et_estimate_af.
-async function enrichEt(_lat: number, _lng: number): Promise<Sourced<number> | null> {
-  return null;
+// --- ET (OpenET) — real per-parcel, behind a free OPENET_API_KEY -------------------------------
+// OpenET is NOT keyless: it needs a free API key in OPENET_API_KEY (server-only). With the key + the
+// parcel polygon we POST the polygon timeseries (model=Ensemble) and convert seasonal ET inches over
+// the parcel area to acre-feet. Without a key (or polygon/acres) it returns null and the generator
+// fills et_estimate_af (which the drawer then tags "sample"). So ET goes live the moment a key lands.
+const OPENET_ENDPOINT = "https://openet-api.org/raster/timeseries/polygon";
+
+async function enrichEt(opts?: EnrichOpts): Promise<Sourced<number> | null> {
+  const key = process.env.OPENET_API_KEY;
+  const geometry = opts?.geometry;
+  const acres = opts?.acres;
+  if (!key || !geometry || acres === undefined || acres <= 0) return null;
+  // Outer ring of the first polygon as a flat [lng,lat,...] list (OpenET's polygon geometry format).
+  const ring = geometry.type === "Polygon" ? geometry.coordinates[0] : geometry.coordinates[0]?.[0];
+  if (!ring || ring.length < 4) return null;
+  const flat = ring.flatMap((p) => [p[0], p[1]]);
+  // Trailing 12 months as a seasonal proxy (ingest/seed time, not a render path).
+  const end = new Date();
+  const start = new Date(end.getTime());
+  start.setMonth(start.getMonth() - 12);
+  const iso = (d: Date): string => d.toISOString().slice(0, 10);
+  try {
+    const json = await fetchJson(
+      OPENET_ENDPOINT,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: key },
+        body: JSON.stringify({
+          date_range: [iso(start), iso(end)],
+          interval: "monthly",
+          geometry: flat,
+          model: "Ensemble",
+          variable: "ET",
+          reference_et: "gridMET",
+          units: "in",
+          file_format: "JSON",
+        }),
+      },
+      20_000,
+    );
+    // Response: monthly rows; sum ET inches over the parcel, then inches -> acre-feet via the area.
+    const rows = Array.isArray(json) ? (json as Array<Record<string, unknown>>) : [];
+    let inches = 0;
+    for (const r of rows) {
+      const v = Number(r.et ?? r.value ?? r.ET);
+      if (Number.isFinite(v)) inches += v;
+    }
+    if (inches <= 0) return null;
+    const acreFeet = Math.round((inches / 12) * acres * 10) / 10;
+    return { value: acreFeet, source: "OpenET (Ensemble, trailing 12 mo)" };
+  } catch {
+    return null;
+  }
 }
+
+/** Optional context for enrichers that need the parcel polygon / area (OpenET). */
+export type EnrichOpts = { geometry?: ParcelGeometry; acres?: number };
 
 /**
  * Run every enricher for a parcel centroid, best-effort and in parallel. Any source that fails or
  * has no data is simply omitted (the representative generator fills it). Safe to call at seed time
- * or at live ingest.
+ * or at live ingest. `opts` (the parcel polygon + acres) powers polygon-based enrichers (OpenET).
  */
-export async function enrichParcel(lat: number, lng: number): Promise<Enrichment> {
+export async function enrichParcel(lat: number, lng: number, opts?: EnrichOpts): Promise<Enrichment> {
   const [crop, gsa, waterDistrict, soil, wells, et] = await Promise.all([
     enrichCrop(lat, lng).catch(() => null),
     enrichGsa(lat, lng).catch(() => null),
     enrichWaterDistrict(lat, lng).catch(() => null),
     enrichSoil(lat, lng).catch((): SoilEnrichment => ({ soilClass: null, slopePct: null })),
     enrichWells(lat, lng).catch((): WellEnrichment => ({ depthFt: null, capacityGpm: null })),
-    enrichEt(lat, lng).catch(() => null),
+    enrichEt(opts).catch(() => null),
   ]);
   const out: Enrichment = {};
   if (crop) out.crop = crop;
