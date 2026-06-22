@@ -311,8 +311,25 @@ export const en = {
     rateAgent: {},
     // Solar watch agent. TODO(feature: solar-watch): fill this block.
     solarWatch: {},
-    // Rebate / incentives agent. TODO(feature: rebate): fill this block.
-    incentives: {},
+    // Rebate / incentives agent (monthly, NO LLM, NO dollar). Honest-blank program
+    // leads matched from a static catalog of real CA ag programs. The copy names the
+    // program and what it is for, and is explicit that the dollar is not yet known: a
+    // real saving needs interval data, which this agent does not have. No em dashes.
+    incentives: {
+      label: "Rebate finder",
+      // Shown on a failed run when there is no specific error message.
+      failedNote: "We could not check rebate programs this time. Terra will try again.",
+      // Short note explaining the agent on the audit page.
+      note: "Terra checks your meters against California ag rebate and incentive programs once a month and flags the ones you may qualify for.",
+      // The finding's situation line: which meter, which program.
+      situation: (pump: string, program: string): string =>
+        `${pump} may qualify for ${program}.`,
+      // The honest-blank impact note: names the program, no dollar. The grower confirms
+      // eligibility and the amount with the program directly.
+      programNote: (program: string): string =>
+        `This meter fits the ${program} eligibility on the facts Terra has. We have not put a dollar on it yet, since that needs interval data we do not have. Check the program details to confirm and apply.`,
+      action: (): string => "See this program",
+    },
   },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).
