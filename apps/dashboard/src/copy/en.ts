@@ -454,6 +454,10 @@ export const en = {
       close: "Close",
       notOnFile: "Not on file",
       sourceFrom: (source: string): string => `from ${source}`,
+      // Marks a representative/sample value (no real public source) so it is never mistaken for fact.
+      sampleTag: "sample",
+      sampleDisclaimer:
+        "Fields marked sample are representative data until you connect your records. Sourced fields show where the public data came from.",
       sections: {
         identity: "Identity & lease",
         planting: "Planting",

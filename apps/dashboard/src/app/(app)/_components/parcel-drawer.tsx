@@ -68,6 +68,13 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
   const p = parcel;
   const leased = p.identity.tenure === "leased";
 
+  // Provenance per field: a real public source shows its "from ..." badge; anything else is
+  // representative demo data and is tagged "sample". Newly-wired enrichers populate p.sources and
+  // auto-flip a row from sample -> sourced. Genuinely real engine facts (acres, MTRS, from the
+  // parcel boundary) pass neither and read as plain values.
+  const prov = (key: string): { source?: string; sample?: boolean } =>
+    p.sources[key] ? { source: p.sources[key] } : { sample: true };
+
   const copyApn = async () => {
     try {
       await navigator.clipboard.writeText(p.apn);
@@ -126,36 +133,45 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
       {/* Scrollable grouped body. Extra bottom padding so the source link clears the floating
           Almond launcher (fixed bottom-right, above this panel). */}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-24 pt-4">
+        {/* Honesty: sourced rows show their public source; rows tagged "sample" are representative
+            demo values until the farmer connects their own records. */}
+        <p className="mb-3 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-low px-3 py-2 type-caption text-on-surface-variant">
+          {t.sampleDisclaimer}
+        </p>
+
         <Group title={t.sections.identity}>
           <Row label={t.labels.grossAcres} value={t.acres(p.identity.gross_acres)} />
-          <Row label={t.labels.netPlanted} value={t.acres(p.identity.net_planted_acres)} />
+          <Row label={t.labels.netPlanted} value={t.acres(p.identity.net_planted_acres)} {...prov("net_planted_acres")} />
           <Row label={t.labels.mtrs} value={p.identity.mtrs} />
-          <Row label={t.labels.tenure} value={t.tenure[p.identity.tenure]} />
-          {leased && <Row label={t.labels.landlord} value={p.identity.landlord} />}
+          <Row label={t.labels.tenure} value={t.tenure[p.identity.tenure]} {...prov("tenure")} />
+          {leased && <Row label={t.labels.landlord} value={p.identity.landlord} {...prov("landlord")} />}
           {leased && p.identity.rent_per_acre !== null && (
-            <Row label={t.labels.rentPerAcre} value={`${usd(p.identity.rent_per_acre)}/ac`} />
+            <Row label={t.labels.rentPerAcre} value={`${usd(p.identity.rent_per_acre)}/ac`} {...prov("rent_per_acre")} />
           )}
           {leased && p.identity.lease_start && p.identity.lease_expiry && (
             <Row
               label={t.labels.leaseTerm}
               value={`${fmtDate(p.identity.lease_start, false)} - ${fmtDate(p.identity.lease_expiry, false)}`}
+              {...prov("lease_term")}
             />
           )}
         </Group>
 
         <Group title={t.sections.planting}>
-          <Row label={t.labels.crop} value={p.planting.crop} source={p.sources.crop} />
-          <Row label={t.labels.variety} value={p.planting.variety} />
-          <Row label={t.labels.rootstock} value={p.planting.rootstock} />
+          <Row label={t.labels.crop} value={p.planting.crop} {...prov("crop")} />
+          <Row label={t.labels.variety} value={p.planting.variety} {...prov("variety")} />
+          <Row label={t.labels.rootstock} value={p.planting.rootstock} {...prov("rootstock")} />
           <Row
             label={t.labels.plantingYear}
             value={p.planting.planting_year ? String(p.planting.planting_year) : "Annual"}
+            {...prov("planting_year")}
           />
-          <Row label={t.labels.treeCount} value={p.planting.tree_count} />
-          <Row label={t.labels.spacing} value={p.planting.spacing} />
+          <Row label={t.labels.treeCount} value={p.planting.tree_count} {...prov("tree_count")} />
+          <Row label={t.labels.spacing} value={p.planting.spacing} {...prov("spacing")} />
           <Row
             label={t.labels.irrigation}
             value={p.planting.irrigation_method ? t.irrigation[p.planting.irrigation_method] ?? null : null}
+            {...prov("irrigation_method")}
           />
           <Row
             label={t.labels.expectedYield}
@@ -164,6 +180,7 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
                 ? t.perAcre(p.planting.expected_yield_per_acre, p.planting.yield_unit)
                 : null
             }
+            {...prov("expected_yield_per_acre")}
           />
           <Row
             label={t.labels.historicalYield}
@@ -172,48 +189,53 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
                 ? t.perAcre(p.planting.historical_yield_per_acre, p.planting.yield_unit)
                 : null
             }
+            {...prov("historical_yield_per_acre")}
           />
         </Group>
 
         <Group title={t.sections.water}>
-          <Row label={t.labels.waterSource} value={t.waterSource[p.water.water_source] ?? null} />
-          <Row label={t.labels.wellDepth} value={p.water.well_depth_ft !== null ? t.feet(p.water.well_depth_ft) : null} />
-          <Row label={t.labels.wellHp} value={p.water.well_hp !== null ? t.hp(p.water.well_hp) : null} />
+          <Row label={t.labels.waterSource} value={t.waterSource[p.water.water_source] ?? null} {...prov("water_source")} />
+          <Row label={t.labels.wellDepth} value={p.water.well_depth_ft !== null ? t.feet(p.water.well_depth_ft) : null} {...prov("well_depth_ft")} />
+          <Row label={t.labels.wellHp} value={p.water.well_hp !== null ? t.hp(p.water.well_hp) : null} {...prov("well_hp")} />
           <Row
             label={t.labels.wellCapacity}
             value={p.water.well_capacity_gpm !== null ? t.gpm(p.water.well_capacity_gpm) : null}
+            {...prov("well_capacity_gpm")}
           />
-          <Row label={t.labels.gsa} value={p.water.gsa_name} source={p.sources.gsa_name} />
+          <Row label={t.labels.gsa} value={p.water.gsa_name} {...prov("gsa_name")} />
           <Row
             label={t.labels.allocation}
             value={p.water.groundwater_allocation_af !== null ? t.afPerAcre(p.water.groundwater_allocation_af) : null}
+            {...prov("groundwater_allocation_af")}
           />
-          <Row label={t.labels.waterDistrict} value={p.water.water_district} source={p.sources.water_district} />
+          <Row label={t.labels.waterDistrict} value={p.water.water_district} {...prov("water_district")} />
           <Row
             label={t.labels.et}
             value={p.water.et_estimate_af !== null ? t.af(p.water.et_estimate_af) : null}
-            source={p.sources.et_estimate_af}
+            {...prov("et_estimate_af")}
           />
         </Group>
 
         <Group title={t.sections.energy}>
-          <Row label={t.labels.pgeMeter} value={p.energy.pge_meter_id} />
+          <Row label={t.labels.pgeMeter} value={p.energy.pge_meter_id} {...prov("pge_meter_id")} />
           <Row
             label={t.labels.rateSchedule}
             value={p.energy.rate_schedule}
             badge={p.energy.rate_misclassified ? t.rateMisclassified : undefined}
+            {...prov("rate_schedule")}
           />
-          <Row label={t.labels.pumpHp} value={p.energy.pump_hp !== null ? t.hp(p.energy.pump_hp) : null} />
+          <Row label={t.labels.pumpHp} value={p.energy.pump_hp !== null ? t.hp(p.energy.pump_hp) : null} {...prov("pump_hp")} />
           <Row
             label={t.labels.annualEnergyCost}
             value={p.energy.annual_energy_cost !== null ? usd(p.energy.annual_energy_cost) : null}
+            {...prov("annual_energy_cost")}
           />
         </Group>
 
         <Group title={t.sections.soil}>
-          <Row label={t.labels.soilClass} value={p.soil.soil_class} source={p.sources.soil_class} />
-          <Row label={t.labels.slope} value={p.soil.slope_pct !== null ? t.pct(p.soil.slope_pct) : null} />
-          <Row label={t.labels.salinity} value={p.soil.salinity_notes} />
+          <Row label={t.labels.soilClass} value={p.soil.soil_class} {...prov("soil_class")} />
+          <Row label={t.labels.slope} value={p.soil.slope_pct !== null ? t.pct(p.soil.slope_pct) : null} {...prov("slope_pct")} />
+          <Row label={t.labels.salinity} value={p.soil.salinity_notes} {...prov("salinity_notes")} />
         </Group>
 
         <Group title={t.sections.health}>
@@ -224,6 +246,7 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
                 ? `${p.health.ndvi_latest.toFixed(2)}${p.health.ndvi_trend ? ` (${t.ndviTrend[p.health.ndvi_trend] ?? p.health.ndvi_trend})` : ""}`
                 : null
             }
+            {...prov("ndvi_latest")}
           />
           {p.health.scouting_notes.length > 0 && (
             <ListBlock label={t.labels.scouting}>
@@ -247,7 +270,7 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
         </Group>
 
         <Group title={t.sections.compliance}>
-          <Row label={t.labels.permit} value={p.compliance.permit_site_id} />
+          <Row label={t.labels.permit} value={p.compliance.permit_site_id} {...prov("permit_site_id")} />
           {p.compliance.spray_history.length > 0 && (
             <ListBlock label={t.labels.sprayHistory}>
               {p.compliance.spray_history.map((s, i) => (
@@ -272,13 +295,14 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
         </Group>
 
         <Group title={t.sections.financial}>
-          <Row label={t.labels.revenue} value={p.financial.revenue !== null ? usd(p.financial.revenue) : null} />
+          <Row label={t.labels.revenue} value={p.financial.revenue !== null ? usd(p.financial.revenue) : null} {...prov("revenue")} />
           <Row
             label={t.labels.costPerAcre}
             value={p.financial.cost_per_acre !== null ? `${usd(p.financial.cost_per_acre)}/ac` : null}
+            {...prov("cost_per_acre")}
           />
           {leased && p.financial.lease_cost !== null && (
-            <Row label={t.labels.leaseCost} value={usd(p.financial.lease_cost)} />
+            <Row label={t.labels.leaseCost} value={usd(p.financial.lease_cost)} {...prov("lease_cost")} />
           )}
         </Group>
 
@@ -310,11 +334,14 @@ function Row({
   value,
   source,
   badge,
+  sample,
 }: {
   label: string;
   value: string | number | null;
   source?: string;
   badge?: string;
+  /** True when this value is representative/sample data (no real public source) — shows a tag. */
+  sample?: boolean;
 }) {
   const display = value === null || value === undefined || value === "" ? t.notOnFile : String(value);
   const muted = display === t.notOnFile;
@@ -327,6 +354,8 @@ function Row({
         </span>
         {badge && <Tag tone="alert">{badge}</Tag>}
         {source && <Tag tone="source">{t.sourceFrom(source)}</Tag>}
+        {/* Representative value with no real source: mark it so the farmer never mistakes it for fact. */}
+        {sample && !source && !muted && <Tag tone="sample">{t.sampleTag}</Tag>}
       </dd>
     </div>
   );
@@ -341,14 +370,14 @@ function ListBlock({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-function Tag({ tone, children }: { tone: "alert" | "source"; children: ReactNode }) {
+function Tag({ tone, children }: { tone: "alert" | "source" | "sample"; children: ReactNode }) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 type-label-caps",
-        tone === "alert"
-          ? "bg-alert-container text-on-alert-container"
-          : "border border-outline-variant text-on-surface-variant/80",
+        tone === "alert" && "bg-alert-container text-on-alert-container",
+        tone === "source" && "border border-outline-variant text-on-surface-variant/80",
+        tone === "sample" && "bg-surface-container-high text-on-surface-variant/80",
       )}
     >
       {tone === "alert" && <AlertTriangle className="h-3 w-3" />}
