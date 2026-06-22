@@ -249,6 +249,71 @@ export const en = {
       body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
     },
   },
+  // The Agents audit area (the agentic foundation). The page lists what Terra's agents have
+  // done for this farm, newest first, and lets the farm owner approve or reject anything an
+  // agent proposed before it acts. Plain operator English, the grower's words. No utility
+  // jargon, no em dashes, no exclamation marks.
+  //
+  // FROZEN SHARED BLOCK plus four PRE-STUBBED nested blocks (billDispute / rateAgent /
+  // solarWatch / incentives): a feature worktree FILLS its own nested block rather than
+  // appending at this shared boundary, so the four agents never collide on this file.
+  agents: {
+    // Left-rail / mobile-tab nav label and the page chrome.
+    navLabel: "Agents",
+    eyebrow: "Agents",
+    title: "What your agents did",
+    lede: "Terra's agents keep your farm current and flag the moves worth making. Anything that would act on your behalf waits here for your okay.",
+    // Back-to-home link (mirrors the Reports area).
+    home: "Home",
+    // A single run header line: which agent, when it ran.
+    runOnLabel: "Ran",
+    // Run-status labels (mirror the AgentRunStatus union; color is never the only signal).
+    runStatus: {
+      running: "Running",
+      succeeded: "Up to date",
+      failed: "Could not finish",
+    },
+    // Action-status labels (mirror the AgentActionStatus union).
+    actionStatus: {
+      proposed: "Waiting for your okay",
+      approved: "Approved",
+      rejected: "Skipped",
+      executed: "Done",
+      failed: "Could not finish",
+    },
+    // One-tap controls on a proposed action (owner only).
+    approve: "Approve",
+    reject: "Skip",
+    approveAria: (summary: string): string => `Approve: ${summary}`,
+    rejectAria: (summary: string): string => `Skip: ${summary}`,
+    // Calm error if an approve/reject did not save (mirrors resolveFinding's tone).
+    actionError: "That did not save. Try it again.",
+    // Read-only note for a non-owner viewing the audit (they cannot approve).
+    readOnlyNote: "Only the farm owner can approve these.",
+    // Empty state for a farm with no agent runs yet.
+    empty: {
+      title: "Nothing yet",
+      body: "Once your PG&E connection is live, Terra's agents start working in the background. What they do shows up here.",
+    },
+    // The built-in refresh agent (daily re-pull plus re-run of the engines).
+    refresh: {
+      label: "Daily refresh",
+      // Shown on a failed refresh when there is no specific error message (e.g. the PG&E
+      // sign-in needs to be renewed). The DB stores the real reason when there is one.
+      failedNote: "We could not refresh from PG&E. The connection may need a fresh sign-in.",
+      // Short note explaining the refresh agent on the audit page.
+      note: "Terra re-checks your PG&E data every day and updates your findings.",
+    },
+    // --- PRE-STUBBED feature blocks: each feature worktree FILLS its own block here. ---
+    // Bill dispute agent. TODO(feature: bill-dispute): fill this block.
+    billDispute: {},
+    // Rate switch agent. TODO(feature: rate-switch): fill this block.
+    rateAgent: {},
+    // Solar watch agent. TODO(feature: solar-watch): fill this block.
+    solarWatch: {},
+    // Rebate / incentives agent. TODO(feature: rebate): fill this block.
+    incentives: {},
+  },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).
   ui: {
