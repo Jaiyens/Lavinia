@@ -45,6 +45,10 @@ export type AlmondUIMessage = UIMessage<
 
 type AlmondChatStatus = "submitted" | "streaming" | "ready" | "error";
 
+/** Set when the durable per-user token budget is hit (the chat route's 429). Carries which window
+ *  was exhausted and when it resets, for a clear banner instead of the generic error. */
+export type AlmondUsageLimit = { window: "daily" | "weekly"; resetAt: string };
+
 type AlmondChatValue = {
   // Panel open/close (the page does not use these, but the FAB + rail + nudge do).
   open: boolean;
@@ -62,6 +66,9 @@ type AlmondChatValue = {
   // The conversation, shared by the panel and the page.
   messages: AlmondUIMessage[];
   status: AlmondChatStatus;
+  /** Set when the grower has hit their durable per-user token budget (a 429 from the chat route);
+   *  null otherwise. Drives the limit-reached banner + composer lockout; cleared on the next send. */
+  usageLimit: AlmondUsageLimit | null;
   /** Send a turn with optional file attachments (PDF / Excel / CSV). */
   send: (text: string, files?: File[]) => void;
   retry: () => void;
@@ -214,9 +221,43 @@ export function AlmondChatProvider({
     }
   }, []);
 
+  // Set when the durable per-user token budget is exhausted (the chat route returns 429
+  // {error:"usage_limit"}). The custom transport fetch below reads that body — useChat's onError only
+  // sees a message string and cannot tell a usage cap from any other error. Cleared on the next send.
+  const [usageLimit, setUsageLimit] = useState<AlmondUsageLimit | null>(null);
+
   // One transport for the provider's life. The chosen model rides on each request's body (passed at
-  // send time), so the transport itself stays static.
-  const [transport] = useState(() => new DefaultChatTransport<AlmondUIMessage>({ api: "/api/almond/chat" }));
+  // send time), so the transport itself stays static. A wrapped `fetch` intercepts the per-user
+  // usage-limit 429: it reads the structured body to drive the banner, then returns the 429 unchanged
+  // so useChat still settles the turn into status="error". (setUsageLimit is a stable state setter, so
+  // capturing it once in this one-time initializer is safe.)
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport<AlmondUIMessage>({
+        api: "/api/almond/chat",
+        fetch: async (input, init) => {
+          const res = await fetch(input, init);
+          if (res.status === 429) {
+            const data: unknown = await res
+              .clone()
+              .json()
+              .catch(() => null);
+            if (
+              data !== null &&
+              typeof data === "object" &&
+              (data as { error?: unknown }).error === "usage_limit"
+            ) {
+              const d = data as { window?: unknown; resetAt?: unknown };
+              setUsageLimit({
+                window: d.window === "weekly" ? "weekly" : "daily",
+                resetAt: typeof d.resetAt === "string" ? d.resetAt : "",
+              });
+            }
+          }
+          return res;
+        },
+      }),
+  );
 
   // The navigation bridge: when the server streams a `data-navigate` part, apply it through the
   // canonical nuqs setters so the dashboard moves exactly as a manual click would (Story 7.4).
@@ -471,6 +512,9 @@ export function AlmondChatProvider({
     (text: string, files: File[] = []) => {
       const trimmed = text.trim();
       if (!trimmed && files.length === 0) return;
+      // Dismiss any prior limit banner: a fresh send is allowed to try (if still over budget the route
+      // returns 429 again and the transport re-sets it, costing only a cheap denied request).
+      setUsageLimit(null);
       // The chosen model rides on the request body; the route validates it against the allowlist.
       const options = { body: { model } };
       if (files.length === 0) {
@@ -513,6 +557,7 @@ export function AlmondChatProvider({
       setModel,
       messages,
       status,
+      usageLimit,
       send,
       retry,
       editMessage,
@@ -539,6 +584,7 @@ export function AlmondChatProvider({
       setModel,
       messages,
       status,
+      usageLimit,
       send,
       retry,
       editMessage,

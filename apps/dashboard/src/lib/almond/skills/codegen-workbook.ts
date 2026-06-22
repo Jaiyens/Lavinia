@@ -10,6 +10,7 @@ import { buildFullWorkbook } from "@/lib/almond/export/full-workbook";
 import { buildReportSnapshot, type ReportSnapshot } from "@/lib/almond/codegen/snapshot";
 import { runRenderXlsxInSandbox } from "@/lib/almond/codegen/sandbox-run-xlsx";
 import { extractXlsxNumbers, verifyWorkbookArtifact } from "@/lib/almond/codegen/verify";
+import { billableTokens, recordUsage } from "@/lib/almond/usage-budget";
 
 /**
  * The `codegenWorkbook` skill (Phase 3) — the xlsx twin of `codegenExport`. Almond builds a BESPOKE
@@ -251,7 +252,7 @@ export async function runCodegenWorkbook(
       },
     });
 
-    await generateText({
+    const gen = await generateText({
       model: createGatewayModel(CODEGEN_MODEL),
       system: buildCodegenWorkbookSystemPrompt(snapshot),
       prompt: input.request?.trim() || HARDCODED_ASK,
@@ -259,6 +260,18 @@ export async function runCodegenWorkbook(
       stopWhen: stepCountIs(CODEGEN_MAX_STEPS),
       abortSignal: signal,
     });
+
+    // Account this codegen model spend against the per-user token budget (Story 10.4): a separate
+    // Sonnet model call from the chat turn, so additive. Best-effort; codegen is owner-only.
+    if (deps.meterUserId !== null) {
+      await recordUsage(deps.prisma, {
+        userId: deps.meterUserId,
+        farmId: deps.farmId,
+        source: "codegen",
+        model: CODEGEN_MODEL,
+        ...billableTokens(gen.totalUsage),
+      });
+    }
 
     const finalRender = captured.render;
     if (finalRender === null) {

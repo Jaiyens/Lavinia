@@ -31,6 +31,7 @@ export function AlmondPanel() {
     send,
     retry,
     editMessage,
+    usageLimit,
     closeAlmond,
   } = useAlmondChat();
   const reduce = useReducedMotion();
@@ -112,6 +113,7 @@ export function AlmondPanel() {
           onReplay={onReplay}
           onStarter={(q) => send(q)}
           onRetry={retry}
+          usageLimit={usageLimit}
           onEdit={editMessage}
         />
         <AlmondComposer variant="panel" />

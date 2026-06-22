@@ -15,6 +15,7 @@ import {
   type AlmondNavChip,
 } from "./almond-result";
 import { AlmondDownloadCard, type AlmondReportCard } from "./almond-download-card";
+import type { AlmondUsageLimit } from "./almond-launcher-provider";
 
 const t = en.shell.almond;
 
@@ -70,6 +71,9 @@ type Props = {
   onReplay: (chip: AlmondNavChip) => void;
   onStarter: (question: string) => void;
   onRetry: () => void;
+  /** Set when the grower has hit their durable per-user token budget; shows a calm limit banner
+   *  (no retry, since retrying is futile until the window resets) instead of the generic error. */
+  usageLimit: AlmondUsageLimit | null;
   /** Edit a user turn and re-ask (drops that turn and everything after it, then resends). */
   onEdit: (messageId: string, newText: string) => void;
   /** On the full /almond page the WINDOW is the scroll container, so autoscroll pins the window to
@@ -88,6 +92,7 @@ export function AlmondMessages({
   onReplay,
   onStarter,
   onRetry,
+  usageLimit,
   onEdit,
   windowScroll = false,
 }: Props) {
@@ -182,7 +187,14 @@ export function AlmondMessages({
       {waiting && <ThinkingLine />}
       {generating && <WorkingLine />}
 
-      {status === "error" && (
+      {usageLimit ? (
+        // The durable per-user budget is spent: a calm, honest banner with NO retry (retrying just
+        // earns another 429 until the window resets). Takes precedence over the generic error, which
+        // the same 429 also raised in useChat.
+        <div className="flex items-center gap-2" role="alert">
+          <p className="type-body-md text-risk">{t.usage.limitReached(usageLimit.window)}</p>
+        </div>
+      ) : status === "error" ? (
         <div className="flex items-center gap-2" role="alert">
           <p className="type-body-md text-risk">{t.error}</p>
           <button
@@ -193,7 +205,7 @@ export function AlmondMessages({
             {t.retry}
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

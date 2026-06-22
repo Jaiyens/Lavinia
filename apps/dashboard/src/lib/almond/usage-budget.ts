@@ -73,6 +73,26 @@ export type RecordUsageInput = {
 };
 
 /**
+ * Normalize an AI SDK usage object into billable input/output token counts, applying the
+ * hidden-usage estimate fallback in ONE place (shared by the chat responder and the codegen skills).
+ * A turn that reports no tokens at all is charged `USAGE_ESTIMATE_FALLBACK_TOKENS` and flagged
+ * `estimated`, so a provider that hides token counts cannot zero-charge its way around the cap.
+ * Typed structurally (no `ai` import) so this module stays free of the SDK.
+ */
+export function billableTokens(usage: { inputTokens?: number; outputTokens?: number } | undefined): {
+  inputTokens: number;
+  outputTokens: number;
+  estimated: boolean;
+} {
+  const inputTokens = usage?.inputTokens ?? 0;
+  const outputTokens = usage?.outputTokens ?? 0;
+  if (inputTokens + outputTokens === 0) {
+    return { inputTokens: USAGE_ESTIMATE_FALLBACK_TOKENS, outputTokens: 0, estimated: true };
+  }
+  return { inputTokens, outputTokens, estimated: false };
+}
+
+/**
  * The pure budget verdict: all the allow/deny + reset math given the summed usage. Kept free of the
  * clock and the DB (callers inject `nowMs` and the already-queried `used`/`oldestInWindowMs`) so it is
  * fully unit-testable like `checkFixedWindow`. Deny semantics: `used >= cap` denies — at or over the

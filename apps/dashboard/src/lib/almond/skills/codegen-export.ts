@@ -7,6 +7,7 @@ import { runGenerateReport } from "@/lib/almond/skills/generate-report";
 import { buildReportSnapshot, type ReportSnapshot } from "@/lib/almond/codegen/snapshot";
 import { runRenderInSandbox } from "@/lib/almond/codegen/sandbox-run";
 import { extractPdfText, verifyArtifact, type ManifestEntry } from "@/lib/almond/codegen/verify";
+import { billableTokens, recordUsage } from "@/lib/almond/usage-budget";
 
 /**
  * The `codegenExport` skill (POC) — the long-tail escape hatch where Almond builds a BESPOKE PDF by
@@ -194,7 +195,7 @@ export async function runCodegenExport(
       },
     });
 
-    await generateText({
+    const gen = await generateText({
       model: createGatewayModel(CODEGEN_MODEL),
       system: buildCodegenSystemPrompt(snapshot),
       prompt: HARDCODED_ASK,
@@ -202,6 +203,19 @@ export async function runCodegenExport(
       stopWhen: stepCountIs(CODEGEN_MAX_STEPS),
       abortSignal: signal,
     });
+
+    // Account this codegen model spend against the per-user token budget (Story 10.4). It is a
+    // SEPARATE model call from the chat turn (the Sonnet markup loop), so recording it is additive,
+    // not double-counting. Best-effort; codegen is owner-only so meterUserId is non-null in practice.
+    if (deps.meterUserId !== null) {
+      await recordUsage(deps.prisma, {
+        userId: deps.meterUserId,
+        farmId: deps.farmId,
+        source: "codegen",
+        model: CODEGEN_MODEL,
+        ...billableTokens(gen.totalUsage),
+      });
+    }
 
     // The model never produced a renderable PDF -> deterministic fallback (never a broken file).
     const finalRender = captured.render;

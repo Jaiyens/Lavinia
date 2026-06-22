@@ -29,14 +29,18 @@ type Props = {
  * picker and, for an authed owner, a file attach control (PDF / Excel / CSV).
  */
 export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) {
-  const { send, status, canAttach } = useAlmondChat();
+  const { send, status, canAttach, usageLimit } = useAlmondChat();
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
-  const canSend = !busy && (value.trim().length > 0 || files.length > 0);
+  // The durable per-user token budget is spent: lock the composer so no new turn can be sent (the
+  // server would 429 it anyway — this is just the honest, immediate UI of the hard server gate).
+  const limited = usageLimit !== null;
+  const canSend = !busy && !limited && (value.trim().length > 0 || files.length > 0);
+  const placeholder = limited ? t.usage.composerDisabled : t.placeholder;
 
   // Grow the box with its content line by line (capped by max-h), so a single line sits centered with
   // no stray scrollbar and a long question expands instead of cramming text against the edges. The
@@ -104,8 +108,8 @@ export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) 
           onKeyDown={onKeyDown}
           rows={1}
           autoFocus={autoFocus}
-          placeholder={t.placeholder}
-          aria-label={t.placeholder}
+          placeholder={placeholder}
+          aria-label={placeholder}
           className={cn(
             "w-full resize-none bg-transparent px-3.5 text-on-surface outline-none placeholder:text-on-surface-variant",
             isPage

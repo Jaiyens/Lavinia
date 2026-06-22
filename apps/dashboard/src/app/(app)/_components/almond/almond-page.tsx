@@ -35,6 +35,7 @@ export function AlmondPage() {
     send,
     retry,
     editMessage,
+    usageLimit,
     historyEnabled,
   } = useAlmondChat();
   const empty = messages.length === 0;
@@ -103,6 +104,7 @@ export function AlmondPage() {
               onReplay={onReplay}
               onStarter={(q) => send(q)}
               onRetry={retry}
+              usageLimit={usageLimit}
               onEdit={editMessage}
               windowScroll
             />

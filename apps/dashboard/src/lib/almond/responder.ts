@@ -40,6 +40,8 @@ import {
 } from "./skills/generate-report";
 import { type CodegenExportResult } from "./skills/codegen-export";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
+import { DEFAULT_ALMOND_MODEL } from "./models";
+import { billableTokens, recordUsage } from "./usage-budget";
 import {
   buildAlmondSkills,
   exportSpreadsheetSkill,
@@ -330,7 +332,13 @@ function isCodegenResult(output: unknown): output is CodegenExportResult {
  *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same.
  *  Wrapped in `createUIMessageStream` so a clean `navigate` tool result is lifted onto the stream as
  *  a transient `data-navigate` part (AC5), riding the same stream as the model's text/tool parts. */
-export function createModelResponder(model: LanguageModel): AlmondResponder {
+export function createModelResponder(
+  model: LanguageModel,
+  // The resolved Gateway model-id string, recorded on each usage row for per-model cost analysis.
+  // A `LanguageModel` can be an opaque object (or a bare string), so the id is threaded explicitly
+  // rather than read off `model`. Defaults to the menu default for tests that pass a mock model.
+  modelId: string = DEFAULT_ALMOND_MODEL,
+): AlmondResponder {
   return {
     async toResponse({ uiMessages, system, deps, actor }) {
       const messages = await convertToModelMessages(uiMessages);
@@ -419,6 +427,24 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
                 }
               }
             },
+            // Account the turn's TOKEN usage against the durable per-user budget (Story 10.4). Fires
+            // AFTER the stream settles, so it never delays the client's bytes, and reads `totalUsage`
+            // — the SUM across every tool-loop step, not just the last. Gated on a real authed user
+            // (deps.meterUserId is null for the public Tour, which is metered by IP instead, not here).
+            // recordUsage is best-effort (it swallows its own errors), so a metering write can never
+            // break a turn the grower already received. A live turn that reports no tokens at all
+            // falls back to a flagged estimate so a hidden-usage provider cannot zero-charge its way
+            // around the cap.
+            onFinish: async ({ totalUsage }) => {
+              if (deps.meterUserId === null) return;
+              await recordUsage(deps.prisma, {
+                userId: deps.meterUserId,
+                farmId: deps.farmId,
+                source: "chat",
+                model: modelId,
+                ...billableTokens(totalUsage),
+              });
+            },
           });
           writer.merge(result.toUIMessageStream());
         },
@@ -430,7 +456,9 @@ export function createModelResponder(model: LanguageModel): AlmondResponder {
 
 /** The live responder over the Vercel AI Gateway. Only construct when `hasGatewayKey()`. */
 export function createGatewayResponder(modelId?: string): AlmondResponder {
-  return createModelResponder(createGatewayModel(modelId));
+  // Pass the resolved id (or the menu default when absent — createGatewayModel itself defaults to
+  // Opus 4.8) so usage rows record exactly which model was billed.
+  return createModelResponder(createGatewayModel(modelId), modelId ?? DEFAULT_ALMOND_MODEL);
 }
 
 /** Split the stub answer into word-sized deltas (each word plus its trailing whitespace) so the
