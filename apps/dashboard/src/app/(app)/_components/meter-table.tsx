@@ -46,6 +46,17 @@ function defaultDir(key: SortKey): SortDir {
   return key === "cost" || key === "demand" || key === "peak" ? "desc" : "asc";
 }
 
+// The farmer-facing "Sort by" choices, in priority order. Each maps to the table's sort key/direction
+// (+ whether to group by meter group). "demand" is the default: the demand charge is the big lever.
+const SORT_OPTIONS = [
+  { id: "demand", key: "demand", dir: "desc", grouped: false },
+  { id: "cost", key: "cost", dir: "desc", grouped: false },
+  { id: "peak", key: "peak", dir: "desc", grouped: false },
+  { id: "group", key: "demand", dir: "desc", grouped: true },
+  { id: "status", key: "status", dir: "asc", grouped: false },
+  { id: "name", key: "name", dir: "asc", grouped: false },
+] as const satisfies readonly { id: string; key: SortKey; dir: SortDir; grouped: boolean }[];
+
 /** The group a row belongs to: its ranch, else inferred from the meter name, else "Other meters". */
 function groupKey(row: MeterRow): string {
   return row.ranch?.trim() || inferGroupFromName(row.name) || t.ungrouped;
@@ -157,7 +168,8 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
   const [ranch, setRanch] = useQueryState("ranch");
   const [rate, setRate] = useQueryState("rate");
   const [meterId, setMeter] = useQueryState("meter");
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "name", dir: "asc" });
+  // Default: demand charge, highest first - the demand charge is the big PG&E lever for a farmer.
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "demand", dir: "desc" });
   const [query, setQuery] = useState("");
   const [grouped, setGrouped] = useState(false);
 
@@ -194,6 +206,17 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
   const onHeader = (key: SortKey) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: defaultDir(key) }));
 
+  // The Sort-by dropdown reflects the current sort+group; a column-header click can produce an
+  // off-list combo, which shows as "Custom".
+  const currentSortId =
+    SORT_OPTIONS.find((o) => o.key === sort.key && o.dir === sort.dir && o.grouped === grouped)?.id ?? "";
+  const applySort = (id: string) => {
+    const o = SORT_OPTIONS.find((x) => x.id === id);
+    if (!o) return;
+    setSort({ key: o.key, dir: o.dir });
+    setGrouped(o.grouped);
+  };
+
   // Search + group controls, shared by the empty state and the populated views.
   const controls = (
     <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -222,19 +245,28 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
           </button>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => setGrouped((g) => !g)}
-        aria-pressed={grouped}
-        className={cn(
-          "press min-h-[44px] rounded-[var(--radius-control)] border px-4 type-body-md transition-colors",
-          grouped
-            ? "border-primary bg-primary-container text-on-primary-container"
-            : "border-outline-variant text-on-surface hover:bg-surface-container-low",
-        )}
-      >
-        {t.groupToggle}
-      </button>
+      <div className="flex items-center gap-2">
+        <label htmlFor="meter-sortby" className="type-label-caps shrink-0 text-on-surface-variant">
+          {t.sortByLabel}
+        </label>
+        <select
+          id="meter-sortby"
+          value={currentSortId}
+          onChange={(e) => applySort(e.target.value)}
+          className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3 type-body-md text-on-surface"
+        >
+          {currentSortId === "" && (
+            <option value="" disabled hidden>
+              {t.sortByCustom}
+            </option>
+          )}
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {t.sortOptions[o.id]}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 
@@ -299,36 +331,8 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
         </button>
       </div>
 
-      {/* Mobile: a simplified sortable card list (no clickable headers, so a sort control). */}
+      {/* Mobile: a simplified card list. Ordering comes from the shared "Sort by" control above. */}
       <div className="md:hidden">
-        <div className="mb-3 flex items-center gap-2">
-          <label htmlFor="meter-sort" className="type-label-caps text-on-surface-variant">
-            {t.sortLabel}
-          </label>
-          <select
-            id="meter-sort"
-            value={sort.key}
-            onChange={(e) => {
-              const key = e.target.value as SortKey;
-              setSort({ key, dir: defaultDir(key) });
-            }}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3 type-body-md text-on-surface"
-          >
-            {COLUMNS.map((c) => (
-              <option key={c.key} value={c.key}>
-                {t.columns[c.key]}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
-            aria-label={t.toggleDirection}
-            className="press flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low"
-          >
-            {sort.dir === "asc" ? <ArrowUp size={18} aria-hidden /> : <ArrowDown size={18} aria-hidden />}
-          </button>
-        </div>
         <ul className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-e1">
           {sections.map((section) => (
             <li key={section.group ?? "__all"}>

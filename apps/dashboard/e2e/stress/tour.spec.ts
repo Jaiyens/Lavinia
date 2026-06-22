@@ -121,12 +121,12 @@ test.describe("Tour stress click-through", () => {
       await page.waitForTimeout(300);
     }
 
-    // Toggle group-by-group.
-    const groupBtn = page.getByRole("button", { name: /group by group/i }).first();
-    if (await groupBtn.count()) {
-      await groupBtn.click();
+    // Exercise the "Sort by" dropdown (defaults to demand charge; switch to Meter group + back).
+    const sortBy = page.locator("#meter-sortby");
+    if (await sortBy.count()) {
+      await sortBy.selectOption("group");
       await page.waitForTimeout(400);
-      await groupBtn.click();
+      await sortBy.selectOption("demand");
       await page.waitForTimeout(300);
     }
 

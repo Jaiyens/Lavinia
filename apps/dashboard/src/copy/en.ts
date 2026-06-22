@@ -794,6 +794,17 @@ export const en = {
       ungrouped: "Other meters",
       groupCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
       peakUnit: "kW",
+      // The "Sort by" control. Default is demand charge, highest first.
+      sortByLabel: "Sort by",
+      sortByCustom: "Custom",
+      sortOptions: {
+        demand: "Demand charge (high to low)",
+        cost: "This cycle's cost (high to low)",
+        peak: "Peak demand (high to low)",
+        group: "Meter group",
+        status: "Needs a look first",
+        name: "Name (A to Z)",
+      },
       // One label per coverage state, reused by the drawer (2.5), CSV (2.7), map (2.9).
       coverage: {
         reconciled: "Loaded",
