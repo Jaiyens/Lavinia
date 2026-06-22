@@ -9,6 +9,8 @@ import {
 } from "@/lib/almond/export/load";
 import { buildMetersWorkbook } from "@/lib/almond/export/xlsx";
 import { buildBillDueWorkbook } from "@/lib/almond/export/bill-due";
+import { buildFullWorkbook } from "@/lib/almond/export/full-workbook";
+import { loadFindings } from "@/lib/dashboard/findings";
 
 /**
  * The `exportSpreadsheet` skill (Story 8.5) - Almond's OWNER-ONLY ability to hand a grower a real
@@ -40,8 +42,9 @@ import { buildBillDueWorkbook } from "@/lib/almond/export/bill-due";
 
 const t = en.shell.almond.export.skill;
 
-/** The two table shapes Almond can export. Mirrors the 8.2 (meter inventory) / 8.3 (bill-due) split. */
-export const EXPORT_TABLES = ["meters", "billDue"] as const;
+/** The table shapes Almond can export. `workbook` is the rich, multi-tab default (Summary + Meters +
+ *  Bill due dates + Rate savings); `meters` and `billDue` are the focused single-tab exports. */
+export const EXPORT_TABLES = ["workbook", "meters", "billDue"] as const;
 export type ExportTable = (typeof EXPORT_TABLES)[number];
 
 /**
@@ -56,7 +59,7 @@ export const exportSpreadsheetInputSchema = z.object({
     .enum(EXPORT_TABLES)
     .optional()
     .describe(
-      'Which spreadsheet to make: "meters" for the meter inventory (rate, account, latest bill, coverage), or "billDue" for each meter\'s billing-cycle closing date. Defaults to "meters".',
+      'Which spreadsheet to make. Prefer "workbook" (the default): a polished multi-tab Excel file with a Summary cover tab, the full Meters inventory, the Bill due dates, and the Rate savings - this is what to build for a general "export"/"make me an excel" ask. Use "meters" only when the grower asks specifically for just the meter list, or "billDue" only for just the billing-cycle closing dates. Defaults to "workbook".',
     ),
   rate: z.string().optional().describe("Only include meters on this rate schedule, e.g. AG-A1."),
   entity: z.string().optional().describe("Only include meters billed to this legal entity name."),
@@ -93,6 +96,12 @@ export type ExportSpreadsheetResult =
       /** The SHAPE params the file was built from (table + the single applied filter), recorded with
        *  a persisted report so a refresh can reproduce the same shape. No farmId, no value. */
       params: ExportParams;
+      /** The content-addressed cache key this file is stored under (Phase 2). Set by the skill
+       *  wrapper; the responder persists it so an identical later ask resolves to the same key. */
+      cacheKey?: string;
+      /** True when these bytes were served from the cache (an identical ask on unchanged data), so
+       *  the responder streams them without persisting a duplicate row. */
+      fromCache?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
@@ -144,9 +153,17 @@ export function applyFilter(meters: readonly MeterView[], input: ExportSpreadshe
   );
 }
 
-/** The table shape, defaulting to the meter inventory. */
+/** The table shape, defaulting to the rich multi-tab workbook (the honest comprehensive default). */
 function tableOf(input: ExportSpreadsheetInput): ExportTable {
-  return input.table ?? "meters";
+  return input.table ?? "workbook";
+}
+
+/** The resolved SHAPE params for an input (table + the single applied filter). The ONE place the
+ *  persisted params are authored, reused by the build (below) AND the cache key (the skill wrapper),
+ *  so the two can never disagree about what request a file represents. Pure. */
+export function resolveExportParams(input: ExportSpreadsheetInput): ExportParams {
+  const filter = resolveFilter(input);
+  return { table: tableOf(input), filterKey: filter?.key ?? null, filterValue: filter?.value ?? null };
 }
 
 /** The plain filter clause woven into the preview line (e.g. "on AG-A1"), or null when unset. */
@@ -164,6 +181,9 @@ function filterClause(filter: ResolvedFilter): string | null {
  * an approval gate.
  */
 export function previewLine(count: number, table: ExportTable, filter: ResolvedFilter): string {
+  // The full workbook gets its own preview line naming every tab; the focused tables share the
+  // single-table preview with their plain kind name.
+  if (table === "workbook") return t.previewWorkbook(count, filterClause(filter));
   const kind = table === "billDue" ? t.kind.billDue : t.kind.meters;
   return t.preview(count, kind, filterClause(filter));
 }
@@ -176,13 +196,20 @@ function slug(name: string): string {
 
 /** The server-authored download file name. Never from the model, never a path - just a safe slug. */
 export function exportFileName(farmName: string, table: ExportTable): string {
-  const suffix = table === "billDue" ? "bill-due" : "meters";
+  const suffix = table === "billDue" ? "bill-due" : table === "workbook" ? "overview" : "meters";
   return `${slug(farmName)}-${suffix}.xlsx`;
 }
 
-/** Build the .xlsx bytes for the chosen table over the (already filtered) export data. */
-function buildWorkbook(data: ExportData, table: ExportTable): Promise<Uint8Array> {
-  return table === "billDue" ? buildBillDueWorkbook(data) : buildMetersWorkbook(data);
+/**
+ * Build the .xlsx bytes for the chosen table over the (already filtered) export data. The two focused
+ * tables build from `data` alone; the full `workbook` additionally reads the farm's findings (for its
+ * Rate savings tab) through the same grounded loader the dashboard and the PDF report use. Scope is
+ * inherited from `deps` (the findings query is farm-scoped), never from the model.
+ */
+function buildWorkbook(deps: ExportLoadDeps, data: ExportData, table: ExportTable): Promise<Uint8Array> {
+  if (table === "billDue") return buildBillDueWorkbook(data);
+  if (table === "meters") return buildMetersWorkbook(data);
+  return loadFindings(deps.prisma, deps.farmId).then((findings) => buildFullWorkbook(data, findings));
 }
 
 /**
@@ -215,7 +242,7 @@ export async function runExportSpreadsheet(
       state: summarizeExportState(filtered),
     };
 
-    const bytes = await buildWorkbook(filteredData, table);
+    const bytes = await buildWorkbook(deps, filteredData, table);
     const filter = resolveFilter(input);
     return {
       kind: "file",
@@ -228,11 +255,7 @@ export async function runExportSpreadsheet(
       // The footer's as-of describes exactly the rows in the file (recomputed above), so a
       // persisted report records the same honest as-of, never the whole farm's.
       coverageAsOf: filteredData.state.asOf,
-      params: {
-        table,
-        filterKey: filter?.key ?? null,
-        filterValue: filter?.value ?? null,
-      },
+      params: resolveExportParams(input),
     };
   } catch {
     // Any failure in the read or the build becomes a typed error the panel renders inline - never a

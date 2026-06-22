@@ -129,6 +129,12 @@ export type GenerateReportResult =
        *  recorded with a persisted report so a refresh can reproduce the same shape. No farmId, no
        *  value. */
       params: ReportParams;
+      /** The content-addressed cache key this report is stored under (Phase 2); the responder
+       *  persists it so an identical later ask resolves to the same key. */
+      cacheKey?: string;
+      /** True when these bytes were served from the cache, so the responder streams them without
+       *  persisting a duplicate row. */
+      fromCache?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
@@ -197,6 +203,19 @@ export function resolveSections(input: GenerateReportInput): ReportSectionKind[]
     }
   }
   return out;
+}
+
+/** The resolved SHAPE params for an input (sections + the single applied filter + meter query). The
+ *  ONE place the persisted report params are authored, reused by the build AND the cache key (the
+ *  skill wrapper), so the two can never disagree about what request a report represents. Pure. */
+export function resolveReportParams(input: GenerateReportInput): ReportParams {
+  const filter = resolveFilter(input);
+  return {
+    sections: resolveSections(input),
+    filterKey: filter?.key ?? null,
+    filterValue: filter?.value ?? null,
+    meterQuery: input.meter?.trim() ?? null,
+  };
 }
 
 /** The plain filter clause woven into the preview line (e.g. "for AG-A1"), or null when unset. */
@@ -470,12 +489,7 @@ export async function runGenerateReport(
       bytes,
       meterCount: filtered.length,
       coverageAsOf: filteredData.state.asOf,
-      params: {
-        sections,
-        filterKey: filter?.key ?? null,
-        filterValue: filter?.value ?? null,
-        meterQuery: input.meter?.trim() ?? null,
-      },
+      params: resolveReportParams(input),
     };
   } catch {
     // Any failure in the read, authoring, or render becomes a typed error the panel renders inline -

@@ -28,7 +28,7 @@ import { newReportBlobKey, putPrivateBlob, XLSX_CONTENT_TYPE } from "@/lib/stora
  *  `"codegen"` is the model-authored bespoke PDF from the code-gen export POC (rendered in a Vercel
  *  Sandbox, verified fail-closed) — a distinct kind so Reports history can tell a custom report from a
  *  deterministic one. The column stays a free String, so storing a new kind needs no migration. */
-export const GENERATED_REPORT_KINDS = ["meters", "billDue", "report", "codegen"] as const;
+export const GENERATED_REPORT_KINDS = ["workbook", "meters", "billDue", "report", "codegen"] as const;
 export type GeneratedReportKind = (typeof GENERATED_REPORT_KINDS)[number];
 
 /** The deps the store closes over: a Prisma client, the resolved farm scope, and (optionally) the
@@ -58,6 +58,12 @@ export type ReportToStore = {
   bytes: Uint8Array;
   /** The content type to store the blob under. Defaults to the .xlsx type. */
   contentType?: string;
+  /** The content-addressed cache key (Phase 2), so an identical later ask resolves to this row and
+   *  streams its bytes back without rebuilding. Null/absent for a context that does not cache. */
+  cacheKey?: string | null;
+  /** How many meters the file covers (the filtered count), recorded so a cache HIT can label its
+   *  download card without re-loading the farm. */
+  meterCount?: number | null;
 };
 
 /** A persisted report's identity, returned so the caller (the responder) can offer the download
@@ -98,6 +104,8 @@ export async function storeReport(
       byteSize: stored.byteSize,
       coverageAsOf: report.coverageAsOf,
       paramsJson: report.params,
+      cacheKey: report.cacheKey ?? null,
+      meterCount: report.meterCount ?? null,
     },
     select: { id: true, blobPathname: true, byteSize: true },
   });

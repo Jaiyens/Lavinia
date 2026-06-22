@@ -926,6 +926,7 @@ export const en = {
             meters: "meters",
             billDue: "bill due dates",
             report: "report",
+            workbook: "full workbook",
           },
           // The one-line preview Almond states before the file lands ("a lightweight preview, NOT an
           // approval gate"): how many meters, which table, and any filter applied. Singular/plural is
@@ -934,6 +935,13 @@ export const en = {
             const meterWord = count === 1 ? "meter" : "meters";
             const where = filter ? ` ${filter}` : "";
             return `I will export your ${count} ${meterWord}${where} as a ${kind} spreadsheet.`;
+          },
+          // The preview for the full multi-tab workbook (the rich default): names every tab so the
+          // grower knows the file is the whole picture, not a single list. Singular/plural handled.
+          previewWorkbook: (count: number, filter: string | null): string => {
+            const meterWord = count === 1 ? "meter" : "meters";
+            const where = filter ? ` ${filter}` : "";
+            return `I will put together a full workbook of your ${count} ${meterWord}${where}: a summary, every meter, the bill due dates, and the rate-switch savings.`;
           },
           // The filter clause woven into the preview line (e.g. "on AG-A1", "in North ranch"). Only the
           // one filter the grower asked for is named; an unset filter contributes nothing.
@@ -961,6 +969,57 @@ export const en = {
           // Honest empty case: a filter (or an empty farm) left no meters to export, so there is no
           // file to make. Never an empty download.
           empty: "No meters match that, so there is nothing to export.",
+          // Shown when an identical ask on unchanged data is served from the cache (Phase 2): the
+          // same file, returned instantly, without rebuilding it.
+          cached: "Here is that file again, ready to download.",
+        },
+        // The full multi-tab workbook (the rich default the model builds for a plain "export"/"excel"
+        // ask): a Summary cover tab, the Meters inventory, the Bill due dates, and the Rate savings.
+        // Each tab carries the SAME grounded values as the focused exports, so the workbook can never
+        // disagree with a single-table export. Plain operator words only, no jargon, no em dashes.
+        workbook: {
+          // Tab names (kept under Excel's 31-char limit).
+          summarySheet: "Summary",
+          metersSheet: "Meters",
+          billsSheet: "Bill due dates",
+          savingsSheet: "Rate savings",
+          // The title row at the top of each tab.
+          summaryTitle: (farmName: string): string => `${farmName} overview`,
+          metersTitle: (farmName: string): string => `${farmName} meters`,
+          billsTitle: (farmName: string): string => `${farmName} bill due dates`,
+          savingsTitle: (farmName: string): string => `${farmName} rate-switch savings`,
+          // The Summary tab is a two-column key/value sheet.
+          summaryColumns: { metric: "Item", value: "Value" },
+          // The Summary tab's row labels, in order.
+          metric: {
+            farm: "Farm",
+            meters: "Meters on file",
+            reconciled: "Meters with loaded billing",
+            completeness: "Data completeness",
+            spend: "Latest month spend (loaded)",
+            demand: "Demand charge (latest)",
+            savings: "Estimated rate-switch savings",
+          },
+          // A whole-percent rendered for the completeness row (e.g. "82%").
+          completeness: (percent: number): string => `${percent}%`,
+          // Shown when a reconciled value is genuinely zero/absent (never a fabricated figure).
+          none: "None",
+          // Shown when no bill has posted, so there is no loaded figure to state yet.
+          notOnFile: "No bills posted yet",
+          // The Rate savings tab's five column headers, in order.
+          savingsColumns: {
+            meter: "Meter",
+            ranch: "Ranch",
+            current: "Current rate",
+            suggested: "Suggested rate",
+            savings: "Estimated savings",
+          },
+          // The bold totals band label under the savings rows.
+          savingsTotal: "Total estimated savings",
+          // Honest empty line when the rate review flags no changes for these meters.
+          savingsEmpty: "No rate changes are flagged for these meters yet.",
+          // Footer note restating that the savings come from the rate review and are an estimate.
+          savingsNote: "Estimated savings come from the rate review. They are an estimate, not a guarantee.",
         },
       },
       // The PDF report Almond makes (Epic 9). A clean, trustworthy document built from a bounded set

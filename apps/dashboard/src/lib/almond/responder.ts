@@ -178,6 +178,12 @@ type StreamableFile = {
   meterCount: number;
   coverageAsOf: string | null;
   params: ReportToStore["params"];
+  /** The content-addressed cache key (Phase 2), persisted with a FRESH build so an identical later
+   *  ask resolves to it. Absent for a context that did not compute one. */
+  cacheKey?: string;
+  /** True when these bytes were served from the cache: the row already exists, so the responder
+   *  streams the card WITHOUT persisting a duplicate (and marks it saved). */
+  fromCache?: boolean;
 };
 
 /** Normalize a clean export result into the common streamable-file shape, or null for empty/error
@@ -193,6 +199,8 @@ function exportFile(result: ExportSpreadsheetResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
+    cacheKey: result.cacheKey,
+    fromCache: result.fromCache,
   };
 }
 
@@ -209,6 +217,8 @@ function reportFile(result: GenerateReportResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
+    cacheKey: result.cacheKey,
+    fromCache: result.fromCache,
   };
 }
 
@@ -227,6 +237,8 @@ function codegenFile(result: CodegenExportResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
+    cacheKey: result.cacheKey,
+    fromCache: result.fromCache,
   };
 }
 
@@ -252,7 +264,11 @@ async function persistAndWriteReportPart(
   if (file === null) return;
 
   let saved = false;
-  if (actor.authedOwner) {
+  if (file.fromCache) {
+    // A cache hit: the row already exists (it was stored when first built), so we stream the bytes
+    // again without persisting a duplicate. The card still shows "saved to Reports".
+    saved = true;
+  } else if (actor.authedOwner) {
     try {
       await storeReport(
         { prisma: deps.prisma, farmId: deps.farmId, createdById: actor.userId },
@@ -264,6 +280,9 @@ async function persistAndWriteReportPart(
           params: file.params,
           bytes: file.bytes,
           contentType: file.contentType,
+          // Persist the cache key + count so an identical later ask resolves to this row instantly.
+          cacheKey: file.cacheKey ?? null,
+          meterCount: file.meterCount,
         },
       );
       saved = true;
@@ -574,6 +593,9 @@ export function isExportTurn(text: string): boolean {
  *  export is the full inventory, which is the honest default. */
 export function deriveExportInput(text: string): ExportSpreadsheetInput {
   if (/\b(bill|due|closing|close date|read date)\b/.test(text)) return { table: "billDue" };
+  // A request that names the whole picture builds the rich multi-tab workbook offline too (parity
+  // with the live default); a bare "meters" ask still gets the focused single-tab inventory.
+  if (/\b(workbook|everything|overview|full|whole farm|all my data)\b/.test(text)) return { table: "workbook" };
   return { table: "meters" };
 }
 

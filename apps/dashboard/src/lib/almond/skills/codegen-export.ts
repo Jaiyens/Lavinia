@@ -65,6 +65,12 @@ export type CodegenExportResult =
       meterCount: number;
       coverageAsOf: string | null;
       params: Prisma.InputJsonValue;
+      /** The content-addressed cache key this bespoke file is stored under (Phase 2); the responder
+       *  persists it so an identical later ask returns the verified bytes instantly. */
+      cacheKey?: string;
+      /** True when these bytes were served from the cache, so the responder streams them without
+       *  persisting a duplicate row and without re-running the model + sandbox. */
+      fromCache?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };

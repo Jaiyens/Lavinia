@@ -12,14 +12,19 @@
 // unreconciled meter's money cells show the coverage LABEL, never a fabricated or zero figure; a
 // null inventory field is an empty cell.
 //
-// exceljs is pure JS (no native deps), so this runs the same in CI and on Vercel. The builder is
-// async only because exceljs serializes the workbook to a buffer; it performs no I/O of its own.
+// As of the styled-workbook upgrade, buildGridWorkbook renders THROUGH the one styled builder
+// (./workbook.ts), so a focused meter / bill-due export gets the same brand header band, frozen
+// header, autofilter, readable widths, and zebra striping the full multi-tab workbook does. The grid
+// here is all TEXT (the cell strings the caller authored - a reconciled meter's money already
+// formatted, an unreconciled meter's coverage label), so the focused exports keep their exact byte
+// content (and the parity tests) while gaining the polish. The full multi-tab workbook lives in
+// ./full-workbook.ts; both call the same builder, so no format can drift.
 
-import ExcelJS from "exceljs";
 import { en } from "@/copy/en";
 import { metersHeader, meterCells } from "@/lib/dashboard/csv";
 import { meterRowsForExport } from "./rows";
 import { composeCoverageFooter } from "./coverage-footer";
+import { buildStyledWorkbook, type SheetSpec } from "./workbook";
 import type { ExportData } from "./load";
 
 const t = en.shell.almond.export;
@@ -51,35 +56,18 @@ export type WorkbookGrid = {
  * Returns the serialized .xlsx bytes (a Uint8Array) so a caller streams them straight to the grower
  * and a test can assert the generated size. Pure aside from exceljs's buffer serialization.
  */
-export async function buildGridWorkbook(grid: WorkbookGrid): Promise<Uint8Array> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet(grid.sheetName);
-
-  // Title row, then a spacer, so the sheet reads like a document a grower would recognize.
-  sheet.addRow([grid.title]);
-  sheet.addRow([]);
-
-  const headerRow = sheet.addRow([...grid.header]);
-  headerRow.font = { bold: true };
-
-  // Every data row, exactly as the caller authored it (no cap, no filter).
-  for (const row of grid.rows) {
-    sheet.addRow([...row]);
-  }
-
-  // Footer: state coverage and the as-of so nothing is silently left out.
-  sheet.addRow([]);
-  for (const line of grid.footer) {
-    sheet.addRow([line]);
-  }
-
-  // Give each column a readable width keyed to its header so the file opens clean.
-  sheet.columns = grid.header.map((h) => ({ width: Math.max(h.length + 2, 14) }));
-
-  // exceljs declares its own ArrayBuffer-shaped `Buffer`; at runtime in Node this is a real Buffer
-  // (a Uint8Array subclass). Narrow it to the portable Uint8Array the caller streams / sizes.
-  const written = await workbook.xlsx.writeBuffer();
-  return written as unknown as Uint8Array;
+export function buildGridWorkbook(grid: WorkbookGrid): Promise<Uint8Array> {
+  // Adapt the format-agnostic string grid to a single styled sheet of TEXT cells. The layout (title,
+  // spacer, header, every data row in order, spacer, footer) and every cell string are preserved, so
+  // the focused exports keep their exact content; the styled builder adds only the visual polish.
+  const sheet: SheetSpec = {
+    name: grid.sheetName,
+    title: grid.title,
+    columns: grid.header.map((header) => ({ header })),
+    rows: grid.rows.map((row) => row.map((value) => ({ value }))),
+    footer: grid.footer,
+  };
+  return buildStyledWorkbook({ sheets: [sheet] });
 }
 
 /**

@@ -582,6 +582,17 @@ model GeneratedReport {
   // reproduce the SAME shape deterministically. Never carries a value or a farmId.
   paramsJson Json
 
+  // The content-addressed cache key: a hash of the farm's data fingerprint + the normalized request
+  // + the engine version (src/lib/almond/reports/cache.ts). Identical ask on unchanged data resolves
+  // to the SAME key, so the stored bytes are returned instantly; any real change (data or request)
+  // yields a new key and a fresh build. Nullable so pre-cache rows and the non-persisted Tour are
+  // unaffected, and a NULL key is never matched by a lookup.
+  cacheKey String?
+
+  // How many meters the file covers (the filtered count), recorded so a cache HIT can label its
+  // download card without re-loading the farm. Nullable (pre-cache rows carry none).
+  meterCount Int?
+
   createdAt DateTime @default(now())
 
   farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
@@ -590,6 +601,8 @@ model GeneratedReport {
   // Farm-scoped, newest-first reads (the Reports history list).
   @@index([farmId, createdAt])
   @@index([createdById])
+  // Content-addressed cache lookup: the freshest row for a (farm, cacheKey) pair.
+  @@index([farmId, cacheKey])
 }
 
 // --- Almond chat history (per-user, per-farm conversations) --------------------

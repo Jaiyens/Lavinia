@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
 import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
@@ -30,12 +30,16 @@ import { isCodegenExportAvailable } from "./codegen/flags";
 import { navigateInputSchema, resolveNavigate, type NavigateInput } from "./skills/navigate";
 import {
   exportSpreadsheetInputSchema,
+  previewLine as exportPreviewLine,
+  resolveExportParams,
   runExportSpreadsheet,
   type ExportSpreadsheetInput,
   type ExportSpreadsheetResult,
 } from "./skills/export-spreadsheet";
 import {
   generateReportInputSchema,
+  previewLine as reportPreviewLine,
+  resolveReportParams,
   runGenerateReport,
   type GenerateReportInput,
   type GenerateReportResult,
@@ -46,6 +50,12 @@ import {
   type CodegenExportInput,
   type CodegenExportResult,
 } from "./skills/codegen-export";
+import {
+  computeCacheKey,
+  computeFarmDataFingerprint,
+  lookupCachedReport,
+  type CachedFile,
+} from "./reports/cache";
 
 /**
  * The read-only, farm-scoped data Almond can read. Each executor takes the SAME `deps` (a
@@ -287,14 +297,51 @@ function throttledMessage(): string {
  * part (download card) and collapses the model-visible output to a small text summary. Guarded by the
  * per-farm generation throttle (Story 10.3) before any heavy work runs.
  */
-export function exportSpreadsheetSkill(
+/**
+ * Resolve the farm-data fingerprint + content-addressed cache key for a file skill, then look up a
+ * cached file. Shared by all three file skills so the cache rule is authored once. Cheap on a MISS
+ * (two indexed queries, then the normal build); a HIT skips the build entirely and streams the stored
+ * (and, for codegen, already number-verified) bytes. The public Tour never persists, so it never has
+ * a hit (it always builds fresh) — the v1 cache policy, with no extra gate needed.
+ */
+async function findCachedFile(
+  deps: AlmondToolDeps,
+  skill: "export" | "report" | "codegen",
+  request: unknown,
+): Promise<{ cacheKey: string; hit: CachedFile | null }> {
+  const fingerprint = await computeFarmDataFingerprint(deps.prisma, deps.farmId);
+  const cacheKey = computeCacheKey({ farmId: deps.farmId, fingerprint, skill, request });
+  const hit = await lookupCachedReport(deps.prisma, deps.farmId, cacheKey);
+  return { cacheKey, hit };
+}
+
+export async function exportSpreadsheetSkill(
   deps: AlmondToolDeps,
   input: ExportSpreadsheetInput,
 ): Promise<ExportSpreadsheetResult> {
   if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return Promise.resolve({ kind: "error", message: throttledMessage() });
+    return { kind: "error", message: throttledMessage() };
   }
-  return runExportSpreadsheet(deps, input);
+  const params = resolveExportParams(input);
+  const { cacheKey, hit } = await findCachedFile(deps, "export", params);
+  if (hit !== null) {
+    const filter = params.filterKey !== null ? { key: params.filterKey, value: params.filterValue ?? "" } : null;
+    return {
+      kind: "file",
+      fromCache: true,
+      cacheKey: hit.cacheKey,
+      preview: exportPreviewLine(hit.meterCount, params.table, filter),
+      fileName: hit.fileName,
+      contentType: hit.contentType,
+      bytes: hit.bytes,
+      meterCount: hit.meterCount,
+      table: params.table,
+      coverageAsOf: hit.coverageAsOf,
+      params,
+    };
+  }
+  const result = await runExportSpreadsheet(deps, input);
+  return result.kind === "file" ? { ...result, cacheKey } : result;
 }
 
 /**
@@ -307,14 +354,32 @@ export function exportSpreadsheetSkill(
  * output to a small text summary. Guarded by the per-farm generation throttle (Story 10.3) before any
  * heavy work runs.
  */
-export function generateReportSkill(
+export async function generateReportSkill(
   deps: AlmondToolDeps,
   input: GenerateReportInput,
 ): Promise<GenerateReportResult> {
   if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return Promise.resolve({ kind: "error", message: throttledMessage() });
+    return { kind: "error", message: throttledMessage() };
   }
-  return runGenerateReport(deps, input);
+  const params = resolveReportParams(input);
+  const { cacheKey, hit } = await findCachedFile(deps, "report", params);
+  if (hit !== null) {
+    const filter = params.filterKey !== null ? { key: params.filterKey, value: params.filterValue ?? "" } : null;
+    return {
+      kind: "file",
+      fromCache: true,
+      cacheKey: hit.cacheKey,
+      preview: reportPreviewLine(params.sections, filter),
+      fileName: hit.fileName,
+      contentType: hit.contentType,
+      bytes: hit.bytes,
+      meterCount: hit.meterCount,
+      coverageAsOf: hit.coverageAsOf,
+      params,
+    };
+  }
+  const result = await runGenerateReport(deps, input);
+  return result.kind === "file" ? { ...result, cacheKey } : result;
 }
 
 /**
@@ -324,15 +389,34 @@ export function generateReportSkill(
  * through the SAME per-farm generation throttle (Story 10.3) before any model/sandbox work. The chat
  * tool-call's `abortSignal` is threaded so a closed tab cancels the model loop and the microVM.
  */
-export function codegenExportSkill(
+export async function codegenExportSkill(
   deps: AlmondToolDeps,
   input: CodegenExportInput,
   signal?: AbortSignal,
 ): Promise<CodegenExportResult> {
   if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return Promise.resolve({ kind: "error", message: throttledMessage() });
+    return { kind: "error", message: throttledMessage() };
   }
-  return runCodegenExport(deps, input, signal);
+  // The bespoke path is the big cache win: an identical ask on unchanged data returns the verified
+  // bytes without re-running the model + Vercel Sandbox (20-60s saved).
+  const request = { request: input.request ?? null };
+  const { cacheKey, hit } = await findCachedFile(deps, "codegen", request);
+  if (hit !== null) {
+    return {
+      kind: "file",
+      fromCache: true,
+      cacheKey: hit.cacheKey,
+      preview: en.shell.almond.export.skill.cached,
+      fileName: hit.fileName,
+      contentType: hit.contentType,
+      bytes: hit.bytes,
+      meterCount: hit.meterCount,
+      coverageAsOf: hit.coverageAsOf,
+      params: hit.params as Prisma.InputJsonValue,
+    };
+  }
+  const result = await runCodegenExport(deps, input, signal);
+  return result.kind === "file" ? { ...result, cacheKey } : result;
 }
 
 /**
