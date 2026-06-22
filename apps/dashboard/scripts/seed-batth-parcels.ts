@@ -97,6 +97,7 @@ async function main(): Promise<void> {
     const enrichment = await enrichParcel(c.centroidLat, c.centroidLng, {
       geometry: c.geometry,
       acres: round(c.acres, 1),
+      county: "Fresno",
     });
     const base: EngineParcel = {
       apn: c.apn,

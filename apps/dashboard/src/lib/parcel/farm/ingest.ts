@@ -20,6 +20,7 @@ async function toBlock(base: EngineParcel, todayIso: string): Promise<FarmParcel
   const enrichment = await enrichParcel(base.centroid_lat, base.centroid_lon, {
     geometry: base.geometry,
     acres: base.gross_acres,
+    county: base.county,
   });
   return buildFarmParcel(base, enrichment, 0, todayIso);
 }

@@ -541,6 +541,13 @@ export const en = {
       pct: (n: number): string => `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`,
       // A spray record line; rei/phi badges are added by the component when still active.
       sprayLine: (material: string, date: string): string => `${material} - ${date}`,
+      // The real DPR PUR section-level summary (1-sq-mi PLSS section, not the exact field).
+      spraySection: {
+        title: (year: number): string => `Pesticides in this section (${year})`,
+        summary: (records: number, lbs: number): string =>
+          `${records} reported applications, about ${lbs.toLocaleString("en-US")} lb of active ingredient.`,
+        note: "Reported to CA DPR by 1-square-mile section, not this exact field.",
+      },
     },
   },
   // The account / profile page (signed-in operator's own details + connected sources).

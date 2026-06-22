@@ -131,10 +131,26 @@ export type ParcelTask = {
   overdue: boolean;
 };
 
+/** A real, section-level pesticide-use summary from CA DPR PUR (the finest public unit is the
+ *  1-square-mile PLSS section / COMTRS, never an APN). */
+export type SpraySection = {
+  /** The PLSS section this parcel falls in, e.g. "10M16S19E15". */
+  comtrs: string;
+  year: number;
+  /** Reported application records in the section that year. */
+  records: number;
+  /** Total pounds of active ingredient applied in the section. */
+  total_lbs: number;
+  top_chemicals: { name: string; lbs: number }[];
+  top_crops: string[];
+};
+
 /** Spray history + regulatory compliance (CalAgPermits site, REI/PHI windows, tasks). */
 export type ParcelCompliance = {
   permit_site_id: string | null;
   spray_history: SprayRecord[];
+  /** Real DPR PUR section-level summary (null when out of coverage / no data). */
+  spray_section: SpraySection | null;
   upcoming_tasks: ParcelTask[];
 };
 

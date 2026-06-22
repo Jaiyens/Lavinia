@@ -18,6 +18,7 @@ import type {
   IrrigationMethod,
   ParcelTask,
   SprayRecord,
+  SpraySection,
   Tenure,
   WaterSource,
 } from "./types";
@@ -45,6 +46,7 @@ export type Enrichment = {
   well_depth_ft?: Sourced<number>;
   well_capacity_gpm?: Sourced<number>;
   et_estimate_af?: Sourced<number>;
+  spray_section?: Sourced<SpraySection>;
 };
 
 // --- deterministic RNG (xfnv1a hash -> mulberry32) -------------------------------------------
@@ -394,6 +396,7 @@ export function buildFarmParcel(
   const wellHp = hasWell ? pick(rng, [40, 50, 60, 75, 100, 125, 150]) : null;
   const wellCapacity = enrichment.well_capacity_gpm?.value ?? (hasWell ? intRange(rng, 350, 1400) : null);
   if (enrichment.well_capacity_gpm) sources.well_capacity_gpm = enrichment.well_capacity_gpm.source;
+  if (enrichment.spray_section) sources.spray_section = enrichment.spray_section.source;
   const gsaName = enrichment.gsa_name?.value ?? pick(rng, GSAS);
   if (enrichment.gsa_name) sources.gsa_name = enrichment.gsa_name.source;
   const groundwaterAlloc = round(range(rng, 1.4, 2.6), 2);
@@ -532,6 +535,7 @@ export function buildFarmParcel(
     compliance: {
       permit_site_id: `10-${intRange(rng, 10, 99)}-${intRange(rng, 1000, 9999)}`,
       spray_history: sprayHistory,
+      spray_section: enrichment.spray_section?.value ?? null,
       upcoming_tasks: upcomingTasks,
     },
     financial: {

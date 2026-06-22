@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-22T08:02:12.726Z",
+  "generatedAt": "2026-06-22T08:14:19.241Z",
   "name": "Batth Farms",
   "county": "Fresno",
   "center": {
@@ -63,6 +63,45 @@
         "well_depth_ft": {
           "value": 535,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E15",
+            "year": 2022,
+            "records": 21,
+            "total_lbs": 2694.8,
+            "top_chemicals": [
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 1018.4
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 539.8
+              },
+              {
+                "name": "Paraquat Dichloride",
+                "lbs": 528.5
+              },
+              {
+                "name": "Sulfur",
+                "lbs": 384
+              },
+              {
+                "name": "Copper Oxychloride",
+                "lbs": 95.2
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 87
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -178,6 +217,44 @@
         "well_depth_ft": {
           "value": 400,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E22",
+            "year": 2022,
+            "records": 11,
+            "total_lbs": 1321.4,
+            "top_chemicals": [
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 644.8
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 350
+              },
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 254
+              },
+              {
+                "name": "Flumioxazin",
+                "lbs": 34.5
+              },
+              {
+                "name": "Oxyfluorfen",
+                "lbs": 22.5
+              },
+              {
+                "name": "Chlorantraniliprole",
+                "lbs": 15.8
+              }
+            ],
+            "top_crops": [
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -253,6 +330,45 @@
         "well_depth_ft": {
           "value": 440,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E14",
+            "year": 2022,
+            "records": 282,
+            "total_lbs": 16036.2,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7537.3
+              },
+              {
+                "name": "1,3-Dichloropropene",
+                "lbs": 3133.2
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 2586.2
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 802.7
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 396
+              },
+              {
+                "name": "Potassium Phosphite",
+                "lbs": 239.5
+              }
+            ],
+            "top_crops": [
+              "Grape",
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -320,6 +436,44 @@
         "well_depth_ft": {
           "value": 138,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E22",
+            "year": 2022,
+            "records": 11,
+            "total_lbs": 1321.4,
+            "top_chemicals": [
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 644.8
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 350
+              },
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 254
+              },
+              {
+                "name": "Flumioxazin",
+                "lbs": 34.5
+              },
+              {
+                "name": "Oxyfluorfen",
+                "lbs": 22.5
+              },
+              {
+                "name": "Chlorantraniliprole",
+                "lbs": 15.8
+              }
+            ],
+            "top_crops": [
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -391,6 +545,46 @@
         "well_depth_ft": {
           "value": 203,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E23",
+            "year": 2022,
+            "records": 191,
+            "total_lbs": 15143.9,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7716
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 5109.3
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 331.7
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 267.6
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 264.3
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 251.2
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -454,6 +648,45 @@
         "well_depth_ft": {
           "value": 535,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E15",
+            "year": 2022,
+            "records": 21,
+            "total_lbs": 2694.8,
+            "top_chemicals": [
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 1018.4
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 539.8
+              },
+              {
+                "name": "Paraquat Dichloride",
+                "lbs": 528.5
+              },
+              {
+                "name": "Sulfur",
+                "lbs": 384
+              },
+              {
+                "name": "Copper Oxychloride",
+                "lbs": 95.2
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 87
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -521,6 +754,46 @@
         "well_depth_ft": {
           "value": 203,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E23",
+            "year": 2022,
+            "records": 191,
+            "total_lbs": 15143.9,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7716
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 5109.3
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 331.7
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 267.6
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 264.3
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 251.2
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -620,6 +893,46 @@
         "well_depth_ft": {
           "value": 203,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E23",
+            "year": 2022,
+            "records": 191,
+            "total_lbs": 15143.9,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7716
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 5109.3
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 331.7
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 267.6
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 264.3
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 251.2
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -683,6 +996,45 @@
         "well_depth_ft": {
           "value": 440,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E14",
+            "year": 2022,
+            "records": 282,
+            "total_lbs": 16036.2,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7537.3
+              },
+              {
+                "name": "1,3-Dichloropropene",
+                "lbs": 3133.2
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 2586.2
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 802.7
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 396
+              },
+              {
+                "name": "Potassium Phosphite",
+                "lbs": 239.5
+              }
+            ],
+            "top_crops": [
+              "Grape",
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -750,6 +1102,45 @@
         "well_depth_ft": {
           "value": 440,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E14",
+            "year": 2022,
+            "records": 282,
+            "total_lbs": 16036.2,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7537.3
+              },
+              {
+                "name": "1,3-Dichloropropene",
+                "lbs": 3133.2
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 2586.2
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 802.7
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 396
+              },
+              {
+                "name": "Potassium Phosphite",
+                "lbs": 239.5
+              }
+            ],
+            "top_crops": [
+              "Grape",
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -813,6 +1204,46 @@
         "well_depth_ft": {
           "value": 203,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E23",
+            "year": 2022,
+            "records": 191,
+            "total_lbs": 15143.9,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7716
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 5109.3
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 331.7
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 267.6
+              },
+              {
+                "name": "Copper Hydroxide",
+                "lbs": 264.3
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 251.2
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape",
+              "Grape, Wine"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -884,6 +1315,44 @@
         "well_depth_ft": {
           "value": 138,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E22",
+            "year": 2022,
+            "records": 11,
+            "total_lbs": 1321.4,
+            "top_chemicals": [
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 644.8
+              },
+              {
+                "name": "Pendimethalin",
+                "lbs": 350
+              },
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 254
+              },
+              {
+                "name": "Flumioxazin",
+                "lbs": 34.5
+              },
+              {
+                "name": "Oxyfluorfen",
+                "lbs": 22.5
+              },
+              {
+                "name": "Chlorantraniliprole",
+                "lbs": 15.8
+              }
+            ],
+            "top_crops": [
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -963,6 +1432,45 @@
         "well_depth_ft": {
           "value": 200,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E14",
+            "year": 2022,
+            "records": 282,
+            "total_lbs": 16036.2,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 7537.3
+              },
+              {
+                "name": "1,3-Dichloropropene",
+                "lbs": 3133.2
+              },
+              {
+                "name": "Mineral Oil",
+                "lbs": 2586.2
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 802.7
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 396
+              },
+              {
+                "name": "Potassium Phosphite",
+                "lbs": 239.5
+              }
+            ],
+            "top_crops": [
+              "Grape",
+              "Almond"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
@@ -1042,6 +1550,45 @@
         "well_depth_ft": {
           "value": 560,
           "source": "DWR OSWCR (nearest well, reported at drilling)"
+        },
+        "spray_section": {
+          "value": {
+            "comtrs": "10M16S19E16",
+            "year": 2022,
+            "records": 89,
+            "total_lbs": 7383.5,
+            "top_chemicals": [
+              {
+                "name": "Sulfur",
+                "lbs": 6538.4
+              },
+              {
+                "name": "Glufosinate-Ammonium",
+                "lbs": 197.8
+              },
+              {
+                "name": "Potassium Bicarbonate",
+                "lbs": 163.8
+              },
+              {
+                "name": "Cryolite",
+                "lbs": 115.2
+              },
+              {
+                "name": "Glyphosate, Potassium Salt",
+                "lbs": 110.4
+              },
+              {
+                "name": "Glyphosate, Isopropylamine Salt",
+                "lbs": 106.7
+              }
+            ],
+            "top_crops": [
+              "Almond",
+              "Grape"
+            ]
+          },
+          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     }

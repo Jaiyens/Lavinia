@@ -249,7 +249,7 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
             {...prov("ndvi_latest")}
           />
           {p.health.scouting_notes.length > 0 && (
-            <ListBlock label={t.labels.scouting}>
+            <ListBlock label={t.labels.scouting} sample>
               {p.health.scouting_notes.map((n, i) => (
                 <li key={i} className="type-body-sm text-on-surface">
                   <span className="text-on-surface-variant">{fmtDate(n.date)}</span> {n.note}
@@ -259,7 +259,7 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
             </ListBlock>
           )}
           {p.health.photos.length > 0 && (
-            <ListBlock label={t.labels.photos}>
+            <ListBlock label={t.labels.photos} sample>
               {p.health.photos.map((ph, i) => (
                 <li key={i} className="type-body-sm text-on-surface-variant">
                   {ph.caption} - {fmtDate(ph.date)}
@@ -271,18 +271,42 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
 
         <Group title={t.sections.compliance}>
           <Row label={t.labels.permit} value={p.compliance.permit_site_id} {...prov("permit_site_id")} />
-          {p.compliance.spray_history.length > 0 && (
-            <ListBlock label={t.labels.sprayHistory}>
-              {p.compliance.spray_history.map((s, i) => (
-                <li key={i} className="flex flex-wrap items-center gap-1.5 type-body-sm text-on-surface">
-                  <span>{t.sprayLine(s.material, fmtDate(s.date))}</span>
-                  {s.rei_until >= s.date && <Tag tone="alert">{t.reiActive}</Tag>}
-                </li>
-              ))}
-            </ListBlock>
+          {p.compliance.spray_section ? (
+            // REAL DPR PUR, aggregated to this parcel's 1-sq-mi PLSS section (not the exact field).
+            <div className="py-1.5">
+              <p className="flex items-center gap-1.5 type-body-sm text-on-surface-variant">
+                {t.spraySection.title(p.compliance.spray_section.year)}
+                <Tag tone="source">{t.sourceFrom(p.sources.spray_section ?? "CA DPR PUR")}</Tag>
+              </p>
+              <p className="mt-1 type-body-md text-on-surface">
+                {t.spraySection.summary(
+                  p.compliance.spray_section.records,
+                  Math.round(p.compliance.spray_section.total_lbs),
+                )}
+              </p>
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {p.compliance.spray_section.top_chemicals.map((chem, i) => (
+                  <li key={i} className="type-body-sm text-on-surface">
+                    <span className="tnum text-on-surface-variant">{Math.round(chem.lbs)} lb</span> {chem.name}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 type-caption text-on-surface-variant">{t.spraySection.note}</p>
+            </div>
+          ) : (
+            p.compliance.spray_history.length > 0 && (
+              <ListBlock label={t.labels.sprayHistory} sample>
+                {p.compliance.spray_history.map((s, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-1.5 type-body-sm text-on-surface">
+                    <span>{t.sprayLine(s.material, fmtDate(s.date))}</span>
+                    {s.rei_until >= s.date && <Tag tone="alert">{t.reiActive}</Tag>}
+                  </li>
+                ))}
+              </ListBlock>
+            )
           )}
           {p.compliance.upcoming_tasks.length > 0 && (
-            <ListBlock label={t.labels.tasks}>
+            <ListBlock label={t.labels.tasks} sample>
               {p.compliance.upcoming_tasks.map((task, i) => (
                 <li key={i} className="flex flex-wrap items-center gap-1.5 type-body-sm text-on-surface">
                   <span className="text-on-surface-variant">{fmtDate(task.due)}</span>
@@ -361,10 +385,13 @@ function Row({
   );
 }
 
-function ListBlock({ label, children }: { label: string; children: ReactNode }) {
+function ListBlock({ label, children, sample }: { label: string; children: ReactNode; sample?: boolean }) {
   return (
     <div className="py-1.5">
-      <p className="type-body-sm text-on-surface-variant">{label}</p>
+      <p className="flex items-center gap-1.5 type-body-sm text-on-surface-variant">
+        {label}
+        {sample && <Tag tone="sample">{t.sampleTag}</Tag>}
+      </p>
       <ul className="mt-1 flex flex-col gap-1">{children}</ul>
     </div>
   );

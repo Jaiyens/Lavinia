@@ -12,8 +12,11 @@
 // Stubbed (needs an API key):
 //   - ET             OpenET. TODO: wire raster/timeseries/point behind OPENET_API_KEY.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Enrichment, Sourced } from "./representative";
 import type { ParcelGeometry } from "../types";
+import type { SpraySection } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
@@ -225,6 +228,75 @@ async function enrichWells(lat: number, lng: number): Promise<WellEnrichment> {
   }
 }
 
+// --- spray history (CA DPR PUR, section-level) ------------------------------------------------
+// PUR is the mandatory statewide pesticide-use database; its finest spatial unit is the
+// 1-square-mile PLSS SECTION (COMTRS), never an APN. We resolve the parcel centroid to a COMTRS via
+// the keyless BLM PLSS layers (township + section), then look up the committed per-section aggregate
+// (built offline by scripts/build-pur-sections.ts). So the drawer can show, honestly, "reported
+// applications in this parcel's 1-sq-mi section". Fresno only today (the fixture's coverage).
+
+const PLSS_TOWNSHIP = "https://gis.blm.gov/arcgis/rest/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/1";
+const PLSS_SECTION = "https://gis.blm.gov/arcgis/rest/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/2";
+// Our adapter county name -> CDPR county code (alphabetical CA county codes).
+const CDPR_COUNTY: Record<string, string> = {
+  Fresno: "10", Kern: "15", Kings: "16", Madera: "20", Merced: "24",
+  Sacramento: "34", "San Joaquin": "39", Stanislaus: "50", Tulare: "54",
+};
+// BLM principal-meridian code -> CDPR base_ln_mer letter.
+const MERIDIAN: Record<string, string> = { "21": "M", "14": "S", "05": "H" };
+
+type PurSection = { records: number; lbs: number; top_chemicals: { name: string; lbs: number }[]; top_crops: string[] };
+let purCache: { sections: Record<string, PurSection>; year: number } | null = null;
+let purLoaded = false;
+
+function loadPur(): { sections: Record<string, PurSection>; year: number } | null {
+  if (purLoaded) return purCache;
+  purLoaded = true;
+  try {
+    const raw = readFileSync(join(process.cwd(), "fixtures", "pur-sections.json"), "utf8");
+    const j = JSON.parse(raw) as { sections: Record<string, PurSection>; year: number };
+    purCache = { sections: j.sections, year: j.year };
+  } catch {
+    purCache = null; // fixture absent -> spray stays representative
+  }
+  return purCache;
+}
+
+async function enrichSpray(lat: number, lng: number, county?: string): Promise<Sourced<SpraySection> | null> {
+  const countyCd = county ? CDPR_COUNTY[county] : undefined;
+  if (!countyCd) return null;
+  const pur = loadPur();
+  if (!pur) return null;
+  const [twpRows, secRows] = await Promise.all([
+    esriIntersect(PLSS_TOWNSHIP, lat, lng),
+    esriIntersect(PLSS_SECTION, lat, lng),
+  ]);
+  const twp = twpRows[0];
+  const sec = secRows[0];
+  if (!twp || !sec) return null;
+  const mer = MERIDIAN[String(twp.PRINMERCD ?? "")];
+  const twpNo = parseInt(String(twp.TWNSHPNO ?? ""), 10);
+  const twpDir = str(twp.TWNSHPDIR);
+  const rngNo = parseInt(String(twp.RANGENO ?? ""), 10);
+  const rngDir = str(twp.RANGEDIR);
+  const sectionNo = parseInt(String(sec.FRSTDIVNO ?? ""), 10);
+  if (!mer || !twpDir || !rngDir || !Number.isFinite(twpNo) || !Number.isFinite(rngNo) || !Number.isFinite(sectionNo)) {
+    return null;
+  }
+  const comtrs = `${countyCd}${mer}${twpNo}${twpDir}${rngNo}${rngDir}${String(sectionNo).padStart(2, "0")}`;
+  const s = pur.sections[comtrs];
+  if (!s) return null;
+  const value: SpraySection = {
+    comtrs,
+    year: pur.year,
+    records: s.records,
+    total_lbs: s.lbs,
+    top_chemicals: s.top_chemicals,
+    top_crops: s.top_crops,
+  };
+  return { value, source: `CA DPR PUR (this 1-sq-mi section, ${pur.year})` };
+}
+
 // --- ET (OpenET) — real per-parcel, behind a free OPENET_API_KEY -------------------------------
 // OpenET is NOT keyless: it needs a free API key in OPENET_API_KEY (server-only). With the key + the
 // parcel polygon we POST the polygon timeseries (model=Ensemble) and convert seasonal ET inches over
@@ -280,8 +352,9 @@ async function enrichEt(opts?: EnrichOpts): Promise<Sourced<number> | null> {
   }
 }
 
-/** Optional context for enrichers that need the parcel polygon / area (OpenET). */
-export type EnrichOpts = { geometry?: ParcelGeometry; acres?: number };
+/** Optional context for enrichers that need more than the centroid: the parcel polygon / area
+ *  (OpenET) and the county (PUR -> CDPR county code). */
+export type EnrichOpts = { geometry?: ParcelGeometry; acres?: number; county?: string };
 
 /**
  * Run every enricher for a parcel centroid, best-effort and in parallel. Any source that fails or
@@ -289,12 +362,13 @@ export type EnrichOpts = { geometry?: ParcelGeometry; acres?: number };
  * or at live ingest. `opts` (the parcel polygon + acres) powers polygon-based enrichers (OpenET).
  */
 export async function enrichParcel(lat: number, lng: number, opts?: EnrichOpts): Promise<Enrichment> {
-  const [crop, gsa, waterDistrict, soil, wells, et] = await Promise.all([
+  const [crop, gsa, waterDistrict, soil, wells, spray, et] = await Promise.all([
     enrichCrop(lat, lng).catch(() => null),
     enrichGsa(lat, lng).catch(() => null),
     enrichWaterDistrict(lat, lng).catch(() => null),
     enrichSoil(lat, lng).catch((): SoilEnrichment => ({ soilClass: null, slopePct: null })),
     enrichWells(lat, lng).catch((): WellEnrichment => ({ depthFt: null, capacityGpm: null })),
+    enrichSpray(lat, lng, opts?.county).catch(() => null),
     enrichEt(opts).catch(() => null),
   ]);
   const out: Enrichment = {};
@@ -305,6 +379,7 @@ export async function enrichParcel(lat: number, lng: number, opts?: EnrichOpts):
   if (soil.slopePct) out.slope_pct = soil.slopePct;
   if (wells.depthFt) out.well_depth_ft = wells.depthFt;
   if (wells.capacityGpm) out.well_capacity_gpm = wells.capacityGpm;
+  if (spray) out.spray_section = spray;
   if (et) out.et_estimate_af = et;
   return out;
 }
