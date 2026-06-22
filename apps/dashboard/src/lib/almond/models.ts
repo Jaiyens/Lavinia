@@ -18,7 +18,7 @@
  * surfaces as the inline chat error, so a stale slug degrades gracefully rather than crashing —
  * re-check against the catalog when adding or rotating models here.
  */
-export type AlmondModelProvider = "Anthropic" | "OpenAI" | "Google";
+export type AlmondModelProvider = "Anthropic" | "OpenAI" | "Google" | "Auto";
 
 export type AlmondModel = {
   /** The Gateway `provider/model` string passed to `createGatewayModel`. */
@@ -57,3 +57,30 @@ export function isAllowedModel(id: unknown): id is AlmondModelId {
 export function resolveModel(id: unknown): AlmondModelId {
   return isAllowedModel(id) ? id : DEFAULT_ALMOND_MODEL;
 }
+
+/**
+ * The "Auto" sentinel (Perplexity-Auto for Almond). It is a PICKER CHOICE, never a gateway slug: the
+ * route intercepts it BEFORE `resolveModel` and runs the Auto router (src/lib/almond/auto), which
+ * resolves a CONCRETE allowlisted `AlmondModelId`. It is deliberately NOT in `ALMOND_MODELS` /
+ * `ALLOWED_IDS`, so `isAllowedModel("auto")` stays false and `resolveModel("auto")` falls back to the
+ * default — a forged `"auto"` reaching the non-Auto path can never steer the gateway.
+ */
+export const AUTO_SENTINEL = "auto" as const;
+
+/** A value the picker can hold: either a real model id or the Auto sentinel. */
+export type AlmondModelChoice = AlmondModelId | typeof AUTO_SENTINEL;
+
+/** Whether a value is the Auto sentinel (the route's branch condition). */
+export function isAutoChoice(id: unknown): id is typeof AUTO_SENTINEL {
+  return id === AUTO_SENTINEL;
+}
+
+/**
+ * The full picker menu: Auto first (the default), then the curated model allowlist. Auto carries the
+ * "Auto" provider so the picker can render a neutral mark for it. This is the ONLY place "auto" joins
+ * the model list; it is never added to `ALMOND_MODELS` or `ALLOWED_IDS`.
+ */
+export const MODEL_PICKER_OPTIONS = [
+  { id: AUTO_SENTINEL, label: "Auto", provider: "Auto" },
+  ...ALMOND_MODELS,
+] as const satisfies readonly AlmondModel[];

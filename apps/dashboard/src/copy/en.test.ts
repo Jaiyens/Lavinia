@@ -165,3 +165,30 @@ describe("almond surfacing copy (the FR-21 / FR-22 / FR-20 voice law)", () => {
     expect(all).not.toContain("!");
   });
 });
+
+// The Auto decision line names what Almond did in one calm sentence (Perplexity-Auto for Almond):
+// plain operator English, no kW/tariff/interval jargon, no exclamation marks, no em dashes.
+describe("almond Auto decision copy (the voice law)", () => {
+  const a = en.shell.almond.auto;
+  const all = Object.values(a).join(" ");
+
+  it("phrases the picker entry and each decision in plain words", () => {
+    expect(a.label).toBe("Auto");
+    expect(a.pulledCached).toBe("Pulled your saved file");
+    expect(a.buildingNew).toBe("Building a new file");
+    expect(a.answeredDirect).toBe("Answered from your farm data");
+    expect(a.navigated).toBe("Moved you there");
+    expect(a.readingAttachment).toBe("Reading your attachment");
+  });
+
+  it("uses no kW/tariff/interval jargon", () => {
+    expect(all).not.toMatch(/\bkW\b/i);
+    expect(all).not.toMatch(/tariff/i);
+    expect(all).not.toMatch(/interval/i);
+  });
+
+  it("uses plain operator voice: no em dashes, no exclamation marks", () => {
+    expect(all).not.toContain("—");
+    expect(all).not.toContain("!");
+  });
+});

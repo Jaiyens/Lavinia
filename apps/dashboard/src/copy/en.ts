@@ -749,6 +749,17 @@ export const en = {
       // Model picker (a grower can switch which model answers; one farmer loved this). Plain words.
       modelLabel: "Model",
       modelPickerAria: "Choose which model answers",
+      // Auto mode (Perplexity-Auto for Almond): the picker's default, where Almond decides what to do
+      // and which model fits. The decision shows as one quiet line under a reply. Plain operator
+      // English, no em dashes, no exclamation marks, no kW/tariff/interval jargon.
+      auto: {
+        label: "Auto",
+        pulledCached: "Pulled your saved file",
+        buildingNew: "Building a new file",
+        answeredDirect: "Answered from your farm data",
+        navigated: "Moved you there",
+        readingAttachment: "Reading your attachment",
+      },
       // File attachments (read-only context: PDFs, Excel, CSV). Owner-only.
       attach: "Add a file",
       attachAria: "Attach a PDF, Excel, or CSV",

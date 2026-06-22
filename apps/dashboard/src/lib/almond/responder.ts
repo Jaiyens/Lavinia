@@ -41,6 +41,7 @@ import {
 import { type CodegenExportResult } from "./skills/codegen-export";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import { DEFAULT_ALMOND_MODEL } from "./models";
+import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
 import { billableTokens, recordUsage } from "./usage-budget";
 import {
   buildAlmondSkills,
