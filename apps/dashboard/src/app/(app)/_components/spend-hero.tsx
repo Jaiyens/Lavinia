@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { cardClass } from "@/components/ui";
 import { formatUsdWhole } from "@/lib/format/money";
-import { AreaChart } from "@/components/charts/area-chart";
+import { AreaChart, chartXPct, chartYPct } from "@/components/charts/area-chart";
 
 // The Home spend hero (mirrors the reference's net-worth chart): a big latest-spend figure, the
 // vs-last-cycle delta, time-range pills, and a soft gradient area chart of monthly PG&E spend
@@ -46,13 +46,15 @@ export function SpendHero({
   const activePoint = activeIdx !== null ? points[activeIdx] : undefined;
   const displayCents = activePoint ? activePoint.value : latestCents;
   const displayLabel = activePoint?.label ?? points[points.length - 1]?.label ?? "";
-  // Geometry mirrored from AreaChart so the dot lands on the curve.
-  const CH = 240;
+  // The cursor dot rests on the latest point until you hover a month. The vertical range mirrors
+  // AreaChart (min clamps to 0, the area baseline), and chartXPct/chartYPct give percent positions
+  // that line up with the curve at any size - so the overlay tracks the chart as it scales with the
+  // card, with no fixed pixel height to drift out of sync.
+  const markerIdx = activeIdx ?? points.length - 1;
+  const markerPoint = points[markerIdx];
   const vMax = Math.max(...points.map((p) => p.value), 1);
   const vMin = Math.min(...points.map((p) => p.value), 0);
   const vSpan = vMax - vMin || 1;
-  const xPct = (i: number) => (points.length > 1 ? (i / (points.length - 1)) * 100 : 50);
-  const dotY = (v: number) => 12 + (CH - 16) * (1 - (v - vMin) / vSpan);
 
   return (
     <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-6" })}>
@@ -117,34 +119,38 @@ export function SpendHero({
           }}
           onMouseLeave={() => setHoverIdx(null)}
         >
-          {/* The value bubble follows the cursor (or rests over the latest reading). */}
-          {points.length > 0 && (
+          {/* The value bubble follows the cursor (or rests over the latest reading), kept clear of
+              the edges so it never spills past the card. */}
+          <div
+            className="pointer-events-none absolute top-0 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 shadow-[var(--shadow-elevated)]"
+            style={{ left: `${Math.min(85, Math.max(15, chartXPct(markerIdx, points.length)))}%` }}
+          >
+            <span className="type-caption text-on-surface-variant">{displayLabel} </span>
+            <span className="type-caption tnum font-semibold text-on-surface">
+              {formatUsdWhole(displayCents)}
+            </span>
+          </div>
+          {/* Crosshair line at the hovered month. */}
+          {activeIdx !== null && points.length > 1 && (
             <div
-              className="pointer-events-none absolute top-0 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 shadow-[var(--shadow-elevated)]"
-              style={{ left: `${Math.min(92, Math.max(8, activeIdx !== null ? xPct(activeIdx) : 100))}%` }}
-            >
-              <span className="type-caption text-on-surface-variant">{displayLabel} </span>
-              <span className="type-caption tnum font-semibold text-on-surface">
-                {formatUsdWhole(displayCents)}
-              </span>
-            </div>
+              aria-hidden
+              className="pointer-events-none absolute bottom-0 top-7 z-10 w-px bg-primary/40"
+              style={{ left: `${chartXPct(activeIdx, points.length)}%` }}
+            />
           )}
-          {/* Crosshair line + a dot riding the curve at the hovered month. */}
-          {activeIdx !== null && activePoint && points.length > 1 && (
-            <>
-              <div
-                aria-hidden
-                className="pointer-events-none absolute bottom-0 top-7 z-10 w-px bg-primary/40"
-                style={{ left: `${xPct(activeIdx)}%` }}
-              />
-              <div
-                aria-hidden
-                className="pointer-events-none absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-surface-container-lowest"
-                style={{ left: `${xPct(activeIdx)}%`, top: `${dotY(activePoint.value)}px` }}
-              />
-            </>
+          {/* The marker dot rides the curve - on the latest point at rest, on the hovered month
+              while dragging. Positioned in percent so it stays on the curve as the chart scales. */}
+          {markerPoint && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/20"
+              style={{
+                left: `${chartXPct(markerIdx, points.length)}%`,
+                top: `${chartYPct(markerPoint.value, vMin, vSpan)}%`,
+              }}
+            />
           )}
-          <AreaChart points={points} ariaLabel={t.title} height={240} />
+          <AreaChart points={points} ariaLabel={t.title} />
         </div>
       )}
     </section>

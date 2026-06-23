@@ -1,17 +1,35 @@
-// A smooth inline-SVG area chart with a soft gradient fill, a green stroke, and a marker dot on
-// the final point (the "today" reading, echoing the reference's net-worth chart). Server
-// component, no dependency. Used by the Home spend hero. One series, one time frame at a time.
+// A smooth inline-SVG area chart with a soft gradient fill and a green stroke. It FILLS its
+// container (width + height 100%) and stretches to fit (preserveAspectRatio="none"), so the
+// caller sizes it by sizing the wrapper - the chart never leaves a gap or overflows. The plot is
+// inset on all sides (see CHART_GEO) so the first/last points and any overlaid marker are never
+// clipped at the edges. The coordinate space is a flat 0..100 box (a percent grid), and the
+// geometry helpers are exported so an overlay (the spend hero's cursor dot) lands exactly on the
+// curve. One series, one time frame at a time.
 
 export type AreaPoint = {
-  /** Bar/point value (>= 0), e.g. a month's spend in integer cents. */
+  /** Point value (>= 0), e.g. a month's spend in integer cents. */
   value: number;
-  /** Short axis label under the point (e.g. "Mar"). */
+  /** Short axis label (e.g. "Mar"), surfaced by the caller's hover bubble. */
   label?: string;
 };
 
-const W = 600; // viewBox width; the SVG scales to its container via preserveAspectRatio="none" on fill
-const PAD_TOP = 12;
-const PAD_BOTTOM = 4;
+// Plot insets as a PERCENT of the box. Shared with any overlay so the geometry stays in sync; the
+// horizontal inset keeps the end points (and the marker dot) off the card edge.
+export const CHART_GEO = { padXPct: 6, padTopPct: 18, padBottomPct: 8 } as const;
+
+/** X position (0..100, percent of width) of point `i` of `n`. */
+export function chartXPct(i: number, n: number): number {
+  if (n <= 1) return 50;
+  const inner = 100 - 2 * CHART_GEO.padXPct;
+  return CHART_GEO.padXPct + (i / (n - 1)) * inner;
+}
+
+/** Y position (0..100, percent of height; 0 = top) of `value` within [min, min+span]. */
+export function chartYPct(value: number, min: number, span: number): number {
+  const norm = span > 0 ? (value - min) / span : 0.5;
+  const inner = 100 - CHART_GEO.padTopPct - CHART_GEO.padBottomPct;
+  return CHART_GEO.padTopPct + inner * (1 - norm);
+}
 
 /** Build a smooth path (Catmull-Rom -> cubic Bezier) through the points for an organic curve. */
 function smoothPath(pts: { x: number; y: number }[]): string {
@@ -34,69 +52,48 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 
 export function AreaChart({
   points,
-  height = 240,
   ariaLabel,
 }: {
   points: readonly AreaPoint[];
-  height?: number;
   ariaLabel: string;
 }) {
   if (points.length === 0) return null;
   const max = Math.max(...points.map((p) => p.value), 1);
   const min = Math.min(...points.map((p) => p.value), 0);
   const span = max - min || 1;
-  const innerH = height - PAD_TOP - PAD_BOTTOM;
-  const stepX = points.length > 1 ? W / (points.length - 1) : 0;
+  const n = points.length;
 
-  const coords = points.map((p, i) => ({
-    x: points.length > 1 ? i * stepX : W / 2,
-    y: PAD_TOP + innerH - ((p.value - min) / span) * innerH,
-  }));
-
+  const coords = points.map((p, i) => ({ x: chartXPct(i, n), y: chartYPct(p.value, min, span) }));
   const line = smoothPath(coords);
-  const area = `${line} L ${coords[coords.length - 1]!.x} ${height} L ${coords[0]!.x} ${height} Z`;
-  const last = coords[coords.length - 1]!;
-  const someLabels = points.some((p) => p.label);
+  // Close the area down to the baseline (bottom of the box) under the first and last points.
+  const area = `${line} L ${coords[coords.length - 1]!.x} 100 L ${coords[0]!.x} 100 Z`;
 
   return (
-    <figure className="m-0">
-      <svg
-        viewBox={`0 0 ${W} ${height}`}
-        width="100%"
-        height={height}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={ariaLabel}
-      >
-        <defs>
-          <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#areaFill)" />
-        <path
-          d={line}
-          fill="none"
-          stroke="var(--green-deep)"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        {/* Today marker on the final reading. */}
-        <circle cx={last.x} cy={last.y} r={4.5} fill="var(--green-deep)" />
-        <circle cx={last.x} cy={last.y} r={8} fill="var(--green-deep)" fillOpacity={0.18} />
-      </svg>
-      {someLabels && (
-        <div className="mt-2 flex justify-between">
-          {points.map((p, i) => (
-            <span key={i} className="type-caption text-on-surface-variant">
-              {p.label ?? ""}
-            </span>
-          ))}
-        </div>
-      )}
-    </figure>
+    <svg
+      viewBox="0 0 100 100"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={ariaLabel}
+      className="block h-full w-full"
+    >
+      <defs>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#areaFill)" />
+      <path
+        d={line}
+        fill="none"
+        stroke="var(--green-deep)"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
