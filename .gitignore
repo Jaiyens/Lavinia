@@ -40,6 +40,9 @@ yarn-error.log*
 _bmad/
 _bmad-output/
 .claude/skills/
+# BMad skill packs land under any workspace's .claude/skills (e.g. apps/dashboard); the
+# root-anchored rule above misses those, so match the bmad-* skill dirs at any depth.
+**/.claude/skills/bmad-*/
 
 # Personal Claude Code overrides for this project (not shared)
 .claude/settings.local.json
