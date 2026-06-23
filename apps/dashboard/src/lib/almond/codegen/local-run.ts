@@ -69,7 +69,10 @@ async function runPython(
     }>((resolve) => {
       // The project augments `ProcessEnv` to require some app keys; the scrubbed child env intentionally
       // has none of them, so cast to the spawn option's env type (the runtime shape is a plain string map).
-      const child = spawn("python3", ["-I", scriptName], {
+      // No `python3 -I`: dev installs openpyxl/weasyprint into the USER site (pip install --user), which
+      // isolated mode hides -> ModuleNotFoundError. The isolation here is the scrubbed env (no secrets, no
+      // PYTHONPATH) + the temp-dir cwd; the strong boundary is the Vercel microVM, not a python flag.
+      const child = spawn("python3", [scriptName], {
         cwd: dir,
         env: childEnv() as unknown as NodeJS.ProcessEnv,
         timeout: LOCAL_TIMEOUT_MS,

@@ -77,9 +77,12 @@ export async function runRenderXlsxInSandbox(input: RenderXlsxInput): Promise<Re
       { path: "gen.py", content: input.code },
     ]);
 
+    // No `python3 -I`: the snapshot installs openpyxl/pandas into the USER site (pip install --user,
+    // see scripts/codegen-sandbox-snapshot.ts), which isolated mode would hide -> ModuleNotFoundError.
+    // Matches the PDF runner (sandbox-run.ts). The microVM is the isolation boundary, not a python flag.
     const result = await sandbox.runCommand({
       cmd: "python3",
-      args: ["-I", "gen.py"],
+      args: ["gen.py"],
       cwd: SANDBOX_DIR,
       signal: input.signal,
     });
