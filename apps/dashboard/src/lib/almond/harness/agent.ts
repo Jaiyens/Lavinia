@@ -31,7 +31,20 @@ export function supportsAlmondHarness(modelId: string): boolean {
 }
 
 export function hasAlmondHarnessRuntime(): boolean {
-  return Boolean(process.env.VERCEL_OIDC_TOKEN ?? process.env.VERCEL_TOKEN);
+  return Boolean(deploymentOidcToken() ?? localSandboxCredentials());
+}
+
+function localSandboxCredentials():
+  | { token: string; teamId: string; projectId: string }
+  | undefined {
+  const token = process.env.VERCEL_TOKEN;
+  const teamId = process.env.VERCEL_TEAM_ID;
+  const projectId = process.env.VERCEL_PROJECT_ID;
+  return token && teamId && projectId ? { token, teamId, projectId } : undefined;
+}
+
+function deploymentOidcToken(): string | undefined {
+  return process.env.VERCEL === "1" ? process.env.VERCEL_OIDC_TOKEN : undefined;
 }
 
 export function createAlmondHarnessAgent({
@@ -54,6 +67,7 @@ export function createAlmondHarnessAgent({
             auth: { gateway: { apiKey: resolveGatewayKey() } },
           }),
     sandbox: createVercelSandbox({
+      ...localSandboxCredentials(),
       runtime: "node24",
       ports: [4000],
     }),

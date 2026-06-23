@@ -8,8 +8,8 @@ import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
 import { resolveModel, isAutoChoice } from "@/lib/almond/models";
 import { routeAutoModel } from "@/lib/almond/auto/route";
-import { attachmentKindsFromMessages } from "@/lib/almond/auto/intent";
-import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
+import { attachmentKindsFromMessages, classifyTurn } from "@/lib/almond/auto/intent";
+import type { AutoHeadlineKey, TurnIntent } from "@/lib/almond/auto/types";
 import { parseSpreadsheetAttachments, stripFileAttachments } from "@/lib/almond/attachments/parse";
 import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
@@ -145,6 +145,7 @@ export async function POST(req: Request): Promise<Response> {
   //     too falls back to the default.
   let modelId: string;
   let decided: { headline: AutoHeadlineKey } | undefined;
+  let allowHarness = true;
   if (isAutoChoice(requestedModel)) {
     const lastText = lastUserTextFor(preparedMessages);
     const attachmentKinds = attachmentKindsFromMessages(preparedMessages);
@@ -162,11 +163,14 @@ export async function POST(req: Request): Promise<Response> {
     });
     modelId = decision.modelId;
     decided = { headline: decision.headline };
+    allowHarness = !requiresAlmondSideEffects(decision.intent);
   } else {
+    const turn = classifyTurn(lastUserTextFor(preparedMessages), attachmentKindsFromMessages(preparedMessages));
     modelId = resolveModel(requestedModel);
     decided = undefined;
+    allowHarness = turn.kind !== "file" && turn.kind !== "navigate";
   }
-  const responder = defaultAlmondResponder(modelId, decided);
+  const responder = defaultAlmondResponder(modelId, decided, { allowHarness });
   try {
     return await responder.toResponse({
       uiMessages: preparedMessages,
@@ -183,7 +187,8 @@ export async function POST(req: Request): Promise<Response> {
       // an author.
       actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null },
     });
-  } catch {
+  } catch (error) {
+    console.error("[almond chat 500]", error);
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a
     // clean 500 the client renders as the inline error state, never an unhandled crash.
     return Response.json({ error: "almond failed" }, { status: 500 });
@@ -220,5 +225,14 @@ function isUIMessageLike(value: unknown): value is UIMessage {
     typeof (value as { id?: unknown }).id === "string" &&
     typeof (value as { role?: unknown }).role === "string" &&
     Array.isArray((value as { parts?: unknown }).parts)
+  );
+}
+
+function requiresAlmondSideEffects(intent: TurnIntent): boolean {
+  return (
+    intent === "retrieve_cached" ||
+    intent === "generate_file" ||
+    intent === "codegen_bespoke" ||
+    intent === "navigate"
   );
 }

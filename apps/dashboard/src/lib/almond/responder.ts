@@ -1029,8 +1029,12 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
  * turn (absent for a hand-picked model); it rides through to whichever responder is built so the
  * decided line is written on both live and offline paths.
  */
-export function defaultAlmondResponder(modelId?: string, decided?: AutoDecided): AlmondResponder {
-  if (modelId && hasGatewayKey() && hasAlmondHarnessRuntime()) {
+export function defaultAlmondResponder(
+  modelId?: string,
+  decided?: AutoDecided,
+  options: { allowHarness?: boolean } = {},
+): AlmondResponder {
+  if (options.allowHarness !== false && modelId && hasGatewayKey() && hasAlmondHarnessRuntime()) {
     const harness = createHarnessResponder(modelId, decided);
     if (harness !== null) return harness;
   }

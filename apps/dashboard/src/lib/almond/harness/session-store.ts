@@ -8,6 +8,21 @@ type StoredHarnessSession = {
   resumeState: HarnessAgentResumeSessionState;
 };
 
+const MEMORY_STORE_KEY = Symbol.for("lavinia.almond.harness.sessions");
+
+function memoryStore(): Map<string, StoredHarnessSession> {
+  const globals = globalThis as { [MEMORY_STORE_KEY]?: Map<string, StoredHarnessSession> };
+  globals[MEMORY_STORE_KEY] ??= new Map();
+  return globals[MEMORY_STORE_KEY];
+}
+
+function hasBlobCredentials(): boolean {
+  return Boolean(
+    process.env.BLOB_READ_WRITE_TOKEN ??
+      (process.env.VERCEL_OIDC_TOKEN && (process.env.BLOB_STORE_ID ?? process.env.STORE_ID)),
+  );
+}
+
 function key(chatId: string): string {
   return `almond-harness-sessions/${encodeURIComponent(chatId)}.json`;
 }
@@ -19,6 +34,11 @@ export async function loadHarnessSessionState({
   chatId: string;
   harnessId: string;
 }): Promise<HarnessAgentResumeSessionState | undefined> {
+  if (!hasBlobCredentials()) {
+    const stored = memoryStore().get(key(chatId));
+    return stored?.harnessId === harnessId ? stored.resumeState : undefined;
+  }
+
   const result = await get(key(chatId), { access: "private", useCache: false });
   if (result === null || result.statusCode !== 200) return undefined;
   const text = await new Response(result.stream).text();
@@ -42,6 +62,11 @@ export async function saveHarnessSessionState({
     updatedAt: new Date().toISOString(),
     resumeState,
   };
+  if (!hasBlobCredentials()) {
+    memoryStore().set(key(chatId), body);
+    return;
+  }
+
   await put(key(chatId), JSON.stringify(body), {
     access: "private",
     addRandomSuffix: false,
