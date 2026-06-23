@@ -4,7 +4,7 @@ import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
 import type { AgentActionStatus, AgentRunStatus } from "@/lib/agents/types";
-import { resolveFarm } from "../_data";
+import { resolveFarm, resolveActiveFarmId } from "../_data";
 import { AgentActionButtons } from "./action-buttons";
 
 /**
@@ -45,7 +45,8 @@ function actionStatusLabel(status: string): string {
 
 export default async function AgentsPage() {
   const userId = await sessionUserId();
-  const resolved = await resolveFarm(userId, false);
+  const activeId = await resolveActiveFarmId(userId);
+  const resolved = await resolveFarm(userId, activeId, false);
   if (resolved === null) redirect("/onboarding");
 
   // Owner = the signed-in operator owns this resolved farm. The badged demo fallback

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
 import type { AgentActionStatus } from "@/lib/agents/types";
 import { REQUEST_RATE_SWITCH_KIND } from "@/lib/agents/agents/rate-opt/run";
-import { resolveFarm } from "../../_data";
+import { resolveFarm, resolveActiveFarmId } from "../../_data";
 import { RequestRateSwitchButton } from "./request-button";
 
 /**
@@ -39,7 +39,8 @@ function actionStatusLabel(status: string): string {
 
 export default async function RateSwitchesPage() {
   const userId = await sessionUserId();
-  const resolved = await resolveFarm(userId, false);
+  const activeId = await resolveActiveFarmId(userId);
+  const resolved = await resolveFarm(userId, activeId, false);
   if (resolved === null) redirect("/onboarding");
 
   const isOwner = resolved.dataKind === "real" && resolved.farm.userId === userId;
