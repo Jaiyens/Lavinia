@@ -30,6 +30,10 @@ export function supportsAlmondHarness(modelId: string): boolean {
   return harnessRuntimeForModel(modelId) !== null;
 }
 
+export function hasAlmondHarnessRuntime(): boolean {
+  return Boolean(process.env.VERCEL_OIDC_TOKEN ?? process.env.VERCEL_TOKEN);
+}
+
 export function createAlmondHarnessAgent({
   context,
   runtime,

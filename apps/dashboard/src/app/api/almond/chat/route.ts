@@ -81,7 +81,13 @@ export async function POST(req: Request): Promise<Response> {
   // cookie. Public Tour (no session): the demo farm, read-only — Almond is part of the full tour
   // now, never a leak (demoFarm is isDemo-only, never real data).
   const activeId = await activeFarmId(userId);
-  const resolved = userId ? await dashboardFarm(prisma, userId, activeId) : await demoFarm(prisma);
+  // Almond must never dead-end on a 400 just because the caller has no farm yet. A signed-in user
+  // who has not finished onboarding (no accessible+ready farm) falls back to the representative demo
+  // farm, exactly like the public Tour, so Almond still answers. This stays read-only: `canPersist`
+  // below is false because they are not a member of the demo farm. Dashboard PAGES still route such a
+  // user to onboarding (dashboardFarm returns null); this fallback is scoped to the chat endpoint.
+  const resolved =
+    (userId ? await dashboardFarm(prisma, userId, activeId) : null) ?? (await demoFarm(prisma));
   if (!resolved) {
     return Response.json({ error: "no farm" }, { status: 400 });
   }
@@ -94,12 +100,14 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const body: unknown = await req.json();
     const obj =
-      body && typeof body === "object" ? (body as { id?: unknown; messages?: unknown; model?: unknown }) : {};
-    const messages = obj.messages;
-    if (!Array.isArray(messages) || messages.length === 0) {
+      body && typeof body === "object"
+        ? (body as { id?: unknown; message?: unknown; messages?: unknown; model?: unknown })
+        : {};
+    const messages = resolveRequestMessages(obj);
+    if (messages.length === 0) {
       return Response.json({ error: "messages required" }, { status: 400 });
     }
-    uiMessages = messages as UIMessage[];
+    uiMessages = messages;
     requestedModel = obj.model;
     chatId = typeof obj.id === "string" && obj.id.trim().length > 0 ? obj.id : undefined;
   } catch {
@@ -196,4 +204,21 @@ function lastUserTextFor(messages: UIMessage[]): string {
     .join(" ")
     .toLowerCase()
     .trim();
+}
+
+function resolveRequestMessages(body: { message?: unknown; messages?: unknown }): UIMessage[] {
+  if (Array.isArray(body.messages) && body.messages.length > 0) {
+    return body.messages as UIMessage[];
+  }
+  return isUIMessageLike(body.message) ? [body.message] : [];
+}
+
+function isUIMessageLike(value: unknown): value is UIMessage {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof (value as { id?: unknown }).id === "string" &&
+    typeof (value as { role?: unknown }).role === "string" &&
+    Array.isArray((value as { parts?: unknown }).parts)
+  );
 }

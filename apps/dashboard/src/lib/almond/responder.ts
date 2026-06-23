@@ -48,7 +48,7 @@ import { storeReport, type GeneratedReportKind, type ReportToStore } from "./rep
 import { DEFAULT_ALMOND_MODEL } from "./models";
 import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
 import { buildAlmondSandboxContext } from "./harness/context";
-import { createAlmondHarnessAgent, harnessRuntimeForModel } from "./harness/agent";
+import { createAlmondHarnessAgent, harnessRuntimeForModel, hasAlmondHarnessRuntime } from "./harness/agent";
 import { loadHarnessSessionState, saveHarnessSessionState } from "./harness/session-store";
 import { billableTokens, recordUsage } from "./usage-budget";
 import {
@@ -1030,7 +1030,7 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
  * decided line is written on both live and offline paths.
  */
 export function defaultAlmondResponder(modelId?: string, decided?: AutoDecided): AlmondResponder {
-  if (modelId && hasGatewayKey()) {
+  if (modelId && hasGatewayKey() && hasAlmondHarnessRuntime()) {
     const harness = createHarnessResponder(modelId, decided);
     if (harness !== null) return harness;
   }

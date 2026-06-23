@@ -11,12 +11,27 @@
 //
 // Run: DATABASE_URL=...terra_batth npx tsx scripts/reconcile-batth.ts
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
 import { normalizeAccountNumber, canonSaId } from "@/lib/normalize/sa-id";
 
-const BILLS_DIR = "/Users/panda/Lavinia/batth-ingestion/extracted/bills";
+function resolveRepoRoot(): string {
+  const scriptDir = dirname(fileURLToPath(import.meta.url)); // apps/dashboard/scripts
+  let dir = scriptDir;
+  for (let i = 0; i < 12; i++) {
+    if (existsSync(join(dir, "package-lock.json")) || existsSync(join(dir, ".git"))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return join(scriptDir, "..", "..", "..");
+}
+
+const BILLS_DIR = join(resolveRepoRoot(), "batth-ingestion/extracted/bills");
 
 export type ReconcileResult = {
   findingsOnUnmappedDeleted: number;
@@ -162,7 +177,7 @@ async function main(): Promise<void> {
 }
 
 // Run only when invoked directly (not when imported by the orchestrator).
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1] ?? "")) {
   main().catch((e) => {
     console.error(e);
     process.exit(1);

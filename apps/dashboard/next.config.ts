@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // AI SDK harness adapters load bridge/runtime assets dynamically with import.meta.url.
+  // Keep them external to Turbopack's server bundle so those package-internal files are resolved
+  // by Node from node_modules at runtime instead of being statically traced as app modules.
+  serverExternalPackages: [
+    "@ai-sdk/harness",
+    "@ai-sdk/harness-claude-code",
+    "@ai-sdk/harness-codex",
+    "@ai-sdk/sandbox-vercel",
+    "@vercel/sandbox",
+  ],
   // Server code reads committed fixtures from ./fixtures at runtime (the rate card, the
   // onboarding feed stand-ins, the meter-read schedule). Next's file tracer does not see
   // process.cwd() reads, so include fixtures for EVERY server route. (In the monorepo,
