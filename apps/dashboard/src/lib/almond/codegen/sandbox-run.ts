@@ -91,11 +91,14 @@ export async function runRenderInSandbox(input: RenderInput): Promise<RenderOutp
   });
 
   try {
+    // Absolute paths under SANDBOX_DIR so file placement does NOT depend on the sandbox's default cwd
+    // matching SANDBOX_DIR (it does today, but that coupling is invisible). render.py runs with
+    // cwd=SANDBOX_DIR, so its relative HTML("report.html")/out.pdf still resolve here.
     await sandbox.writeFiles([
-      { path: "snapshot.json", content: JSON.stringify(input.snapshot) },
-      { path: "render.py", content: RENDER_PY },
-      { path: "report.html", content: input.html },
-      { path: "styles.css", content: input.css },
+      { path: `${SANDBOX_DIR}/snapshot.json`, content: JSON.stringify(input.snapshot) },
+      { path: `${SANDBOX_DIR}/render.py`, content: RENDER_PY },
+      { path: `${SANDBOX_DIR}/report.html`, content: input.html },
+      { path: `${SANDBOX_DIR}/styles.css`, content: input.css },
     ]);
 
     const result = await sandbox.runCommand({

@@ -75,9 +75,11 @@ async function main(): Promise<void> {
   });
 
   try {
+    // No --skip-broken: a missing core lib (e.g. pango -> libpango/libgobject) must fail the build
+    // LOUDLY here, not silently produce a snapshot that only fails at first real render.
     await run(sandbox, "install system deps", "sh", [
       "-c",
-      `sudo dnf install -y --skip-broken ${SYSTEM_DEPS.join(" ")} && sudo ldconfig`,
+      `sudo dnf install -y ${SYSTEM_DEPS.join(" ")} && sudo ldconfig`,
     ]);
 
     await run(sandbox, "install weasyprint", "python3", ["-m", "pip", "install", "--user", "weasyprint"]);
@@ -101,7 +103,14 @@ async function main(): Promise<void> {
         process.stderr.write(`  (font ${font.name} failed, continuing: ${String(err)})\n`);
       }
     }
-    await run(sandbox, "refresh font cache", "fc-cache", ["-f"]);
+    // fc-cache is best-effort and is NOT on the sandbox user's PATH on the AL2023 base, so a missing
+    // binary must not abort the snapshot — WeasyPrint resolves ~/.fonts via libfontconfig at render
+    // time regardless, and falls back to a default face for any font that did not download.
+    try {
+      await run(sandbox, "refresh font cache", "fc-cache", ["-f"]);
+    } catch (err) {
+      process.stderr.write(`  (fc-cache unavailable, continuing: ${String(err)})\n`);
+    }
 
     // Smoke-test WeasyPrint so the snapshot is known-good before we save it.
     await run(sandbox, "smoke-test weasyprint", "python3", [
