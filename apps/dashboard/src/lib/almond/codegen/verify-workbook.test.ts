@@ -1,16 +1,63 @@
 import { describe, expect, it } from "vitest";
 import ExcelJS from "exceljs";
-import { composeReportSnapshot, type ReportSnapshot, type SnapshotMeter } from "./snapshot";
+import { composeReportSnapshot, type ReportSnapshot, type ComprehensiveSnapshotMeter } from "./snapshot";
 import { extractXlsxNumbers, verifyWorkbookArtifact } from "./verify";
 import { buildStyledWorkbook, type SheetCell } from "@/lib/almond/export/workbook";
 
-// Pure, offline (no DB, no sandbox): the Phase 3 WORKBOOK fail-closed guard. The forward check now
-// recomputes DERIVED entries (sum/count), and the reverse scan reopens the ACTUAL produced .xlsx
-// (extractXlsxNumbers, the real impure boundary, exercised here on bytes the styled builder produces).
+// Pure, offline (no DB, no sandbox): the WORKBOOK fail-closed guard. The forward check recomputes DERIVED
+// entries (sum/count), and the reverse scan reopens the ACTUAL produced .xlsx (extractXlsxNumbers, the real
+// impure boundary, exercised here on bytes the styled builder produces). The per-meter records are the
+// COMPREHENSIVE shape; latestBilledCents is the coverage-gated billed money (the old `costCents`).
 
-const METERS: SnapshotMeter[] = [
-  { id: "m1", name: "Westside Pump 17", rate: "AG-B", costCents: 1_172_733, demandCents: 278_322 },
-  { id: "m2", name: "Lateral 3 Booster", rate: "AG-C", costCents: 50_000, demandCents: null },
+/** A comprehensive meter from a few core scalars (the rest honest "not on file"). */
+function meter(
+  over: Pick<ComprehensiveSnapshotMeter, "id" | "name" | "rateSchedule"> &
+    Partial<ComprehensiveSnapshotMeter>,
+): ComprehensiveSnapshotMeter {
+  return {
+    serviceId: null,
+    accountNumber: null,
+    entityName: null,
+    entityBillingName: null,
+    ranchName: null,
+    cropName: null,
+    blocks: [],
+    isLegacy: false,
+    serialCode: null,
+    status: null,
+    powerSource: "electric",
+    gpm: null,
+    latitude: null,
+    longitude: null,
+    coverageState: "reconciled",
+    costSource: "BILLED",
+    modeledMonthlyCents: null,
+    latestBilledCents: null,
+    latestDemandCents: null,
+    latestPeakKw: null,
+    latestCycleClose: null,
+    recentBills: [],
+    solar: {
+      isSolar: false,
+      nemType: null,
+      solarKw: null,
+      trueUpMonth: null,
+      trueUpAmountCents: null,
+      trueUpDate: null,
+      benefitingArrays: [],
+      nemPeriods: [],
+      sharePct: null,
+      demandOwedCents: null,
+      uncoveredShare: null,
+      grandfather: { state: "unknown" },
+    },
+    ...over,
+  };
+}
+
+const METERS: ComprehensiveSnapshotMeter[] = [
+  meter({ id: "m1", name: "Westside Pump 17", rateSchedule: "AG-B", latestBilledCents: 1_172_733, latestDemandCents: 278_322 }),
+  meter({ id: "m2", name: "Lateral 3 Booster", rateSchedule: "AG-C", latestBilledCents: 50_000 }),
 ];
 
 const SNAPSHOT: ReportSnapshot = composeReportSnapshot({
@@ -110,7 +157,7 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
   it("a derived sum may only aggregate money (Cents) fields: a non-money sum does not widen", () => {
     // A legit money sum of the two meter costs ($12,227.33 = 1_172_733 + 50_000c) is NOT a raw snapshot
     // value, so it is admitted only because the derived entry widens it...
-    const goodSum = [{ kind: "derived", label: "meter total", value: 1_222_733, op: "sum", sourcePaths: ["meters[0].costCents", "meters[1].costCents"] }];
+    const goodSum = [{ kind: "derived", label: "meter total", value: 1_222_733, op: "sum", sourcePaths: ["meters[0].latestBilledCents", "meters[1].latestBilledCents"] }];
     expect(verifyWorkbookArtifact(SNAPSHOT, goodSum, "Meter total\n12227.33")).toEqual({ ok: true });
     // ...but a sum over a STRUCTURAL field (meterCount, not cents) is refused by recomputeDerived, so it
     // cannot launder a structural integer into the money allowlist: the same printed value is rejected.
@@ -134,11 +181,11 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
       coverageAsOf: null,
       latestMonthSpendCents: null,
       opportunities: [],
-      meters: [{ id: "m1", name: "Solar Pump", rate: "AG-B", costCents: -5_000, demandCents: null }],
+      meters: [meter({ id: "m1", name: "Solar Pump", rateSchedule: "AG-B", latestBilledCents: -5_000 })],
       coverage: { reconciled: 1, needsReview: 0, noBill: 0 },
     });
     // The Meters tab shows the credit as -$50.00; a literal manifest entry ties it to the snapshot.
-    const v = verifyWorkbookArtifact(creditSnap, [{ label: "credit", value: -5_000, sourcePath: "meters[0].costCents" }], "Solar Pump\n-50.00");
+    const v = verifyWorkbookArtifact(creditSnap, [{ label: "credit", value: -5_000, sourcePath: "meters[0].latestBilledCents" }], "Solar Pump\n-50.00");
     expect(v).toEqual({ ok: true });
   });
 });

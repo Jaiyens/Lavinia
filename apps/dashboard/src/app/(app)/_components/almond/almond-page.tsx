@@ -31,6 +31,7 @@ export function AlmondPage() {
     status,
     navByMessage,
     reportsByMessage,
+    metersByMessage,
     decidedByMessage,
     onReplay,
     send,
@@ -102,6 +103,7 @@ export function AlmondPage() {
               starters={starters}
               navByMessage={navByMessage}
               reportsByMessage={reportsByMessage}
+              metersByMessage={metersByMessage}
               decidedByMessage={decidedByMessage}
               onReplay={onReplay}
               onStarter={(q) => send(q)}

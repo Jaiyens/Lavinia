@@ -2,10 +2,18 @@ import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { en } from "@/copy/en";
-import { createGatewayModel } from "@/lib/ai/gateway";
+import {
+  createGatewayModel,
+  CODEGEN_MAX_OUTPUT_TOKENS,
+  codegenThinkingProviderOptions,
+} from "@/lib/ai/gateway";
 import type { AlmondToolDeps } from "@/lib/almond/tools";
 import { runGenerateReport } from "@/lib/almond/skills/generate-report";
-import { buildReportSnapshot, type ReportSnapshot } from "@/lib/almond/codegen/snapshot";
+import {
+  buildReportSnapshot,
+  type ReportSnapshot,
+  type ComprehensiveSnapshotMeter,
+} from "@/lib/almond/codegen/snapshot";
 import { renderPdf, CodegenRuntimeUnavailableError } from "@/lib/almond/codegen/run";
 import { extractPdfText, verifyWorkbookArtifact } from "@/lib/almond/codegen/verify";
 import { billableTokens, recordUsage } from "@/lib/almond/usage-budget";
@@ -116,8 +124,103 @@ async function fallbackToTemplate(deps: AlmondToolDeps): Promise<CodegenExportRe
   return r.kind === "file" ? { ...r, fromFallback: true } : r;
 }
 
+/** One meter projected to CORE SCALARS for the PDF prompt. The PDF model inlines numbers into static
+ *  HTML (it cannot read snapshot.json at runtime), so the whole farm's scalars must ride in the prompt —
+ *  but the deep nested detail (per-cycle line items, every NEM period) is DROPPED here to keep the prompt
+ *  bounded. Those still live in the FULL snapshot the verifier checks, so any real number a report prints
+ *  still passes the reverse scan. `null` means NOT ON FILE. */
+type PdfMeterView = {
+  name: string;
+  serviceId: string | null;
+  accountNumber: string | null;
+  entityName: string | null;
+  entityBillingName: string | null;
+  ranchName: string | null;
+  cropName: string | null;
+  blocks: { name: string; acreage: number | null }[];
+  rateSchedule: string | null;
+  isLegacy: boolean;
+  serialCode: string | null;
+  status: string | null;
+  powerSource: string | null;
+  gpm: number | null;
+  coverageState: string;
+  costSource: string;
+  /** ISO date of the meter's freshest billing cycle; null when no period on file. */
+  latestCycleClose: string | null;
+  modeledMonthlyCents: number | null;
+  latestBilledCents: number | null;
+  latestDemandCents: number | null;
+  latestPeakKw: number | null;
+  isSolar: boolean;
+  nemType: string | null;
+  solarKw: number | null;
+  /** The annual NEM true-up summary (the deep nemPeriods detail is dropped from the prompt). */
+  trueUp: { month: number | null; amountCents: number | null; date: string | null };
+  solar: { sharePct: number | null; demandOwedCents: number | null; grandfather: ComprehensiveSnapshotMeter["solar"]["grandfather"] };
+};
+
+function toPdfMeterView(m: ComprehensiveSnapshotMeter): PdfMeterView {
+  return {
+    name: m.name,
+    serviceId: m.serviceId,
+    accountNumber: m.accountNumber,
+    entityName: m.entityName,
+    entityBillingName: m.entityBillingName,
+    ranchName: m.ranchName,
+    cropName: m.cropName,
+    blocks: m.blocks,
+    rateSchedule: m.rateSchedule,
+    isLegacy: m.isLegacy,
+    serialCode: m.serialCode,
+    status: m.status,
+    powerSource: m.powerSource,
+    gpm: m.gpm,
+    coverageState: m.coverageState,
+    costSource: m.costSource,
+    latestCycleClose: m.latestCycleClose,
+    modeledMonthlyCents: m.modeledMonthlyCents,
+    latestBilledCents: m.latestBilledCents,
+    latestDemandCents: m.latestDemandCents,
+    latestPeakKw: m.latestPeakKw,
+    isSolar: m.solar.isSolar,
+    nemType: m.solar.nemType,
+    solarKw: m.solar.solarKw,
+    trueUp: {
+      month: m.solar.trueUpMonth,
+      amountCents: m.solar.trueUpAmountCents,
+      date: m.solar.trueUpDate,
+    },
+    solar: {
+      sharePct: m.solar.sharePct,
+      demandOwedCents: m.solar.demandOwedCents,
+      grandfather: m.solar.grandfather,
+    },
+  };
+}
+
+/**
+ * The view INLINED into the PDF prompt: the farm rollups + the meters projected to CORE SCALARS (no deep
+ * recentBills line items, no nemPeriods detail). Those dropped fields stay in the FULL snapshot the
+ * VERIFIER checks, so any real number a report prints still passes; they are removed from the PROMPT only
+ * to keep it bounded. The model is told to recommend a spreadsheet for full per-cycle line items.
+ */
+export function buildPdfSnapshotView(snapshot: ReportSnapshot): Record<string, unknown> {
+  return {
+    farm: snapshot.farm,
+    meterCount: snapshot.meterCount,
+    coverageAsOf: snapshot.coverageAsOf,
+    totals: snapshot.totals,
+    fleetSummary: snapshot.fleetSummary,
+    entities: snapshot.entities,
+    findings: snapshot.findings,
+    opportunities: snapshot.opportunities,
+    meters: snapshot.meters.map(toPdfMeterView),
+  };
+}
+
 /** The codegen system prompt: the report contract, the brand tokens (with full freedom to honor the
- *  grower's styling), the number-honesty laws, and the snapshot. */
+ *  grower's styling), the number-honesty + honest "Not on file" laws, and the core-scalar snapshot view. */
 function buildCodegenSystemPrompt(snapshot: ReportSnapshot): string {
   return [
     "You write the grower's PDF report as a self-contained HTML document plus a CSS stylesheet, then call",
@@ -129,11 +232,21 @@ function buildCodegenSystemPrompt(snapshot: ReportSnapshot): string {
     "highlight, a clean sans-serif body, and `@page { size: Letter; margin: 1in }`. Honor any explicit",
     "color/font/layout the grower requests over these defaults.",
     "",
+    "THE DATA. The view below carries the farm rollups plus EVERY meter projected to its core fields. For",
+    "the full per-cycle billing line items (the energy/demand/NBC breakdown of each bill), recommend the",
+    "grower request a SPREADSHEET — those line items are not in this report view.",
+    "",
     "NUMBERS — THE ONE HARD RULE. Every NUMBER you print MUST come from the snapshot: a LITERAL snapshot",
     "value, or a value you DERIVE only via the manifest (a sum or count the verifier recomputes). Never",
     "invent, estimate, or round a number that is not provable from the snapshot. Render money the way the",
     "snapshot does (dollars and cents with thousands separators); the snapshot's money fields are integer",
     "cents and carry a pre-formatted display string where one is provided.",
+    "",
+    "HONESTY — NULL MEANS NOT ON FILE. Any field may be null, which means NOT ON FILE. When a value is null,",
+    'render the line as "Not on file" (or leave it blank with that note) — never invent a number, name, or',
+    "label to fill it. If the grower asks for a field we do not have at all, still include it but fill it",
+    '"Not on file", and in your reply name which fields you could not fill. Explanations, advice, headings,',
+    "and formatting are free reasoning — only a FARM NUMBER must come from the snapshot and is never invented.",
     "",
     "MANIFEST — USUALLY EMPTY. Every number you copy straight from the snapshot is checked and allowed",
     "automatically, so most reports need NO manifest. The snapshot already provides meterCount,",
@@ -144,8 +257,8 @@ function buildCodegenSystemPrompt(snapshot: ReportSnapshot): string {
     "recomputes it). Any number you print that is not a snapshot value (or a correct declared derived total)",
     "is rejected and named; fix the markup and call renderReport again.",
     "",
-    "SNAPSHOT (the only source of truth):",
-    JSON.stringify(snapshot, null, 2),
+    "FARM DATA (the only source of truth):",
+    JSON.stringify(buildPdfSnapshotView(snapshot), null, 2),
   ].join("\n");
 }
 
@@ -234,6 +347,11 @@ export async function runCodegenExport(
       prompt: input.request?.trim() || HARDCODED_ASK,
       tools: { renderReport },
       stopWhen: stepCountIs(CODEGEN_MAX_STEPS),
+      // Extended thinking (quality only, not streamed): budget (8000) < maxOutputTokens (32000),
+      // temperature unset, per Anthropic. Routed through the Gateway under the "anthropic" slug; flip
+      // CODEGEN_THINKING.enabled to disable in one place.
+      maxOutputTokens: CODEGEN_MAX_OUTPUT_TOKENS,
+      providerOptions: codegenThinkingProviderOptions(),
       abortSignal: signal,
     });
 

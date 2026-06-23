@@ -2,7 +2,11 @@ import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { en } from "@/copy/en";
-import { createGatewayModel } from "@/lib/ai/gateway";
+import {
+  createGatewayModel,
+  CODEGEN_MAX_OUTPUT_TOKENS,
+  codegenThinkingProviderOptions,
+} from "@/lib/ai/gateway";
 import type { AlmondToolDeps } from "@/lib/almond/tools";
 import { loadExportData } from "@/lib/almond/export/load";
 import { loadFindings } from "@/lib/dashboard/findings";
@@ -113,15 +117,75 @@ const manifestSchema = z.array(
   ]),
 );
 
-/** The codegen system prompt: the openpyxl contract, full styling freedom, the number-honesty laws, and
- *  the snapshot (also written to the runtime as snapshot.json). */
+/**
+ * A short description of every `ComprehensiveSnapshotMeter` field + that `null` means NOT ON FILE, so the
+ * model knows the per-meter shape WITHOUT the full 222-meter array bloating the prompt (it iterates the
+ * full `meters` array at runtime from snapshot.json). Kept terse, plain operator English.
+ */
+const METER_FIELDS_GUIDE = [
+  "id, name — the meter's id and pump name.",
+  "serviceId — PG&E SA id (null = not on file).",
+  "accountNumber — PG&E account number (null = not on file).",
+  "entityName — the legal billing entity's name (null = not on file).",
+  "entityBillingName — how PG&E prints that entity (null = not on file).",
+  "ranchName, cropName — the ranch and crop (null = not on file).",
+  "blocks — [{name, acreage}] the fields this pump serves; acreage null = not on file; [] = none on file.",
+  "rateSchedule — the rate code, e.g. AG-C (null = not on file).",
+  "isLegacy — true when the rate is a legacy schedule.",
+  "serialCode — the bill serial letter (null = not on file).",
+  "status — pump health verbatim, e.g. GOOD / BAD (null = not on file).",
+  "powerSource — electric / diesel / gas (null = not on file).",
+  "gpm, latitude, longitude — pump flow + location (null = not on file).",
+  "coverageState — no_bill / needs_review / reconciled.",
+  "costSource — BILLED (a real posted bill), MODELED (an ESTIMATE from usage), REVIEW, or NONE.",
+  "modeledMonthlyCents — modeled monthly estimate, INTEGER CENTS; null unless costSource is MODELED.",
+  "latestBilledCents — latest posted bill, INTEGER CENTS; null unless costSource is BILLED (an unreconciled meter is null, never 0).",
+  "latestDemandCents, latestPeakKw, latestCycleClose — the freshest cycle's demand (cents), peak kW, and close date (null = not on file).",
+  "recentBills — up to 3 cycles [{start, close, printedTotalCents, demandCents, totalKwh, peakKw, tariff, energyCents, nbcCents}], money in INTEGER CENTS (a value is null when not on file; energyCents/nbcCents are sums, 0 when none).",
+  "solar — {isSolar, nemType, solarKw, trueUpMonth, trueUpAmountCents (cents), trueUpDate, benefitingArrays[{name, nameplateKw, nemType, trueUpMonth, interconnectionDate, grandfather}], nemPeriods[{start, close, netKwh, amountCents}], sharePct (0..1), demandOwedCents (cents), uncoveredShare (0..1), grandfather}. isSolar=false means this is not a solar meter; a NEM true-up CREDIT dollar is never on file here.",
+].join("\n  - ");
+
+/**
+ * The DIGEST handed to the model in the prompt (NOT the full meters[]). The runtime still gets the WHOLE
+ * snapshot as snapshot.json (renderXlsx writes it verbatim — unchanged), so the model iterates every meter
+ * at runtime; the prompt only needs the farm rollups + a couple of sample meter records to know the shape.
+ * This keeps prompt latency sane on a 222-meter farm.
+ */
+export function buildWorkbookPromptDigest(snapshot: ReportSnapshot): Record<string, unknown> {
+  return {
+    farm: snapshot.farm,
+    meterCount: snapshot.meterCount,
+    coverageAsOf: snapshot.coverageAsOf,
+    coverage: {
+      reconciled: snapshot.totals.reconciledCount,
+      needsReview: snapshot.totals.needsReviewCount,
+      noBill: snapshot.totals.noBillCount,
+    },
+    totals: snapshot.totals,
+    fleetSummary: snapshot.fleetSummary,
+    entities: snapshot.entities,
+    findings: snapshot.findings,
+    opportunities: snapshot.opportunities,
+    // Full records for the first few meters so the model sees the exact shape it will iterate.
+    sampleMeters: snapshot.meters.slice(0, 3),
+  };
+}
+
+/** The codegen system prompt: the openpyxl contract, full styling freedom, the number-honesty + honest
+ *  "Not on file" laws, the per-meter field guide, and the DIGEST (the full meters[] rides in snapshot.json). */
 function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
   return [
     "You build the grower's Excel workbook by WRITING a complete, self-contained Python 3 script that uses",
     "openpyxl. Then you call the renderWorkbook tool with that script (as `code`). Your script MUST:",
-    '  - `import json` and load the data with `json.load(open("snapshot.json"))`,',
+    '  - `import json` and load the data with `data = json.load(open("snapshot.json"))`,',
     "  - build a Workbook with openpyxl, and",
     '  - save it with `wb.save("out.xlsx")` (exactly that file name, in the current directory).',
+    "",
+    "THE DATA. snapshot.json contains the FULL farm: a `meters` array with EVERY meter on the farm (the",
+    "digest below shows only the rollups plus the first few meters as `sampleMeters` so you can see the",
+    'shape). For per-meter tables, ITERATE `data["meters"]` at runtime — do not rely on the sample alone.',
+    "Each meter record has these fields (null ALWAYS means NOT ON FILE):",
+    `  - ${METER_FIELDS_GUIDE}`,
     "",
     "STYLING — YOU HAVE FULL FREEDOM. Use any openpyxl capability the grower asks for: cell fills and font",
     "colors (PatternFill / Font), bold/size/italic, borders, alignment, merged cells, column widths, frozen",
@@ -133,6 +197,13 @@ function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
     "invent, estimate, or round a number that is not provable from the snapshot. Money in the snapshot is",
     "INTEGER CENTS; to show dollars, divide by 100 in your script and write the resulting number with a",
     "currency number_format (do not hand-format a money string).",
+    "",
+    "HONESTY — NULL MEANS NOT ON FILE. Any field may be null, which means NOT ON FILE. When a value is null,",
+    'render the cell as "Not on file" (or leave it blank with that note) — never invent a number, name, or',
+    "label to fill it. If the grower asks for a column or field we do not have at all, still include the",
+    'column but fill it "Not on file", and in your reply name which fields you could not fill. Explanations,',
+    "advice, headings, and formatting are free reasoning — only a FARM NUMBER must come from the snapshot",
+    "and is never invented.",
     "",
     "DO NOT WRITE LIVE SPREADSHEET FORMULAS. Do not put any `=...` formula in a cell. Compute every total or",
     "subtotal in your python and write the resulting NUMBER. (The verifier reads cell values; a live formula",
@@ -148,8 +219,8 @@ function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
     "that is not a snapshot value (or a correct declared derived total) is rejected and named; fix it and",
     "call renderWorkbook again.",
     "",
-    "SNAPSHOT (the only source of truth; also available to your script as snapshot.json):",
-    JSON.stringify(snapshot, null, 2),
+    "DIGEST (the farm rollups + sample meter records; the FULL meters array is in snapshot.json):",
+    JSON.stringify(buildWorkbookPromptDigest(snapshot), null, 2),
   ].join("\n");
 }
 
@@ -266,6 +337,11 @@ export async function runCodegenWorkbook(
       prompt: input.request?.trim() || HARDCODED_ASK,
       tools: { renderWorkbook },
       stopWhen: stepCountIs(CODEGEN_MAX_STEPS),
+      // Extended thinking (quality only, not streamed): the budget (8000) stays < maxOutputTokens (32000)
+      // and temperature is unset, as Anthropic requires. The provider options are routed through the
+      // Gateway under the "anthropic" slug; flip CODEGEN_THINKING.enabled to disable in one place.
+      maxOutputTokens: CODEGEN_MAX_OUTPUT_TOKENS,
+      providerOptions: codegenThinkingProviderOptions(),
       abortSignal: signal,
     });
 

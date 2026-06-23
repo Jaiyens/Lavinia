@@ -13,7 +13,7 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
-import type { AlmondReportData } from "@/lib/almond/responder";
+import type { AlmondReportData, AlmondMeterData } from "@/lib/almond/responder";
 import {
   AUTO_SENTINEL,
   isAllowedModel,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/almond/history";
 import type { AlmondNavChip } from "./almond-result";
 import type { AlmondReportCard } from "./almond-download-card";
+import type { AlmondMeterCard } from "./almond-meter-card";
 import { useAlmondNavigation } from "./use-almond-navigation";
 
 // The ONE Almond conversation, lifted to a context so BOTH surfaces share it: the floating panel
@@ -39,14 +40,21 @@ import { useAlmondNavigation } from "./use-almond-navigation";
 // known consumers. Must render under the nuqs adapter (the navigation bridge uses useQueryState).
 
 /**
- * Almond's chat carries two custom transient stream parts:
+ * Almond's chat carries these custom transient stream parts:
  *   - `data-navigate` (Story 7.5): a navigation `action` plus a plain-English `label` for the chip.
  *   - `data-report` (Story 8.5): a file Almond made (base64 bytes + file name), rendered as a
  *     download card. Transient, so the bytes are delivered once and never replayed or persisted.
+ *   - `data-meter` (B2): one meter's MeterDetail, rendered as a light inline card right in the chat
+ *     (no page jump). Transient, like the others.
  */
 export type AlmondUIMessage = UIMessage<
   unknown,
-  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData; decided: AutoDecided }
+  {
+    navigate: { action: NavigateAction; label: string };
+    report: AlmondReportData;
+    decided: AutoDecided;
+    meter: AlmondMeterData;
+  }
 >;
 
 type AlmondChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -83,6 +91,8 @@ type AlmondChatValue = {
   editMessage: (messageId: string, newText: string) => void;
   navByMessage: Map<string, AlmondNavChip[]>;
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** Light inline meter cards per assistant message id (B2). */
+  metersByMessage: Map<string, AlmondMeterCard[]>;
   /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
   decidedByMessage: Map<string, AutoHeadlineKey>;
   onReplay: (chip: AlmondNavChip) => void;
@@ -151,6 +161,20 @@ function dedupeReports(reports: AlmondReportCard[]): AlmondReportCard[] {
     if (!seen.has(report.fileName)) {
       seen.add(report.fileName);
       out.push(report);
+    }
+  }
+  return out;
+}
+
+/** Drop duplicate meter cards (same meter id), keeping first-seen order. Belt-and-suspenders to the
+ *  server's per-turn meter dedupe: one meter shows exactly one card, never two (B2). */
+function dedupeMeters(meters: AlmondMeterCard[]): AlmondMeterCard[] {
+  const seen = new Set<string>();
+  const out: AlmondMeterCard[] = [];
+  for (const card of meters) {
+    if (!seen.has(card.meter.id)) {
+      seen.add(card.meter.id);
+      out.push(card);
     }
   }
   return out;
@@ -273,10 +297,12 @@ export function AlmondChatProvider({
   const { apply: applyNavigation } = useAlmondNavigation();
   const [navByMessage, setNavByMessage] = useState<Map<string, AlmondNavChip[]>>(new Map());
   const [reportsByMessage, setReportsByMessage] = useState<Map<string, AlmondReportCard[]>>(new Map());
+  const [metersByMessage, setMetersByMessage] = useState<Map<string, AlmondMeterCard[]>>(new Map());
   const [decidedByMessage, setDecidedByMessage] = useState<Map<string, AutoHeadlineKey>>(new Map());
   const [announcement, setAnnouncement] = useState<{ text: string; seq: number }>({ text: "", seq: 0 });
   const pendingChips = useRef<AlmondNavChip[]>([]);
   const pendingReports = useRef<AlmondReportCard[]>([]);
+  const pendingMeters = useRef<AlmondMeterCard[]>([]);
   const pendingDecided = useRef<AutoHeadlineKey | null>(null);
   const [flushTick, setFlushTick] = useState(0);
 
@@ -296,7 +322,10 @@ export function AlmondChatProvider({
     onData: (part) => {
       if (part.type === "data-navigate") {
         const { action, label } = part.data;
-        applyNavigation(action); // one-shot apply (Story 7.4)
+        // B1: Almond no longer auto-navigates. A `data-navigate` part renders a click-to-go chip
+        // (buffered below, surfaced by AlmondActionChips) and the grower taps it to move the screen
+        // (the chip's onReplay calls applyNavigation). We still buffer + announce, just never apply
+        // the navigation here. This keeps the grower in the chat unless they choose to jump.
         pendingChips.current.push({ action, label });
         setFlushTick((n) => n + 1);
         announce(label);
@@ -304,6 +333,13 @@ export function AlmondChatProvider({
       }
       if (part.type === "data-report") {
         pendingReports.current.push(part.data);
+        setFlushTick((n) => n + 1);
+        return;
+      }
+      if (part.type === "data-meter") {
+        // B2: a light inline meter card. Buffered like the report cards and attributed to the latest
+        // assistant message on the next flush tick.
+        pendingMeters.current.push(part.data);
         setFlushTick((n) => n + 1);
         return;
       }
@@ -349,6 +385,22 @@ export function AlmondChatProvider({
       }
       if (reportsToFlush.length > 0 && assistantId) {
         next.set(assistantId, dedupeReports([...(next.get(assistantId) ?? []), ...reportsToFlush]));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+
+    const metersToFlush = assistantId ? pendingMeters.current : [];
+    if (metersToFlush.length > 0) pendingMeters.current = [];
+    setMetersByMessage((prev) => {
+      let changed = false;
+      const next = new Map<string, AlmondMeterCard[]>();
+      for (const [id, cards] of prev) {
+        if (liveIds.has(id)) next.set(id, cards);
+        else changed = true;
+      }
+      if (metersToFlush.length > 0 && assistantId) {
+        next.set(assistantId, dedupeMeters([...(next.get(assistantId) ?? []), ...metersToFlush]));
         changed = true;
       }
       return changed ? next : prev;
@@ -488,9 +540,11 @@ export function AlmondChatProvider({
   const resetConversationState = useCallback(() => {
     setNavByMessage(new Map());
     setReportsByMessage(new Map());
+    setMetersByMessage(new Map());
     setDecidedByMessage(new Map());
     pendingChips.current = [];
     pendingReports.current = [];
+    pendingMeters.current = [];
     pendingDecided.current = null;
     savedFingerprintRef.current = "";
   }, []);
@@ -598,6 +652,7 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      metersByMessage,
       decidedByMessage,
       onReplay,
       announcement,
@@ -626,6 +681,7 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      metersByMessage,
       decidedByMessage,
       onReplay,
       announcement,

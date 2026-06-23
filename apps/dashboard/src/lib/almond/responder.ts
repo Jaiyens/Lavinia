@@ -14,7 +14,7 @@ import { en } from "@/copy/en";
 import { formatUsdWhole } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
-import { loadMetersForFarm } from "@/lib/dashboard/load";
+import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { LENS_KEYS } from "@/lib/dashboard/surface";
 import { analyzeFarm, type EnrichedMeter } from "./analysis";
 import {
@@ -22,8 +22,10 @@ import {
   rateSchedulesByFrequency,
   summarizeFarmOverview,
   summarizeFindings,
+  summarizeMeterDetail,
   summarizeReconciliation,
   UNKNOWN_RATE,
+  type MeterDetail,
   type RankMetersOptions,
 } from "./shape";
 import {
@@ -49,8 +51,10 @@ import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
 import { billableTokens, recordUsage } from "./usage-budget";
 import {
   buildAlmondSkills,
+  buildSolarContextByMeter,
   exportSpreadsheetSkill,
   generateReportSkill,
+  withSolarCredit,
   type AlmondActor,
   type AlmondToolDeps,
 } from "./tools";
@@ -353,6 +357,42 @@ function isCodegenResult(output: unknown): output is CodegenExportResult {
   return kind === "file" || kind === "empty" || kind === "error";
 }
 
+// --- The single-meter inline card bridge (B2) ----------------------------------------------------
+//
+// When the grower asks to see ONE meter ("show me Westside Pump 17"), the `getMeter` tool resolves
+// the MeterDetail. The responder lifts that detail onto the SAME UI-message stream as a transient
+// `data-meter` part, which the client renders as a LIGHT inline card right in the chat - no page jump,
+// no heavy drawer. It mirrors the navigate/report bridges above: written from inside the per-turn
+// `toResponse` only (never a timer/effect), `transient: true` so it is delivered once and never
+// replayed or persisted, and a stable part id (a turn shows at most one meter card in the common
+// case). The model still answers in text alongside the card; the card is an at-a-glance companion,
+// not a replacement for the reply. A found result emits a card; a not-found / ambiguous result emits
+// nothing (the model's text carries that outcome).
+
+/** The data-part type the client meter-card listens for. */
+const METER_PART_TYPE = "data-meter" as const;
+/** A stable part id (a turn opens at most one meter card in the common case; non-reconciling). */
+const METER_PART_ID = "almond-meter";
+
+/** The payload the panel needs to render the inline meter card: the resolved MeterDetail. No bytes,
+ *  no path, no model-authored value - the same shape the `getMeter` tool returns, captured client-side
+ *  as the transient part arrives. */
+export type AlmondMeterData = {
+  meter: MeterDetail;
+};
+
+/** The shape of a FOUND `getMeter` result (the executor returns `{ found: true, meter }`). */
+type MeterDetailFound = { found: true; meter: MeterDetail };
+
+/** Narrow an unknown tool output to a FOUND meter-detail result (the live path inspects tool results).
+ *  A not-found / ambiguous result has `found: false` and carries no `meter`, so it is excluded here and
+ *  writes no card. */
+function isMeterDetailFound(output: unknown): output is MeterDetailFound {
+  if (typeof output !== "object" || output === null) return false;
+  const o = output as { found?: unknown; meter?: unknown };
+  return o.found === true && typeof o.meter === "object" && o.meter !== null;
+}
+
 /** Stream Almond's answer through a real LanguageModel with the farm-scoped tools. Works with
  *  the live Gateway model or a mock model in tests — the streamText tool-calling loop is the same.
  *  Wrapped in `createUIMessageStream` so a clean `navigate` tool result is lifted onto the stream as
@@ -387,6 +427,10 @@ export function createModelResponder(
           // result twice previously rendered (and for an owner, persisted) the SAME file twice. One file
           // name = one card and one Reports row.
           const writtenFiles = new Set<string>();
+          // Same guard for the single-meter inline card (B2), keyed by meter id: a multi-step loop
+          // surfacing the same getMeter result twice (or the model re-calling getMeter with the same
+          // query) renders one card per meter, not two. Two DIFFERENT meters in one turn both show.
+          const writtenMeters = new Set<string>();
           // The Auto decided-line headline for this turn (the router's classification). A file ask always
           // builds fresh now (no cache), so there is no correction to make: written ONCE in `onFinish`
           // below; undefined for a hand-picked model.
@@ -463,6 +507,23 @@ export function createModelResponder(
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                  }
+                }
+                // A FOUND single-meter lookup (B2): lift its MeterDetail onto the stream as a transient
+                // `data-meter` part the panel renders as a light inline card (no page jump, no drawer).
+                // A not-found / ambiguous result writes no card - the model's text carries that outcome.
+                // Deduped by meter id so a repeated lookup never doubles the card. The model still
+                // answers in text alongside; this is the at-a-glance companion, not a replacement.
+                if (tr.toolName === "getMeter" && isMeterDetailFound(tr.output)) {
+                  const { meter } = tr.output;
+                  if (!writtenMeters.has(meter.id)) {
+                    writtenMeters.add(meter.id);
+                    writer.write({
+                      type: METER_PART_TYPE,
+                      id: METER_PART_ID,
+                      data: { meter },
+                      transient: true,
+                    });
                   }
                 }
               }
@@ -765,6 +826,25 @@ export function deriveReportInput(text: string): GenerateReportInput {
   return { sections };
 }
 
+/** The MeterDetail to render as an inline card when a stub navigation OPENS a single named meter (B2):
+ *  a clean open-meter resolve carries the meter id on its action, so the offline/demo path shows the
+ *  SAME light inline card the live model path does (no page jump), with zero external calls. Returns
+ *  null for any other navigation (a lens switch, a filter, a clear) - those drive the screen, not a
+ *  card. Reuses the already-loaded fleet so no second read is needed. */
+function meterCardForNavigation(
+  meters: MeterView[],
+  result: NavigateResult,
+): MeterDetail | null {
+  if (result.kind !== "navigate") return null;
+  const meterId = result.action.meter;
+  if (typeof meterId !== "string" || meterId.length === 0) return null;
+  const match = meters.find((m) => m.id === meterId);
+  if (match === undefined) return null;
+  // A solar meter carries its solar facts; building the context for the whole fleet matches the tab.
+  const solarCtx = match.isSolar ? buildSolarContextByMeter(meters).get(match.id) : undefined;
+  return withSolarCredit(summarizeMeterDetail(match, solarCtx));
+}
+
 /** A short, grounded acknowledgment the stub streams alongside (navigate) or instead of the part. */
 function navigationStubText(result: NavigateResult): string {
   switch (result.kind) {
@@ -796,6 +876,9 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
       const text = lastUserText(uiMessages);
       let navigation: NavigateResult | null = null;
       let file: StreamableFile | null = null;
+      // The single-meter inline card (B2): set when a navigation OPENS one named meter, so the
+      // offline/demo path shows the SAME light inline card the live model path does (no page jump).
+      let meterCard: MeterDetail | null = null;
       let answer: string;
       if (actor.canExport && isReportTurn(text)) {
         // Through the throttled wrapper (Story 10.3), so the offline path honors the SAME per-farm
@@ -844,6 +927,8 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           const result = resolveNavigate(meters, { open: "meter", query: winner.name });
           if (result.kind === "navigate") {
             navigation = result;
+            // Show the priciest meter as an inline card too (B2), not just a click-to-go chip.
+            meterCard = meterCardForNavigation(meters, result);
             answer = `Opening ${winner.name}: ${openSuperlativeReason(opts, winner)}.`;
           } else {
             // Should not happen (we opened by the meter's own exact name), but never claim an open we
@@ -861,6 +946,10 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           answer = await composeStubAnswer(deps, uiMessages);
         } else {
           navigation = result;
+          // A "show me <meter>" turn resolves to opening one meter; render it as an inline card too
+          // (B2) so the offline/demo path matches the live one. A lens/filter/clear navigation has no
+          // single meter, so this is null and only the click-to-go chip renders.
+          meterCard = meterCardForNavigation(meters, result);
           answer = navigationStubText(result);
         }
       } else {
@@ -883,6 +972,17 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           writer.write({ type: "text-end", id });
           if (navigation?.kind === "navigate") {
             writeNavigatePart(writer, navigation.action, navigation.meterName, navigation.state);
+          }
+          // A single-meter "show me X" turn also writes a light inline card (B2): the SAME transient
+          // `data-meter` part the live model path emits, so the offline/demo path shows the meter in
+          // the chat (no page jump) too. Null for a lens/filter/clear navigation.
+          if (meterCard !== null) {
+            writer.write({
+              type: METER_PART_TYPE,
+              id: METER_PART_ID,
+              data: { meter: meterCard },
+              transient: true,
+            });
           }
           // A clean offline export OR report writes the download card; for an authed owner it is also
           // persisted to Reports first (8.6) inside persistAndWriteReportPart, which is owner-gated, so

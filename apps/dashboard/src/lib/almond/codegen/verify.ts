@@ -115,63 +115,80 @@ function numberTokens(text: string): string[] {
   return text.match(re) ?? [];
 }
 
+/** Add the money/dollar forms of an integer-cents value: the cent-precise form plus the rounded and
+ *  floored whole dollars (a report may show "$61,417.76" or "$61,418" or "$61,418.00"). Matches the way
+ *  a `$` cell scans (extractXlsxNumbers does `(cents/100).toFixed(2)`) and how a PDF prints a rounded
+ *  figure, so a legitimately-rendered money value is never flagged as fabricated. */
+function addMoneyForms(allow: Set<string>, cents: number): void {
+  allow.add(canon(formatCentsUsd(cents))); // "61417.76"
+  allow.add(String(Math.round(cents / 100))); // rounded whole dollars
+  allow.add(String(Math.floor(cents / 100))); // floored whole dollars
+  // ...and the whole-dollar forms WITH trailing cents (a report may show "$61,418.00").
+  allow.add(`${Math.round(cents / 100)}.00`);
+  allow.add(`${Math.floor(cents / 100)}.00`);
+}
+
 /**
- * Build the allowlist of canonical number strings every figure in the PDF is permitted to be. Derived
- * ENTIRELY from the snapshot, so a number the model invents (not present anywhere in the snapshot) is
- * rejected. Includes, for each money value, the cent-precise form plus the rounded and floored whole
- * dollars (the report may show "$61,417.76" or "$61,418"); the meter count and opportunity ranks; and
- * every number that legitimately appears inside a snapshot STRING (e.g. the "17" in "Westside Pump 17",
- * the "3" in "Lateral 3 Booster"), so a real meter name is never flagged as a fabricated number.
+ * Build the allowlist of canonical number strings every figure in the rendered artifact is permitted to
+ * be — the ONE GENERAL NUMBER GUARD. It RECURSIVELY walks the WHOLE snapshot (objects, arrays,
+ * primitives), so EVERY number anywhere in it is admitted; there is no per-field list to keep in sync
+ * with the snapshot shape (the bug that left a comprehensive snapshot's entity/ranch/gpm/kW numbers out
+ * of the allowlist and rejected an honest sheet). For each value, tracking the current KEY name:
+ *   - a NUMBER is always admitted as `String(n)`. When its key ends in "Cents" it is integer cents, so
+ *     its money/dollar forms are ALSO admitted (a $-cell rendered from cents passes); otherwise it is a
+ *     plain quantity (gpm, kW, count, a percent), so its ROUNDED form is also admitted (Excel rounds an
+ *     integer-format cell).
+ *   - a STRING has its embedded number tokens mined (so "Westside Pump 17" admits "17", and the coverage
+ *     date "2026-06-20" admits its year/month/day, which a dated report prints).
+ *
+ * FAIL-CLOSED property preserved: a number that appears NOWHERE in the snapshot (a fabricated/invented
+ * farm number) is still rejected. The walk only WIDENS the allowlist with values that genuinely exist in
+ * the snapshot tree; it never admits a value not present, so an invented number can never pass. The
+ * snapshot is plain serializable JSON (no Dates, no cycles), so the recursion terminates.
  */
 export function buildAllowlist(snapshot: ReportSnapshot): Set<string> {
   const allow = new Set<string>();
 
-  const addMoney = (cents: number): void => {
-    allow.add(canon(formatCentsUsd(cents))); // "61417.76"
-    allow.add(String(Math.round(cents / 100))); // rounded whole dollars
-    allow.add(String(Math.floor(cents / 100))); // floored whole dollars
-    // ...and the whole-dollar forms WITH trailing cents (a report may show "$61,418.00"), so a
-    // legitimately-rounded figure is not flagged as fabricated.
-    allow.add(`${Math.round(cents / 100)}.00`);
-    allow.add(`${Math.floor(cents / 100)}.00`);
+  const visit = (value: unknown, key: string): void => {
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) return;
+      allow.add(String(value));
+      if (key.endsWith("Cents")) {
+        // Integer cents: admit the dollar forms so a $-cell / a rounded dollar figure passes.
+        addMoneyForms(allow, value);
+      } else {
+        // A plain quantity (gpm, kW, a count): Excel rounds an integer-format cell, so the rounded
+        // display value must also pass.
+        allow.add(String(Math.round(value)));
+        // A FRACTION in (-1, 1) is a share (e.g. sharePct 0.7234, uncoveredShare): the chat states it as
+        // a percent, so a sheet/report may too. Admit its percent forms ("72", "72.34") so an honest
+        // percent is not flagged. Derived from a real snapshot value, so fail-closed still holds.
+        if (value !== 0 && Math.abs(value) < 1) {
+          const pct = value * 100;
+          allow.add(String(Math.round(pct)));
+          allow.add(canon(pct.toFixed(2)));
+        }
+      }
+      return;
+    }
+    if (typeof value === "string") {
+      for (const tok of numberTokens(value)) allow.add(canon(tok));
+      return;
+    }
+    if (Array.isArray(value)) {
+      // Array elements inherit the PARENT key, so a `...Cents` array (if one ever appears) keeps its
+      // money interpretation; an index is not a meaningful key.
+      for (const item of value) visit(item, key);
+      return;
+    }
+    if (value !== null && typeof value === "object") {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) visit(v, k);
+      return;
+    }
+    // null / boolean / undefined: nothing to admit.
   };
-  const addStringNumbers = (s: string | null): void => {
-    if (s === null) return;
-    for (const tok of numberTokens(s)) allow.add(canon(tok));
-  };
 
-  allow.add(String(snapshot.meterCount));
-  addStringNumbers(snapshot.farm.name);
-  // The coverage date (e.g. "2026-06-20") is almost always printed as an "as of" line; without this
-  // its year/month/day tokens read as undeclared numbers and reject every dated report (fail-closed).
-  addStringNumbers(snapshot.coverageAsOf);
-
-  if (snapshot.totals.latestMonthSpendCents !== null) addMoney(snapshot.totals.latestMonthSpendCents);
-  addMoney(snapshot.totals.rateSwitchSavingsCents);
-  // Coverage counts the Summary tab prints (Phase 3; additive structural integers).
-  allow.add(String(snapshot.totals.reconciledCount));
-  allow.add(String(snapshot.totals.needsReviewCount));
-  allow.add(String(snapshot.totals.noBillCount));
-
-  for (const o of snapshot.opportunities) {
-    allow.add(String(o.rank));
-    addMoney(o.savingsCents);
-    addStringNumbers(o.meterName);
-    addStringNumbers(o.fromRate);
-    addStringNumbers(o.toRate);
-  }
-
-  // Per-meter LITERAL values a generalized workbook (Phase 3) can print: the meter name + rate digits
-  // and the coverage-gated money. This only admits values that genuinely exist in the snapshot; a
-  // DERIVED number (a sum/subtotal the model computes) is NOT admitted here — it must be proven via a
-  // derived manifest entry (verifyWorkbookArtifact) and is folded in only after the verifier
-  // recomputes it, so the gate stays fail-closed.
-  for (const m of snapshot.meters) {
-    addStringNumbers(m.name);
-    addStringNumbers(m.rate);
-    if (m.costCents !== null) addMoney(m.costCents);
-    if (m.demandCents !== null) addMoney(m.demandCents);
-  }
+  visit(snapshot, "");
 
   // Page numbers are common and benign; "1" is already present as rank 1, but allow it explicitly so a
   // single-page footer "1" never trips the scan on a farm with no opportunities.
@@ -215,11 +232,14 @@ export function verifyArtifact(
   return { ok: true };
 }
 
-/** The three canonical allowlist forms for a cents value (cent-precise + rounded + floored whole
- *  dollars), matching `buildAllowlist`'s `addMoney`. Used to fold a VERIFIED derived total into the
- *  reverse allowlist so a proven subtotal is not flagged. */
+/** All the canonical allowlist forms for a cents value, IDENTICAL to `buildAllowlist`'s `addMoneyForms`
+ *  (cent-precise + rounded/floored whole dollars + their ".00" forms). Reuses the same helper so the
+ *  widen path and the base allowlist can never drift (a proven derived total printed as "$61,418.00" is
+ *  admitted just like a base value). Used to fold a VERIFIED derived total into the reverse allowlist. */
 function moneyForms(cents: number): string[] {
-  return [canon(formatCentsUsd(cents)), String(Math.round(cents / 100)), String(Math.floor(cents / 100))];
+  const forms = new Set<string>();
+  addMoneyForms(forms, cents);
+  return [...forms];
 }
 
 /** Validate an unknown workbook manifest into well-formed entries, or null (fail closed). A literal

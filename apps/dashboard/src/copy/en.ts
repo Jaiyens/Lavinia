@@ -1312,6 +1312,42 @@ export const en = {
       },
       // Accessible label prefix for an action chip (the chip re-applies the same view).
       navigatedAria: (label: string): string => `${label}. Tap to return to this view.`,
+      // Single-meter inline card (B2): a light, at-a-glance card shown right in the chat when the
+      // grower asks to see one meter, so they never leave the conversation. Plain operator English,
+      // no kW/interval jargon on the labels, no exclamation marks, no em dashes. Money already arrives
+      // as whole-dollar strings on the meter detail; null facts read "Not on file" like the drawer.
+      meterCard: {
+        // The rate line under the meter name; a legacy rate is flagged plainly (a legacy rate may be
+        // costing the grower money).
+        rateLabel: "Rate",
+        legacyTag: "Legacy",
+        notOnFile: "Not on file",
+        // Identity / inventory rows.
+        accountLabel: "Account",
+        entityLabel: "Company",
+        ranchLabel: "Ranch",
+        cropLabel: "Crop",
+        statusLabel: "Status",
+        gpmLabel: "Flow",
+        gpmValue: (gpm: string): string => `${gpm} gpm`,
+        // Latest bill block.
+        latestBillLabel: "Latest bill",
+        billRange: (start: string, close: string): string => `${start} to ${close}`,
+        energyLabel: "Energy",
+        demandLabel: "Demand charge",
+        totalLabel: "Total",
+        // Cost provenance, said plainly. An estimate is never a posted bill; NONE is honest not-on-file.
+        estimatedLabel: "Estimated monthly cost",
+        estimatedTag: "Estimated",
+        noBillOnFile: "Not on file",
+        // Blocks (fields) this pump serves.
+        blocksLabel: "Fields served",
+        blockAcres: (name: string, acres: string): string => `${name} (${acres} ac)`,
+        // Solar summary (only for a solar meter); the phrases arrive pre-composed in plain words.
+        solarLabel: "Solar",
+        // The card's accessible heading prefix.
+        cardAria: (name: string): string => `${name} details`,
+      },
       // Spreadsheet export (Epic 8). The meter-table workbook carries EVERY meter on the farm,
       // never a sample. Plain operator words only, no kW/interval jargon, no exclamation marks,
       // no em dashes. The footer states coverage so a withheld figure reads as a coverage label,

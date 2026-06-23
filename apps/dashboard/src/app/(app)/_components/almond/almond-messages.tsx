@@ -16,6 +16,8 @@ import {
   type AlmondNavChip,
 } from "./almond-result";
 import { AlmondDownloadCard, type AlmondReportCard } from "./almond-download-card";
+import { AlmondMeterCard } from "./almond-meter-card";
+import type { AlmondMeterCard as AlmondMeterCardData } from "./almond-meter-card";
 import type { AlmondUsageLimit } from "./almond-launcher-provider";
 import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 
@@ -69,6 +71,8 @@ type Props = {
   navByMessage: Map<string, AlmondNavChip[]>;
   /** Download cards per assistant message id (Story 8.5). */
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** Light inline meter cards per assistant message id (B2). */
+  metersByMessage: Map<string, AlmondMeterCardData[]>;
   /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
   decidedByMessage: Map<string, AutoHeadlineKey>;
   /** Re-apply a chip's navigation (the chip is a link back to that view). */
@@ -93,6 +97,7 @@ export function AlmondMessages({
   starters,
   navByMessage,
   reportsByMessage,
+  metersByMessage,
   decidedByMessage,
   onReplay,
   onStarter,
@@ -177,6 +182,7 @@ export function AlmondMessages({
         }
         const chips = navByMessage.get(m.id) ?? [];
         const reports = reportsByMessage.get(m.id) ?? [];
+        const meterCards = metersByMessage.get(m.id) ?? [];
         const decided = decidedByMessage.get(m.id);
         const looking = isLookingUp(m);
         // After the answer text has streamed, the model may still be BUILDING something slow (a
@@ -192,8 +198,15 @@ export function AlmondMessages({
           toolRunning(m) &&
           text.length > 0;
         // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
-        // no action chip, no download card).
-        if (!text && !looking && !hasToolPart(m) && chips.length === 0 && reports.length === 0)
+        // no action chip, no download card, no meter card).
+        if (
+          !text &&
+          !looking &&
+          !hasToolPart(m) &&
+          chips.length === 0 &&
+          reports.length === 0 &&
+          meterCards.length === 0
+        )
           return null;
         return (
           <AssistantMessage
@@ -204,6 +217,7 @@ export function AlmondMessages({
             working={working}
             chips={chips}
             reports={reports}
+            meterCards={meterCards}
             decided={decided}
             onReplay={onReplay}
             onRegenerate={onRetry}
@@ -315,6 +329,7 @@ function AssistantMessage({
   working,
   chips,
   reports,
+  meterCards,
   decided,
   onReplay,
   onRegenerate,
@@ -326,6 +341,7 @@ function AssistantMessage({
   working: boolean;
   chips: AlmondNavChip[];
   reports: AlmondReportCard[];
+  meterCards: AlmondMeterCardData[];
   decided?: AutoHeadlineKey;
   onReplay: (chip: AlmondNavChip) => void;
   onRegenerate: () => void;
@@ -350,6 +366,11 @@ function AssistantMessage({
           {/* The slow "still working" status sits AT the answer (inline under its text), never as a
               floating second thinking node below the turn. Only one indicator shows at a time. */}
           {working && <WorkingLine />}
+          {/* Single meters Almond pulled into the chat this turn, as light inline cards (B2). Above
+              the action chips so the meter is read first, then the tap-to-open chip beside it. */}
+          {meterCards.map((card, i) => (
+            <AlmondMeterCard key={`${card.meter.id}-${i}`} card={card} />
+          ))}
           {/* What Almond just did on the screen, and a tap back to it (Story 7.5). */}
           <AlmondActionChips chips={chips} onReplay={onReplay} />
           {/* Spreadsheets / PDFs Almond made this turn, as download cards (Story 8.5 / 9.3). */}
