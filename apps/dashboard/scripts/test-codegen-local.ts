@@ -13,10 +13,11 @@ import { join } from "node:path";
 // Load .env.local verbatim (the Neon URL has &/?; read the whole RHS as-is) BEFORE importing db.
 for (const line of readFileSync(join(process.cwd(), ".env.local"), "utf8").split("\n")) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-  if (!m) continue;
-  let v = m[2];
+  if (!m || !m[1]) continue;
+  const key = m[1];
+  let v = m[2] ?? "";
   if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-  if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+  if (process.env[key] === undefined) process.env[key] = v;
 }
 // Turn on the local runtime for this run.
 process.env.ALMOND_CODEGEN_LOCAL = "true";
