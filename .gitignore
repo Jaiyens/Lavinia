@@ -46,3 +46,7 @@ _bmad-output/
 
 # overnight orchestration scaffolding (not product code)
 .night/
+
+# Batth data-ingestion run (autonomous): outputs + quarantined raw dupes (large/derived, not product code)
+batth-ingestion/
+BatthData/_dupes/
