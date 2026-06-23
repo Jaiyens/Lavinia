@@ -11,16 +11,40 @@
 //
 // Run: DATABASE_URL=...terra_batth npx tsx scripts/reconcile-batth.ts
 
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { normalizeAccountNumber } from "@/lib/normalize/sa-id";
+import { normalizeAccountNumber, canonSaId } from "@/lib/normalize/sa-id";
+
+const BILLS_DIR = "/Users/panda/Lavinia/batth-ingestion/extracted/bills";
 
 export type ReconcileResult = {
   findingsOnUnmappedDeleted: number;
   unreliableOnNemDeleted: number;
+  needsReviewDemoted: number;
   accountsBefore: number;
   accountsAfter: number;
   accountsMerged: number;
 };
+
+/** SAs with ANY needs_review billing period across the extracts. Even one unreconciled period
+ *  (e.g. a vision-read demand line that did not close to the cent) holds the whole meter at
+ *  REVIEW — it must never display as actual PG&E cost, even if a later cycle reconciled. */
+function needsReviewSAs(): Set<string> {
+  const out = new Set<string>();
+  for (const f of readdirSync(BILLS_DIR).filter((n) => n.endsWith(".json"))) {
+    const j = JSON.parse(readFileSync(join(BILLS_DIR, f), "utf8")) as {
+      bills?: Array<{ saId?: string; periods?: Array<{ coverageState?: string }> }>;
+      needsReview?: Array<{ saId?: string }>;
+    };
+    for (const b of j.bills ?? []) {
+      const bad = (b.periods ?? []).some((p) => (p.coverageState ?? "reconciled") !== "reconciled");
+      if (bad && b.saId) out.add(canonSaId(b.saId));
+    }
+    for (const p of j.needsReview ?? []) if (p.saId) out.add(canonSaId(p.saId));
+  }
+  return out;
+}
 
 export async function reconcileFarm(prisma: PrismaClient, farmId: string): Promise<ReconcileResult> {
   // ---- 1 + 2: finding suppression ----
@@ -60,6 +84,22 @@ export async function reconcileFarm(prisma: PrismaClient, farmId: string): Promi
   }
   if (onUnmapped.length) await prisma.recommendation.deleteMany({ where: { id: { in: onUnmapped } } });
   if (unreliableOnNem.length) await prisma.recommendation.deleteMany({ where: { id: { in: unreliableOnNem } } });
+
+  // ---- 2.5: hold any meter with an unreconciled bill period at REVIEW ----
+  // persistExtraction promotes a meter to "reconciled" when its LATEST extract reconciles, so a
+  // meter flagged in one statement (the 7 demand SAs in 4699664587's Dec-Mar vision read) but
+  // clean in another (its Apr-Jun text bill) ends up reconciled. For the cost display gate that
+  // is too loose: BILLED must be provably clean, so demote every needs_review SA back to REVIEW.
+  const reviewSet = needsReviewSAs();
+  const reviewPumps = (
+    await prisma.pump.findMany({ where: { farmId, serviceId: { not: null } }, select: { id: true, serviceId: true } })
+  ).filter((p) => p.serviceId && reviewSet.has(canonSaId(p.serviceId)));
+  if (reviewPumps.length) {
+    await prisma.pump.updateMany({
+      where: { id: { in: reviewPumps.map((p) => p.id) } },
+      data: { coverageState: "needs_review" },
+    });
+  }
 
   // ---- 3: account merge ----
   const accounts = await prisma.account.findMany({
@@ -101,6 +141,7 @@ export async function reconcileFarm(prisma: PrismaClient, farmId: string): Promi
   return {
     findingsOnUnmappedDeleted: onUnmapped.length,
     unreliableOnNemDeleted: unreliableOnNem.length,
+    needsReviewDemoted: reviewPumps.length,
     accountsBefore,
     accountsAfter,
     accountsMerged,
