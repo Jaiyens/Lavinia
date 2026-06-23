@@ -24,6 +24,7 @@ export function FindingCard({
   finding,
   showTrace = true,
   readOnly = false,
+  mode = "rail",
 }: {
   finding: FindingView;
   showTrace?: boolean;
@@ -31,6 +32,10 @@ export function FindingCard({
   // the one-tap response buttons would fail auth. readOnly hides them: a prospect reads the
   // money story, they do not act.
   readOnly?: boolean;
+  // "rail" (default): the Energy findings feed - primary "Add to to-do" parks it, secondary
+  // "Dismiss" clears it. "todo": the To-do page - primary "Mark done" resolves it, secondary
+  // "Remove" sends it back to dismissed.
+  mode?: "rail" | "todo";
 }) {
   const [, setMeter] = useQueryState(SURFACE.meter);
   const [isPending, startTransition] = useTransition();
@@ -135,26 +140,34 @@ export function FindingCard({
         </button>
       )}
 
-      {!readOnly && (
-        <div className="mt-3 flex items-center gap-2 border-t border-outline-variant pt-3">
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => respond("done")}
-            className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] bg-primary px-3 type-body-md font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60"
-          >
-            {isPending && pendingResponse === "done" ? t.saving : t.respondDone}
-          </button>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => respond("dismissed")}
-            className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] px-3 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-60"
-          >
-            {isPending && pendingResponse === "dismissed" ? t.saving : t.respondDismiss}
-          </button>
-        </div>
-      )}
+      {!readOnly &&
+        (() => {
+          // The primary action differs by surface: on the rail it PARKS the finding ("todo"); on the
+          // To-do page it RESOLVES it ("done"). The secondary is always "dismissed" (Dismiss / Remove).
+          const primaryResponse: FindingResponse = mode === "todo" ? "done" : "todo";
+          const primaryLabel = mode === "todo" ? en.todos.markDone : t.respondDone;
+          const secondaryLabel = mode === "todo" ? en.todos.remove : t.respondDismiss;
+          return (
+            <div className="mt-3 flex items-center gap-2 border-t border-outline-variant pt-3">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => respond(primaryResponse)}
+                className="press min-h-[44px] flex-1 whitespace-nowrap rounded-[var(--radius-control)] bg-primary px-2.5 type-body-md font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60"
+              >
+                {isPending && pendingResponse === primaryResponse ? t.saving : primaryLabel}
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => respond("dismissed")}
+                className="press min-h-[44px] flex-1 whitespace-nowrap rounded-[var(--radius-control)] px-2.5 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-60"
+              >
+                {isPending && pendingResponse === "dismissed" ? t.saving : secondaryLabel}
+              </button>
+            </div>
+          );
+        })()}
       {!readOnly && failed && (
         <p role="alert" className="type-caption mt-2 text-alert">
           {t.respondError}

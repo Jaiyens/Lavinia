@@ -95,6 +95,10 @@ export type MeterView = {
   latitude: number | null;
   longitude: number | null;
   gpm: number | null;
+  /** Pump motor size in horsepower; null when not on file. Used to derive a representative
+   *  demand ceiling for the intra-day load curve when no billed peak kW is on file. Always set
+   *  by loadMetersForFarm; optional so existing MeterView fixtures (tests) need no change. */
+  horsepower?: number | null;
   isSolar: boolean;
   nemType: string | null;
   /** NEM annual settle month (1-12); null when not on file. */
@@ -219,6 +223,7 @@ export async function loadMetersForFarm(
     latitude: pump.latitude,
     longitude: pump.longitude,
     gpm: pump.gpm,
+    horsepower: pump.horsepower,
     isSolar: pump.isSolar,
     nemType: pump.nemType,
     trueUpMonth: pump.trueUpMonth,

@@ -3,7 +3,7 @@
 // emits Recommendations in this exact shape so the farmer learns the OS once.
 
 export type Severity = "info" | "watch" | "act";
-export type RecStatus = "pending" | "done" | "dismissed" | "overridden";
+export type RecStatus = "pending" | "todo" | "done" | "dismissed" | "overridden";
 export type PersonRole = "owner" | "manager" | "irrigator";
 export type Language = "en" | "es";
 export type ConnectionType = "pge_smd" | "cimis" | "pesticide" | "payroll";

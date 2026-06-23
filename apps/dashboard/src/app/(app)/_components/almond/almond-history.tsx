@@ -117,17 +117,28 @@ export function AlmondHistoryList({
   );
 }
 
-/** The page's persistent history rail (desktop only). Mirrors a ChatGPT/Claude-style left column. */
-export function AlmondHistorySidebar() {
+/** The page's saved-chats side panel (a ChatGPT/Claude-style left column). Mounted when the user opens
+ *  it via the "Saved chats" button; `onClose` renders a close control in its header. */
+export function AlmondHistorySidebar({ onClose }: { onClose?: () => void } = {}) {
   const { historyEnabled } = useAlmondChat();
   if (!historyEnabled) return null;
   return (
     <aside
       aria-label={t.historyAria}
-      className="hidden w-64 shrink-0 flex-col border-r border-outline-variant bg-surface-container-lowest/60 lg:flex lg:sticky lg:top-0 lg:h-[calc(100dvh-4rem)] lg:self-start"
+      className="sticky top-0 z-10 flex h-[calc(100dvh-4rem)] w-64 shrink-0 flex-col self-start border-r border-outline-variant bg-surface-container-lowest"
     >
-      <div className="p-3">
+      <div className="flex items-center gap-2 p-3">
         <AlmondNewChatButton withLabel />
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.closeHistory}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-tint"
+          >
+            <X size={18} aria-hidden />
+          </button>
+        )}
       </div>
       <p className="eyebrow px-4 pb-1 text-on-surface-variant">{t.chatsHeading}</p>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
@@ -179,8 +190,17 @@ export function AlmondHistorySheet({
   );
 }
 
-/** A compact "History" toggle button (icon), for surfaces that open the sheet on demand. */
-export function AlmondHistoryButton({ onClick, className }: { onClick: () => void; className?: string }) {
+/** A "Saved chats" toggle button that opens the history sheet on demand. Icon-only by default;
+ *  pass `label` to render a pill button with text (the Almond page uses this instead of a rail). */
+export function AlmondHistoryButton({
+  onClick,
+  className,
+  label,
+}: {
+  onClick: () => void;
+  className?: string;
+  label?: string;
+}) {
   const { historyEnabled } = useAlmondChat();
   if (!historyEnabled) return null;
   return (
@@ -189,11 +209,15 @@ export function AlmondHistoryButton({ onClick, className }: { onClick: () => voi
       onClick={onClick}
       aria-label={t.historyAria}
       className={cn(
-        "grid h-9 w-9 place-items-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-tint hover:text-primary",
+        "rounded-[var(--radius-control)] text-on-surface-variant transition-colors",
+        label
+          ? "inline-flex items-center gap-2 border border-outline-variant bg-white/70 px-3 py-2 type-body-sm font-medium hover:border-primary hover:text-primary"
+          : "grid h-9 w-9 place-items-center hover:bg-tint hover:text-primary",
         className,
       )}
     >
-      <History size={18} aria-hidden />
+      <History size={label ? 16 : 18} aria-hidden className="shrink-0" />
+      {label && <span>{label}</span>}
     </button>
   );
 }

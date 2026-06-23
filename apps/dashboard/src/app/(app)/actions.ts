@@ -91,8 +91,14 @@ export async function dismissMemberWelcomeAction(): Promise<void> {
   });
 }
 
-/** The one-tap responses a finding card offers in v1 (records, never executes). */
-export type FindingResponse = "done" | "dismissed";
+/** The one-tap responses a finding card offers (records, never executes). "todo" parks a pending
+ *  finding on the To-do list; "done"/"dismissed" resolve it (from the rail or the To-do page). */
+export type FindingResponse = "todo" | "done" | "dismissed";
+
+// A finding is still "active" (movable by a response) while pending or parked on the To-do list;
+// "done"/"dismissed"/"overridden" are terminal. Every transition (pending->todo, pending->dismissed,
+// todo->done, todo->dismissed) matches a row in one of these states, so the gate stays idempotent.
+const ACTIVE_STATUSES = ["pending", "todo"] as const;
 
 /**
  * Record the grower's one-tap response to a finding (Story 3.1, AC2). Verifies the
@@ -112,7 +118,7 @@ export async function resolveFinding(
   }
   // Runtime guards: both values cross the network, so neither is trusted. A malformed
   // payload returns the calm error instead of throwing into Prisma.
-  if (typeof id !== "string" || (response !== "done" && response !== "dismissed")) {
+  if (typeof id !== "string" || (response !== "todo" && response !== "done" && response !== "dismissed")) {
     return { ok: false, error: en.shell.findings.respondError };
   }
   // Membership-scope on the same session: resolve only a farm THIS operator is a member of (the
@@ -135,21 +141,22 @@ export async function resolveFinding(
   let resultSnapshot: Prisma.InputJsonValue | undefined;
   if (response === "done") {
     const row = await prisma.recommendation.findFirst({
-      where: { id, farmId: resolved.farm.id, status: "pending" },
+      where: { id, farmId: resolved.farm.id, status: { in: [...ACTIVE_STATUSES] } },
       select: { impactUsd: true },
     });
     if (row !== null) {
       resultSnapshot = acceptanceResult({ impactUsd: row.impactUsd }) as Prisma.InputJsonValue;
     }
   }
-  // Atomic: the farm-ownership and still-pending gates live in the WHERE itself, so two
-  // card instances of the same finding (rail + drawer, or two tabs) cannot both pass a
-  // separate check and overwrite each other's response - the first write wins.
+  // Parking a finding on the To-do list ("todo") is not a resolution, so it does not stamp
+  // resolvedAt; "done"/"dismissed" do. The atomic gates (farm ownership + still-active status)
+  // live in the WHERE, so two card instances cannot both pass a separate check and overwrite each
+  // other - the first write wins, and a second click on an already-resolved finding is a no-op.
   await prisma.recommendation.updateMany({
-    where: { id, farmId: resolved.farm.id, status: "pending" },
+    where: { id, farmId: resolved.farm.id, status: { in: [...ACTIVE_STATUSES] } },
     data: {
       status: response,
-      resolvedAt: new Date(),
+      resolvedAt: response === "todo" ? null : new Date(),
       ...(resultSnapshot !== undefined ? { result: resultSnapshot } : {}),
     },
   });
