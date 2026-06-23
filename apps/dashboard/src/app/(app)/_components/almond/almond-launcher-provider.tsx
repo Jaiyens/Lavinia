@@ -13,7 +13,11 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
-import type { AlmondReportData, AlmondMeterData } from "@/lib/almond/responder";
+import type {
+  AlmondReportData,
+  AlmondMeterData,
+  AlmondGenerationData,
+} from "@/lib/almond/responder";
 import {
   AUTO_SENTINEL,
   isAllowedModel,
