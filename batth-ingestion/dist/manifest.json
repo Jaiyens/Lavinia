@@ -1,0 +1,135 @@
+{
+ "dataset": "batth-pilot-ingestible",
+ "generated": "2026-06-22",
+ "inputs": {
+  "masterList": {
+   "file": "Batth Farms 2025 Master Meter List  (1).xlsx",
+   "sha256": "17b47646669c36272cefd8f632a787c04f60bcfa3b78fde764dc00a820338bc9",
+   "rows": 183
+  },
+  "intervalCsvs": [
+   {
+    "file": "Historical_20250622-20250630.csv",
+    "bytes": 23684015,
+    "sha256": "ccd1d0c7ad68a59a83104264325a5fd293137c460bef729db08a01f9b5065f4c"
+   },
+   {
+    "file": "Historical_20250701-20250731.csv",
+    "bytes": 81606611,
+    "sha256": "0cb1da3ced0f341a442b3d7b7e0446da5eb5bec56c25340b3057c134be5e75d0"
+   },
+   {
+    "file": "Historical_20250801-20250831.csv",
+    "bytes": 81371639,
+    "sha256": "92b1ae0bc0690b5a056d7d29cee4aed806d85d9f2bcb31362b4c53412898ae72"
+   },
+   {
+    "file": "Historical_20250901-20250930.csv",
+    "bytes": 78608765,
+    "sha256": "77a1b9424ef036937d87ae7683a7db5b58a52ae8d5d9502d1082c9a5583d98b1"
+   },
+   {
+    "file": "Historical_20251001-20251031.csv",
+    "bytes": 81206887,
+    "sha256": "14743c6525578972071782055051a9d7ab371eaad7b6cef06db1bed6edb4af4c"
+   },
+   {
+    "file": "Historical_20251101-20251130.csv",
+    "bytes": 78922058,
+    "sha256": "3062ce670b6345511fd2af1d3e6d44add2a659be9911358c2efd63455ee1327f"
+   },
+   {
+    "file": "Historical_20251201-20251231.csv",
+    "bytes": 81606804,
+    "sha256": "d0f6a3f72d8a7c38736d7d46c24282731748db6c3c0f46c886a7997f2c2a7b10"
+   },
+   {
+    "file": "Historical_20260101-20260131.csv",
+    "bytes": 81834534,
+    "sha256": "30c4b6c62c6ce15834789c565818fe76fb88219dde669184556a414b3c1ea848"
+   },
+   {
+    "file": "Historical_20260201-20260228.csv",
+    "bytes": 73920822,
+    "sha256": "64d1828928eea3618db05874ff225b5c8c380692fbb0541ca34d631830c470d8"
+   },
+   {
+    "file": "Historical_20260301-20260331.csv",
+    "bytes": 82513489,
+    "sha256": "14556e4bea95c717fc29d609139b04bc0ff45f8344581767185207b9487b439a"
+   },
+   {
+    "file": "Historical_20260501-20260531.csv",
+    "bytes": 83235710,
+    "sha256": "d76161189598b9258a31dd235e0c26e02b7c7a64370c6e16fda6bd3e5ee3b13c"
+   },
+   {
+    "file": "Historical_20260601-20260620.csv",
+    "bytes": 53469034,
+    "sha256": "1afe55194e3ec05b91992df3ebba072bbe2ab3bffea5c2b2ff9d1a0b4d4a55fd"
+   }
+  ],
+  "billPdfs": [
+   {
+    "file": "0f560886-86fa-4a40-90af-e4fa76c4862a.pdf",
+    "bytes": 339972,
+    "sha256": "5463bfa2fc2704ad798c2abd7f79402d4f079fbada4e26c79ac43145d3bc442d"
+   },
+   {
+    "file": "0f93ae50-a807-473e-99b6-7d912b2965e2.pdf",
+    "bytes": 414514,
+    "sha256": "c3b8113c3ed4c8542f90b2655d4db610da25402b53323e3f28153a7171a8c71b"
+   },
+   {
+    "file": "2460f4cb-515e-4379-97c5-8e484192e932.pdf",
+    "bytes": 500104,
+    "sha256": "126f11e12ecfd2c158a4ee3788a5e692f50710d818815374369bba541c1b7f55"
+   },
+   {
+    "file": "75e45ed9-3bf7-41ca-9d8b-af6f425c1c35.pdf",
+    "bytes": 1419922,
+    "sha256": "3cffeb67b96a9afd003dc3ffff0ff0ece64e47f605196daf2c3d33a86821b529"
+   },
+   {
+    "file": "Batth1PGEpdf.pdf",
+    "bytes": 16888442,
+    "sha256": "e4052f846ca3e6fdc549301f0dbeb36cbbdc06d88191ddf232ff954d22ddcc79"
+   },
+   {
+    "file": "f13a6272-91c3-4ff3-aa6f-0abaf57452e6.pdf",
+    "bytes": 331441,
+    "sha256": "fce2886308e705ea8f2d83fbaf651582f6c83da4a2a938ec5fedeec6db10bfb8"
+   },
+   {
+    "file": "f770d548-08b0-44bc-8e78-dbdb9046e890.pdf",
+    "bytes": 2194253,
+    "sha256": "874201345cf82847bd2edbf23f51c8f96be49e3b7b654421579e9ea308b3ece5"
+   }
+  ]
+ },
+ "derived": {
+  "interval_aggregates": {
+   "file": "dist/interval_aggregates.json",
+   "rows": 2433
+  },
+  "bills": {
+   "dir": "extracted/bills/",
+   "files": [
+    "0730240888-0-may.json",
+    "0730240888-0-trueup-jun.json",
+    "1909940814-3.json",
+    "3619074535-0.json",
+    "4699664587.json",
+    "6431815493-3.json",
+    "f770d548-4699664587-jun.json"
+   ]
+  },
+  "ingestible": {
+   "file": "dist/batth_ingestible.json",
+   "meters": 183,
+   "offSpine": 38
+  }
+ },
+ "canonicalCsvSymlinks": "dist/canonical/ (12 CSVs, ~841 MB, not copied)",
+ "intervalRowsTotal": 6753579
+}
