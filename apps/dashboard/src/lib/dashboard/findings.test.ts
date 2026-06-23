@@ -96,6 +96,59 @@ describe("toFindingViews", () => {
     expect(others.find((v) => v.id === "no-target")?.rateSwitchTo).toBeNull();
   });
 
+  it("reads the switch source/target from params.toSchedule/fromSchedule (the engine's real keys)", () => {
+    // The engine writes the target to params.toSchedule, not params.to (the prior bug read
+    // only .to and left rateSwitchTo null for every real finding). Prove the canonical keys
+    // are extracted, and that .to/.from still work as the legacy fallback.
+    const [grounded] = toFindingViews(
+      [
+        row({
+          id: "schedule-keys",
+          action: {
+            kind: "switch_rate",
+            label: "Move it to AG-C",
+            params: { pumpId: "pump-1", fromSchedule: "AG-B", toSchedule: "AG-C" },
+          },
+        }),
+      ],
+      METERS,
+    );
+    expect(grounded?.rateSwitchTo).toBe("AG-C");
+    expect(grounded?.rateSwitchFrom).toBe("AG-B");
+
+    const [legacy] = toFindingViews(
+      [
+        row({
+          id: "legacy-keys",
+          action: {
+            kind: "switch_rate",
+            label: "Move it to AG-A",
+            params: { pumpId: "pump-1", from: "AG-C", to: "AG-A" },
+          },
+        }),
+      ],
+      METERS,
+    );
+    expect(legacy?.rateSwitchTo).toBe("AG-A");
+    expect(legacy?.rateSwitchFrom).toBe("AG-C");
+
+    // toSchedule wins over the legacy .to when both are present.
+    const [both] = toFindingViews(
+      [
+        row({
+          id: "both-keys",
+          action: {
+            kind: "switch_rate",
+            label: "Move it",
+            params: { pumpId: "pump-1", to: "AG-OLD", toSchedule: "AG-C" },
+          },
+        }),
+      ],
+      METERS,
+    );
+    expect(both?.rateSwitchTo).toBe("AG-C");
+  });
+
   it("tolerates fleet-level and malformed actions: meterId/label null, never a throw", () => {
     const views = toFindingViews(
       [

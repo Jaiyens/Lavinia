@@ -11,23 +11,27 @@ import {
 } from "ai";
 import { createGatewayModel, hasGatewayKey } from "@/lib/ai/gateway";
 import { en } from "@/copy/en";
+import { formatUsdWhole } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { LENS_KEYS } from "@/lib/dashboard/surface";
+import { analyzeFarm, type EnrichedMeter } from "./analysis";
 import {
+  rankMeters,
   rateSchedulesByFrequency,
   summarizeFarmOverview,
   summarizeFindings,
-  summarizeMeters,
   summarizeReconciliation,
   UNKNOWN_RATE,
+  type RankMetersOptions,
 } from "./shape";
 import {
   resolveNavigate,
   type NavigateAction,
   type NavigateInput,
   type NavigateResult,
+  type NavState,
 } from "./skills/navigate";
 import { describeNavigation } from "./skills/describe-navigation";
 import {
@@ -111,8 +115,13 @@ function writeNavigatePart(
   writer: UIMessageStreamWriter,
   action: NavigateAction,
   meterName?: string,
+  state?: NavState,
 ): void {
-  const label = describeNavigation(action, meterName);
+  // The label is composed FROM the resolver's post-action state (the verify-before-narrate seam):
+  // a clear says "Showing all N", a filter says its real count, an empty filter says "no meters
+  // match" - never a count derived from the request. With no state (should not happen on a clean
+  // resolve) it falls back to the request-derived copy.
+  const label = describeNavigation(action, meterName, state);
   writer.write({
     type: NAVIGATE_PART_TYPE,
     id: NAVIGATE_PART_ID,
@@ -424,7 +433,12 @@ export function createModelResponder(
                   const key = JSON.stringify(tr.output.action);
                   if (!writtenNav.has(key)) {
                     writtenNav.add(key);
-                    writeNavigatePart(writer, tr.output.action, tr.output.meterName);
+                    writeNavigatePart(
+                      writer,
+                      tr.output.action,
+                      tr.output.meterName,
+                      tr.output.state,
+                    );
                   }
                 }
                 // A clean export persists to the owner's Reports (8.6), then lifts its bytes onto the
@@ -616,15 +630,15 @@ export async function composeStubAnswer(
   }
 
   if (intent === "meters") {
-    const summary = summarizeMeters(meters, {});
-    const withBill = summary.meters
-      .filter((m) => m.latestBill !== null)
-      .sort((a, b) => (b.latestBill?.cents ?? 0) - (a.latestBill?.cents ?? 0));
-    const top = withBill[0];
-    if (!top || !top.latestBill) {
-      return `You have ${summary.total} meters. I do not have a posted bill for any of them yet.`;
+    // The costliest meter, ranked through the SAME pure helper the queryMeters tool uses, so the
+    // offline answer can never disagree with the live model's ranking. Cost = the latest reconciled
+    // bill (analyzeFarm), so a meter with no posted bill ranks last (null) and never wins.
+    const analysis = analyzeFarm(meters, await loadFindings(deps.prisma, deps.farmId));
+    const top = rankMeters(analysis, { sortBy: "cost", order: "desc", limit: 1 })[0];
+    if (!top || top.thisCycleCents === null) {
+      return `You have ${analysis.totals.meterCount} meters. I do not have a posted bill for any of them yet.`;
     }
-    return `Of your ${summary.total} meters, the costliest on its latest bill is ${top.name} at ${top.latestBill.usd}.`;
+    return `Of your ${analysis.totals.meterCount} meters, the costliest on its latest bill is ${top.name} at ${formatUsdWhole(top.thisCycleCents)}.`;
   }
 
   // overview
@@ -645,12 +659,35 @@ export async function composeStubAnswer(
 // enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
 // (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
 
+<<<<<<< HEAD
 export const NAV_VERB = /\b(open|show|see|view|go to)\b/;
+=======
+const NAV_VERB = /\b(open|show|see|view|go to|clear|reset)\b/;
+// A "show the whole farm again" / "clear the filter" / "show all meters" phrase: the clear-filters
+// intent (T5). Matched here so the offline stub drives the SAME clear action the live model would,
+// proving the bug fix (the table returns to every meter) with zero external calls.
+const CLEAR_FILTER = /\b(whole farm|all meters|all the meters|every meter|everything|no filter)\b/;
+const CLEAR_VERB = /\b(clear|reset|remove)\b.*\b(filter|filters)\b/;
+
+// "open the pump that costs me the most" (T2): an OPEN verb pointed at a SUPERLATIVE rather than a
+// named meter. The model would call queryMeters (limit 1) then navigate; the offline stub does the
+// same two-step (rank, then open the winner) so the same behavior is proven with zero external calls.
+// An open/show verb...
+const OPEN_VERB = /\b(open|show|see|view|go to|jump to|take me to|pull up)\b/;
+// ...pointed at a "most/least <superlative>" target (the priciest pump, the biggest bill, the most
+// expensive meter), with no concrete meter name to look up.
+const SUPERLATIVE =
+  /\b(most expensive|priciest|costliest|biggest|highest|largest|cheapest|smallest|lowest|least expensive)\b|costs?\s+(me\s+)?the\s+most|costs?\s+(me\s+)?the\s+least/;
+const RANK_FIELD_DEMAND = /\bdemand\b/;
+const RANK_FIELD_SAVINGS = /\b(save|saving|savings)\b/;
+const RANK_ORDER_ASC = /\b(cheapest|smallest|lowest|least expensive)\b|costs?\s+(me\s+)?the\s+least/;
+>>>>>>> night/integration
 
 /** Whether the latest user turn is a request to drive the screen (vs. a data question). A lens word
  *  ("map"/"table"/...) also counts, so "switch to the map" is caught without `switch` being a verb. */
 export function isNavigationTurn(text: string): boolean {
   if (NAV_VERB.test(text)) return true;
+  if (CLEAR_FILTER.test(text) || CLEAR_VERB.test(text)) return true;
   return LENS_KEYS.some((k) => new RegExp(`\\b${k}\\b`).test(text));
 }
 
@@ -660,11 +697,56 @@ export function isNavigationTurn(text: string): boolean {
  *  dashboard's `filterMeters` is a case-sensitive exact match, so a stub-derived filter would
  *  silently match nothing. Filtering offline is left to the live model's structured input. */
 export function deriveNavigateInput(text: string): NavigateInput {
+  // A clear-filters phrase wins first: "show me the whole farm again" / "clear the filter" resets
+  // ALL three filter keys (the T5 bug fix). It may carry a lens word too ("show the table for the
+  // whole farm"), so the lens is still derived alongside the clear.
+  if (CLEAR_FILTER.test(text) || CLEAR_VERB.test(text)) {
+    const clearLens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
+    return clearLens ? { clear: true, lens: clearLens } : { clear: true };
+  }
   const lens = LENS_KEYS.find((k) => new RegExp(`\\b${k}\\b`).test(text));
   if (lens) return { lens };
   const opened = text.match(/\b(?:open|show|see|view|go to)\b\s+(?:me\s+|the\s+)*(.+)$/);
   if (opened && opened[1]) return { open: "meter", query: opened[1].trim() };
   return {};
+}
+
+/** Whether the latest user turn is "open the pump that costs me the most" (an open verb pointed at a
+ *  superlative, not a named meter). Distinguished from a normal open by the SUPERLATIVE: a request
+ *  that names a real meter is handled by `deriveNavigateInput`; this one must first RANK, then open. */
+export function isOpenSuperlativeTurn(text: string): boolean {
+  return OPEN_VERB.test(text) && SUPERLATIVE.test(text);
+}
+
+/** The ranking options for an "open the pump that costs me the most" turn, parsed deterministically:
+ *  the field (cost by default, demand or savings if named) and the direction (desc unless a
+ *  "cheapest/lowest/least" superlative). Mirrors the queryMeters arguments the live model would pass,
+ *  capped to the single winner (limit 1) since the request opens one meter. */
+export function deriveOpenSuperlativeRank(text: string): RankMetersOptions {
+  const sortBy: RankMetersOptions["sortBy"] = RANK_FIELD_DEMAND.test(text)
+    ? "demand"
+    : RANK_FIELD_SAVINGS.test(text)
+      ? "savings"
+      : "cost";
+  const order: RankMetersOptions["order"] = RANK_ORDER_ASC.test(text) ? "asc" : "desc";
+  return { sortBy, order, limit: 1 };
+}
+
+/** The plain reason a meter won the ranking, for the offline confirmation line. Mirrors how the live
+ *  model would explain the pick (the whole-dollar figure on the ranked field), grounded in the same
+ *  integer cents the rank used so the number can never disagree with the tool. */
+function openSuperlativeReason(opts: RankMetersOptions, meter: EnrichedMeter): string {
+  const sortBy = opts.sortBy ?? "cost";
+  const least = opts.order === "asc";
+  if (sortBy === "savings") {
+    return `it has the ${least ? "smallest" : "biggest"} estimated rate-switch saving, about ${formatUsdWhole(meter.flags.estAnnualSavingsCents)}`;
+  }
+  if (sortBy === "demand") {
+    const cents = meter.demandChargeCents ?? 0;
+    return `it has the ${least ? "lowest" : "highest"} demand charge, about ${formatUsdWhole(cents)}`;
+  }
+  const cents = meter.thisCycleCents ?? 0;
+  return `it has the ${least ? "lowest" : "highest"} latest bill, about ${formatUsdWhole(cents)}`;
 }
 
 // --- Offline export routing for the stub (Story 8.5) --------------------------------------------
@@ -765,6 +847,44 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
         // The text carries the one-line preview on success, or the typed empty/error line otherwise;
         // a download card is only written for a clean file (below), never for empty/error.
         answer = result.kind === "file" ? result.preview : result.message;
+      } else if (isOpenSuperlativeTurn(text)) {
+        // "open the pump that costs me the most" (T2): a superlative open, not a named one. The model
+        // would call queryMeters (limit 1) then navigate; the offline stub does the SAME two-step over
+        // the shared ranking helper so the priciest meter resolves and the open-meter action fires with
+        // zero external calls. The rank reads the T1 analysis (cost = latest reconciled bill), so the
+        // meter it opens is the same one the dashboard would call costliest.
+        const [meters, findings] = await Promise.all([
+          loadMetersForFarm(deps.prisma, deps.farmId),
+          loadFindings(deps.prisma, deps.farmId),
+        ]);
+        const opts = deriveOpenSuperlativeRank(text);
+        const winner = rankMeters(analyzeFarm(meters, findings), opts)[0];
+        // No meter (or no proven value) to open: fall through to the grounded data answer rather than
+        // dead-end. A savings rank can legitimately be empty (no mis-rated meters); a cost/demand
+        // winner with a null value means no posted bill yet.
+        const ranked: number | null =
+          winner === undefined
+            ? null
+            : (opts.sortBy ?? "cost") === "savings"
+              ? winner.flags.estAnnualSavingsCents
+              : (opts.sortBy ?? "cost") === "demand"
+                ? winner.demandChargeCents
+                : winner.thisCycleCents;
+        if (winner === undefined || ranked === null) {
+          answer = await composeStubAnswer(deps, uiMessages);
+        } else {
+          // Open it by NAME through the SAME shipped navigate skill (so the emitted part is identical
+          // to a normal open), naming the meter and why it won.
+          const result = resolveNavigate(meters, { open: "meter", query: winner.name });
+          if (result.kind === "navigate") {
+            navigation = result;
+            answer = `Opening ${winner.name}: ${openSuperlativeReason(opts, winner)}.`;
+          } else {
+            // Should not happen (we opened by the meter's own exact name), but never claim an open we
+            // did not perform: fall back to the grounded answer.
+            answer = await composeStubAnswer(deps, uiMessages);
+          }
+        }
       } else if (isNavigationTurn(text)) {
         const meters = await loadMetersForFarm(deps.prisma, deps.farmId);
         const result = resolveNavigate(meters, deriveNavigateInput(text));
@@ -796,7 +916,7 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           }
           writer.write({ type: "text-end", id });
           if (navigation?.kind === "navigate") {
-            writeNavigatePart(writer, navigation.action, navigation.meterName);
+            writeNavigatePart(writer, navigation.action, navigation.meterName, navigation.state);
           }
           // A clean offline export OR report writes the download card; for an authed owner it is also
           // persisted to Reports first (8.6) inside persistAndWriteReportPart, which is owner-gated, so

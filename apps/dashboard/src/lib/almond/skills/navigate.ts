@@ -7,6 +7,7 @@ import {
   type SolarLens,
 } from "@/lib/solar/lens-solar";
 import { resolveMeterQuery } from "@/lib/almond/shape";
+import { filterMeters, type MeterFilter } from "@/lib/dashboard/table";
 
 /**
  * The `navigate` skill — the SERVER half of Almond driving the dashboard (Story 7.3).
@@ -77,25 +78,47 @@ export type NavigateAction = {
 };
 
 /**
+<<<<<<< HEAD
  * The two closed dashboard surfaces Almond can point at. `"energy"` is the shipped Energy tab (the
  * default); `"solar"` is the Solar tab (H-3). Each owns its own closed lens registry, so the same
  * `lens` field is validated against a different registry depending on the surface (ADR-S09). A value
  * outside this union is refused, never coerced, exactly as an unknown lens is.
  */
 export type Surface = "energy" | "solar";
+=======
+ * The post-action state the resolver computes by running the SAME pure `filterMeters` over the farm's
+ * meters with the action's target filter keys — the "verify before narrate" contract (T5). The
+ * confirmation copy (`describeNavigation`) is generated FROM this, never from the request, so Almond
+ * can only claim "back to 183" when `visibleMeterCount === 183`, and only "21 meters" when the filter
+ * actually lands on 21. An empty filter (a clear, or no filter at all) yields the full meter count;
+ * a filter that matches nothing yields `0`, which drives the honest "no meters match" copy.
+ *
+ *   - `visibleMeterCount` how many meters the table shows AFTER the action (the filtered count).
+ *   - `activeFilter`      the filter keys now in effect (null on each cleared/absent dimension), so
+ *                         the copy can name the active dimension or say "showing all".
+ *   - `openMeter`         the meter id the drawer now shows, or null (a non-meter move leaves it null).
+ */
+export type NavState = {
+  visibleMeterCount: number;
+  activeFilter: { entity: string | null; ranch: string | null; rate: string | null };
+  openMeter: string | null;
+};
+>>>>>>> night/integration
 
 /**
  * The typed result the skill returns to the model (and, on `navigate`, to the 7.4/7.5 bridge):
- *   - `navigate`        a clean resolve carrying the action to emit. When the action opens a meter it
+ *   - `navigate`        a clean resolve carrying the action to emit AND the computed post-action
+ *                       `state` (the verify-before-narrate contract). When the action opens a meter it
  *                       also carries the resolved `meterName` — the human name for Story 7.5's action
  *                       chip ("Opened Pump 17"), captured here where the match happened so the
  *                       responder needs no second meter read to label it.
- *   - `clarify`         >= 2 meters matched: name the candidates, emit NO action (the ambiguity rule).
+ *   - `clarify`         >= 2 meters matched (or a filter phrase that matches no real value but is
+ *                       close to one): name the candidates, emit NO action (the ambiguity rule).
  *   - `none`            nothing matched (or an empty/actionless request); never fabricate a target.
  *   - `unknown-surface` a requested lens/surface the registry does not list: refused, not coerced.
  */
 export type NavigateResult =
-  | { kind: "navigate"; action: NavigateAction; meterName?: string }
+  | { kind: "navigate"; action: NavigateAction; meterName?: string; state: NavState }
   | { kind: "clarify"; candidates: string[] }
   | { kind: "none" }
   | { kind: "unknown-surface"; requested: string };
@@ -126,6 +149,7 @@ export const navigateInputSchema = z.object({
   lens: z
     .string()
     .optional()
+<<<<<<< HEAD
     .describe(
       "Switch the lens. Energy: chart, table, map, or calendar. Solar: arrays, calendar, map, or table.",
     ),
@@ -137,6 +161,33 @@ export const navigateInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter the Solar tab by net-metering program code, e.g. NEM2."),
+=======
+    .describe("Switch the dashboard lens: chart, table, map, or calendar."),
+  entity: z
+    .string()
+    .optional()
+    .describe(
+      "Filter the table by legal billing entity. A case-insensitive contains phrase the resolver maps to the real entity value on the farm.",
+    ),
+  ranch: z
+    .string()
+    .optional()
+    .describe(
+      "Filter the table by ranch. A case-insensitive contains phrase the resolver maps to the real ranch value on the farm.",
+    ),
+  rate: z
+    .string()
+    .optional()
+    .describe(
+      "Filter the table by rate schedule, e.g. AG-A1. A case-insensitive contains phrase the resolver maps to the real rate value on the farm.",
+    ),
+  clear: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set to true to clear ALL table filters and show the whole farm again ("show all meters").',
+    ),
+>>>>>>> night/integration
 });
 
 export type NavigateInput = z.infer<typeof navigateInputSchema>;
@@ -166,6 +217,69 @@ function filterValue(value: string | undefined): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+/** The distinct real values a filter dimension takes on this farm (trimmed, non-empty). The resolver
+ *  maps a user phrase ONTO one of these so a filter only ever carries a value that actually exists -
+ *  `filterMeters` is an exact (trim) match, so a raw phrase that is not a real value would silently
+ *  match nothing. */
+function realValues(meters: readonly MeterView[], pick: (m: MeterView) => string | null): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of meters) {
+    const v = pick(m)?.trim();
+    if (v && !seen.has(v)) {
+      seen.add(v);
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+/**
+ * The outcome of mapping a user filter phrase onto the farm's real values:
+ *   - `exact`   the phrase IS a real value (trim-insensitive): use it verbatim.
+ *   - `one`     a single real value CONTAINS the phrase (case-insensitive): "AG-A" -> "AG-A1".
+ *   - `many`    several real values contain it: ambiguous, so the resolver clarifies, naming them.
+ *   - `none`    no real value matches: do not silently filter to nothing.
+ * Matching is the documented contract (case-insensitive contains), but the value that lands on the
+ * action is ALWAYS a real value the farm has, never the raw phrase, so the table never empties on a
+ * value that does not exist.
+ */
+type FilterMatch =
+  | { kind: "exact" | "one"; value: string }
+  | { kind: "many"; values: string[] }
+  | { kind: "none" };
+
+function matchFilterValue(phrase: string, values: readonly string[]): FilterMatch {
+  const want = phrase.trim().toLowerCase();
+  if (want === "") return { kind: "none" };
+  const exact = values.find((v) => v.toLowerCase() === want);
+  if (exact !== undefined) return { kind: "exact", value: exact };
+  const contains = values.filter((v) => v.toLowerCase().includes(want));
+  if (contains.length === 1 && contains[0] !== undefined) return { kind: "one", value: contains[0] };
+  if (contains.length > 1) return { kind: "many", values: contains };
+  return { kind: "none" };
+}
+
+/** Compute the post-action state by running the SAME pure `filterMeters` the table runs, over the
+ *  action's target filter keys. This is the verify-before-narrate seam: the count the copy quotes is
+ *  the count the table will actually show, not a number derived from the request. A meter-open action
+ *  carries no filter change, so its visible count is the whole farm and its `openMeter` is the id.
+ *  Exported so the client bridge (`use-almond-navigation`) can re-derive the same post-state from the
+ *  same pure function after it applies an action through the nuqs setters. */
+export function stateForAction(meters: readonly MeterView[], action: NavigateAction): NavState {
+  const activeFilter: NavState["activeFilter"] = {
+    entity: action.entity ?? null,
+    ranch: action.ranch ?? null,
+    rate: action.rate ?? null,
+  };
+  const filter: MeterFilter = activeFilter;
+  return {
+    visibleMeterCount: filterMeters(meters, filter).length,
+    activeFilter,
+    openMeter: action.meter ?? null,
+  };
+}
+
 /**
  * Turn a navigation request into a typed `NavigateAction` (or clarify/none/unknown-surface). Pure:
  * `meters` is the resolved farm's meters (loaded by the caller, scoped by `deps`). Meter requests
@@ -187,12 +301,24 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
   const query = (input.query ?? "").trim();
   if (query !== "") {
     const match = resolveMeterQuery(meters, query);
+<<<<<<< HEAD
     if (match.kind === "found")
       return {
         kind: "navigate",
         action: withSurface({ meter: match.meter.id }, surface),
         meterName: match.meter.name,
       };
+=======
+    if (match.kind === "found") {
+      const action: NavigateAction = { meter: match.meter.id };
+      return {
+        kind: "navigate",
+        action,
+        meterName: match.meter.name,
+        state: stateForAction(meters, action),
+      };
+    }
+>>>>>>> night/integration
     // >= 2 matches: name them and emit NOTHING (FR3 — never auto-navigate an ambiguous request).
     if (match.kind === "ambiguous") return { kind: "clarify", candidates: match.names };
     return { kind: "none" };
@@ -201,9 +327,13 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
   // (empty-query) `open: "meter"` is still honored, and a truly empty request lands on `none` below.
 
   // Lens / filter path. Assemble an action from the present canonical keys, validating `lens` against
+<<<<<<< HEAD
   // the registry the requested surface OWNS (refuse an unknown one). entity/ranch/rate/account/program
   // are raw contains-filters (the registry defines them as nullable strings with no parser), so any
   // non-empty value is a valid filter.
+=======
+  // the registry (refuse an unknown one).
+>>>>>>> night/integration
   const action: NavigateAction = {};
   if (input.lens !== undefined) {
     // Validate against the solar registry on the solar surface (Arrays/Calendar/Map/Table), the
@@ -214,6 +344,7 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
     if (lens === null) return { kind: "unknown-surface", requested: input.lens };
     action.lens = lens;
   }
+<<<<<<< HEAD
   const entity = filterValue(input.entity);
   if (entity !== null) action.entity = entity;
   const ranch = filterValue(input.ranch);
@@ -240,4 +371,50 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
  */
 function withSurface(action: NavigateAction, surface: Surface): NavigateAction {
   return surface === "solar" ? { ...action, surface } : action;
+=======
+
+  // Clear-filters intent ("show me the whole farm again"): null all three filter keys so the bridge's
+  // setters actively clear them and the table returns to every meter. This was the bug — there was no
+  // clear action, so "show all meters" narrated success while nothing reset. A clear may carry a lens
+  // (e.g. "show the table for the whole farm"); it never combines with a NEW filter (a clear that also
+  // set a filter would contradict itself), so an explicit clear wins over any filter phrase below.
+  if (input.clear === true) {
+    action.entity = null;
+    action.ranch = null;
+    action.rate = null;
+    return { kind: "navigate", action, state: stateForAction(meters, action) };
+  }
+
+  // Filter phrases. `filterMeters` is an EXACT (trim) match, so a raw phrase that is not a real value
+  // on the farm would silently filter to nothing. Map each phrase onto the farm's real values
+  // (case-insensitive contains, the documented contract): an exact/single match sets the REAL value;
+  // an ambiguous phrase clarifies (naming the candidates) and emits no action; a phrase that matches
+  // no real value also clarifies, naming the closest real values, rather than filtering to nothing.
+  const dimensions: Array<{
+    key: "entity" | "ranch" | "rate";
+    phrase: string | null;
+    pick: (m: MeterView) => string | null;
+  }> = [
+    { key: "entity", phrase: filterValue(input.entity), pick: (m) => m.entityName },
+    { key: "ranch", phrase: filterValue(input.ranch), pick: (m) => m.ranchName },
+    { key: "rate", phrase: filterValue(input.rate), pick: (m) => m.rateSchedule },
+  ];
+  for (const dim of dimensions) {
+    if (dim.phrase === null) continue;
+    const match = matchFilterValue(dim.phrase, realValues(meters, dim.pick));
+    if (match.kind === "exact" || match.kind === "one") {
+      action[dim.key] = match.value;
+      continue;
+    }
+    // No real value matches, or several do: do NOT silently filter to nothing. Name the closest real
+    // values so the grower can pick (or, for `none`, learn the phrase is not on the farm). Naming
+    // candidates here reuses the same `clarify` channel the meter ambiguity rule uses.
+    if (match.kind === "many") return { kind: "clarify", candidates: match.values };
+    return { kind: "clarify", candidates: realValues(meters, dim.pick) };
+  }
+
+  // Nothing actionable in the request (no meter, no valid lens, no clear, no filter): found nothing.
+  if (Object.keys(action).length === 0) return { kind: "none" };
+  return { kind: "navigate", action, state: stateForAction(meters, action) };
+>>>>>>> night/integration
 }

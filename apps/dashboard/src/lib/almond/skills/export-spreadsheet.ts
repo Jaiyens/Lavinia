@@ -1,16 +1,17 @@
 import { z } from "zod";
 import { en } from "@/copy/en";
 import type { MeterView } from "@/lib/dashboard/load";
+import { loadFindings } from "@/lib/dashboard/findings";
+import { analyzeFarm } from "@/lib/almond/analysis";
 import {
   loadExportData,
   summarizeExportState,
   type ExportData,
   type ExportLoadDeps,
 } from "@/lib/almond/export/load";
-import { buildMetersWorkbook } from "@/lib/almond/export/xlsx";
+import { buildAnalystMetersWorkbook } from "@/lib/almond/export/xlsx";
 import { buildBillDueWorkbook } from "@/lib/almond/export/bill-due";
 import { buildFullWorkbook } from "@/lib/almond/export/full-workbook";
-import { loadFindings } from "@/lib/dashboard/findings";
 
 /**
  * The `exportSpreadsheet` skill (Story 8.5) - Almond's OWNER-ONLY ability to hand a grower a real
@@ -201,15 +202,25 @@ export function exportFileName(farmName: string, table: ExportTable): string {
 }
 
 /**
- * Build the .xlsx bytes for the chosen table over the (already filtered) export data. The two focused
- * tables build from `data` alone; the full `workbook` additionally reads the farm's findings (for its
- * Rate savings tab) through the same grounded loader the dashboard and the PDF report use. Scope is
- * inherited from `deps` (the findings query is farm-scoped), never from the model.
+ * Build the .xlsx bytes for the chosen table over the (already filtered) export data. The bill-due
+ * workbook keeps its schedule path. The focused `meters` workbook is driven from the ONE pure
+ * analysis (analyzeFarm) so its Summary / Meters / Opportunities sheets can never contradict the
+ * live dashboard. The full `workbook` (overview) additionally renders the farm's findings through the
+ * same grounded loader the codegen export and the PDF report use. Findings are scoped to the export's
+ * farm (and, for the analyst meters workbook, to the filtered meter set), never to the model.
  */
-function buildWorkbook(deps: ExportLoadDeps, data: ExportData, table: ExportTable): Promise<Uint8Array> {
+async function buildWorkbook(
+  deps: ExportLoadDeps,
+  data: ExportData,
+  table: ExportTable,
+): Promise<Uint8Array> {
   if (table === "billDue") return buildBillDueWorkbook(data);
-  if (table === "meters") return buildMetersWorkbook(data);
-  return loadFindings(deps.prisma, deps.farmId).then((findings) => buildFullWorkbook(data, findings));
+  const findings = await loadFindings(deps.prisma, deps.farmId);
+  if (table === "meters") {
+    const analysis = analyzeFarm(data.meters, findings);
+    return buildAnalystMetersWorkbook(analysis, data.state, data.farm.name);
+  }
+  return buildFullWorkbook(data, findings);
 }
 
 /**

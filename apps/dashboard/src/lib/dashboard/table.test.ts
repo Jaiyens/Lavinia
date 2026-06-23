@@ -223,6 +223,45 @@ describe("filterMeters", () => {
   });
 });
 
+// The clear-filter / verify-before-narrate contract (T5): a filter narrows the farm; clearing the
+// three keys (entity/ranch/rate null) returns the WHOLE farm. Proven at the same scale the bug bit
+// (a 183-meter farm), so "show me the whole farm again" demonstrably lands back on the full count.
+describe("filterMeters — clear returns the whole farm (T5)", () => {
+  // A 183-meter fixture: 21 carry AG-A1, the rest AG-OTHER, so a filter narrows to a real subset.
+  const FARM_SIZE = 183;
+  const AGA1_COUNT = 21;
+  const farm = Array.from({ length: FARM_SIZE }, (_, i) =>
+    meter({
+      id: `m${i}`,
+      coverageState: "reconciled",
+      rateSchedule: i < AGA1_COUNT ? "AG-A1" : "AG-OTHER",
+      entityName: i % 2 === 0 ? "Batth LLC" : "Other LLC",
+    }),
+  );
+
+  it("applying a rate filter yields a real subset (not the whole farm)", () => {
+    const filtered = filterMeters(farm, { rate: "AG-A1" });
+    expect(filtered.length).toBe(AGA1_COUNT);
+    expect(filtered.length).toBeLessThan(FARM_SIZE);
+  });
+
+  it("clearing all three keys (entity/ranch/rate null) returns the FULL meter list", () => {
+    // The bug: "show the whole farm again" must land back on every meter. Clearing = all keys null.
+    expect(filterMeters(farm, { entity: null, ranch: null, rate: null }).length).toBe(FARM_SIZE);
+  });
+
+  it("filter then clear returns the count to the full total (the round trip)", () => {
+    const filtered = filterMeters(farm, { rate: "AG-A1", entity: "Batth LLC" });
+    expect(filtered.length).toBeLessThan(FARM_SIZE);
+    const cleared = filterMeters(farm, { entity: null, ranch: null, rate: null });
+    expect(cleared.length).toBe(FARM_SIZE);
+  });
+
+  it("a no-op / whitespace clear (empty-string keys) also returns the whole farm", () => {
+    expect(filterMeters(farm, { entity: "", ranch: "   ", rate: "" }).length).toBe(FARM_SIZE);
+  });
+});
+
 describe("sortRows", () => {
   const rows: MeterRow[] = [
     meter({ id: "alpha", coverageState: "reconciled", periods: [period("2026-03-12", 5000, 100)] }),

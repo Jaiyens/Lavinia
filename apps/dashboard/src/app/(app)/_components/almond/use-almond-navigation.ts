@@ -4,8 +4,14 @@ import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { SURFACE, lensQueryOptions, type Lens } from "@/lib/dashboard/surface";
+<<<<<<< HEAD
 import type { SolarLens } from "@/lib/solar/lens-solar";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
+=======
+import type { MeterView } from "@/lib/dashboard/load";
+import { filterMeters } from "@/lib/dashboard/table";
+import { type NavigateAction, type NavState } from "@/lib/almond/skills/navigate";
+>>>>>>> night/integration
 
 /**
  * The client half of the server->client navigation bridge (Story 7.4).
@@ -61,6 +67,46 @@ export function applyNavigateAction(setters: NavigationSetters, action: Navigate
   if (action.account !== undefined) setters.setAccount(action.account);
   if (action.program !== undefined) setters.setProgram(action.program);
   if (action.meter !== undefined) setters.setMeter(action.meter);
+}
+
+/** The three filter keys the table reads (the nuqs entity/ranch/rate values currently in the URL). */
+export type FilterState = { entity: string | null; ranch: string | null; rate: string | null };
+
+/**
+ * Merge a `NavigateAction` onto the CURRENT filter state exactly as the nuqs setters would, returning
+ * the keys that would be in effect after `applyNavigateAction` runs. A present key (including a `null`
+ * clear) overwrites; an ABSENT key is left at its current value. This is the same `!== undefined`
+ * guard the setters use, so the merged state is what the URL — and therefore the table — will hold.
+ */
+export function mergeFilter(current: FilterState, action: NavigateAction): FilterState {
+  return {
+    entity: action.entity !== undefined ? action.entity : current.entity,
+    ranch: action.ranch !== undefined ? action.ranch : current.ranch,
+    rate: action.rate !== undefined ? action.rate : current.rate,
+  };
+}
+
+/**
+ * Compute the post-apply navigation state CLIENT-side: apply the action onto the current filter, then
+ * read the result by running the SAME pure `filterMeters` the table runs over the meter list with the
+ * merged keys (the verify-before-narrate seam, T5). Unlike the resolver's `stateForAction` — which
+ * sees only the action's own keys — this also folds in any filter already active, so an additive
+ * filter on top of an existing one reports the true combined count. Pure (no hooks), so it is unit
+ * testable with a plain meter list. `openMeter` reflects the action's meter change, or the current
+ * open meter when the action leaves the drawer untouched.
+ */
+export function navStateAfterApply(
+  meters: readonly MeterView[],
+  current: FilterState,
+  action: NavigateAction,
+  currentMeter: string | null = null,
+): NavState {
+  const merged = mergeFilter(current, action);
+  return {
+    visibleMeterCount: filterMeters(meters, merged).length,
+    activeFilter: merged,
+    openMeter: action.meter !== undefined ? action.meter : currentMeter,
+  };
 }
 
 /** The energy-surface path for the current shell: the public Tour mirrors the live app one level

@@ -115,17 +115,24 @@ export function AlmondMessages({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, status, windowScroll]);
 
-  const waiting = status === "submitted";
-  // After the answer text has streamed, the model may still be BUILDING something slow (a spreadsheet
-  // or PDF). Keep an animated "still working" line under that turn so Almond never just vanishes mid
-  // task — the gap a grower hit when an export took a few seconds.
+  // ONE thinking indicator per turn. It appears the instant Enter is pressed (`useChat` flips status
+  // to "submitted" and appends the optimistic user message synchronously) and retires the instant the
+  // first answer content streams. Two render windows make it feel gapless:
+  //   - "submitted": the request is sent, no assistant message exists yet.
+  //   - "streaming" but the assistant turn is still an EMPTY SHELL (no text, no tool part yet) — the
+  //     brief moment after the stream opens but before the first token/tool delta arrives. Without
+  //     this, the indicator would blink out for a frame (the gap a grower notices as a dead box).
+  // The instant the assistant turn shows ANY content, the per-message UI takes over: the inline
+  // "Almond is answering" shimmer while a tool runs with no text (`looking`), then the streamed
+  // markdown. So we never spawn a second thinking node below already-streamed text.
   const last = messages[messages.length - 1];
-  const generating =
-    status === "streaming" &&
+  const lastIsEmptyAssistant =
     last !== undefined &&
     last.role === "assistant" &&
-    toolRunning(last) &&
-    messageText(last).length > 0;
+    messageText(last).length === 0 &&
+    !hasToolPart(last);
+  const waiting =
+    status === "submitted" || (status === "streaming" && lastIsEmptyAssistant);
 
   return (
     <div
@@ -172,6 +179,18 @@ export function AlmondMessages({
         const reports = reportsByMessage.get(m.id) ?? [];
         const decided = decidedByMessage.get(m.id);
         const looking = isLookingUp(m);
+        // After the answer text has streamed, the model may still be BUILDING something slow (a
+        // spreadsheet or PDF). Show ONE quiet "still working" line AT that turn (inline, under its
+        // text) so Almond never just freezes mid task — the gap a grower hit when an export took a
+        // few seconds. Only the live last assistant turn while streaming can be working, and only
+        // once it already has text (before text, the inline `looking` shimmer covers it), so the
+        // working line and the pre-answer thinking line can never show at the same time.
+        const working =
+          status === "streaming" &&
+          m.id === last?.id &&
+          m.role === "assistant" &&
+          toolRunning(m) &&
+          text.length > 0;
         // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
         // no action chip, no download card).
         if (!text && !looking && !hasToolPart(m) && chips.length === 0 && reports.length === 0)
@@ -182,6 +201,7 @@ export function AlmondMessages({
             message={m}
             text={text}
             looking={looking}
+            working={working}
             chips={chips}
             reports={reports}
             decided={decided}
@@ -192,7 +212,6 @@ export function AlmondMessages({
       })}
 
       {waiting && <ThinkingLine />}
-      {generating && <WorkingLine />}
 
       {usageLimit ? (
         // The durable per-user budget is spent: a calm, honest banner with NO retry (retrying just
@@ -293,6 +312,7 @@ function AssistantMessage({
   message,
   text,
   looking,
+  working,
   chips,
   reports,
   decided,
@@ -302,6 +322,8 @@ function AssistantMessage({
   message: UIMessage;
   text: string;
   looking: boolean;
+  /** This turn streamed its text but is still building something slow (a spreadsheet / PDF). */
+  working: boolean;
   chips: AlmondNavChip[];
   reports: AlmondReportCard[];
   decided?: AutoHeadlineKey;
@@ -310,7 +332,11 @@ function AssistantMessage({
 }) {
   return (
     <div className="group flex items-start gap-2">
-      <AlmondAvatar size={MSG_AVATAR} state={looking ? "thinking" : "idle"} className="mt-0.5" />
+      <AlmondAvatar
+        size={MSG_AVATAR}
+        state={looking || working ? "thinking" : "idle"}
+        className="mt-0.5"
+      />
       <div className="min-w-0 flex-1">
         <div className={cn("max-w-[92%] type-body-md text-on-surface")}>
           <AlmondThought message={message} />
@@ -321,6 +347,9 @@ function AssistantMessage({
           ) : (
             <AlmondMarkdown>{text}</AlmondMarkdown>
           )}
+          {/* The slow "still working" status sits AT the answer (inline under its text), never as a
+              floating second thinking node below the turn. Only one indicator shows at a time. */}
+          {working && <WorkingLine />}
           {/* What Almond just did on the screen, and a tap back to it (Story 7.5). */}
           <AlmondActionChips chips={chips} onReplay={onReplay} />
           {/* Spreadsheets / PDFs Almond made this turn, as download cards (Story 8.5 / 9.3). */}
@@ -363,13 +392,14 @@ function ThinkingLine() {
   );
 }
 
-/** The "still working" line shown UNDER a streamed answer while Almond keeps building something slow
+/** The "still working" line shown AT a streamed answer while Almond keeps building something slow
  *  (a spreadsheet or PDF), so the file-generation wait always shows a live loader instead of a frozen
- *  message. Aligned under the answer text, a touch smaller than the pre-answer thinking line. */
+ *  message. Rendered inline inside the assistant turn (under its text), a touch smaller than the
+ *  pre-answer thinking line, so it never floats as a second thinking node below the turn. */
 function WorkingLine() {
   return (
-    <div className="-mt-1 flex items-center gap-2.5 pl-8">
-      <ThinkingMascot size={24} />
+    <div className="mt-1.5 flex items-center gap-2">
+      <ThinkingMascot size={20} />
       <AnimatedShinyText className="type-body-sm text-on-surface-variant">{t.working}</AnimatedShinyText>
     </div>
   );

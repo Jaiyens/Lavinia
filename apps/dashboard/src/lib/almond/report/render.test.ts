@@ -12,6 +12,9 @@ import {
   type ReportSection,
 } from "./render";
 import type {
+  CoverSectionData,
+  OpportunitiesSectionData,
+  ChartsSectionData,
   SummarySectionData,
   MisRatedSectionData,
   SavingsSectionData,
@@ -118,6 +121,33 @@ const singleMeter: SingleMeterSectionData = {
   demandCents: 278322,
 };
 
+const cover: CoverSectionData = {
+  farmName: "Batth Farms",
+  asOf: "March 12, 2026",
+  hero: {
+    meterName: "Westside Pump 17",
+    amountCents: 6_141_776,
+    currentRate: "AG-B",
+    suggestedRate: "AG-C",
+    isRateSwitch: true,
+  },
+  totalSpendCents: 1_732_700,
+  totalDemandCents: 93_700,
+};
+
+const opportunities: OpportunitiesSectionData = {
+  rows: [
+    { meterName: "Westside Pump 17", currentRate: "AG-B", suggestedRate: "AG-C", savingsCents: 6_141_776 },
+  ],
+  totalSavingsCents: 6_141_776,
+};
+
+const charts: ChartsSectionData = {
+  demandTop: [{ label: "Westside Pump 17", value: 203_112, display: "$2,031.12" }],
+  spendByEntity: [{ label: "Batth Bros LP", value: 1_732_700, display: "$17,327.00" }],
+  rateMix: [{ label: "AG-C", value: 120, display: "120" }],
+};
+
 // Walk a react-pdf element tree collecting every node's component (function/class) so a test can
 // assert which sections were composed and in what order, without parsing PDF bytes.
 type Node = { type?: unknown; props?: { children?: unknown } } | null | undefined | boolean | string | number;
@@ -204,6 +234,67 @@ describe("buildReportDocument composes the model-selected shape", () => {
     expect(note).toContain("all 42");
     expect(note).not.toContain("—");
     expect(note).not.toContain("!");
+  });
+});
+
+// --- the money-first shape: cover, opportunities, charts (T3b) ------------------------------------
+
+describe("buildReportDocument: the opportunities-first money lead (T3b)", () => {
+  it("composes the cover, opportunities, and charts in the chosen money-first order", () => {
+    const sections: ReportSection[] = [
+      { kind: "cover", data: cover },
+      { kind: "opportunities", data: opportunities },
+      { kind: "charts", data: charts },
+      { kind: "summary", data: summary },
+    ];
+    const names = componentNames({ farmName: "Batth Farms", sections, coverage });
+    const onlySections = names.filter((n) =>
+      ["CoverSection", "OpportunitiesSection", "ChartsSection", "SummarySection"].includes(n),
+    );
+    expect(onlySections).toEqual([
+      "CoverSection",
+      "OpportunitiesSection",
+      "ChartsSection",
+      "SummarySection",
+    ]);
+  });
+
+  it("suppresses the plain title block when a cover leads (the cover is the title), keeping it otherwise", () => {
+    const withCover = componentNames({
+      farmName: "Batth Farms",
+      sections: [{ kind: "cover", data: cover }, { kind: "summary", data: summary }],
+      coverage,
+    });
+    // The cover carries the Terra mark + farm name itself, so the plain TitleBlock is not stamped.
+    expect(withCover).not.toContain("TitleBlock");
+    expect(withCover).toContain("CoverSection");
+    // A report with no cover keeps the measured title block, exactly as before.
+    const noCover = componentNames({
+      farmName: "Batth Farms",
+      sections: [{ kind: "summary", data: summary }],
+      coverage,
+    });
+    expect(noCover).toContain("TitleBlock");
+  });
+
+  it("still stamps the coverage footer on a money-first report", () => {
+    const names = componentNames({
+      farmName: "Batth Farms",
+      sections: [{ kind: "cover", data: cover }, { kind: "opportunities", data: opportunities }],
+      coverage,
+    });
+    expect(names).toContain("CoverageFooterSection");
+  });
+
+  it("renders a cover + opportunities + charts report to a valid, non-trivial %PDF- byte stream", async () => {
+    const sections: ReportSection[] = [
+      { kind: "cover", data: cover },
+      { kind: "opportunities", data: opportunities },
+      { kind: "charts", data: charts },
+    ];
+    const bytes = await renderReport({ farmName: "Batth Farms", sections, coverage });
+    expect(bytes.byteLength).toBeGreaterThan(2000);
+    expect(Buffer.from(bytes.slice(0, 5)).toString("latin1")).toBe("%PDF-");
   });
 });
 
