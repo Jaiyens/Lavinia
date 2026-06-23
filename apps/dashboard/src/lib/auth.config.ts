@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Google from "next-auth/providers/google";
+import { isEmailAllowed, parseAllowlist } from "@/lib/auth-allowlist";
 
 // Edge-SAFE half of the Auth.js v5 config (Story 5.1). This file holds everything the
 // middleware needs to gate routes - the sign-in page, the authorized/jwt/session
@@ -88,6 +89,19 @@ export const authConfig: NextAuthConfig = {
     error: "/login",
   },
   callbacks: {
+    // The pre-launch access gate. Runs on EVERY sign-in attempt (Google SSO and the email
+    // magic-link verify), BEFORE the adapter persists or creates a user, so a non-allowlisted
+    // email can neither sign in nor land a row in the User table. Returning false aborts
+    // sign-in and Auth.js redirects to `pages.error` (/login), where ?error renders the
+    // "access not enabled yet" copy.
+    //
+    // The allowlist comes from the AUTH_ALLOWLIST env var (comma-separated emails), read here
+    // rather than in the pure helper so the helper stays testable. FAIL CLOSED: an unset or
+    // empty AUTH_ALLOWLIST allows no one. To add a grower's manager, append their email to
+    // AUTH_ALLOWLIST in the Vercel env (no code change). To open sign-in fully, set it to "*".
+    signIn({ user }) {
+      return isEmailAllowed(user?.email, parseAllowlist(process.env.AUTH_ALLOWLIST));
+    },
     // The middleware gate (AC3). Public paths pass; everything else needs a user. A
     // false return makes the NextAuth middleware redirect to `pages.signIn` (/login).
     authorized({ auth, request }) {

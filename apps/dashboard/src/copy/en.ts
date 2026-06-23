@@ -93,6 +93,9 @@ export const en = {
     sendLink: "Send a sign-in link",
     linkSent: "Check your email for a sign-in link.",
     error: "That did not work. Try again.",
+    // Shown when a valid sign-in is refused because the email is not on the access list yet
+    // (pre-launch gate). Calm and non-blaming: it is access, not a mistake they made.
+    accessDenied: "This email is not set up for access yet. Reach out to the Terra team to get added.",
     signOut: "Sign out",
     tourPrompt: "Just want to look around first?",
     // The magic-link email itself (Story 5.1, real sender). Plain operator English.
