@@ -21,11 +21,22 @@ const snapshot: ReportSnapshot = {
   totals: {
     latestMonthSpendCents: 4_500_000, // $45,000.00
     rateSwitchSavingsCents: 6_141_776 + 2_345_600 + 1_200_050, // sum of shown = $96,874.26
+    reconciledCount: 4,
+    needsReviewCount: 1,
+    noBillCount: 1,
   },
   opportunities: [
     { rank: 1, meterName: "Westside Pump 17", fromRate: "AG-A1", toRate: "AG-B", savingsCents: 6_141_776, savingsDisplay: formatCentsUsd(6_141_776), kind: "rate_switch" },
     { rank: 2, meterName: "Dairy Field Pump 4", fromRate: "AG-4B", toRate: "AG-C", savingsCents: 2_345_600, savingsDisplay: formatCentsUsd(2_345_600), kind: "rate_switch" },
     { rank: 3, meterName: "Lateral Booster", fromRate: "AG-A", toRate: "AG-B", savingsCents: 1_200_050, savingsDisplay: formatCentsUsd(1_200_050), kind: "rate_switch" },
+  ],
+  meters: [
+    { id: "m1", name: "Westside Pump 17", rate: "AG-A1", costCents: 1_172_733, demandCents: 278_322 },
+    { id: "m2", name: "Dairy Field Pump 4", rate: "AG-4B", costCents: 845_100, demandCents: 91_400 },
+    { id: "m3", name: "Lateral Booster", rate: "AG-A", costCents: 312_050, demandCents: null },
+    { id: "m4", name: "North Well 2", rate: "AG-B", costCents: 204_900, demandCents: 12_000 },
+    { id: "m5", name: "Home Ranch Pump", rate: "AG-C", costCents: null, demandCents: null },
+    { id: "m6", name: "South Booster", rate: "AG-A1", costCents: null, demandCents: null },
   ],
 };
 
