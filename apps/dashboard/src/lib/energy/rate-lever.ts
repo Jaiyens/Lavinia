@@ -20,27 +20,31 @@ import {
   type SizeClass,
   type TouPeriod,
 } from "./rates";
+import {
+  DEFAULT_BACK_TEST_BAND_PCT,
+  MIN_SAVINGS_CENTS,
+  PER_CYCLE_BAND_FACTOR,
+} from "./back-test-config";
 
 /**
  * Back-test tolerance band, in percent of the printed total. A fixture recompute
  * never hits the print exactly: riders outside the card (Energy Commission Tax),
  * the 2026-03-01 mid-cycle rate change (pre-change sub-periods price ~4% hot on
- * the post-change card), and day-prorated demand charges all drift. Calibrated
- * 2026-06-09 against the real account's 34 testable reconciled SAs (39 reconciled
- * minus 4 non-ag B1 and 1 NEM-credit cycle): 27 land within 2%, 31 within 5%, and
- * the three beyond (6%, 12.2%, 12.4%) are genuine card/model gaps that SHOULD
- * fail closed. 5% holds the headline $11,727.33 pump (4.59% drift, almost all of
- * it the pre-03/01 demand sub-period priced on the post-change card) without
- * admitting the true outliers.
+ * the post-change card), and day-prorated demand charges all drift. Historically
+ * calibrated 2026-06-09 at 5% against the real account's 34 testable reconciled
+ * SAs (39 reconciled minus 4 non-ag B1 and 1 NEM-credit cycle): 27 land within
+ * 2%, 31 within 5%, and the three beyond (6%, 12.2%, 12.4%) are genuine card/
+ * model gaps that SHOULD fail closed. The default is now the tightened
+ * DEFAULT_BACK_TEST_BAND_PCT (3%) from back-test-config.ts - the single source
+ * of this constant - founder-loosenable via TERRA_BACK_TEST_BAND_PCT. Re-exported
+ * here so bill-verify.ts (which imports it from rate-lever) keeps working.
  * A model tolerance, not a rate (NFR-3 bars rates; this is neither $/kWh nor $/kW).
  */
-export const BACK_TEST_BAND_PCT = 5;
+export const BACK_TEST_BAND_PCT = DEFAULT_BACK_TEST_BAND_PCT;
 
-/** A single wild cycle fails the meter even when the aggregate squeaks in. */
-export const PER_CYCLE_BAND_FACTOR = 2;
-
-/** Savings below one dollar over the billed span are noise, not a finding. */
-export const MIN_SAVINGS_CENTS = 100;
+// Re-exported from the single tolerance source (back-test-config.ts) so existing
+// importers of these names from rate-lever continue to resolve unchanged.
+export { MIN_SAVINGS_CENTS, PER_CYCLE_BAND_FACTOR };
 
 /** The line-item slice of a canonical billing period the lever reads. */
 export type LeverLineItem = {

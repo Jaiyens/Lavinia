@@ -304,7 +304,11 @@ export function MeterDrawer({
           {!d.isCovered ? (
             <div className="flex flex-col gap-2">
               <p className="type-body-md text-on-surface-variant">
-                {meter.coverageState === "needs_review" ? t.withheldNote : t.noBillNote}
+                {meter.costSource === "NEM_TRUEUP" || meter.costSource === "NEM_UNSETTLED"
+                  ? t.nemUnsettledNote
+                  : meter.coverageState === "needs_review"
+                    ? t.withheldNote
+                    : t.noBillNote}
               </p>
               {/* Story 5.3, AC4: a field we could not read is flagged for a second look,
                   never blank-faked. Text + treatment, not color-only. */}

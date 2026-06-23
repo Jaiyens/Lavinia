@@ -547,8 +547,11 @@ describe("rateLever", () => {
     expect(periods).toEqual(snapshot);
   });
 
-  it("exposes the calibrated band as the default", () => {
-    expect(BACK_TEST_BAND_PCT).toBe(5);
+  it("exposes the configured back-test band as the default (tightened to 3%)", () => {
+    // The single source is back-test-config.ts (DEFAULT_BACK_TEST_BAND_PCT), re-exported here;
+    // the historical 5% was loosened to a conservative 3%, founder-settable via env. Pricing is
+    // unchanged - only the band a recompute may drift before a savings figure is trusted.
+    expect(BACK_TEST_BAND_PCT).toBe(3);
   });
 });
 

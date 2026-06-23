@@ -1803,6 +1803,13 @@ export const en = {
       // marked as such (the "~" prefix + "est."), never presented as an actual billed figure.
       estimateSuffix: "est.",
       estimateAria: "Estimated from your interval usage, not a printed bill",
+      // A solar / net-metering meter nets out over the year and settles only at the annual
+      // true-up, so it never shows a monthly cost. With a printed true-up on file it shows that
+      // ANNUAL figure (suffixed "true-up"); otherwise it reads the not-yet-settled state. No em
+      // dashes (user-facing copy).
+      notYetSettled: "Settles at true-up",
+      trueUpSuffix: "true-up",
+      trueUpAria: "Settles once a year at the annual true-up, not a monthly bill",
       // A null inventory field (ranch / entity / status / rate not on file). Never fabricated.
       // En dash (not an em dash): user-facing copy must never carry an em dash.
       emptyShort: "–",
@@ -1939,6 +1946,11 @@ export const en = {
       confirmIt: "Confirm it",
       noBillNote: "No bill loaded for this meter yet.",
       noPeriodNote: "No billing detail on file yet.",
+      // A solar / net-metering meter: its monthly statements are a running balance that nets out
+      // and settles only once a year at the true-up, so no monthly cost is shown here. The annual
+      // figure (when on file) appears in the solar section below. No em dashes (user-facing copy).
+      nemUnsettledNote:
+        "This meter is on net metering. Its balance settles once a year at the true-up, so there is no monthly bill figure to show. See the solar section below.",
       // MODELED cost: a meter with interval usage but no printed bill. Shown as an estimate
       // from usage + rate, clearly separated from any printed figure (never billed money).
       modeledLabel: "Estimated monthly cost",

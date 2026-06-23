@@ -31,6 +31,14 @@ export function gridCsv(rows: readonly (readonly string[])[]): string {
 }
 
 function moneyCell(row: MeterRow, cents: number | null, kind: "cost" | "demand"): string {
+  // Cost column, solar/NEM meter: never a monthly number. Export the ANNUAL true-up when one
+  // is on file, else the not-yet-settled label - mirroring the on-screen cell. The demand
+  // column falls through to the normal path (solar's printed demand is genuinely owed).
+  if (kind === "cost" && (row.costSource === "NEM_TRUEUP" || row.costSource === "NEM_UNSETTLED")) {
+    return row.costSource === "NEM_TRUEUP" && row.trueUpAmountCents !== null
+      ? `${formatUsd(row.trueUpAmountCents)} ${t.trueUpSuffix}`
+      : t.notYetSettled;
+  }
   if (row.coverageState !== "reconciled") return t.coverage[row.coverageState];
   if (cents === null) return kind === "demand" ? t.none : "";
   return formatUsd(cents);

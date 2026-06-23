@@ -7,6 +7,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { dashboardFarm, demoFarm } from "@/lib/onboarding/farm";
 import { centsFromDollars } from "@/lib/format/money";
+import { isSolarNemMeter, nemSettlement } from "@/lib/energy/solar-meter";
 import type {
   BillingLineItemKind,
   BillingLineItemUnit,
@@ -79,7 +80,9 @@ export type MeterView = {
   /** Cost provenance for the dashboard's cost view. BILLED = reconciled printed bill (the
    *  only source rendered as ACTUAL cost). MODELED = tariff estimate from interval data,
    *  always shown as an estimate, never as billed. REVIEW = a bill that failed cent
-   *  reconciliation (kept out of the cost view). NONE = no cost basis at all. Always set by
+   *  reconciliation (kept out of the cost view). NONE = no cost basis at all. NEM_TRUEUP /
+   *  NEM_UNSETTLED = a solar/NEM meter (it never carries a monthly figure; consumers branch
+   *  on these to show the ANNUAL true-up or the not-yet-settled state). Always set by
    *  loadMetersForFarm; optional so existing MeterView fixtures (tests) need no change. */
   costSource?: CostSource;
   /** Modeled monthly tariff-component cost in integer cents (an ESTIMATE from intervals);
@@ -117,16 +120,40 @@ export type DashboardData = {
   meters: MeterView[];
 };
 
-/** Cost provenance, derived from coverageState + the presence of a modeled estimate. */
-export type CostSource = "BILLED" | "MODELED" | "REVIEW" | "NONE";
+/** Cost provenance, derived from coverageState + the presence of a modeled estimate.
+ *  NEM_TRUEUP / NEM_UNSETTLED are the solar/NEM states: a net-metering meter nets out
+ *  over the year and settles only at the annual true-up, so it NEVER carries a monthly
+ *  BILLED or MODELED figure - it surfaces the ANNUAL true-up when one is on file
+ *  (NEM_TRUEUP), else the honest not-yet-settled state (NEM_UNSETTLED). */
+export type CostSource =
+  | "BILLED"
+  | "MODELED"
+  | "REVIEW"
+  | "NONE"
+  | "NEM_TRUEUP"
+  | "NEM_UNSETTLED";
 
-/** Derive the cost provenance shown in the dashboard. Only "reconciled" is actual billed
- *  money; a meter with usage but no reconciled bill carries a modeled estimate; everything
- *  else is honest-blank. */
-function deriveCostSource(coverageState: string, modeledMonthlyCents: number | null): CostSource {
-  if (coverageState === "reconciled") return "BILLED";
-  if (coverageState === "needs_review") return "REVIEW";
-  return modeledMonthlyCents != null ? "MODELED" : "NONE";
+/** Derive the cost provenance shown in the dashboard. A solar/NEM meter short-circuits
+ *  BEFORE the coverage/modeled branches: its monthly charge pages omit the energy that
+ *  settles at the annual true-up, so it must never read as a monthly BILLED or MODELED
+ *  cost. It is NEM_TRUEUP when a printed true-up amount is on file (the annual figure is
+ *  honestly showable), else NEM_UNSETTLED. Only "reconciled" non-solar is actual billed
+ *  money; a non-solar meter with usage but no reconciled bill carries a modeled estimate;
+ *  everything else is honest-blank. */
+function deriveCostSource(pump: {
+  coverageState: string;
+  modeledMonthlyCents: number | null;
+  isSolar: boolean;
+  solarKw: number | null;
+  nemType: string | null;
+  trueUpAmountCents: number | null;
+}): CostSource {
+  if (isSolarNemMeter(pump)) {
+    return nemSettlement(pump) === "settled" ? "NEM_TRUEUP" : "NEM_UNSETTLED";
+  }
+  if (pump.coverageState === "reconciled") return "BILLED";
+  if (pump.coverageState === "needs_review") return "REVIEW";
+  return pump.modeledMonthlyCents != null ? "MODELED" : "NONE";
 }
 
 const COVERAGE_STATES: readonly string[] = ["no_bill", "needs_review", "reconciled"];
@@ -183,7 +210,7 @@ export async function loadMetersForFarm(
     isLegacy: pump.isLegacy,
     status: pump.status,
     coverageState: toCoverageState(pump.coverageState),
-    costSource: deriveCostSource(pump.coverageState, pump.modeledMonthlyCents),
+    costSource: deriveCostSource(pump),
     modeledMonthlyCents: pump.modeledMonthlyCents,
     accountNumber: pump.account?.number ?? null,
     ranchName: pump.ranch?.name ?? null,

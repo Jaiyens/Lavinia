@@ -27,7 +27,8 @@
     "preview:seeded": "next build && node scripts/preview-seeded.mjs",
     "import:demo": "tsx scripts/import-demo-account.ts",
     "db:import-fixture": "tsx scripts/persist-demo-fixture.ts",
-    "levers:run": "tsx scripts/run-levers.ts"
+    "levers:run": "tsx scripts/run-levers.ts",
+    "verify:reconciliation": "tsx scripts/verify-reconciliation.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

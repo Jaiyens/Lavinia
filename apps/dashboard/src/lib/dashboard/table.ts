@@ -5,6 +5,7 @@
 // meters; an unreconciled meter's figure is null (the cell renders the coverage treatment,
 // never a fabricated $0).
 
+import { isSolarNemMeter } from "@/lib/energy/solar-meter";
 import type { MeterView, CostSource } from "./load";
 import type { CoverageState } from "@/lib/recommendations/types";
 
@@ -54,6 +55,9 @@ export type MeterRow = {
   costSource: CostSource;
   /** Modeled monthly cost estimate in integer cents; rendered ONLY when costSource is MODELED. */
   modeledCents: number | null;
+  /** A solar/NEM meter's printed ANNUAL true-up amount in integer cents; null when not on file.
+   *  Rendered ONLY when costSource is NEM_TRUEUP (as an annual figure, never monthly). */
+  trueUpAmountCents: number | null;
   /** Latest demand charge in integer cents; null unless reconciled. A reconciled meter that
       carries NO demand charge is also null here - the cell distinguishes the two by reading
       coverageState (reconciled + null = "None"; unreconciled = the coverage treatment). */
@@ -83,6 +87,11 @@ function meterPeakKw(m: MeterView): number | null {
 /** Project a meter to its table row. Cost/demand are gated on coverage (AR-15). */
 export function toMeterRow(m: MeterView): MeterRow {
   const reconciled = m.coverageState === RECONCILED;
+  // A solar/NEM meter's printed monthly total is a NET figure that settles at the annual
+  // true-up, so it never carries a monthly cost cell; the cell shows the annual true-up
+  // (NEM_TRUEUP) or the not-yet-settled state instead. Its DEMAND charge is genuinely owed
+  // (solar does not offset demand), so the demand column is unchanged.
+  const isSolar = isSolarNemMeter(m);
   const latest = latestPeriod(m);
   return {
     meter: m,
@@ -94,9 +103,10 @@ export function toMeterRow(m: MeterView): MeterRow {
     peakKw: meterPeakKw(m),
     status: m.status,
     coverageState: m.coverageState,
-    costCents: reconciled ? (latest?.printedTotalCents ?? null) : null,
+    costCents: reconciled && !isSolar ? (latest?.printedTotalCents ?? null) : null,
     costSource: m.costSource ?? "NONE",
     modeledCents: m.costSource === "MODELED" ? (m.modeledMonthlyCents ?? null) : null,
+    trueUpAmountCents: m.costSource === "NEM_TRUEUP" ? (m.trueUpAmountCents ?? null) : null,
     demandCents: reconciled ? (latest?.demandCents ?? null) : null,
     isFlagged: m.status === "BAD",
   };
