@@ -90,16 +90,18 @@ export async function POST(req: Request): Promise<Response> {
   // The grower's chosen model rides on the body too (Story: model picker). Captured here, validated
   // against the allowlist below — never trusted as-is.
   let requestedModel: unknown;
+  let chatId: string | undefined;
   try {
     const body: unknown = await req.json();
     const obj =
-      body && typeof body === "object" ? (body as { messages?: unknown; model?: unknown }) : {};
+      body && typeof body === "object" ? (body as { id?: unknown; messages?: unknown; model?: unknown }) : {};
     const messages = obj.messages;
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: "messages required" }, { status: 400 });
     }
     uiMessages = messages as UIMessage[];
     requestedModel = obj.model;
+    chatId = typeof obj.id === "string" && obj.id.trim().length > 0 ? obj.id : undefined;
   } catch {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
@@ -161,6 +163,7 @@ export async function POST(req: Request): Promise<Response> {
     return await responder.toResponse({
       uiMessages: preparedMessages,
       system: buildSystemPrompt(farmName),
+      chatId,
       decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
