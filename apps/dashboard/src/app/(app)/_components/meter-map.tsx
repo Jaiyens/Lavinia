@@ -135,7 +135,12 @@ function pinElement(
   const el = document.createElement("button");
   el.type = "button";
   el.setAttribute("aria-label", baseLabel);
-  el.style.position = "relative";
+  // MUST be absolute: maplibre positions each marker purely by a transform on an
+  // `position:absolute` element (its .maplibregl-marker class). An inline `position:relative`
+  // overrides that, drops the markers into normal document flow, and stacks them in a vertical
+  // line ~44px apart instead of at their lng/lat. The button still acts as the chip's positioned
+  // containing block (an absolute element is one too), so the bill chip stays anchored to it.
+  el.style.position = "absolute";
   el.style.width = "44px";
   el.style.height = "44px";
   el.style.display = "flex";
@@ -360,11 +365,15 @@ export function MeterMap({
       // both the initial load and after each basemap setStyle (which wipes added sources/layers).
       map.on("style.load", () => paintParcels(map));
       renderMarkers(lib, map);
-      refit(map, pinsRef.current);
-      // The lens mounts the map inside a staggered entrance (Reveal) and a lens tab-switch, so the
-      // container can be mid-transform/zero-size at create time; a resize once the map is ready
-      // makes maplibre re-measure, so zoom anchors correctly instead of drifting vertically.
-      map.once("load", () => map.resize());
+      // Fit + resize only AFTER the map has loaded and the container has a real width. Fitting
+      // synchronously at create time (when the lens tab-switch / Reveal entrance can leave the
+      // container zero-width) computes a degenerate camera that zooms the whole state out.
+      const settle = () => {
+        map.resize();
+        refit(map, pinsRef.current);
+      };
+      if (map.loaded()) settle();
+      else map.once("load", settle);
     })();
 
     return () => {
