@@ -8,54 +8,55 @@ import { loadExportData } from "@/lib/almond/export/load";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { buildFullWorkbook } from "@/lib/almond/export/full-workbook";
 import { buildReportSnapshot, type ReportSnapshot } from "@/lib/almond/codegen/snapshot";
-import { runRenderXlsxInSandbox } from "@/lib/almond/codegen/sandbox-run-xlsx";
+import { renderXlsx, CodegenRuntimeUnavailableError } from "@/lib/almond/codegen/run";
 import { extractXlsxNumbers, verifyWorkbookArtifact } from "@/lib/almond/codegen/verify";
 import { billableTokens, recordUsage } from "@/lib/almond/usage-budget";
 
 /**
- * The `codegenWorkbook` skill (Phase 3) — the xlsx twin of `codegenExport`. Almond builds a BESPOKE
- * multi-tab Excel workbook by WRITING a DECLARATIVE workbook spec (data + style tokens, never code),
- * which a Vercel Sandbox renders with openpyxl, while a fail-closed guard guarantees every printed
- * number traces to the canonical snapshot. This is the long-tail escape hatch: the deterministic
- * `exportSpreadsheet` (the styled multi-tab workbook) serves common asks INSTANTLY; this is reserved
- * for a novel shape the templates cannot express, and is owner-only, flag-gated, throttled, and
- * creds-gated (the factory hands it to the model only when the flag + gateway key + sandbox creds + a
- * built snapshot id are all present — see codegen/flags.ts).
+ * The `codegenWorkbook` skill — the DEFAULT spreadsheet path. Almond builds the grower's Excel workbook
+ * by WRITING a complete openpyxl python script over the farm snapshot, which a runtime (Vercel Sandbox in
+ * prod, a local subprocess in dev) executes to produce the .xlsx. The model has FULL styling freedom —
+ * any color, font, border, merge, column width, freeze, conditional format, or native chart the grower
+ * asks for — so "make the savings column gold and bold" is just code, not a capability we have to
+ * pre-build. Every workbook is generated FROM SCRATCH each turn (no cache, no fixed template).
  *
- * Number honesty (inherited from the PDF codegen + generalized): the model declares every figure in a
+ * NUMBER HONESTY (the one guard, fail-closed but fix-and-retry): the model declares every figure in a
  * manifest — a LITERAL entry tied to a snapshot path, or a DERIVED entry the VERIFIER recomputes
- * (sum/count). The produced .xlsx is reopened in-process and every cell number is scanned against the
- * snapshot-derived (+ verified-derived) allowlist. On ANY failure — no opportunities, model error,
- * sandbox error, verification reject, any throw — it FALLS BACK to the deterministic Phase 1 workbook
- * (`buildFullWorkbook`), so the grower never gets a broken/empty file or a fabricated number.
+ * (sum/count). After each render the produced .xlsx is reopened in our trusted process and every cell
+ * number is scanned against the snapshot-derived (+ verified-derived) allowlist. A mismatch is fed BACK
+ * to the model (the offending number, named) so it repairs and re-renders within the step budget — it is
+ * never silently swapped for a generic template. Only a genuinely UNAVAILABLE runtime (offline/CI/outage)
+ * falls back to the deterministic builder; a model/verify failure with the runtime up is an honest error.
  */
 
-/** The codegen model: Sonnet 4.6 (markup/data generation is a Sonnet task). Matches the picker
- *  allowlist (src/lib/almond/models.ts) and the PDF codegen path. */
+/** The codegen model: Sonnet 4.6 (writing the openpyxl script is a Sonnet task; the gateway alias matches
+ *  the picker allowlist in src/lib/almond/models.ts). */
 const CODEGEN_MODEL = "anthropic/claude-sonnet-4.6";
 
-/** The default ask when the grower did not phrase a specific one. */
+/** The default ask when the grower did not phrase a specific one (e.g. tapped a generic "export" action). */
 const HARDCODED_ASK =
-  "Build a clean, multi-tab Excel workbook for the farm: a Summary tab (the farm at a glance) and a Rate savings tab (meter, current rate, suggested rate, estimated annual savings) ending in a bold total, plus a bar chart of the per-opportunity savings. Use only the data in the snapshot.";
+  "Build a clean, professional Excel workbook of the farm: a Summary tab (the farm at a glance) and a Rate savings tab (meter, current rate, suggested rate, estimated annual savings) ending in a bold total. Use only the data in the snapshot.";
 
-/** Max steps for the nested codegen loop (write workbook.json -> render -> see error -> fix -> render). */
-const CODEGEN_MAX_STEPS = 4;
+/** Max steps for the codegen loop (write script -> render -> see error/verify-fail -> fix -> render).
+ *  Higher than the old declarative path's 4 so the model has room to REPAIR a number the verifier flags. */
+const CODEGEN_MAX_STEPS = 6;
 
 const XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-/** The skill's input: SHAPE ONLY. An optional free-text `request` is the grower's bespoke ask (used as
- *  the prompt and recorded for the Reports history). No farmId, no values. */
+/** The skill's input: the grower's request, in their words. The model writes the workbook to match it. */
 export const codegenWorkbookInputSchema = z.object({
   request: z
     .string()
     .optional()
-    .describe("The grower's custom workbook request, used to shape the workbook and kept for the Reports history."),
+    .describe(
+      "The grower's spreadsheet request in their own words, including any styling (colors, fonts, layout, which columns/tabs). Used as the build prompt and kept for the Reports history.",
+    ),
 });
 
 export type CodegenWorkbookInput = z.infer<typeof codegenWorkbookInputSchema>;
 
-/** The outcome the skill returns to the responder. Mirrors `CodegenExportResult` EXACTLY so the
- *  responder's persist-and-stream path and the Phase 2 cache serve it unchanged. */
+/** The outcome the skill returns to the responder. Mirrors the file-skill shape so the responder's
+ *  persist-and-stream path serves it unchanged. */
 export type CodegenWorkbookResult =
   | {
       kind: "file";
@@ -66,11 +67,8 @@ export type CodegenWorkbookResult =
       meterCount: number;
       coverageAsOf: string | null;
       params: Prisma.InputJsonValue;
-      cacheKey?: string;
-      fromCache?: boolean;
-      /** True when these bytes are the DETERMINISTIC fallback (not the verified bespoke render), so the
-       *  skill wrapper does NOT cache them under the bespoke key (a one-off sandbox outage must not pin
-       *  the generic workbook for 30 days). */
+      /** True when these bytes are the DETERMINISTIC fallback (runtime unavailable), so the responder
+       *  still streams a real file. */
       fromFallback?: boolean;
     }
   | { kind: "empty"; message: string }
@@ -87,43 +85,13 @@ function workbookFileName(farmName: string): string {
   return `${slug(farmName)}-workbook.xlsx`;
 }
 
-/** Truncate model-visible text (sandbox stderr) so a stack trace never bloats the prompt window. */
+/** Truncate model-visible text (runtime stderr) so a stack trace never bloats the prompt window. */
 function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max)}…`;
 }
 
-/** The declarative workbook spec the model emits (the Phase 1 WorkbookSpec shape WITH values). The
- *  shim re-validates everything, so this stays permissive but typed enough to steer the model. */
-const cellSchema = z.object({
-  value: z.union([z.string(), z.number(), z.null()]),
-  format: z.enum(["text", "label", "currency", "integer"]).optional(),
-});
-const chartSchema = z.object({
-  type: z.enum(["bar", "line"]),
-  title: z.string(),
-  dataMinCol: z.number(),
-  dataMaxCol: z.number(),
-  dataMinRow: z.number(),
-  dataMaxRow: z.number(),
-  catMinCol: z.number(),
-  catMaxCol: z.number(),
-  catMinRow: z.number(),
-  catMaxRow: z.number(),
-  anchor: z.string(),
-});
-const sheetSchema = z.object({
-  name: z.string(),
-  title: z.string(),
-  columns: z.array(z.object({ header: z.string(), width: z.number().optional() })).min(1),
-  rows: z.array(z.array(cellSchema)),
-  footer: z.array(z.string()),
-  totals: z.array(cellSchema).optional(),
-  freezeHeader: z.boolean().optional(),
-  autoFilter: z.boolean().optional(),
-  zebra: z.boolean().optional(),
-  charts: z.array(chartSchema).optional(),
-});
-const workbookJsonSchema = z.object({ sheets: z.array(sheetSchema).min(1) });
+/** The figure manifest the model declares (literal snapshot value, or a verifier-recomputed sum/count).
+ *  Stays permissive but typed enough to steer the model; verify.ts re-validates everything fail-closed. */
 const manifestSchema = z.array(
   z.union([
     z.object({
@@ -137,53 +105,61 @@ const manifestSchema = z.array(
       label: z.string(),
       value: z.number().describe("The recomputed figure: integer CENTS for sum, a plain integer for count."),
       op: z.enum(["sum", "count"]),
-      sourcePaths: z.array(z.string()).min(1).describe("Snapshot paths the verifier sums (cents) or whose array length it counts."),
+      sourcePaths: z
+        .array(z.string())
+        .min(1)
+        .describe("Snapshot paths the verifier sums (cents) or whose array length it counts."),
     }),
   ]),
 );
 
-/** The codegen system prompt: the workbook contract, the number-honesty laws, and the snapshot. */
+/** The codegen system prompt: the openpyxl contract, full styling freedom, the number-honesty laws, and
+ *  the snapshot (also written to the runtime as snapshot.json). */
 function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
   return [
-    "You build a single Excel workbook by emitting a DECLARATIVE workbook spec (workbook.json) as DATA",
-    "only — sheets, columns, typed cells, optional totals and charts. You do NOT write any executable",
-    "code. Then you call the renderWorkbook tool with that spec and a manifest of every figure.",
+    "You build the grower's Excel workbook by WRITING a complete, self-contained Python 3 script that uses",
+    "openpyxl. Then you call the renderWorkbook tool with that script (as `code`) and a manifest of every",
+    "figure. Your script MUST:",
+    '  - `import json` and load the data with `json.load(open("snapshot.json"))`,',
+    "  - build a Workbook with openpyxl, and",
+    '  - save it with `wb.save("out.xlsx")` (exactly that file name, in the current directory).',
     "",
-    "CELL RULES:",
-    "- A money cell uses format \"currency\" and carries the value in DOLLARS (cents / 100), e.g. 61417.76.",
-    "  Do NOT pre-format it as a string; Excel renders the $ and decimals from the number.",
-    "- A count/whole-number cell uses format \"integer\" and carries the raw integer.",
-    "- A heading/word cell uses format \"text\"; a muted note uses \"label\"; an empty cell is value null",
-    "  (never 0).",
+    "STYLING — YOU HAVE FULL FREEDOM. Use any openpyxl capability the grower asks for: cell fills and font",
+    "colors (PatternFill / Font), bold/size/italic, borders, alignment, merged cells, column widths, frozen",
+    "panes, auto-filters, number formats, conditional formatting, and native charts. If the grower asks for",
+    "a specific color, font, layout, set of columns, or tabs, do exactly that. There is no fixed template.",
     "",
-    "ABSOLUTE RULE ON NUMBERS: every number you print MUST come from the SNAPSHOT below — either a",
-    "LITERAL snapshot value, or a value you DERIVE only via the manifest. Never invent, estimate, or",
-    "round a number that is not provable from the snapshot.",
+    "NUMBERS — THE ONE HARD RULE. Every NUMBER you write into a cell MUST come from the snapshot: either a",
+    "LITERAL snapshot value, or a value your script DERIVES by summing or counting snapshot values. Never",
+    "invent, estimate, or round a number that is not provable from the snapshot. Money in the snapshot is",
+    "INTEGER CENTS; to show dollars, divide by 100 in your script and write the resulting number with a",
+    "currency number_format (do not hand-format a money string).",
     "",
-    "MANIFEST: when you call renderWorkbook, pass a manifest listing EVERY figure you printed:",
-    "- LITERAL: { label, value, sourcePath } where value is the figure in integer CENTS and sourcePath is",
-    "  its snapshot path, e.g. \"opportunities[0].savingsCents\" or \"totals.rateSwitchSavingsCents\".",
-    "- DERIVED (for a total or count you compute): { kind: \"derived\", label, value, op, sourcePaths }.",
-    "  op \"sum\" sums the CENTS at every sourcePath (value = that sum in cents); op \"count\" is the length",
-    "  of the array at sourcePaths[0]. The verifier recomputes it; a wrong value is rejected.",
-    "If a number has no manifest entry, or your value does not match, the workbook is rejected.",
+    "DO NOT WRITE LIVE SPREADSHEET FORMULAS. Do not put any `=...` formula in a cell. Compute every total or",
+    "subtotal in your python and write the resulting NUMBER. (The verifier reads cell values; a live formula",
+    "has no readable value and will be rejected.)",
     "",
-    "CHARTS: you MAY add a native chart to a sheet (type bar|line, a title, 1-based data/category cell",
-    "coords, and an anchor like \"H2\"). Point a chart ONLY at cells that already appear in a data row.",
+    "MANIFEST. When you call renderWorkbook, pass a manifest listing EVERY figure you wrote:",
+    "  - LITERAL: { label, value, sourcePath } where value is the figure in integer CENTS and sourcePath is",
+    '    its snapshot path, e.g. "opportunities[0].savingsCents" or "totals.rateSwitchSavingsCents".',
+    '  - DERIVED (a total/count you compute): { kind: "derived", label, value, op, sourcePaths }. op "sum"',
+    "    sums the CENTS at every sourcePath (value = that sum in cents); op \"count\" is the length of the",
+    "    array at sourcePaths[0]. The verifier recomputes it; a wrong value is rejected.",
+    "If a number you printed has no manifest entry, or your value does not match, the render is rejected and",
+    "you will be told which number — fix it and call renderWorkbook again.",
     "",
-    "SNAPSHOT (the only source of truth):",
+    "SNAPSHOT (the only source of truth; also available to your script as snapshot.json):",
     JSON.stringify(snapshot, null, 2),
   ].join("\n");
 }
 
-/** What one render attempt captured (held in a closure the render tool writes). */
+/** What one verified render captured (held in a closure the render tool writes). */
 type RenderCapture = { xlsxBytes: Buffer; manifest: unknown };
 
 /**
- * The deterministic fallback: the Phase 1 styled multi-tab workbook, built from the SAME grounded
- * loaders the exportSpreadsheet skill uses, so the fallback can never disagree with the screen. Used
- * whenever the codegen path cannot SAFELY produce a verified file, so the grower always gets a real,
- * polished workbook. `ExportLoadDeps` (prisma+farmId+farmName) is a subset of `AlmondToolDeps`.
+ * The deterministic fallback: the styled multi-tab workbook from the SAME grounded loaders the export
+ * path uses. Served ONLY when the code runtime is unavailable (offline/CI/outage), so the grower still
+ * gets a real, polished workbook rather than nothing.
  */
 async function fallbackToWorkbook(deps: AlmondToolDeps): Promise<CodegenWorkbookResult> {
   try {
@@ -199,23 +175,19 @@ async function fallbackToWorkbook(deps: AlmondToolDeps): Promise<CodegenWorkbook
       meterCount: data.meters.length,
       coverageAsOf: data.state.asOf,
       params: { ask: HARDCODED_ASK },
-      // Mark as the fallback so the skill wrapper never caches it under the bespoke key.
       fromFallback: true,
     };
   } catch {
-    // The fallback itself failed (a transient DB error / corrupt fixture). Return a TYPED error rather
-    // than throwing out of the skill — a thrown tool.execute becomes a tool-error with no card and no
-    // fallback. Mirrors the PDF twin's runGenerateReport contract (never throws to the responder).
     return { kind: "error", message: en.shell.almond.export.skill.error };
   }
 }
 
 /**
- * Run the workbook codegen. Builds the snapshot, runs the nested model loop (the model writes the
- * declarative spec and calls renderWorkbook, which executes openpyxl in a Vercel Sandbox), then
- * verifies the rendered .xlsx fail-closed. Falls back to the deterministic workbook on every
- * non-success. Scope is inherited from `deps`; `signal` is threaded into the model loop and the sandbox
- * so a closed tab does not leak a running microVM.
+ * Run the workbook codegen. Builds the snapshot, runs the model loop (write openpyxl script -> render ->
+ * verify the produced .xlsx fail-closed -> on a number mismatch feed it back to repair), and returns the
+ * verified file. A genuinely unavailable runtime falls back to the deterministic workbook; a model/verify
+ * failure with the runtime UP is an honest error (never a silent template swap). Scope is inherited from
+ * `deps`; `signal` is threaded into the model loop and the runtime so a closed tab does not leak work.
  */
 export async function runCodegenWorkbook(
   deps: AlmondToolDeps,
@@ -224,31 +196,65 @@ export async function runCodegenWorkbook(
 ): Promise<CodegenWorkbookResult> {
   try {
     const snapshot = await buildReportSnapshot(deps);
-    // Nothing to ground a bespoke workbook on -> the deterministic workbook (which lists every meter)
-    // is the honest answer.
+    // Nothing to ground a workbook on -> the deterministic workbook (which lists every meter) is the
+    // honest answer.
     if (snapshot.opportunities.length === 0 && snapshot.meters.length === 0) {
       return await fallbackToWorkbook(deps);
     }
 
-    const captured: { render: RenderCapture | null } = { render: null };
+    const captured: { render: RenderCapture | null; runtimeDown: boolean } = {
+      render: null,
+      runtimeDown: false,
+    };
 
     const renderWorkbook = tool({
       description:
-        "Render the workbook to .xlsx. Pass the complete declarative workbook spec (sheets, typed cells, optional totals and charts) and a manifest of every figure you printed (each with its snapshot sourcePath, or a derived op). Returns whether the workbook built; if not, fix the spec and call again.",
+        "Render the workbook to .xlsx by running your openpyxl python. Pass the complete script as `code` and a manifest of every figure you wrote (each with its snapshot sourcePath, or a derived op). Returns whether the workbook built AND verified; if not, fix the code and call again.",
       inputSchema: z.object({
-        workbookJson: workbookJsonSchema.describe("The declarative workbook: sheets of typed cells, with values."),
-        manifest: manifestSchema.describe("Every figure printed in the workbook, tied to its snapshot path or derived op."),
+        code: z
+          .string()
+          .describe('The complete openpyxl python script: load snapshot.json, build the workbook, wb.save("out.xlsx").'),
+        manifest: manifestSchema.describe("Every figure written in the workbook, tied to its snapshot path or derived op."),
       }),
-      execute: async ({ workbookJson, manifest }) => {
-        const out = await runRenderXlsxInSandbox({ snapshot, workbookJson, signal });
-        if (out.exitCode === 0 && out.xlsxBytes !== null) {
-          captured.render = { xlsxBytes: out.xlsxBytes, manifest };
-          return { ok: true as const };
+      execute: async ({ code, manifest }) => {
+        let out: { xlsxBytes: Buffer | null; stdout: string; stderr: string; exitCode: number };
+        try {
+          out = await renderXlsx({ snapshot, code, signal });
+        } catch (e) {
+          // The RUNTIME is unavailable / failed to boot — not a fixable code error. Record it so the loop
+          // ends in the deterministic fallback rather than asking the model to repair something it cannot.
+          captured.runtimeDown = true;
+          if (e instanceof CodegenRuntimeUnavailableError) {
+            return { ok: false as const, error: "the render runtime is unavailable" };
+          }
+          return { ok: false as const, error: "the render runtime failed to start" };
         }
-        return {
-          ok: false as const,
-          error: truncate(out.stderr || out.stdout || "render produced no workbook", 800),
-        };
+
+        if (out.exitCode !== 0 || out.xlsxBytes === null) {
+          // A python error in the model's script: surface stderr so the model can fix the code.
+          return { ok: false as const, error: truncate(out.stderr || out.stdout || "render produced no workbook", 800) };
+        }
+
+        // Verify the produced .xlsx fail-closed. A null extraction (formula/opaque cell, oversized file)
+        // or a number mismatch is fed back so the model repairs — it is NOT a silent fallback.
+        const cellText = await extractXlsxNumbers(out.xlsxBytes);
+        if (cellText === null) {
+          return {
+            ok: false as const,
+            error:
+              "the workbook could not be number-checked (it may contain a live formula or an unreadable cell). Write every total as a plain computed number, not a spreadsheet formula, then call renderWorkbook again.",
+          };
+        }
+        const verdict = verifyWorkbookArtifact(snapshot, manifest, cellText);
+        if (!verdict.ok) {
+          return {
+            ok: false as const,
+            error: `a number could not be verified against the farm data (${verdict.reason}). Every printed number must come from the snapshot (a literal value or a declared sum/count). Fix it and call renderWorkbook again.`,
+          };
+        }
+
+        captured.render = { xlsxBytes: out.xlsxBytes, manifest };
+        return { ok: true as const };
       },
     });
 
@@ -261,8 +267,7 @@ export async function runCodegenWorkbook(
       abortSignal: signal,
     });
 
-    // Account this codegen model spend against the per-user token budget (Story 10.4): a separate
-    // Sonnet model call from the chat turn, so additive. Best-effort; codegen is owner-only.
+    // Account this codegen model spend against the per-user token budget (Story 10.4). Best-effort.
     if (deps.meterUserId !== null) {
       await recordUsage(deps.prisma, {
         userId: deps.meterUserId,
@@ -273,36 +278,26 @@ export async function runCodegenWorkbook(
       });
     }
 
-    const finalRender = captured.render;
-    if (finalRender === null) {
-      return await fallbackToWorkbook(deps);
+    if (captured.render !== null) {
+      return {
+        kind: "file",
+        preview: "Here is your custom Excel workbook.",
+        fileName: workbookFileName(deps.farmName),
+        contentType: XLSX_CONTENT_TYPE,
+        bytes: captured.render.xlsxBytes,
+        meterCount: snapshot.meterCount,
+        coverageAsOf: snapshot.coverageAsOf,
+        params: { ask: input.request?.trim() || HARDCODED_ASK },
+      };
     }
 
-    // FAIL-CLOSED: reopen the produced .xlsx in-process and require every cell number to trace to the
-    // snapshot (literal) or a verifier-recomputed derived value. A null (oversized / decompression-bomb
-    // / formula cell / parse failure) or a verify reject both fall back to the deterministic workbook.
-    const cellText = await extractXlsxNumbers(finalRender.xlsxBytes);
-    if (cellText === null) {
-      return await fallbackToWorkbook(deps);
-    }
-    const verdict = verifyWorkbookArtifact(snapshot, finalRender.manifest, cellText);
-    if (!verdict.ok) {
-      return await fallbackToWorkbook(deps);
-    }
-
-    return {
-      kind: "file",
-      preview: "Here is your custom Excel workbook.",
-      fileName: workbookFileName(deps.farmName),
-      contentType: XLSX_CONTENT_TYPE,
-      bytes: finalRender.xlsxBytes,
-      meterCount: snapshot.meterCount,
-      coverageAsOf: snapshot.coverageAsOf,
-      params: { ask: input.request?.trim() || HARDCODED_ASK },
-    };
+    // No verified file. If the RUNTIME was down, serve the deterministic workbook (the grower still gets a
+    // file). Otherwise the model could not produce a verifiable workbook with the runtime UP -> honest error.
+    if (captured.runtimeDown) return await fallbackToWorkbook(deps);
+    return { kind: "error", message: en.shell.almond.export.skill.error };
   } catch {
-    // Any failure (snapshot read, model, sandbox, extraction) becomes the deterministic fallback —
-    // never a raw throw to the responder and never a partial/empty file.
+    // Snapshot read / unexpected failure: the deterministic fallback (also reads the farm) is the safe
+    // last resort; if it too fails it returns a typed error, never a throw to the responder.
     return await fallbackToWorkbook(deps);
   }
 }

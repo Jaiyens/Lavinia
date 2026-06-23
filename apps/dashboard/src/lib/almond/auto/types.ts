@@ -17,18 +17,15 @@ import type { AlmondModelId } from "../models";
 export type AttachmentKind = "pdf" | "image" | "other";
 
 /**
- * The six deterministic turn intents. Derivation order (mirrors the stub's capability order so the live
+ * The four deterministic turn intents. Derivation order (mirrors the stub's capability order so the live
  * and offline paths agree by construction):
  *   1. attachment present            -> `reason_attachment` (hard server-side override, wins over all)
- *   2. file ask (verb + object noun) -> `retrieve_cached` (cache HIT) | `codegen_bespoke` (bespoke
- *                                       wording + codegen available, MISS) | `generate_file` (MISS)
+ *   2. file ask (verb + object noun) -> `generate_file` (build the file FROM SCRATCH — no cache probe)
  *   3. navigation (verb or lens word)-> `navigate`
  *   4. otherwise                     -> `read_answer`
  */
 export type TurnIntent =
-  | "retrieve_cached"
   | "generate_file"
-  | "codegen_bespoke"
   | "read_answer"
   | "navigate"
   | "reason_attachment";
@@ -36,12 +33,10 @@ export type TurnIntent =
 /**
  * The copy KEY for the one honest "what Auto decided" line (resolved to text in `en.shell.almond.auto`,
  * so the user-facing string stays localization-ready and em-dash-free). It is a KEY, not a string, on
- * purpose. NOTE the headline can be CORRECTED downstream: a file intent the router predicted as a HIT
- * but that turns out stale builds fresh, so the responder swaps `pulledCached` -> `buildingNew` from
- * the ACTUAL `fromCache` flag, never lying about whether bytes were pulled or built.
+ * purpose. A file ask always builds fresh now (no cache), so the headline is `buildingNew` with no
+ * downstream correction.
  */
 export type AutoHeadlineKey =
-  | "pulledCached"
   | "buildingNew"
   | "answeredDirect"
   | "navigated"
@@ -65,9 +60,6 @@ export type AutoDecision = {
  */
 export type AutoDecided = { readonly headline: AutoHeadlineKey };
 
-/** The cache namespace a file intent probes, mirroring `CacheSkill` in reports/cache.ts. */
-export type AutoCacheSkill = "export" | "report" | "codegen";
-
 /**
  * Pure: map a `TurnIntent` to the cheapest CAPABLE concrete model. Server-side authority — the classifier
  * returns only the intent, this table picks the id, so a hallucinated/forged intent can never name a
@@ -75,43 +67,30 @@ export type AutoCacheSkill = "export" | "report" | "codegen";
  * build (Haiku) when codegen is not configured, so a codegen-style ask never wastes an Opus turn it
  * cannot fulfil.
  */
-export function modelForIntent(intent: TurnIntent, codegenAvailable: boolean): AlmondModelId {
+export function modelForIntent(intent: TurnIntent, _codegenAvailable: boolean): AlmondModelId {
   switch (intent) {
-    case "retrieve_cached":
-      // Pulling something we already made: the cache HIT serves stored bytes with zero regeneration;
-      // the model only narrates the download card. Cheapest capable model.
-      return "anthropic/claude-haiku-4.5";
     case "navigate":
       // Pure URL-state move; the model only emits the structured navigate input. No reasoning depth.
       return "anthropic/claude-haiku-4.5";
     case "generate_file":
-      // A DETERMINISTIC skill (pure-JS xlsx / react-pdf) authors every byte; the model only orchestrates
-      // the tool call and picks the shape. Haiku-when-a-deterministic-skill-builds-the-file.
-      return "anthropic/claude-haiku-4.5";
+      // The model orchestrates the file tool call: it passes the grower's request (and any styling) to
+      // the from-scratch codegen skill, or picks the deterministic shape when codegen is off. Sonnet
+      // handles both; the heavy code-writing happens in the nested codegen model, not here.
+      return "anthropic/claude-sonnet-4.6";
     case "read_answer":
       // The sensible middle tier: a grounded read-only answer over farm data via the read tools. Also
       // the safe default for an ambiguous turn (verb+noun gate biases ambiguity here).
       return "anthropic/claude-sonnet-4.6";
     case "reason_attachment":
-      // An attached bill/spreadsheet/PDF needs the strongest document/vision handling — Opus 4.8.
+      // An attached bill/spreadsheet/PDF needs the strongest document/vision handling.
       return "anthropic/claude-opus-4.8";
-    case "codegen_bespoke":
-      // A brand-new bespoke artifact: Opus orchestrates at the top level (the nested codegen build step
-      // keeps its own hardcoded Sonnet 4.6 inside the sandbox; the router does not touch that). If
-      // codegen is NOT configured, degrade to a deterministic build on Haiku rather than a stranded Opus
-      // turn that cannot reach the codegen skill.
-      return codegenAvailable ? "anthropic/claude-opus-4.8" : "anthropic/claude-haiku-4.5";
   }
 }
 
-/** Pure: the copy key for an intent's decided line. For a file intent this is the PREDICTED key; the
- *  responder corrects pulledCached/buildingNew from the real fromCache outcome. */
+/** Pure: the copy key for an intent's decided line. A file ask always builds fresh now (no cache). */
 export function headlineForIntent(intent: TurnIntent): AutoHeadlineKey {
   switch (intent) {
-    case "retrieve_cached":
-      return "pulledCached";
     case "generate_file":
-    case "codegen_bespoke":
       return "buildingNew";
     case "navigate":
       return "navigated";
@@ -119,21 +98,5 @@ export function headlineForIntent(intent: TurnIntent): AutoHeadlineKey {
       return "readingAttachment";
     case "read_answer":
       return "answeredDirect";
-  }
-}
-
-/** Which cache namespace a file intent probes. read_answer/navigate/reason_attachment have no cacheable
- *  artifact and return null (the router skips the probe for them). */
-export function cacheSkillForIntent(intent: TurnIntent): AutoCacheSkill | null {
-  switch (intent) {
-    case "retrieve_cached":
-    case "generate_file":
-      // Whether a file ask is export- vs report-shaped is resolved by the file-intent classifier; this
-      // returns the default namespace and the router refines it (export|report|codegen) — see route.ts.
-      return "report";
-    case "codegen_bespoke":
-      return "codegen";
-    default:
-      return null;
   }
 }

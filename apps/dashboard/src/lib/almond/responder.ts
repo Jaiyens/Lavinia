@@ -224,12 +224,6 @@ type StreamableFile = {
   meterCount: number;
   coverageAsOf: string | null;
   params: ReportToStore["params"];
-  /** The content-addressed cache key (Phase 2), persisted with a FRESH build so an identical later
-   *  ask resolves to it. Absent for a context that did not compute one. */
-  cacheKey?: string;
-  /** True when these bytes were served from the cache: the row already exists, so the responder
-   *  streams the card WITHOUT persisting a duplicate (and marks it saved). */
-  fromCache?: boolean;
 };
 
 /** Normalize a clean export result into the common streamable-file shape, or null for empty/error
@@ -245,8 +239,6 @@ function exportFile(result: ExportSpreadsheetResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
   };
 }
 
@@ -263,8 +255,6 @@ function reportFile(result: GenerateReportResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
   };
 }
 
@@ -283,8 +273,6 @@ function codegenFile(result: CodegenExportResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
   };
 }
 
@@ -310,11 +298,7 @@ async function persistAndWriteReportPart(
   if (file === null) return;
 
   let saved = false;
-  if (file.fromCache) {
-    // A cache hit: the row already exists (it was stored when first built), so we stream the bytes
-    // again without persisting a duplicate. The card still shows "saved to Reports".
-    saved = true;
-  } else if (actor.authedOwner) {
+  if (actor.authedOwner) {
     try {
       await storeReport(
         { prisma: deps.prisma, farmId: deps.farmId, createdById: actor.userId },
@@ -326,8 +310,8 @@ async function persistAndWriteReportPart(
           params: file.params,
           bytes: file.bytes,
           contentType: file.contentType,
-          // Persist the cache key + count so an identical later ask resolves to this row instantly.
-          cacheKey: file.cacheKey ?? null,
+          // No serve-from-cache: every file is built fresh, so the Reports row is history only.
+          cacheKey: null,
           meterCount: file.meterCount,
         },
       );
@@ -406,10 +390,10 @@ export function createModelResponder(
           // result twice previously rendered (and for an owner, persisted) the SAME file twice. One file
           // name = one card and one Reports row.
           const writtenFiles = new Set<string>();
-          // The Auto decided-line headline for this turn (the router's prediction). Mutable so a stale
-          // cache prediction can be corrected to `buildingNew` when a clean file result comes back fresh
-          // (fromCache !== true). Written ONCE in `onFinish` below; undefined for a hand-picked model.
-          let finalHeadline = turnDecided?.headline;
+          // The Auto decided-line headline for this turn (the router's classification). A file ask always
+          // builds fresh now (no cache), so there is no correction to make: written ONCE in `onFinish`
+          // below; undefined for a hand-picked model.
+          const finalHeadline = turnDecided?.headline;
           const result = streamText({
             model,
             system,
@@ -449,10 +433,6 @@ export function createModelResponder(
                   const file = exportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      // The router predicted a cache HIT but the build came back fresh: correct the line.
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -462,9 +442,6 @@ export function createModelResponder(
                   const file = reportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -476,9 +453,6 @@ export function createModelResponder(
                   const file = codegenFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -491,9 +465,6 @@ export function createModelResponder(
                   const file = codegenFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -923,15 +894,11 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           if (file !== null) {
             await persistAndWriteReportPart(writer, file, deps, actor, text);
           }
-          // The Auto decided line (when the grower picked Auto): a pass-through of the predicted headline,
-          // corrected from the stub's own file outcome when trivially available (a predicted cache HIT
-          // that built fresh becomes `buildingNew`). Written once, after the text/file parts.
+          // The Auto decided line (when the grower picked Auto): a pass-through of the headline. A file
+          // ask always builds fresh now (no cache), so there is nothing to correct. Written once, after
+          // the text/file parts.
           if (turnDecided) {
-            const headline: AutoHeadlineKey =
-              turnDecided.headline === "pulledCached" && file !== null && file.fromCache !== true
-                ? "buildingNew"
-                : turnDecided.headline;
-            writeDecidedPart(writer, headline);
+            writeDecidedPart(writer, turnDecided.headline);
           }
         },
       });

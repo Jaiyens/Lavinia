@@ -15,8 +15,6 @@ import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
 import { hasGatewayKey } from "@/lib/ai/gateway";
 import { isCodegenExportAvailable } from "@/lib/almond/codegen/flags";
-import { resolveExportParams } from "@/lib/almond/skills/export-spreadsheet";
-import { resolveReportParams } from "@/lib/almond/skills/generate-report";
 
 /**
  * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
@@ -125,10 +123,10 @@ export async function POST(req: Request): Promise<Response> {
     : stripFileAttachments(uiMessages);
   // Resolve the model. Two paths:
   //   - Auto (the sentinel "auto"): the grower let Almond pick. The Auto router classifies the turn
-  //     server-side (text + server-derived attachment kinds + a cache probe) and returns a CONCRETE
-  //     allowlisted id PLUS the predicted decided-line headline — the classifier never names a model
-  //     (ADR-A08), so a forged intent cannot steer the gateway. The decided line rides through to the
-  //     responder so the user sees one honest "what Auto decided" line.
+  //     server-side (text + server-derived attachment kinds) and returns a CONCRETE allowlisted id PLUS
+  //     the decided-line headline — the classifier never names a model (ADR-A08), so a forged intent
+  //     cannot steer the gateway. A file ask builds from scratch (no cache). The decided line rides
+  //     through to the responder so the user sees one honest "what Auto decided" line.
   //   - Otherwise: validate the client's requested id against the allowlist (`resolveModel`), so a
   //     bad/forged value falls back to Opus 4.8 and an arbitrary string never reaches the gateway. The
   //     stub path ignores it (offline/CI). A forged "auto" reaching this path is not allowlisted, so it
@@ -138,18 +136,10 @@ export async function POST(req: Request): Promise<Response> {
   if (isAutoChoice(requestedModel)) {
     const lastText = lastUserTextFor(preparedMessages);
     const attachmentKinds = attachmentKindsFromMessages(preparedMessages);
-    // Codegen (a bespoke one-off artifact) is only reachable when the caller can persist AND the
-    // Gateway key + flag are present; otherwise a bespoke ask degrades to a deterministic build.
-    const codegenOn = canPersist && isCodegenExportAvailable(hasGatewayKey());
-    const decision = await routeAutoModel({
-      text: lastText,
-      attachmentKinds,
-      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
-      codegenOn,
-      resolveExportRequest: () => resolveExportParams({}),
-      resolveReportRequest: () => resolveReportParams({}),
-      resolveCodegenRequest: () => ({ request: null, format: "pdf" }),
-    });
+    // From-scratch codegen is the file path when the Gateway key + a runtime are present; the router
+    // uses this only for symmetry (Sonnet orchestrates the file tool call either way).
+    const codegenOn = canExport && isCodegenExportAvailable(hasGatewayKey());
+    const decision = routeAutoModel({ text: lastText, attachmentKinds, codegenOn });
     modelId = decision.modelId;
     decided = { headline: decision.headline };
   } else {
