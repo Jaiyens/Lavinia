@@ -1,11 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { PrismaClient } from "@prisma/client";
+import type { FarmRole, PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
 import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { buildSolarDataset } from "@/lib/dashboard/solar";
+import type { GrandfatherPosition } from "@/lib/energy/solar-grandfather";
 import {
   demandUncoveredShare,
   nemDemandInsight,
@@ -99,11 +100,18 @@ export type AlmondToolDeps = {
  *
  * `userId` is the signed-in grower's id, carried so the owner-only persistence can record WHO
  * asked. It is null for the public Tour / demo.
+ *
+ * `role` is the caller's server-resolved farm role (owner | manager | viewer), or null for the public
+ * Tour / demo viewer. It is NOT a capability gate (those are the booleans above, resolved from it in
+ * the route); it is carried so the persona can phrase what the caller may do accurately - a viewer is
+ * read-only, an owner/manager may also build and keep files. Optional (defaults to the read-only,
+ * null-role framing) so existing AlmondActor fixtures (tests) need no change; the route always sets it.
  */
 export type AlmondActor = {
   authedOwner: boolean;
   canExport: boolean;
   userId: string | null;
+  role?: FarmRole | null;
 };
 
 /**
@@ -162,13 +170,32 @@ export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMet
   // Shares: build the farm's solar dataset once (the same derivation the Solar tab renders) and take
   // each meter's LARGEST array share across the arrays it benefits from. A meter with no usage on file
   // has a null share in the dataset, which stays null here (not-on-file, never a fabricated zero).
-  const dataset = buildSolarDataset(meters, nowMonthOf(SOLAR_CONTEXT_AS_OF));
+  // Passing `asOf` also lets the dataset compute each array's grandfather position (WS6 item 3), which
+  // we pull per meter below; without it the position is honest-unknown for every array.
+  const dataset = buildSolarDataset(meters, nowMonthOf(SOLAR_CONTEXT_AS_OF), {
+    asOf: SOLAR_CONTEXT_AS_OF,
+  });
   const largestShareByPump = new Map<string, number>();
+  // The grandfather position to surface per meter: across the arrays that credit a meter, take the one
+  // with the MOST years remaining (the best-protected terms the meter still enjoys). A `known` position
+  // wins over an `unknown` one, so a meter with at least one dated NEM2 array reads its real expiry.
+  const grandfatherByPump = new Map<string, GrandfatherPosition>();
   for (const group of dataset.arrays) {
     for (const row of group.meters) {
-      if (row.share === null) continue;
-      const prev = largestShareByPump.get(row.pumpId);
-      if (prev === undefined || row.share > prev) largestShareByPump.set(row.pumpId, row.share);
+      if (row.share !== null) {
+        const prev = largestShareByPump.get(row.pumpId);
+        if (prev === undefined || row.share > prev) largestShareByPump.set(row.pumpId, row.share);
+      }
+      const gf = group.grandfather;
+      const prevGf = grandfatherByPump.get(row.pumpId);
+      if (
+        gf.state === "known" &&
+        (prevGf === undefined ||
+          prevGf.state !== "known" ||
+          gf.yearsRemaining > prevGf.yearsRemaining)
+      ) {
+        grandfatherByPump.set(row.pumpId, gf);
+      }
     }
   }
 
@@ -177,7 +204,10 @@ export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMet
   // closed (the context carries no demand fields, so the shape reads honest not-on-file).
   const card = loadRateCard();
   for (const m of solarMeters) {
-    const ctx: MeterSolarContext = { sharePct: largestShareByPump.get(m.id) ?? null };
+    const ctx: MeterSolarContext = {
+      sharePct: largestShareByPump.get(m.id) ?? null,
+      grandfather: grandfatherByPump.get(m.id),
+    };
 
     const insight = nemDemandInsight({
       isSolar: m.isSolar,
@@ -487,14 +517,14 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
   const readTools = {
     getFarmOverview: tool({
       description:
-        "Get a high-level overview of the whole farm: number of meters, rate schedules in use, latest month spend, demand charge, and the meter whose bill moved the most. Call this first for broad questions.",
+        "Get a high-level overview of the whole farm: number of meters, rate schedules in use, the power-source breakdown (how many pumps run on electric vs diesel vs gas), the pump-health breakdown (how many are GOOD / BAD / NEW WELL / OLD), latest month spend, demand charge, and the meter whose bill moved the most. Call this first for broad questions, including how the fleet splits by power source or pump condition.",
       inputSchema: z.object({}),
       execute: () => farmOverview(deps),
     }),
 
     listMeters: tool({
       description:
-        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality) plus its credit state. A net-metering true-up credit is NOT on file until the grower uploads a true-up statement: never state a credit dollar; say the credit is not on file yet and point to the upload path the credit state names.",
+        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. Each meter carries a costSource: BILLED means latestBill is a real posted bill, MODELED means there is no posted bill and modeledCost is an ESTIMATE from usage (say estimated, never a posted bill), REVIEW or NONE means no usable cost yet. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality) plus its credit state. A net-metering true-up credit is NOT on file until the grower uploads a true-up statement: never state a credit dollar; say the credit is not on file yet and point to the upload path the credit state names.",
       inputSchema: z.object({
         rate: z.string().optional().describe("Filter by rate schedule, e.g. AG-A1"),
         entity: z.string().optional().describe("Filter by legal billing entity name"),
@@ -512,7 +542,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     getMeter: tool({
       description:
-        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, how solar relates to its demand charge, and its credit state. Quote those facts verbatim. A net-metering true-up credit is NEVER on file until the grower uploads a true-up statement: if asked for the credit, say it is not on file yet and point to the upload path the credit state names; never invent or estimate a credit dollar.",
+        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. It carries a costSource: BILLED means its bills are real posted bills, MODELED means there is no posted bill and modeledCost is an ESTIMATE (say estimated, never a posted bill), REVIEW/NONE means no usable cost. Each recent bill carries a breakdown of demand vs energy vs other so you can say how much of a bill is the demand charge. It also lists the blocks (fields) this pump serves with their acreage. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, how solar relates to its demand charge, and its credit state. Quote those facts verbatim. A net-metering true-up credit is NEVER on file until the grower uploads a true-up statement: if asked for the credit, say it is not on file yet and point to the upload path the credit state names; never invent or estimate a credit dollar.",
       inputSchema: z.object({
         query: z.string().describe("The meter name, SA id, or id to look up"),
       }),
@@ -528,7 +558,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     queryMeters: tool({
       description:
-        'Rank the farm\'s meters (pumps) by a number and get the ordered list back. Use this whenever the grower asks WHICH meter is the most or least of something, the TOP N, a TOTAL, or a breakdown BY ENTITY: "which pump costs me the most", "the priciest pump", "my top 5 by bill", "biggest demand charge", "where are the savings", "most expensive by company". sortBy "cost" ranks by the latest bill (the default), "demand" by the demand charge, "savings" by the estimated dollars from a rate change (mis-rated meters only). order defaults to "desc" (the most first); pass "asc" for the least. Pass limit for the top N (for example limit 1 for "the single priciest"). groupBy "entity" returns a per-entity rollup instead of meters. Optionally narrow with filterRate or filterEntity (case-insensitive). The data ALWAYS comes back ranked; report the order it returns and quote the meter name plus the whole-dollar figure.',
+        'Rank the farm\'s meters (pumps) by a number and get the ordered list back. Use this whenever the grower asks WHICH meter is the most or least of something, the TOP N, a TOTAL, or a breakdown BY ENTITY: "which pump costs me the most", "the priciest pump", "my top 5 by bill", "biggest demand charge", "where are the savings", "most expensive by company". sortBy "cost" ranks by the latest POSTED bill (the default), "demand" by the demand charge, "savings" by the estimated dollars from a rate change (mis-rated meters only). Each row carries a costSource: a cost rank is built from posted bills only, so a meter whose costSource is MODELED (an estimate, no posted bill yet) ranks last and is never "the costliest". order defaults to "desc" (the most first); pass "asc" for the least. Pass limit for the top N (for example limit 1 for "the single priciest"). groupBy "entity" returns a per-entity rollup instead of meters. Optionally narrow with filterRate or filterEntity (case-insensitive). The data ALWAYS comes back ranked; report the order it returns and quote the meter name plus the whole-dollar figure.',
       inputSchema: z.object({
         sortBy: z
           .enum(["cost", "demand", "savings"])

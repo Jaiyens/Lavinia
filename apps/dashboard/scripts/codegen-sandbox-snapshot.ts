@@ -3,14 +3,18 @@
  * skill boots from). Run it ONCE per Vercel project, then set the printed id as the env var
  * `ALMOND_CODEGEN_SNAPSHOT_ID` so `sandbox-run.ts` creates from it — no per-request install.
  *
- *   Local creds (for running this script):  VERCEL_TOKEN + VERCEL_TEAM_ID + VERCEL_PROJECT_ID
- *   Run:                                     npx tsx scripts/codegen-sandbox-snapshot.ts
+ *   Creds (for running this script):  VERCEL_TOKEN + VERCEL_TEAM_ID + VERCEL_PROJECT_ID (the explicit
+ *                                     triple), OR a VERCEL_OIDC_TOKEN the SDK auto-resolves (e.g. from
+ *                                     `vercel env pull`). With the triple set we spread it; otherwise the
+ *                                     SDK falls back to the OIDC token, mirroring sandbox-run.ts.
+ *   Run:                              npx tsx scripts/codegen-sandbox-snapshot.ts
  *
  * It creates a python3.13 sandbox, installs WeasyPrint's system libraries + the package, installs
- * openpyxl (the WORKBOOK codegen renderer; pure Python, no extra system deps — one image serves both
- * the PDF and the .xlsx codegen paths), installs the three Terra fonts (best-effort — WeasyPrint falls
- * back to a default face if a font fails, which does not affect number verification), snapshots, and
- * prints the snapshot id.
+ * openpyxl + pandas (the WORKBOOK codegen path — the model authors openpyxl scripts that may also reach
+ * for pandas to shape the snapshot data; both are pure-Python wheels with no extra system deps, so one
+ * image serves the PDF and the .xlsx codegen paths), installs a clean sans-serif (Inter) plus the Terra
+ * display fonts best-effort (WeasyPrint falls back to a default face if a font fails, which does not
+ * affect number verification), snapshots, and prints the snapshot id.
  *
  * NOTE: the dnf package names + font URLs below are a sensible starting point for the Amazon-Linux
  * sandbox base; verify them on the first run and adjust if a package/font 404s. Live verification of the
@@ -31,8 +35,14 @@ const SYSTEM_DEPS = [
   "python3-pip",
 ];
 
-/** The three Terra fonts, fetched from canonical sources into the sandbox user font dir. */
+/** Fonts fetched from canonical sources into the sandbox user font dir. Inter is the clean sans-serif
+ *  WeasyPrint uses for the report body (it matches the app's Inter-everywhere type); Fraunces /
+ *  HankenGrotesk / JetBrainsMono are the Terra display + mono faces a styled report may reach for. */
 const FONTS: { name: string; url: string }[] = [
+  {
+    name: "Inter.ttf",
+    url: "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+  },
   {
     name: "Fraunces.ttf",
     url: "https://github.com/google/fonts/raw/main/ofl/fraunces/Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf",
@@ -84,10 +94,20 @@ async function main(): Promise<void> {
 
     await run(sandbox, "install weasyprint", "python3", ["-m", "pip", "install", "--user", "weasyprint"]);
 
-    // openpyxl powers the WORKBOOK codegen (Phase 3). It is pure Python (writes the .xlsx zip itself),
-    // so it needs no extra system deps — one snapshot image serves BOTH renderers (WeasyPrint -> PDF,
-    // openpyxl -> .xlsx). A separate labelled step gives a clear error if openpyxl specifically fails.
-    await run(sandbox, "install openpyxl", "python3", ["-m", "pip", "install", "--user", "openpyxl"]);
+    // openpyxl powers the WORKBOOK codegen: the model authors a complete openpyxl script that this image
+    // runs to produce the .xlsx. pandas rides along so a model-authored script can shape the snapshot
+    // data (group/sum/pivot) before writing cells. Both are pure-Python wheels (openpyxl writes the xlsx
+    // zip itself; pandas ships a manylinux wheel), so they need no extra system deps — one snapshot image
+    // serves BOTH renderers (WeasyPrint -> PDF, openpyxl -> .xlsx). A separate labelled step gives a clear
+    // error if either package specifically fails.
+    await run(sandbox, "install openpyxl + pandas", "python3", [
+      "-m",
+      "pip",
+      "install",
+      "--user",
+      "openpyxl",
+      "pandas",
+    ]);
 
     // Fonts are best-effort: download each into the user font dir, then refresh the font cache.
     await run(sandbox, "make font dir", "mkdir", ["-p", "/home/vercel-sandbox/.fonts"]);
@@ -118,11 +138,12 @@ async function main(): Promise<void> {
       "from weasyprint import HTML; HTML(string='<p>ok</p>').write_pdf('/tmp/smoke.pdf'); print('weasyprint ok')",
     ]);
 
-    // Smoke-test openpyxl + its chart API (BarChart/Reference/add_chart), so a broken xlsx renderer
-    // aborts the snapshot here rather than silently falling back forever in the live workbook path.
-    await run(sandbox, "smoke-test openpyxl", "python3", [
+    // Smoke-test openpyxl + its chart API (BarChart/Reference/add_chart) AND pandas import, so a broken
+    // xlsx renderer or a pandas wheel that fails to import aborts the snapshot here rather than silently
+    // falling back forever in the live workbook path.
+    await run(sandbox, "smoke-test openpyxl + pandas", "python3", [
       "-c",
-      "from openpyxl import Workbook; from openpyxl.chart import BarChart, Reference; wb=Workbook(); ws=wb.active; ws['A1']='ok'; ws['A2']=1; c=BarChart(); c.add_data(Reference(ws,min_col=1,min_row=2,max_row=2)); ws.add_chart(c,'C1'); wb.save('/tmp/smoke.xlsx'); print('openpyxl ok')",
+      "import pandas; from openpyxl import Workbook; from openpyxl.chart import BarChart, Reference; wb=Workbook(); ws=wb.active; ws['A1']='ok'; ws['A2']=1; c=BarChart(); c.add_data(Reference(ws,min_col=1,min_row=2,max_row=2)); ws.add_chart(c,'C1'); wb.save('/tmp/smoke.xlsx'); print('openpyxl ok; pandas', pandas.__version__)",
     ]);
 
     process.stdout.write("\nSnapshotting…\n");

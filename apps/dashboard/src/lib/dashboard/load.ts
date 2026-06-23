@@ -100,6 +100,9 @@ export type MeterView = {
   accountNumber: string | null;
   ranchName: string | null;
   entityName: string | null;
+  /** The legal entity's billing name (how PG&E prints it), distinct from entityName; null when not on
+   *  file. Always set by loadMetersForFarm; optional so existing MeterView fixtures need no change. */
+  entityBillingName?: string | null;
   cropName: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -166,7 +169,9 @@ export async function loadMetersForFarm(
   const pumps = await prisma.pump.findMany({
     where: { farmId },
     include: {
-      account: { select: { number: true, entity: { select: { name: true } } } },
+      account: {
+        select: { number: true, entity: { select: { name: true, billingName: true } } },
+      },
       ranch: { select: { name: true } },
       crop: { select: { name: true } },
       benefitingArrays: {
@@ -208,6 +213,7 @@ export async function loadMetersForFarm(
     accountNumber: pump.account?.number ?? null,
     ranchName: pump.ranch?.name ?? null,
     entityName: pump.account?.entity?.name ?? null,
+    entityBillingName: pump.account?.entity?.billingName ?? null,
     cropName: pump.crop?.name ?? null,
     latitude: pump.latitude,
     longitude: pump.longitude,
@@ -229,7 +235,9 @@ export async function loadMetersForFarm(
         : null,
     })),
     growerPumpId: pump.growerPumpId,
-    blocks: pump.blocks.map((b) => ({ id: b.id, name: b.name, acreage: b.acreage })),
+    // `?? []` guards a query result that omits the blocks relation (test mocks that do not stub it);
+    // the real Prisma query always includes it.
+    blocks: (pump.blocks ?? []).map((b) => ({ id: b.id, name: b.name, acreage: b.acreage })),
     nemPeriods: pump.nemPeriods.map((nem) => ({
       start: nem.start.toISOString(),
       close: nem.close.toISOString(),

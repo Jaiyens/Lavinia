@@ -1,6 +1,7 @@
 import type { CostSource, MeterView } from "@/lib/dashboard/load";
 import type { KpiStrip } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
+import type { GrandfatherPosition } from "@/lib/energy/solar-grandfather";
 import type { EnrichedMeter, FarmAnalysis } from "./analysis";
 import { formatUsdWhole } from "@/lib/format/money";
 import { en } from "@/copy/en";
@@ -37,12 +38,39 @@ function signedMoney(cents: number): SignedMoneyView {
 /** The bucket label for meters with no rate schedule on file. */
 export const UNKNOWN_RATE = "(unknown)";
 
+/** A labelled count rollup for the fleet summary (WS6, item 5): a bucket value and how many meters
+ *  carry it, most common first. Used for the power-source and pump-health breakdowns. */
+export type FleetCount = { label: string; meterCount: number };
+
+/** Roll up a meter field into labelled counts, most common first, with an alphabetical tie-break for
+ *  determinism. A null/blank value is bucketed under `unknownLabel` so it is surfaced honestly rather
+ *  than dropped. */
+function countByLabel(
+  values: (string | null | undefined)[],
+  unknownLabel: string,
+): FleetCount[] {
+  const byLabel = new Map<string, number>();
+  for (const v of values) {
+    const label = v && v.trim().length > 0 ? v : unknownLabel;
+    byLabel.set(label, (byLabel.get(label) ?? 0) + 1);
+  }
+  return [...byLabel.entries()]
+    .map(([label, meterCount]) => ({ label, meterCount }))
+    .sort((a, b) => b.meterCount - a.meterCount || a.label.localeCompare(b.label));
+}
+
 export type FarmOverview = {
   farmName: string;
   meterCount: number;
   solarMeterCount: number;
   /** Distinct KNOWN rate schedules in use, most common first (the no-rate bucket is excluded). */
   rateSchedules: string[];
+  /** Power-source breakdown (WS6, item 5): how many meters run on electric vs diesel vs gas, most
+   *  common first. A meter with no power source on file is counted under "(unknown)". */
+  powerSources: FleetCount[];
+  /** Pump-health breakdown (WS6, item 5): how many meters are GOOD / BAD / NEW WELL / OLD, most
+   *  common first. A meter with no health status on file is counted under "(unknown)". */
+  pumpHealth: FleetCount[];
   /** Null when no billing month has loaded yet (never a misleading "$0"). */
   latestMonthSpend: MoneyView | null;
   spendDeltaVsPriorMonth: SignedMoneyView | null;
@@ -66,6 +94,14 @@ export function summarizeFarmOverview(
     rateSchedules: rateSchedulesByFrequency(meters)
       .map((r) => r.rate)
       .filter((rate) => rate !== UNKNOWN_RATE),
+    powerSources: countByLabel(
+      meters.map((m) => m.powerSource),
+      UNKNOWN_RATE,
+    ),
+    pumpHealth: countByLabel(
+      meters.map((m) => m.status),
+      UNKNOWN_RATE,
+    ),
     latestMonthSpend: kpi.spend.coverage.loaded === 0 ? null : money(kpi.spend.cents),
     spendDeltaVsPriorMonth:
       kpi.spend.deltaCents === null ? null : signedMoney(kpi.spend.deltaCents),
@@ -110,8 +146,12 @@ export type MeterSolarView = {
   share: string;
   /** The single largest usage-proportional share as a whole percent, when on file; else null. */
   sharePct: number | null;
-  /** The grandfather position, in plain words; honest "not on file" until the interconnection date lands. */
+  /** The grandfather position, in plain words; honest "not on file" until the interconnection date lands,
+   *  a real expiry year + years remaining once the date is on file (WS6, item 3). */
   grandfather: string;
+  /** The grandfathered terms' expiry year, when the interconnection date is on file (WS6, item 3); null
+   *  when honest-unknown. Rides alongside `grandfather` for precision. */
+  grandfatherExpiryYear: number | null;
   /** The demand-charge reality, in plain words; honest "not on file" when the demand insight fails closed. */
   demandReality: string;
 };
@@ -131,6 +171,11 @@ export type MeterSolarContext = {
   demandOwedCents?: number | null;
   /** The portion of the bill solar does not cover, in [0,1]; absent = not quotable beside the dollar. */
   uncoveredShare?: number | null;
+  /** WS6 (item 3): the grandfather position of the array that credits this meter, computed by
+   *  `buildSolarDataset` from the array's interconnection date. Absent/`unknown` = no interconnection
+   *  date on file (the launch state), which reads honest not-on-file; a `known` state carries a real
+   *  expiry year + whole years remaining. Never a guessed vintage. */
+  grandfather?: GrandfatherPosition;
 };
 
 /**
@@ -164,9 +209,16 @@ export function summarizeMeterSolar(m: MeterView, ctx: MeterSolarContext = {}): 
     ctx.sharePct === null || ctx.sharePct === undefined ? null : Math.round(ctx.sharePct * 100);
   const share = sharePct === null ? c.shareNotOnFile : c.sharePercent(sharePct);
 
-  // Grandfather position (FR16): data-gated on the interconnection date (DM1), not on file at launch,
-  // so always honest not-on-file. Never an estimated vintage or expiry.
-  const grandfather = c.grandfatherNotOnFile;
+  // Grandfather position (FR16, WS6 item 3): data-gated on the interconnection date (DM1). When the
+  // date is on file the context carries a `known` position (a real expiry year + years remaining from
+  // buildSolarDataset); otherwise honest not-on-file. Never an estimated vintage or expiry.
+  const gf = ctx.grandfather;
+  const grandfather =
+    gf !== undefined && gf.state === "known"
+      ? c.grandfatherKnown(gf.expiryYear, gf.yearsRemaining)
+      : c.grandfatherNotOnFile;
+  const grandfatherExpiryYear =
+    gf !== undefined && gf.state === "known" ? gf.expiryYear : null;
 
   // Demand-charge reality (E-1/E-2): renders only when the fail-closed demand insight is on file (a
   // billed demand charge, never a net-metering credit). Honest not-on-file otherwise.
@@ -180,7 +232,16 @@ export function summarizeMeterSolar(m: MeterView, ctx: MeterSolarContext = {}): 
             Math.round(ctx.uncoveredShare * 100),
           );
 
-  return { program, arrayMembership, arrayCount, share, sharePct, grandfather, demandReality };
+  return {
+    program,
+    arrayMembership,
+    arrayCount,
+    share,
+    sharePct,
+    grandfather,
+    grandfatherExpiryYear,
+    demandReality,
+  };
 }
 
 export type MeterSummary = {
@@ -360,6 +421,9 @@ export type MeterDetail = {
   serialCode: string | null;
   account: string | null;
   entity: string | null;
+  /** The legal entity's billing name as PG&E prints it (WS6, item 7); null when not on file or the
+   *  same as `entity`. Lets Almond name the legal billing entity exactly when asked. */
+  entityBillingName: string | null;
   ranch: string | null;
   crop: string | null;
   isSolar: boolean;
@@ -406,6 +470,7 @@ export function summarizeMeterDetail(m: MeterView, solarCtx?: MeterSolarContext)
     serialCode: m.serialCode,
     account: m.accountNumber,
     entity: m.entityName,
+    entityBillingName: m.entityBillingName ?? null,
     ranch: m.ranchName,
     crop: m.cropName,
     isSolar: m.isSolar,
@@ -620,6 +685,10 @@ export type RankedMeterRow = {
   estSavingsCents: number;
   /** The suggested rate when this meter is mis-rated; null otherwise. */
   suggestedRate: string | null;
+  /** Cost provenance (WS6): BILLED = thisCycleCents is a posted bill; MODELED = an estimate (no posted
+   *  bill, thisCycleCents null); REVIEW/NONE = no usable cost. So a cost ranking quotes a real bill, not
+   *  an estimate. Null only on a fixture MeterView with no costSource set. */
+  costSource: CostSource | null;
 };
 
 function toRankedMeterRow(m: EnrichedMeter): RankedMeterRow {
@@ -632,6 +701,7 @@ function toRankedMeterRow(m: EnrichedMeter): RankedMeterRow {
     demandChargeCents: m.demandChargeCents,
     estSavingsCents: m.flags.estAnnualSavingsCents,
     suggestedRate: m.flags.suggestedRate,
+    costSource: m.costSource,
   };
 }
 

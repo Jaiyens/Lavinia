@@ -129,6 +129,49 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
   });
 });
 
+describe("verifyWorkbookArtifact on PDF text (the shared guard codegenExport feeds extractPdfText into)", () => {
+  // The from-scratch PDF path (src/lib/almond/skills/codegen-export.ts) verifies the rendered report with
+  // the SAME verifyWorkbookArtifact, passing extractPdfText output as `cellText`. Unlike the flattened
+  // .xlsx cells (bare "61417.76"), real PDF text carries currency formatting ("$61,417.76") and thousands
+  // separators. canon() normalizes `$`/commas, so the same allowlist must accept the formatted forms and
+  // still reject a fabricated one — these cases lock that shared usage in.
+  const honestPdfText = [
+    "Batth Farms top opportunities",
+    "183 meters reviewed",
+    "1. Westside Pump 17  AG-B to AG-C  $61,417.76",
+    "2. Lateral 3 Booster  AG-C to AG-B  $6,825.88",
+    "Total estimated savings: $68,243.64",
+  ].join("\n");
+
+  it("accepts honest, currency-FORMATTED PDF figures via a derived total", () => {
+    const manifest = [
+      ...SAVINGS_LITERALS,
+      { kind: "derived", label: "total", value: 6_824_364, op: "sum", sourcePaths: ["opportunities[0].savingsCents", "opportunities[1].savingsCents"] },
+    ];
+    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, honestPdfText)).toEqual({ ok: true });
+  });
+
+  it("REJECTS a fabricated currency-formatted figure the model snuck into the PDF prose", () => {
+    const sneaky = `${honestPdfText}\nBonus: $12,500.00 in extra savings`;
+    const manifest = [
+      ...SAVINGS_LITERALS,
+      { label: "total", value: 6_824_364, sourcePath: "totals.rateSwitchSavingsCents" },
+    ];
+    const v = verifyWorkbookArtifact(SNAPSHOT, manifest, sneaky);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
+  });
+
+  it("treats empty PDF text (extraction failed) as forward-only: the manifest still gates", () => {
+    // extractPdfText returns "" on a parse failure (documented contract); with no number tokens to scan,
+    // the forward manifest check is the sole authority — a valid manifest passes, a bad one still fails.
+    const ok = verifyWorkbookArtifact(SNAPSHOT, [{ label: "s0", value: 6_141_776, sourcePath: "opportunities[0].savingsCents" }], "");
+    expect(ok).toEqual({ ok: true });
+    const bad = verifyWorkbookArtifact(SNAPSHOT, [{ label: "ghost", value: 1, sourcePath: "opportunities[9].savingsCents" }], "");
+    expect(bad.ok).toBe(false);
+  });
+});
+
 describe("extractXlsxNumbers + verifyWorkbookArtifact (end-to-end over real .xlsx bytes)", () => {
   /** Build a one-sheet workbook of typed cells and return its bytes as a Buffer. */
   async function workbook(rows: SheetCell[][], totals?: SheetCell[]): Promise<Buffer> {

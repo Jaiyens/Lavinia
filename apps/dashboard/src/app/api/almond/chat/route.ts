@@ -150,7 +150,10 @@ export async function POST(req: Request): Promise<Response> {
   try {
     return await responder.toResponse({
       uiMessages: preparedMessages,
-      system: buildSystemPrompt(farmName),
+      // The caller's role rides into the system prompt so Almond phrases capability accurately (a
+      // viewer is read-only; an owner/manager may also build and keep files). Server-resolved, never
+      // from the client; null for the public Tour / demo viewer.
+      system: buildSystemPrompt(farmName, role),
       decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
@@ -160,7 +163,7 @@ export async function POST(req: Request): Promise<Response> {
       // rides along so a persisted export (Story 8.6) records who asked; null when the caller
       // cannot persist (a viewer or the public Tour), so a read-only caller is never recorded as
       // an author.
-      actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null },
+      actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null, role },
     });
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a

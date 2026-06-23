@@ -2720,6 +2720,13 @@ export const en = {
       // The grandfather position (FR16, data-gated on the interconnection date DM1, not on file at
       // launch): Almond says it is not on file rather than estimating a vintage or an expiry.
       grandfatherNotOnFile: "its interconnection date is not on file, so its grandfather position is not known",
+      // The grandfather position when the interconnection date IS on file and the array is in the
+      // NEM2 cohort: a real expiry year and the whole years remaining (never a guessed vintage). Mirrors
+      // the F4 watch wording so Almond and the Solar tab never disagree.
+      grandfatherKnown: (expiryYear: number, yearsRemaining: number): string => {
+        const years = yearsRemaining === 1 ? "1 year" : `${yearsRemaining} years`;
+        return `grandfathered on its current net-metering terms until ${expiryYear}, about ${years} from now`;
+      },
       // The demand-charge reality (E-1/E-2, FR21/FR23): solar does not lower the demand charge, said
       // honestly. The dollar is the demand charge already PRINTED on the bill, never a net-metering
       // credit; the uncovered share is a percentage of the bill, never a credit multiplied from a share.

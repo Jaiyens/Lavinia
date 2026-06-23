@@ -454,3 +454,154 @@ describe("solarCreditState (H-2, FR31 honest-blank credit)", () => {
     expect(solar.demandReality.toLowerCase()).not.toContain("credit");
   });
 });
+
+// WS6 item 1: cost provenance, so Almond never quotes a modeled estimate as a posted bill.
+describe("costSource on the meter shapes (WS6)", () => {
+  it("carries costSource on the summary; a MODELED meter exposes modeledCost, a BILLED one does not", () => {
+    const billed = summarizeMeters([
+      makeMeter({ id: "b", costSource: "BILLED", modeledMonthlyCents: 999_00, periods: [period({ printedTotalCents: 500_00 })] }),
+    ]).meters[0];
+    expect(billed?.costSource).toBe("BILLED");
+    expect(billed?.latestBill?.cents).toBe(500_00);
+    // A real bill never exposes a modeled estimate (modeledCost is MODELED-only).
+    expect(billed?.modeledCost).toBeNull();
+
+    const modeled = summarizeMeters([
+      makeMeter({ id: "m", costSource: "MODELED", modeledMonthlyCents: 320_00, periods: [] }),
+    ]).meters[0];
+    expect(modeled?.costSource).toBe("MODELED");
+    expect(modeled?.latestBill).toBeNull(); // no posted bill
+    expect(modeled?.modeledCost?.cents).toBe(320_00); // the estimate, separate from a bill
+  });
+
+  it("defaults costSource to null on a fixture meter with none set (never a fabricated source)", () => {
+    expect(summarizeMeters([makeMeter()]).meters[0]?.costSource).toBeNull();
+    expect(summarizeMeterDetail(makeMeter()).costSource).toBeNull();
+  });
+
+  it("never exposes a modeled estimate as modeledCost unless costSource is MODELED", () => {
+    // A REVIEW or NONE meter that happens to carry a stale modeledMonthlyCents must not leak it as cost.
+    const review = summarizeMeterDetail(
+      makeMeter({ costSource: "REVIEW", modeledMonthlyCents: 100_00 }),
+    );
+    expect(review.modeledCost).toBeNull();
+  });
+});
+
+// WS6 item 6: the demand-vs-energy split of a bill, summed from line items.
+describe("bill breakdown on summarizeMeterDetail (WS6)", () => {
+  it("splits a cycle into demand / energy / other from its line items", () => {
+    const d = summarizeMeterDetail(
+      makeMeter({
+        periods: [
+          period({
+            printedTotalCents: 1_000_00,
+            lineItems: [
+              { kind: "demand", label: "Demand", amountCents: 400_00, quantity: null, unit: "kW", rate: null },
+              { kind: "tou_energy", label: "Peak", amountCents: 500_00, quantity: null, unit: "kWh", rate: null },
+              { kind: "nbc", label: "NBC", amountCents: 100_00, quantity: null, unit: null, rate: null },
+            ],
+          }),
+        ],
+      }),
+    );
+    const b = d.recentBills[0]?.breakdown;
+    expect(b?.demand.cents).toBe(400_00);
+    expect(b?.energy.cents).toBe(500_00);
+    expect(b?.other.cents).toBe(100_00); // nbc + uncategorized roll into "other"
+  });
+
+  it("is null when the cycle carries no line items (never a misleading $0 split)", () => {
+    const d = summarizeMeterDetail(makeMeter({ periods: [period({ printedTotalCents: 500_00 })] }));
+    expect(d.recentBills[0]?.breakdown).toBeNull();
+  });
+});
+
+// WS6 item 4: block (field) linkage + acreage on the meter detail.
+describe("block linkage on summarizeMeterDetail (WS6)", () => {
+  it("lists the blocks a meter serves with acreage, and an empty list when none on file", () => {
+    const d = summarizeMeterDetail(
+      makeMeter({
+        blocks: [
+          { id: "blk1", name: "North Block", acreage: 42 },
+          { id: "blk2", name: "South Block", acreage: null },
+        ],
+      }),
+    );
+    expect(d.blocks).toEqual([
+      { name: "North Block", acreage: 42 },
+      { name: "South Block", acreage: null },
+    ]);
+    expect(summarizeMeterDetail(makeMeter()).blocks).toEqual([]); // none on file -> empty, not undefined
+  });
+});
+
+// WS6 item 7: the legal entity's billing name (how PG&E prints it) on the meter detail.
+describe("entityBillingName on summarizeMeterDetail (WS6)", () => {
+  it("carries the billing name when on file, and null otherwise", () => {
+    expect(
+      summarizeMeterDetail(makeMeter({ entityBillingName: "BATTH FARMS LLC" })).entityBillingName,
+    ).toBe("BATTH FARMS LLC");
+    expect(summarizeMeterDetail(makeMeter()).entityBillingName).toBeNull();
+  });
+});
+
+// WS6 item 5: the fleet summaries (power-source + pump-health) on the overview.
+describe("fleet summaries on summarizeFarmOverview (WS6)", () => {
+  it("breaks the fleet down by power source, most common first, bucketing unknown", () => {
+    const o = summarizeFarmOverview(
+      "F",
+      [
+        makeMeter({ powerSource: "electric" }),
+        makeMeter({ powerSource: "electric" }),
+        makeMeter({ powerSource: "diesel" }),
+        makeMeter({ powerSource: undefined }), // none on file -> (unknown)
+      ],
+      KPI,
+    );
+    expect(o.powerSources[0]).toEqual({ label: "electric", meterCount: 2 });
+    expect(o.powerSources.find((p) => p.label === "diesel")?.meterCount).toBe(1);
+    expect(o.powerSources.find((p) => p.label === "(unknown)")?.meterCount).toBe(1);
+  });
+
+  it("breaks the fleet down by pump health, most common first, bucketing unknown", () => {
+    const o = summarizeFarmOverview(
+      "F",
+      [
+        makeMeter({ status: "GOOD" }),
+        makeMeter({ status: "BAD" }),
+        makeMeter({ status: "BAD" }),
+        makeMeter({ status: null }), // none on file -> (unknown)
+      ],
+      KPI,
+    );
+    expect(o.pumpHealth[0]).toEqual({ label: "BAD", meterCount: 2 });
+    expect(o.pumpHealth.find((p) => p.label === "GOOD")?.meterCount).toBe(1);
+    expect(o.pumpHealth.find((p) => p.label === "(unknown)")?.meterCount).toBe(1);
+  });
+});
+
+// WS6 item 3: the grandfather position now reads a real expiry when the interconnection date is on file.
+describe("summarizeMeterSolar grandfather position (WS6)", () => {
+  const c = en.solar.almond;
+
+  it("reads a known grandfather position from the context (expiry year + years remaining)", () => {
+    const s = summarizeMeterSolar(makeMeter({ isSolar: true, nemType: "nem2" }), {
+      grandfather: { state: "known", expiryYear: 2042, yearsRemaining: 16 },
+    });
+    expect(s.grandfather).toBe(c.grandfatherKnown(2042, 16));
+    expect(s.grandfatherExpiryYear).toBe(2042);
+    // A real position never invents a credit dollar.
+    expect(s.grandfather).not.toMatch(/\$/);
+  });
+
+  it("stays honest not-on-file when the position is unknown or absent", () => {
+    expect(
+      summarizeMeterSolar(makeMeter({ isSolar: true }), { grandfather: { state: "unknown" } })
+        .grandfather,
+    ).toBe(c.grandfatherNotOnFile);
+    const absent = summarizeMeterSolar(makeMeter({ isSolar: true }));
+    expect(absent.grandfather).toBe(c.grandfatherNotOnFile);
+    expect(absent.grandfatherExpiryYear).toBeNull();
+  });
+});

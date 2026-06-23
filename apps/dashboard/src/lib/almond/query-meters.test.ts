@@ -241,6 +241,40 @@ describe("summarizeRanking (the queryMeters tool shape, pure)", () => {
     expect(view.byEntity).toBeDefined();
     expect(view.byEntity?.[0]?.entity).toBe("Batth LLC");
   });
+
+  it("carries each ranked row's cost provenance (WS6) so an estimate is never quoted as a bill", () => {
+    // A BILLED meter (a posted bill) and a MODELED meter (an estimate, no posted bill) ranked together:
+    // the cost rank reads the posted bill only, so the MODELED meter sorts last (null thisCycleCents)
+    // and its row is tagged MODELED so the model never calls it "the costliest".
+    const a = analyzeFarm(
+      [
+        makeMeter({
+          id: "billed",
+          name: "Billed Pump",
+          costSource: "BILLED",
+          periods: [period({ printedTotalCents: 8_000_00 })],
+        }),
+        makeMeter({
+          id: "modeled",
+          name: "Modeled Pump",
+          costSource: "MODELED",
+          coverageState: "no_bill" as MeterView["coverageState"],
+          modeledMonthlyCents: 99_000_00,
+          periods: [],
+        }),
+      ],
+      [],
+    );
+    const view = summarizeRanking(a, { sortBy: "cost", order: "desc" });
+    const billed = view.meters.find((m) => m.name === "Billed Pump");
+    const modeled = view.meters.find((m) => m.name === "Modeled Pump");
+    expect(billed?.costSource).toBe("BILLED");
+    expect(billed?.thisCycleCents).toBe(8_000_00);
+    expect(modeled?.costSource).toBe("MODELED");
+    // The estimate never enters the cost rank: a modeled meter has no posted bill, so it ranks last.
+    expect(modeled?.thisCycleCents).toBeNull();
+    expect(view.meters[0]?.name).toBe("Billed Pump");
+  });
 });
 
 // --- DB integration over the REAL Batth seed (the strongest proof) ------------------------------
