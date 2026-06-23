@@ -69,8 +69,9 @@ function latestPeriod(m: MeterView) {
   return m.periods[m.periods.length - 1];
 }
 
-/** The meter's peak demand kW: the latest period's billed peak, else the highest across periods. */
-function meterPeakKw(m: MeterView): number | null {
+/** The meter's peak demand kW: the latest period's billed peak, else the highest across periods.
+ *  Exported so the Map lens pins (map.ts) read the same peak the table shows, never a second one. */
+export function meterPeakKw(m: MeterView): number | null {
   const latest = latestPeriod(m);
   if (latest?.peakKw != null) return latest.peakKw;
   let max: number | null = null;

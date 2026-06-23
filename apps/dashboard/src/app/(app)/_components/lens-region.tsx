@@ -4,6 +4,7 @@ import { useQueryState } from "nuqs";
 import { en } from "@/copy/en";
 import { SURFACE, lensQueryOptions, parseLens } from "@/lib/dashboard/surface";
 import type { MeterView } from "@/lib/dashboard/load";
+import type { ParcelOverlay } from "@/lib/dashboard/parcel-overlay";
 import type { MeterReadSchedule } from "@/lib/pge/schedule";
 import { MeterTable } from "./meter-table";
 import { ChartLens } from "./chart-lens";
@@ -19,10 +20,13 @@ export function LensRegion({
   meters,
   schedule,
   todayIso,
+  parcels = null,
 }: {
   meters: MeterView[];
   schedule: MeterReadSchedule;
   todayIso: string;
+  /** The farm's field-boundary underlay for the Map lens; null when the farm has no parcels. */
+  parcels?: ParcelOverlay | null;
 }) {
   const [raw] = useQueryState(SURFACE.lens, lensQueryOptions());
   const active = parseLens(raw);
@@ -36,7 +40,7 @@ export function LensRegion({
   }
 
   if (active === "map") {
-    return <MapLens meters={meters} />;
+    return <MapLens meters={meters} parcels={parcels} />;
   }
 
   if (active === "calendar") {

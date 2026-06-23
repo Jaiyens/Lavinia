@@ -1520,6 +1520,31 @@ export const en = {
           savingsNote: "Estimated savings come from the rate review. They are an estimate, not a guarantee.",
         },
       },
+      // Background-built files (Almond v2 Phase 2). A model-authored spreadsheet/PDF can take a minute
+      // to build, so it no longer runs inside the chat turn: Almond enqueues it and keeps working even
+      // if the grower leaves the page. The chat shows a BUILDING card while it runs, then swaps to a
+      // DOWNLOAD card when it is ready. Plain operator words only, no kW/interval jargon, no exclamation
+      // marks, no em dashes. A RED dot on Almond signals a finished file the grower has not seen yet.
+      generation: {
+        // The building card: a calm "I'm on it, you can leave" line so the grower knows the build
+        // survives them closing the tab. `requestText` is the grower's own words for the file.
+        buildingTitle: "Building your file",
+        buildingNote: "This can take a minute. You can leave this page and I will keep working.",
+        // Accessible group label for the building card (names what is being built).
+        buildingAria: (requestText: string): string => `Building ${requestText}`,
+        // The finished download card: the file is ready to open. The button leads to the saved report.
+        readyTitle: "Your file is ready",
+        download: "Download",
+        // Accessible label for the download link on a finished build.
+        downloadAria: (requestText: string): string => `Download ${requestText}`,
+        // Honest failure line when a build did not finish (typed, never a raw throw). Offers a re-ask.
+        failedTitle: "I could not finish that file",
+        failedNote: "Something went wrong while building it. Ask me to try again.",
+        // The RED unread badge on the launcher and the rail Almond icon: a finished file is waiting.
+        // `count` is how many builds finished unseen.
+        unreadAria: (count: number): string =>
+          count === 1 ? "1 finished file from Almond" : `${count} finished files from Almond`,
+      },
       // The PDF report Almond makes (Epic 9). A clean, trustworthy document built from a bounded set
       // of section templates (summary, meter table, mis-rated set, savings, single meter, coverage
       // footer), each rendering ONLY grounded data. Plain operator words only, no kW/interval jargon,
@@ -1908,6 +1933,40 @@ export const en = {
       basemapStreets: "Map",
       // Screen-reader label for a pin that has a known latest bill floating above it.
       pinBillAria: (name: string, bill: string): string => `Meter ${name}, latest bill ${bill}`,
+      // The Energy map's "rate" encoding: pins colored by PG&E rate family, sized by annual spend,
+      // ringed when on a closed legacy schedule.
+      rateLegendLabel: "Rate schedule",
+      rateFamily: {
+        ag_a: "AG-A",
+        ag_b: "AG-B",
+        ag_c: "AG-C",
+        ag_other: "Other ag",
+        commercial: "Commercial",
+        legacy: "Legacy AG-4/AG-5",
+        unknown: "Unknown rate",
+      },
+      ringNote: "Ringed pins are on closed legacy rates",
+      sizeNote: "Bigger pins spend more per year",
+      // Screen-reader label for a pin in the rate encoding (the rate is the color, so it is spoken).
+      pinRateAria: (name: string, rate: string): string => `Open meter ${name}, rate ${rate}`,
+      rateUnknownAria: "unknown",
+      // The field-boundary underlay toggle on the Energy map.
+      fieldsLabel: "Fields",
+      fieldsToggleAria: (on: boolean): string =>
+        on ? "Hide field boundaries" : "Show field boundaries",
+      // Hover-popup field labels (a meter's facts on hover; each line is omitted when not on file).
+      popup: {
+        pumpId: "Pump ID",
+        rate: "Rate",
+        legacyTag: "legacy",
+        status: "Status",
+        annualSpend: "Annual spend",
+        latestBill: "Latest bill",
+        peak: "Peak demand",
+        flow: "Flow",
+        account: "Account",
+        ranch: "Ranch",
+      },
     },
     // The filter bar (Story 2.6): narrow the whole dashboard to an entity / ranch / rate.
     // A dimension with no values on this farm renders no control.

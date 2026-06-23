@@ -7,6 +7,13 @@ import { en } from "@/copy/en";
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterMeters } from "@/lib/dashboard/table";
 import { toMapPins } from "@/lib/dashboard/map";
+import {
+  RATE_FAMILY_COLOR,
+  RATE_FAMILY_ORDER,
+  rateFamily,
+  type RateFamily,
+} from "@/lib/dashboard/map-style";
+import type { ParcelOverlay } from "@/lib/dashboard/parcel-overlay";
 import { SURFACE } from "@/lib/dashboard/surface";
 import { isActiveFilterValue } from "./filter-bar";
 import { MeterMap } from "./meter-map";
@@ -19,7 +26,13 @@ import { MeterMap } from "./meter-map";
 
 const t = en.shell.map;
 
-export function MapLens({ meters }: { meters: MeterView[] }) {
+export function MapLens({
+  meters,
+  parcels = null,
+}: {
+  meters: MeterView[];
+  parcels?: ParcelOverlay | null;
+}) {
   const [entity, setEntity] = useQueryState(SURFACE.entity);
   const [ranch, setRanch] = useQueryState(SURFACE.ranch);
   const [rate, setRate] = useQueryState(SURFACE.rate);
@@ -29,6 +42,13 @@ export function MapLens({ meters }: { meters: MeterView[] }) {
     () => toMapPins(filterMeters(meters, { entity, ranch, rate })),
     [meters, entity, ranch, rate],
   );
+
+  // Only the rate families actually present in the current pin set appear in the legend (so a farm
+  // with no commercial meters never shows a "Commercial" swatch), in the canonical legend order.
+  const presentFamilies = useMemo(() => {
+    const present = new Set<RateFamily>(pins.map((p) => rateFamily(p.rateSchedule)));
+    return RATE_FAMILY_ORDER.filter((f) => present.has(f));
+  }, [pins]);
 
   const hasView = meters.length > 0 && pins.length + unlocated.length > 0;
 
@@ -63,31 +83,36 @@ export function MapLens({ meters }: { meters: MeterView[] }) {
 
   return (
     <section id="energy-lens" aria-label={t.caption} className="scroll-mt-6">
-      {/* Pin legend: color always paired with its label. */}
-      <ul aria-label={t.legendLabel} className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <li className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="h-3 w-3 rounded-full border border-outline-variant"
-            style={{ background: "var(--alert)" }}
-          />
-          <span className="type-caption text-on-surface-variant">{t.attention}</span>
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="h-3 w-3 rounded-full border border-outline-variant"
-            style={{ background: "var(--primary)" }}
-          />
-          <span className="type-caption text-on-surface-variant">{t.calm}</span>
-        </li>
-      </ul>
+      {/* Rate-family legend: color always paired with its label (color is never the only signal).
+          Two notes carry the other two encoded dimensions - the legacy ring and the spend size. */}
+      <div className="mb-3 flex flex-col gap-1.5">
+        <ul
+          aria-label={t.rateLegendLabel}
+          className="flex flex-wrap items-center gap-x-4 gap-y-1"
+        >
+          {presentFamilies.map((family) => (
+            <li key={family} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="h-3 w-3 rounded-full border border-outline-variant"
+                style={{ background: RATE_FAMILY_COLOR[family] }}
+              />
+              <span className="type-caption text-on-surface-variant">{t.rateFamily[family]}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="type-caption text-on-surface-variant">
+          {t.ringNote} {"·"} {t.sizeNote}
+        </p>
+      </div>
 
       <MeterMap
         pins={pins}
         openMeterId={meterId}
         onOpen={(id) => void setMeter(id)}
         showBill
+        encoding="rate"
+        parcels={parcels}
         heightClass="h-[360px]"
       />
 

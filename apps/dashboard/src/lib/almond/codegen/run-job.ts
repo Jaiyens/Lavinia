@@ -32,20 +32,22 @@ export type RunGenerationJobDeps = AlmondToolDeps & {
 export async function runGenerationJob(deps: RunGenerationJobDeps, jobId: string): Promise<void> {
   const prisma: PrismaClient = deps.prisma;
   try {
-    // Load FARM-SCOPED: a job id that is not this farm's is structurally unreachable (the where clause
-    // pins farmId), so a stray id can never run another farm's build. Only a still-"pending" job runs:
-    // a duplicate after() finds the job already running/done/failed and returns (idempotent).
+    // CLAIM the job ATOMICALLY: flip pending -> running in a single conditional write, FARM-SCOPED. The
+    // status:"pending" in the WHERE makes the claim the synchronization point, so two concurrent after()
+    // callbacks for the same id cannot both pass (only one update matches a row) - no double build, no
+    // duplicate report. A stray id from another farm matches 0 rows (farmId pinned). count===0 means
+    // "not ours / already claimed / not pending" -> return (idempotent).
+    const claim = await prisma.generationJob.updateMany({
+      where: { id: jobId, farmId: deps.farmId, status: "pending" },
+      data: { status: "running", startedAt: new Date() },
+    });
+    if (claim.count === 0) return;
+
+    // We own the claim; load the (now-running) row for its kind / requestText / paramsJson.
     const job = await prisma.generationJob.findFirst({
       where: { id: jobId, farmId: deps.farmId },
     });
-    if (!job || job.status !== "pending") return;
-
-    // Mark running before any heavy work, so a poll sees the build in flight and a duplicate after()
-    // (which re-reads status above) short-circuits.
-    await prisma.generationJob.update({
-      where: { id: job.id },
-      data: { status: "running", startedAt: new Date() },
-    });
+    if (!job) return;
 
     // Dispatch by kind to the SAME from-scratch codegen builders the synchronous tool used. No
     // AbortSignal: the request is already done, so the build runs to completion (maxDuration=300 on the

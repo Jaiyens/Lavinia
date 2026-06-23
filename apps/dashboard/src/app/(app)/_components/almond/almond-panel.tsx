@@ -28,6 +28,8 @@ export function AlmondPanel() {
     navByMessage,
     reportsByMessage,
     metersByMessage,
+    generationsByMessage,
+    generations,
     decidedByMessage,
     onReplay,
     send,
@@ -113,6 +115,8 @@ export function AlmondPanel() {
           navByMessage={navByMessage}
           reportsByMessage={reportsByMessage}
           metersByMessage={metersByMessage}
+          generationsByMessage={generationsByMessage}
+          generations={generations}
           decidedByMessage={decidedByMessage}
           onReplay={onReplay}
           onStarter={(q) => send(q)}

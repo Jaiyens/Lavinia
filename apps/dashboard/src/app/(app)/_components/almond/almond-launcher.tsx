@@ -19,7 +19,7 @@ const t = en.shell.almond;
  * there, so a floating duplicate would be redundant.
  */
 export function AlmondLauncher() {
-  const { open, setOpen, announcement } = useAlmondChat();
+  const { open, setOpen, announcement, unreadCount } = useAlmondChat();
   const pathname = usePathname();
   const onAlmondPage = pathname === "/almond" || pathname === "/tour/almond";
 
@@ -47,6 +47,17 @@ export function AlmondLauncher() {
           <span className="relative grid h-12 w-12 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)] ring-1 ring-black/5">
             {/* The resting mascot watches the cursor wherever it goes on the screen. */}
             <AlmondAvatar size={40} animated trackCursor />
+            {/* A finished background-built file is waiting (Almond v2 Phase 2): a small RED count badge
+                at the top-right of the disc, in the reserved risk red (NOT the brand green), so the
+                grower sees the file is ready even with the panel closed. Cleared when they open Almond. */}
+            {unreadCount > 0 && (
+              <span
+                aria-label={t.generation.unreadAria(unreadCount)}
+                className="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-risk px-1 type-label-caps tnum leading-none text-white"
+              >
+                {unreadCount}
+              </span>
+            )}
           </span>
           <span className="type-body-md font-semibold text-white">{t.launcherLabel}</span>
           <BorderBeam size={56} duration={6} colorFrom="#f2c14e" colorTo="#ffffff" />

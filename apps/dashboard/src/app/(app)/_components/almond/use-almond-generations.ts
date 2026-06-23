@@ -92,10 +92,16 @@ export function useAlmondGenerations(panelOpen: boolean): UseAlmondGenerations {
   // Whether the very first poll has landed: the first batch of already-"done" jobs is seeded as seen
   // (history, not a fresh completion), so a returning grower never sees a stale red badge.
   const seededRef = useRef(false);
-  // The latest panelOpen, read inside the poll without re-subscribing the interval each toggle.
+  // The latest panelOpen, read inside the poll without re-subscribing the interval each toggle. Synced
+  // in an effect (never assigned during render) so a stale closure never reads the wrong open-state.
   const panelOpenRef = useRef(panelOpen);
-  panelOpenRef.current = panelOpen;
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // The latest polled rows mirrored into a ref, so markSeen can read them without a no-op setState (a
+  // state updater must stay pure; React StrictMode double-invokes it in dev).
+  const generationsRef = useRef<AlmondGeneration[]>([]);
 
   // Recompute the unread count from the current rows + the seen set. A done job not yet seen counts.
   const recomputeUnread = useCallback((rows: AlmondGeneration[]) => {
@@ -107,12 +113,9 @@ export function useAlmondGenerations(panelOpen: boolean): UseAlmondGenerations {
   }, []);
 
   const markSeen = useCallback(() => {
-    setGenerations((rows) => {
-      for (const job of rows) {
-        if (job.status === "done") seenRef.current.add(job.id);
-      }
-      return rows;
-    });
+    for (const job of generationsRef.current) {
+      if (job.status === "done") seenRef.current.add(job.id);
+    }
     setUnreadCount(0);
   }, []);
 
@@ -138,6 +141,7 @@ export function useAlmondGenerations(panelOpen: boolean): UseAlmondGenerations {
           if (job.status === "done") seenRef.current.add(job.id);
         }
       }
+      generationsRef.current = rows;
       setGenerations(rows);
       recomputeUnread(rows);
     } catch {
@@ -146,7 +150,10 @@ export function useAlmondGenerations(panelOpen: boolean): UseAlmondGenerations {
   }, [recomputeUnread]);
 
   // Mount poll: catch a build that finished while the grower was away (badge lights with no chat open).
+  // `poll` only setState's AFTER its `await fetch` resolves (never synchronously in this effect body),
+  // so this cannot cascade renders; the lint rule cannot see across the async boundary.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void poll();
   }, [poll]);
 
