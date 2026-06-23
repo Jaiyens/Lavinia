@@ -70,6 +70,8 @@ model Farm {
   generatedReports GeneratedReport[]
   almondConversations AlmondConversation[]
   almondUsageEvents AlmondUsageEvent[]
+  agentRuns       AgentRun[]
+  agentActions    AgentAction[]
 
   @@index([userId])
 }
@@ -550,7 +552,8 @@ model Recommendation {
   resolvedAt DateTime?
   result     Json? // predicted vs actual after the loop closes
 
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farm         Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  agentActions AgentAction[]
 
   @@index([farmId, status])
   @@index([farmId, tool])
@@ -711,6 +714,130 @@ model AlmondUsageEvent {
   @@index([userId, createdAt])
   // Per-farm consumption analytics.
   @@index([farmId, createdAt])
+}
+
+// --- Agentic foundation (the shared agent ledger) -----------------------------
+// Two append-only, farm-scoped models record WHAT an agent did, mirroring the
+// GeneratedReport immutability pattern (a refresh is a NEW row, never an in-place
+// rewrite). They are the audit trail and the human-in-the-loop approval gate for the
+// four feature agents that arrive in their own worktrees (refresh, bill dispute, rate
+// switch, solar watch, rebate). There is deliberately NO separate Approval model:
+// approval is folded into AgentAction.status (proposed -> approved | rejected ->
+// executed | failed) plus approvedById/approvedAt, so the whole human-in-the-loop is
+// one row that survives every state.
+
+// One run of one agent against one farm. A cron sweep or a manual trigger opens a run
+// (status "running"), records zero or more AgentActions under it, and closes it
+// ("succeeded" | "failed"). Farm-scoped on `farmId` (the multi-tenant isolation gate,
+// exactly like every other farm-owned row). Append-only: a re-run is a NEW row, so the
+// full history of what ran and when is preserved. `kind` is a String (the schema's
+// SQLite/Postgres union convention) mirrored by the AgentRunKind TS literal union in
+// src/lib/agents/types.ts.
+model AgentRun {
+  id String @id @default(cuid())
+
+  // The farm this run belongs to (the isolation gate). Every read of a run is
+  // farmId-scoped, and the audit UI resolves the caller's OWN farm before listing runs.
+  farmId String
+
+  // Which agent ran: "refresh" | "bill_dispute" | "rate_switch" | "solar_watch" |
+  // "rebate" (AgentRunKind). String + TS union, never a DB enum (the schema convention).
+  kind String
+
+  // Lifecycle: "running" while in flight, then "succeeded" | "failed" (AgentRunStatus).
+  status String @default("running")
+
+  // How the run started, for the audit trail: "cron" (the system sweep, no user session)
+  // or a user id / label when manually triggered. Free String, not a foreign key: a run
+  // can be system-initiated with no owning user (the cron sweep runs with no session).
+  triggeredBy String
+
+  // An optional human-readable note set when the run completes (e.g. the failure reason
+  // when PG&E MFA expired the authorization). Plain operator English where surfaced.
+  note String?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  farm    Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  actions AgentAction[]
+
+  // Farm-scoped, newest-first reads (the audit list).
+  @@index([farmId, createdAt])
+  // The cadence-window skip query: most-recent completed run of a kind for a farm.
+  @@index([farmId, kind, status])
+}
+
+// One thing an agent proposed (and possibly executed) during a run. This is BOTH the
+// audit row and the approval gate: a v1 agent never touches an external API on its own,
+// it RECORDS a proposed action (status "proposed") that the farm OWNER must approve in
+// the audit UI; approval transitions it to "approved" then the same call executes it to
+// "executed" (or "failed"), recording-and-handing-off only (it still makes no external
+// call in v1). A rejected proposal is "rejected" and terminal. Append-only and immutable
+// in spirit: the status walks forward through the state machine, the payload is never
+// rewritten. Farm-scoped on `farmId` (denormalized off the run so every query, including
+// the cross-farm ownership gate, is farmId-scoped without a join).
+model AgentAction {
+  id String @id @default(cuid())
+
+  // The run that produced this action. Cascade: deleting a run removes its actions.
+  agentRunId String
+
+  // The farm this action belongs to (the isolation gate, denormalized off the run so the
+  // ownership chokepoint can scope on it directly). Cascade with the farm.
+  farmId String
+
+  // The Recommendation this action acts on, when it derives from one (e.g. a bill-dispute
+  // action for a specific finding). Nullable + SetNull: deleting the Recommendation must
+  // NOT cascade away the audit row (what the agent did is preserved even if the finding is
+  // later cleared), it only nulls the link.
+  recommendationId String?
+
+  // What the action does in the agent's vocabulary (e.g. "draft_dispute_email",
+  // "switch_rate"). String, feature-defined, never a DB enum.
+  kind String
+
+  // One-line human summary of the action, in plain operator English (shown in the audit
+  // UI). No em dashes.
+  summary String
+
+  // The approval state machine: "proposed" -> "approved" | "rejected" -> "executed" |
+  // "failed" (AgentActionStatus). Defaults to "proposed": every action waits for the
+  // owner. The transition is an atomic updateMany guarded on this column so a double-tap
+  // cannot double-fire.
+  status String @default("proposed")
+
+  // The structured command an approver would execute, captured so a human can review
+  // EXACTLY what would happen before approving (e.g. the rate-switch request). JSON,
+  // nullable. Never carries a secret or another farm's id.
+  proposedCommand Json?
+
+  // An optional drafted email (subject + body) the action would send on execution, kept
+  // verbatim so the owner reviews the literal words before approving. Plain text, not HTML.
+  draftSubject String?
+  draftBody    String?
+
+  // An optional GeneratedReport id the action produced or references (a loose link, not a
+  // foreign key: the report has its own farm-scoped lifecycle and download route).
+  reportId String?
+
+  // The human-in-the-loop stamps: who approved and when. Both null until approval. A loose
+  // user id String (not an FK) so a deleted account never cascades away the audit row.
+  approvedById String?
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  agentRun       AgentRun        @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+  farm           Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  recommendation Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+
+  // Actions under one run, in order.
+  @@index([agentRunId])
+  // Reverse lookup from a finding to the actions that touched it.
+  @@index([recommendationId])
+  // The pending-approval query: this farm's proposed actions awaiting the owner.
+  @@index([farmId, status])
 }
 
 // --- Auth.js v5 (@auth/prisma-adapter) ----------------------------------------

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LogIn, UserRound } from "lucide-react";
+import { Bot, FileText, LogIn, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { AGENTS, agentHref, isAgentActive } from "./agents";
@@ -50,8 +50,21 @@ export function AgentTabBar({ demo = false }: { demo?: boolean } = {}) {
           </Link>
         );
       })}
-      {/* Reports tab (signed-in only, parity with the desktop rail). The public Tour has no
-          session, so it is omitted there. */}
+      {/* Agents + Reports tabs (signed-in only, parity with the desktop rail). The public Tour
+          has no session, so they are omitted there. */}
+      {!demo && (
+        <Link
+          href="/agents"
+          aria-current={pathname === "/agents" ? "page" : undefined}
+          className={cn(
+            "flex h-16 flex-1 flex-col items-center justify-center gap-0.5 type-label-caps transition-colors",
+            pathname === "/agents" ? "font-semibold text-primary" : "text-on-surface-variant",
+          )}
+        >
+          <Bot size={20} aria-hidden />
+          <span>{en.agents.navLabel}</span>
+        </Link>
+      )}
       {!demo && (
         <Link
           href="/reports"

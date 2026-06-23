@@ -4,6 +4,10 @@ import { dashboardFarm, demoFarm, type DashboardFarm } from "@/lib/onboarding/fa
 import { activeFarmId } from "@/lib/auth/active-farm";
 import { loadFindings, type FindingView } from "@/lib/dashboard/findings";
 import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
+import {
+  loadBillDisputeCards,
+  type BillDisputeCardView,
+} from "@/lib/agents/agents/bill-audit/load";
 
 // Request-scoped read cache for the dashboard shell. The (dashboard) LAYOUT and the PAGE
 // it wraps (Home or Energy) both need the same farm + findings on every navigation, and the
@@ -42,4 +46,10 @@ export const resolveFindings = cache(
 /** The farm's meters projected to MeterView[], resolved once per request. */
 export const resolveMeters = cache(
   (farmId: string): Promise<MeterView[]> => loadMetersForFarm(prisma, farmId),
+);
+
+/** The farm's surfacing bill-dispute agent cards (proposed + ready-to-download packets),
+ *  resolved once per request so Home can place a dispute card beside its bill-audit finding. */
+export const resolveBillDisputeCards = cache(
+  (farmId: string): Promise<BillDisputeCardView[]> => loadBillDisputeCards(prisma, farmId),
 );

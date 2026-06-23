@@ -56,7 +56,7 @@ beforeEach(() => {
 
 describe("GENERATED_REPORT_KINDS", () => {
   it("carries the workbook + focused export tables, the PDF report kind (Story 9.3), and the code-gen export kind", () => {
-    expect([...GENERATED_REPORT_KINDS]).toEqual(["workbook", "meters", "billDue", "report", "codegen"]);
+    expect([...GENERATED_REPORT_KINDS]).toEqual(["workbook", "meters", "billDue", "report", "codegen", "bill_dispute"]);
   });
 });
 

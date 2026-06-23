@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LogOut, Users, UserRound } from "lucide-react";
+import { Bot, FileText, LogOut, Users, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import type { FarmAccess } from "@/lib/auth/access";
@@ -105,6 +105,19 @@ export function AgentRail({
       <div className="mt-auto flex flex-col gap-1 pt-4">
         {demo ? null : (
           <>
+            <Link
+              href="/agents"
+              aria-current={pathname === "/agents" ? "page" : undefined}
+              className={cn(
+                "flex h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 type-body-md transition-colors",
+                pathname === "/agents"
+                  ? "bg-primary-container font-semibold text-on-primary-container"
+                  : "text-on-surface hover:bg-surface-container-low",
+              )}
+            >
+              <Bot size={18} aria-hidden />
+              <span>{en.agents.navLabel}</span>
+            </Link>
             <Link
               href="/reports"
               aria-current={pathname === "/reports" ? "page" : undefined}

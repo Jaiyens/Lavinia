@@ -28,7 +28,7 @@ import { newReportBlobKey, putPrivateBlob, XLSX_CONTENT_TYPE } from "@/lib/stora
  *  `"codegen"` is the model-authored bespoke PDF from the code-gen export POC (rendered in a Vercel
  *  Sandbox, verified fail-closed) — a distinct kind so Reports history can tell a custom report from a
  *  deterministic one. The column stays a free String, so storing a new kind needs no migration. */
-export const GENERATED_REPORT_KINDS = ["workbook", "meters", "billDue", "report", "codegen"] as const;
+export const GENERATED_REPORT_KINDS = ["workbook", "meters", "billDue", "report", "codegen", "bill_dispute"] as const;
 export type GeneratedReportKind = (typeof GENERATED_REPORT_KINDS)[number];
 
 /** The deps the store closes over: a Prisma client, the resolved farm scope, and (optionally) the

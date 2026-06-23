@@ -602,6 +602,214 @@ export const en = {
       body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
     },
   },
+  // The Agents audit area (the agentic foundation). The page lists what Terra's agents have
+  // done for this farm, newest first, and lets the farm owner approve or reject anything an
+  // agent proposed before it acts. Plain operator English, the grower's words. No utility
+  // jargon, no em dashes, no exclamation marks.
+  //
+  // FROZEN SHARED BLOCK plus four PRE-STUBBED nested blocks (billDispute / rateAgent /
+  // solarWatch / incentives): a feature worktree FILLS its own nested block rather than
+  // appending at this shared boundary, so the four agents never collide on this file.
+  agents: {
+    // Left-rail / mobile-tab nav label and the page chrome.
+    navLabel: "Agents",
+    eyebrow: "Agents",
+    title: "What your agents did",
+    lede: "Terra's agents keep your farm current and flag the moves worth making. Anything that would act on your behalf waits here for your okay.",
+    // Back-to-home link (mirrors the Reports area).
+    home: "Home",
+    // A single run header line: which agent, when it ran.
+    runOnLabel: "Ran",
+    // Run-status labels (mirror the AgentRunStatus union; color is never the only signal).
+    runStatus: {
+      running: "Running",
+      succeeded: "Up to date",
+      failed: "Could not finish",
+    },
+    // Action-status labels (mirror the AgentActionStatus union).
+    actionStatus: {
+      proposed: "Waiting for your okay",
+      approved: "Approved",
+      rejected: "Skipped",
+      executed: "Done",
+      failed: "Could not finish",
+    },
+    // One-tap controls on a proposed action (owner only).
+    approve: "Approve",
+    reject: "Skip",
+    approveAria: (summary: string): string => `Approve: ${summary}`,
+    rejectAria: (summary: string): string => `Skip: ${summary}`,
+    // Calm error if an approve/reject did not save (mirrors resolveFinding's tone).
+    actionError: "That did not save. Try it again.",
+    // Read-only note for a non-owner viewing the audit (they cannot approve).
+    readOnlyNote: "Only the farm owner can approve these.",
+    // Empty state for a farm with no agent runs yet.
+    empty: {
+      title: "Nothing yet",
+      body: "Once your PG&E connection is live, Terra's agents start working in the background. What they do shows up here.",
+    },
+    // The built-in refresh agent (daily re-pull plus re-run of the engines).
+    refresh: {
+      label: "Daily refresh",
+      // Shown on a failed refresh when there is no specific error message (e.g. the PG&E
+      // sign-in needs to be renewed). The DB stores the real reason when there is one.
+      failedNote: "We could not refresh from PG&E. The connection may need a fresh sign-in.",
+      // Short note explaining the refresh agent on the audit page.
+      note: "Terra re-checks your PG&E data every day and updates your findings.",
+    },
+    // --- PRE-STUBBED feature blocks: each feature worktree FILLS its own block here. ---
+    // Rate switch agent (daily, recommend-only). It surfaces wrong-rate findings the
+    // engines already proved and offers a one-tap "request this switch" the founder sees
+    // in this audit list. Nothing auto-switches; no email yet. Plain operator English, no
+    // em dashes.
+    rateAgent: {
+      label: "Rate check",
+      // Summary line on the proposed action (the audit row). Reuses the grounded
+      // current/target rate codes; the dollar figure is the engine's annual estimate.
+      summary: (pump: string, from: string, to: string, savings: string): string =>
+        `${pump} is on ${from}. Moving it to ${to} saves about ${savings} a year.`,
+      // The one-tap control on a proposed rate-switch action (owner only).
+      request: "Request this rate switch",
+      requestAria: (summary: string): string => `Request this rate switch: ${summary}`,
+      // Confirmation shown after the request is recorded. It is logged for the Terra team
+      // to file with PG&E; nothing switches on its own.
+      requested:
+        "Requested. The Terra team files this rate change with PG&E. Nothing switches on its own.",
+      // Calm error if the request did not save (mirrors the shared agents tone).
+      requestError: "That did not save. Try it again.",
+    },
+    // Solar watch agent: a monthly, low-stakes finding that an array looks like it is slowly
+    // putting out less than it used to. HONEST: the signal is a net-export proxy from your NEM
+    // statements, not metered panel output, so the copy says "worth a look", never a dollar
+    // claim. No em dashes; plain operator English.
+    solarWatch: {
+      label: "Solar watch",
+      // The finding the grower sees. `pumpName` is the solar-paired meter; `monthsCounted` is
+      // how many statement months backed the read; `worstPercent` is the biggest single
+      // same-month-last-year drop (a whole number, already a proxy).
+      situation: (pumpName: string): string =>
+        `${pumpName} looks like it is putting out less than it did this time last year.`,
+      // States plainly that this is a net-export proxy, not metered panel output, and that it
+      // is a slow seasonal read, not a same-day fault.
+      note: (worstPercent: number, monthsCounted: number): string =>
+        `Compared month for month against last year, your net export is down about ${worstPercent}% at the worst point, across ${monthsCounted} months of PG&E solar statements. This is read from your net export, not from the panels directly, so it is a slow seasonal sign and not a same-day fault. Worth having someone look at the array.`,
+      // The action is a look, not an automated step. Stays a finding (no approval gate).
+      action: "Have the array checked",
+      // Short note explaining the solar-watch agent on the audit page.
+      audit:
+        "Each month Terra compares your solar export against the same months last year and flags an array that looks like it is slowly putting out less. This is a net export proxy, not metered panel output.",
+    },
+    // Rebate / incentives agent (monthly, NO LLM, NO dollar). Honest-blank program
+    // leads matched from a static catalog of real CA ag programs. The copy names the
+    // program and what it is for, and is explicit that the dollar is not yet known: a
+    // real saving needs interval data, which this agent does not have. No em dashes.
+    incentives: {
+      label: "Rebate finder",
+      // Shown on a failed run when there is no specific error message.
+      failedNote: "We could not check rebate programs this time. Terra will try again.",
+      // Short note explaining the agent on the audit page.
+      note: "Terra checks your meters against California ag rebate and incentive programs once a month and flags the ones you may qualify for.",
+      // The finding's situation line: which meter, which program.
+      situation: (pump: string, program: string): string =>
+        `${pump} may qualify for ${program}.`,
+      // The honest-blank impact note: names the program, no dollar. The grower confirms
+      // eligibility and the amount with the program directly.
+      programNote: (program: string): string =>
+        `This meter fits the ${program} eligibility on the facts Terra has. We have not put a dollar on it yet, since that needs interval data we do not have. Check the program details to confirm and apply.`,
+      action: (): string => "See this program",
+    },
+    // Bill dispute agent: watches the "act"-severity bill-audit findings, drafts a plain
+    // PG&E dispute letter, waits for one-tap OWNER approval, and on approval renders an
+    // immutable PDF dispute packet. v1 NEVER files with PG&E. Plain operator English, the
+    // grower's words; no em dashes, no exclamation marks.
+    billDispute: {
+      // The agent's label in the audit UI / logs.
+      label: "Bill dispute",
+      // The Home card chrome shown beside a flagged bill-audit finding.
+      card: {
+        eyebrow: "Bill dispute",
+        // The card heading names the meter and the cycle month.
+        heading: (pump: string, month: string): string => `Dispute ${pump}'s ${month} bill`,
+        // One calm sentence: what the agent drafted and that it is waiting for the owner.
+        proposedBody: (excessUsd: number): string =>
+          `Terra drafted a letter to PG&E about the roughly ${usd(excessUsd)} this bill ran over a usual month. Review it and approve to prepare a dispute packet you can file.`,
+        // The one-tap owner control that approves and renders the packet.
+        approve: "Approve and prepare dispute packet",
+        approveAria: (pump: string, month: string): string =>
+          `Approve and prepare the dispute packet for ${pump}'s ${month} bill`,
+        // The decline control (rejects the proposal, nothing is filed).
+        reject: "Not now",
+        rejectAria: (pump: string, month: string): string =>
+          `Skip the dispute for ${pump}'s ${month} bill`,
+        // After approval: the packet is ready to download, then file by hand.
+        readyHeading: "Dispute packet ready",
+        readyBody:
+          "Your dispute packet is saved to Reports. Download it, then send it to PG&E to open the dispute. Terra never files for you.",
+        download: "Download the packet",
+        // After the owner skips it.
+        skipped: "Skipped. No dispute was prepared.",
+        // Read-only note on the public Tour (a visitor cannot approve a real dispute).
+        readOnlyNote: "This is a sample. Approving a dispute is available on your own farm.",
+        // Calm error if the approve did not save (mirrors resolveFinding's tone).
+        error: "That did not save. Try it again.",
+      },
+      // The one-line audit summary recorded with the proposed action.
+      actionSummary: (pump: string, month: string, excessUsd: number): string =>
+        `Draft a PG&E dispute for ${pump}'s ${month} bill, about ${usd(excessUsd)} over a usual month.`,
+      // The deterministic /copy dispute LETTER. This is the LOAD-BEARING path: the packet
+      // must be filable from this alone (the LLM is optional polish that may only reword,
+      // never re-number). Every figure is passed in from the engine-authored action.params.
+      letter: {
+        subject: (pump: string, month: string): string =>
+          `Billing dispute, ${pump}, ${month} statement`,
+        // A plain block letter. Lines are joined with newlines by the drafter. No em dashes.
+        body: (input: {
+          pump: string;
+          month: string;
+          cycleRange: string;
+          totalBillUsd: number;
+          medianTotalUsd: number;
+          excessUsd: number;
+        }): string =>
+          [
+            "To the PG&E Billing Department,",
+            "",
+            `I am writing to dispute a charge on the statement for my agricultural meter ${input.pump}, for the service period ${input.cycleRange}.`,
+            "",
+            `This statement totaled about ${usd(input.totalBillUsd)}. For a comparable ${input.month} cycle this meter usually runs about ${usd(input.medianTotalUsd)}, so this bill is roughly ${usd(input.excessUsd)} higher than usual. The metered usage on this cycle did not rise to match the higher charge, which is why I believe the bill is overstated.`,
+            "",
+            "Please review this statement and the meter's usage for the period. If the charge is not supported by the metered usage, I am requesting a corrected bill and a credit for the difference.",
+            "",
+            "Thank you for looking into this.",
+            "",
+            "Sincerely,",
+            "The account holder",
+          ].join("\n"),
+      },
+      // The PDF dispute packet (the immutable Report rendered on approval).
+      packet: {
+        // The download file's title basis and the Report row title.
+        title: (pump: string, month: string): string => `Bill dispute, ${pump}, ${month}`,
+        // The packet header chrome.
+        eyebrow: "PG&E bill dispute",
+        heading: (pump: string): string => `Dispute packet for ${pump}`,
+        // A labeled facts block on the packet (every value engine-authored).
+        meterLabel: "Meter",
+        periodLabel: "Service period",
+        billedLabel: "Statement total",
+        usualLabel: "Usual comparable cycle",
+        excessLabel: "Amount disputed",
+        // The letter section heading on the packet.
+        letterHeading: "Draft letter to PG&E",
+        // The honest footer: Terra prepared this, the grower files it.
+        footer:
+          "Prepared by Terra from your own bills. Review the figures, then file this with PG&E. Terra does not file disputes for you.",
+        // The request text recorded on the Report row (the Reports history line).
+        requestText: (pump: string, month: string): string =>
+          `Bill dispute packet for ${pump}, ${month} statement`,
+      },
+    },
+  },
   // Shared dashboard UI primitives (Epic 2). Plain operator English; the badge
   // labels pair with color so color is never the only signal (the a11y floor).
   ui: {
