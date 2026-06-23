@@ -48,21 +48,25 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
     expect(verifyWorkbookArtifact(SNAPSHOT, manifest, honestCellText)).toEqual({ ok: true });
   });
 
-  it("REJECTS a derived sum whose declared value is wrong", () => {
+  it("a WRONG derived total does not widen, so the bad total printed in the output is rejected", () => {
+    // The model declares the savings total as a wrong sum AND prints that wrong total ($99,999.99). The
+    // verifier recomputes the real sum (6_824_364) which != the declared 9_999_999, so it does NOT widen;
+    // the printed $99,999.99 is in no snapshot field, so the reverse scan rejects it.
     const manifest = [
-      ...SAVINGS_LITERALS,
       { kind: "derived", label: "total", value: 9_999_999, op: "sum", sourcePaths: ["opportunities[0].savingsCents", "opportunities[1].savingsCents"] },
     ];
-    const v = verifyWorkbookArtifact(SNAPSHOT, manifest, honestCellText);
+    const v = verifyWorkbookArtifact(SNAPSHOT, manifest, "Total\n99999.99");
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.reason).toMatch(/derived mismatch/i);
+    if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
   });
 
-  it("accepts a DERIVED count (array length) and rejects a wrong one", () => {
-    const text = ["Opportunities: 2"].join("\n");
-    const ok = verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "n", value: 2, op: "count", sourcePaths: ["opportunities"] }], text);
+  it("widens with a correct DERIVED count, and rejects a fabricated count printed in the output", () => {
+    // opportunities has length 2. A correct count widens "2" (already allowed); a workbook that PRINTS a
+    // fabricated "7" with no snapshot justification is rejected by the reverse scan (the wrong derived
+    // entry does not widen it).
+    const ok = verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "n", value: 2, op: "count", sourcePaths: ["opportunities"] }], "Opportunities: 2");
     expect(ok).toEqual({ ok: true });
-    const bad = verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "n", value: 5, op: "count", sourcePaths: ["opportunities"] }], text);
+    const bad = verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "n", value: 7, op: "count", sourcePaths: ["opportunities"] }], "Opportunities: 7");
     expect(bad.ok).toBe(false);
   });
 
@@ -83,11 +87,16 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
     if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
   });
 
-  it("REJECTS a malformed / empty / unknown-kind manifest (fail closed)", () => {
-    expect(verifyWorkbookArtifact(SNAPSHOT, "nope", honestCellText).ok).toBe(false);
-    expect(verifyWorkbookArtifact(SNAPSHOT, [], honestCellText).ok).toBe(false);
-    expect(verifyWorkbookArtifact(SNAPSHOT, [{ kind: "magic", label: "x", value: 1 }], honestCellText).ok).toBe(false);
-    expect(verifyWorkbookArtifact(SNAPSHOT, [{ kind: "derived", label: "x", value: 1, op: "sum", sourcePaths: [] }], honestCellText).ok).toBe(false);
+  it("treats a malformed / empty / absent manifest as NO manifest (non-fatal): honest numbers pass, fabricated ones still fail", () => {
+    // The reverse scan against the WHOLE snapshot is the gate, so a data dump with no manifest passes as
+    // long as every printed number traces to the snapshot. This is what lets a real 183-meter export work
+    // (the model cannot hand-declare hundreds of cells).
+    expect(verifyWorkbookArtifact(SNAPSHOT, [], honestCellText)).toEqual({ ok: true });
+    expect(verifyWorkbookArtifact(SNAPSHOT, undefined, honestCellText)).toEqual({ ok: true });
+    expect(verifyWorkbookArtifact(SNAPSHOT, "nope", honestCellText)).toEqual({ ok: true });
+    expect(verifyWorkbookArtifact(SNAPSHOT, [{ kind: "magic", label: "x", value: 1 }], honestCellText)).toEqual({ ok: true });
+    // ...and a fabricated number is STILL rejected even with no manifest at all.
+    expect(verifyWorkbookArtifact(SNAPSHOT, [], `${honestCellText}\n99999.00`).ok).toBe(false);
   });
 
   it("REJECTS a derived sum with a DUPLICATE sourcePath (anti double-count)", () => {
@@ -98,10 +107,15 @@ describe("verifyWorkbookArtifact (forward: literal + derived)", () => {
     expect(verifyWorkbookArtifact(SNAPSHOT, manifest, "Total\n122835.52").ok).toBe(false);
   });
 
-  it("REJECTS a derived sum over a NON-money (structural) field", () => {
-    // meterCount / ranks are not cents; a sum can only aggregate money fields (paths ending in 'Cents').
-    const manifest = [{ kind: "derived", label: "bad", value: 183, op: "sum", sourcePaths: ["meterCount"] }];
-    expect(verifyWorkbookArtifact(SNAPSHOT, manifest, "183").ok).toBe(false);
+  it("a derived sum may only aggregate money (Cents) fields: a non-money sum does not widen", () => {
+    // A legit money sum of the two meter costs ($12,227.33 = 1_172_733 + 50_000c) is NOT a raw snapshot
+    // value, so it is admitted only because the derived entry widens it...
+    const goodSum = [{ kind: "derived", label: "meter total", value: 1_222_733, op: "sum", sourcePaths: ["meters[0].costCents", "meters[1].costCents"] }];
+    expect(verifyWorkbookArtifact(SNAPSHOT, goodSum, "Meter total\n12227.33")).toEqual({ ok: true });
+    // ...but a sum over a STRUCTURAL field (meterCount, not cents) is refused by recomputeDerived, so it
+    // cannot launder a structural integer into the money allowlist: the same printed value is rejected.
+    const badSum = [{ kind: "derived", label: "bad", value: 1_222_733, op: "sum", sourcePaths: ["meterCount"] }];
+    expect(verifyWorkbookArtifact(SNAPSHOT, badSum, "Meter total\n12227.33").ok).toBe(false);
   });
 
   it("REJECTS a SIGN-FLIPPED figure: a cell showing -$X when the snapshot holds +$X", () => {
@@ -162,13 +176,12 @@ describe("verifyWorkbookArtifact on PDF text (the shared guard codegenExport fee
     if (!v.ok) expect(v.reason).toMatch(/undeclared number/i);
   });
 
-  it("treats empty PDF text (extraction failed) as forward-only: the manifest still gates", () => {
-    // extractPdfText returns "" on a parse failure (documented contract); with no number tokens to scan,
-    // the forward manifest check is the sole authority — a valid manifest passes, a bad one still fails.
-    const ok = verifyWorkbookArtifact(SNAPSHOT, [{ label: "s0", value: 6_141_776, sourcePath: "opportunities[0].savingsCents" }], "");
-    expect(ok).toEqual({ ok: true });
-    const bad = verifyWorkbookArtifact(SNAPSHOT, [{ label: "ghost", value: 1, sourcePath: "opportunities[9].savingsCents" }], "");
-    expect(bad.ok).toBe(false);
+  it("empty document text passes the verifier (no numbers to scan) — the skill rejects empty extraction separately", () => {
+    // verifyWorkbookArtifact only checks numbers that are PRESENT, so empty text passes here. A fabricated
+    // number cannot ride through an unreadable PDF because the from-scratch PDF skill (codegen-export.ts)
+    // separately REJECTS an empty extractPdfText and re-renders before reaching this guard.
+    expect(verifyWorkbookArtifact(SNAPSHOT, [{ label: "s0", value: 6_141_776, sourcePath: "opportunities[0].savingsCents" }], "")).toEqual({ ok: true });
+    expect(verifyWorkbookArtifact(SNAPSHOT, [], "")).toEqual({ ok: true });
   });
 });
 
