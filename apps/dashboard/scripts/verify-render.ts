@@ -15,7 +15,7 @@ async function main(): Promise<void> {
     throw new Error("REFUSING: not local terra_batth");
   }
   const prisma = new PrismaClient();
-  const owner = await prisma.user.findFirstOrThrow({ where: { email: "gpt4shared@gmail.com" }, select: { id: true } });
+  const owner = await prisma.user.findFirstOrThrow({ where: { email: "jaiyen_shetty@berkeley.edu" }, select: { id: true } });
 
   // 1) The page's resolver: owner-scoped dashboard (NOT the demo path).
   const dash = await loadDashboard(prisma, { userId: owner.id });

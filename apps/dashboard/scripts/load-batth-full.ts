@@ -27,7 +27,7 @@ import { loadRateCard } from "@/lib/pge/rate-card";
 import { runEngines } from "@/lib/recommendations/run";
 import { reconcileFarm } from "./reconcile-batth";
 
-const OWNER_EMAIL = "gpt4shared@gmail.com";
+const OWNER_EMAIL = "jaiyen_shetty@berkeley.edu";
 const FARM_NAME = "Batth Farms";
 const REPO_ROOT = "/Users/panda/Lavinia";
 const CSV_DIR = join(REPO_ROOT, "BatthData");
