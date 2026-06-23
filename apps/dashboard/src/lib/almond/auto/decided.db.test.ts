@@ -47,7 +47,7 @@ beforeAll(async () => {
   db = await createTestDb();
   prisma = db.prisma;
   const farm = await seedSampleFarm(prisma);
-  deps = { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null };
+  deps = { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null, pendingGenerations: [] };
 }, 120_000);
 
 afterAll(async () => {

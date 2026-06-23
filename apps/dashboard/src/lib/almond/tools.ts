@@ -46,15 +46,13 @@ import {
 } from "./skills/generate-report";
 import {
   codegenExportInputSchema,
-  runCodegenExport,
+  HARDCODED_ASK as CODEGEN_EXPORT_HARDCODED_ASK,
   type CodegenExportInput,
-  type CodegenExportResult,
 } from "./skills/codegen-export";
 import {
   codegenWorkbookInputSchema,
-  runCodegenWorkbook,
+  HARDCODED_ASK as CODEGEN_WORKBOOK_HARDCODED_ASK,
   type CodegenWorkbookInput,
-  type CodegenWorkbookResult,
 } from "./skills/codegen-workbook";
 
 /**
@@ -82,6 +80,13 @@ export type AlmondToolDeps = {
   // sites: the chat responder's `onFinish` and the nested codegen `generateText` (which receives `deps`,
   // not `actor`). Used only to attribute usage rows; never a scope or auth gate.
   meterUserId: string | null;
+  // The SHARED mutable sink for background-generation job ids (Almond v2 Phase 2). The codegen tools
+  // ENQUEUE a GenerationJob row and PUSH its id here; the chat route holds the SAME array by reference
+  // and, in a Next `after()` callback (which runs AFTER the response stream finishes), drains it to run
+  // each build in the background — so a model-authored spreadsheet/PDF keeps running if the grower
+  // leaves the page. The route creates a fresh `[]` per request and passes it in; it is empty when the
+  // tools are built but populated by the time the tool `execute` has run during stream consumption.
+  pendingGenerations: string[];
 };
 
 /**
@@ -388,38 +393,81 @@ export async function generateReportSkill(
 }
 
 /**
- * The `codegenExport` skill executor — the DEFAULT report path. Builds the snapshot, has the model WRITE
- * the report's HTML/CSS, renders it in the configured runtime, and verifies it fail-closed with in-loop
- * repair (runCodegenExport). FROM SCRATCH every turn (no cache). Passes through the SAME per-farm
- * generation throttle before any model/runtime work. The chat tool-call's `abortSignal` is threaded so a
- * closed tab cancels the model loop and the runtime.
+ * The lightweight result the codegen tools now return (Almond v2 Phase 2). The build no longer runs
+ * INSIDE the tool `execute` (which would die when the grower leaves the page); instead the tool ENQUEUES
+ * a GenerationJob row, pushes its id onto `deps.pendingGenerations` for the route's `after()` to run in
+ * the background, and returns this immediately. The responder recognizes a "building" result and emits a
+ * transient `data-generation` part (no bytes, no download card yet); the model answers in text that the
+ * file is being built and the grower can leave the page. A "busy" result is the per-farm throttle's calm
+ * decline (no job enqueued), surfaced inline like the old throttle path.
+ */
+export type CodegenBuildingResult =
+  | {
+      kind: "building";
+      jobId: string;
+      generationKind: "workbook" | "report";
+      requestText: string;
+    }
+  | { kind: "busy"; message: string };
+
+/** Enqueue a background generation job and push its id onto the route's shared sink. Scope (`farmId`)
+ *  and authorship (`createdById = deps.meterUserId`) come from `deps`, never from the model; the public
+ *  Tour enqueues with a null author (its job + report are still farm-scoped, so the Tour can poll them).
+ *  Guarded by the SAME per-farm generation throttle the synchronous path used, so an over-busy farm gets
+ *  the calm decline and NO job is created. */
+async function enqueueGeneration(
+  deps: AlmondToolDeps,
+  generationKind: "workbook" | "report",
+  request: string | undefined,
+  hardcodedAsk: string,
+): Promise<CodegenBuildingResult> {
+  if (!checkGenerationThrottle(deps.farmId).allowed) {
+    return { kind: "busy", message: throttledMessage() };
+  }
+  const requestText = request?.trim() || hardcodedAsk;
+  const job = await deps.prisma.generationJob.create({
+    data: {
+      farmId: deps.farmId,
+      createdById: deps.meterUserId,
+      kind: generationKind,
+      status: "pending",
+      requestText,
+      paramsJson: { ask: requestText },
+    },
+    select: { id: true },
+  });
+  // Hand the id to the route's `after()` sink (captured by reference). The build runs there, after the
+  // response stream finishes — so a closed tab cannot kill it.
+  deps.pendingGenerations.push(job.id);
+  return { kind: "building", jobId: job.id, generationKind, requestText };
+}
+
+/**
+ * The `codegenExport` skill executor — the DEFAULT report path. It no longer builds inline (a ~30-90s
+ * build would die when the grower leaves the page); it ENQUEUES a background GenerationJob and returns a
+ * "building" result. The route's `after()` runs `runCodegenExport` (build the snapshot, model WRITEs the
+ * HTML/CSS, render + verify fail-closed) AFTER the response is sent, then persists the PDF and flips the
+ * job to done. Guarded by the SAME per-farm generation throttle before any row is written.
  */
 export async function codegenExportSkill(
   deps: AlmondToolDeps,
   input: CodegenExportInput,
-  signal?: AbortSignal,
-): Promise<CodegenExportResult> {
-  if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return { kind: "error", message: throttledMessage() };
-  }
-  return runCodegenExport(deps, input, signal);
+): Promise<CodegenBuildingResult> {
+  return enqueueGeneration(deps, "report", input.request, CODEGEN_EXPORT_HARDCODED_ASK);
 }
 
 /**
  * The `codegenWorkbook` skill executor — the DEFAULT spreadsheet path; the xlsx twin of
- * `codegenExportSkill`. Builds the snapshot, has the model WRITE an openpyxl script, runs it in the
- * configured runtime, and verifies the produced .xlsx fail-closed with in-loop repair (runCodegenWorkbook).
- * FROM SCRATCH every turn (no cache). Same per-farm generation throttle, same abort-signal threading.
+ * `codegenExportSkill`. It ENQUEUES a background GenerationJob and returns a "building" result; the
+ * route's `after()` runs `runCodegenWorkbook` (model WRITEs an openpyxl script, render + verify the .xlsx
+ * fail-closed) AFTER the response is sent, then persists the workbook and flips the job to done. Same
+ * per-farm generation throttle before any row is written.
  */
 export async function codegenWorkbookSkill(
   deps: AlmondToolDeps,
   input: CodegenWorkbookInput,
-  signal?: AbortSignal,
-): Promise<CodegenWorkbookResult> {
-  if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return { kind: "error", message: throttledMessage() };
-  }
-  return runCodegenWorkbook(deps, input, signal);
+): Promise<CodegenBuildingResult> {
+  return enqueueGeneration(deps, "workbook", input.request, CODEGEN_WORKBOOK_HARDCODED_ASK);
 }
 
 /**
@@ -483,29 +531,37 @@ function codegenSkills(deps: AlmondToolDeps) {
   return {
     codegenExport: tool({
       description:
-        "Build the grower a PDF report and hand it to them as a download. Use this whenever the grower asks for a report, a PDF, a summary document, or a printout — for the whole farm or a specific slice (an entity, a ranch, a rate, one meter). You WRITE the report's layout from the farm's data, so you can honor anything the grower asks for: which sections, the scope, the styling, the emphasis. Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over.",
+        "Build the grower a PDF report and hand it to them as a download. Use this whenever the grower asks for a report, a PDF, a summary document, or a printout — for the whole farm or a specific slice (an entity, a ranch, a rate, one meter). You WRITE the report's layout from the farm's data, so you can honor anything the grower asks for: which sections, the scope, the styling, the emphasis. Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over. The build runs IN THE BACKGROUND (it takes up to a minute or two): once you call this, tell the grower you are building it and they can leave this page — it will be ready and saved to their Reports when it is done. Do not claim the file is finished or attached; it is still being built.",
       inputSchema: codegenExportInputSchema,
-      // The chat tool-call options carry the abort signal; thread it so a closed tab cancels the nested
-      // model loop and stops the runtime rather than leaking a running render.
-      execute: (input, { abortSignal }) => codegenExportSkill(deps, input, abortSignal),
-      // Keep the PDF bytes OUT of the model's context — the bytes reach the grower via the responder's
-      // `data-report` card, not the prompt window.
+      // ENQUEUE only: the build runs in the route's `after()` (after the response is sent), so a closed
+      // tab does not kill it. No abort signal — we WANT it to survive the request ending.
+      execute: (input) => codegenExportSkill(deps, input),
+      // Tell the model the build was QUEUED (not finished), so it answers "I'm building it, you can
+      // leave this page" rather than claiming an attached file. A busy result carries the calm decline.
       toModelOutput: ({ output }) => {
-        if (output.kind === "file") {
-          return { type: "text", value: `Made ${output.fileName}.` };
+        if (output.kind === "building") {
+          return {
+            type: "text",
+            value:
+              "Queued the report build; it is running in the background and will be saved to Reports when done. Tell the grower you are building it and they can leave this page.",
+          };
         }
         return { type: "text", value: output.message };
       },
     }),
     codegenWorkbook: tool({
       description:
-        "Build the grower an Excel spreadsheet and hand it to them as a download. Use this whenever the grower asks for a spreadsheet, a workbook, an Excel file, a CSV, or a sheet of their meters/bills/savings. You WRITE the workbook from the farm's data, so you can do anything the grower asks: pick the columns and tabs, add charts, and style it exactly as they describe (colors, fonts, bold, merges, frozen headers, conditional formatting). Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over.",
+        "Build the grower an Excel spreadsheet and hand it to them as a download. Use this whenever the grower asks for a spreadsheet, a workbook, an Excel file, a CSV, or a sheet of their meters/bills/savings. You WRITE the workbook from the farm's data, so you can do anything the grower asks: pick the columns and tabs, add charts, and style it exactly as they describe (colors, fonts, bold, merges, frozen headers, conditional formatting). Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over. The build runs IN THE BACKGROUND (it takes up to a minute or two): once you call this, tell the grower you are building it and they can leave this page — it will be ready and saved to their Reports when it is done. Do not claim the file is finished or attached; it is still being built.",
       inputSchema: codegenWorkbookInputSchema,
-      // Thread the abort signal so a closed tab cancels the nested model loop + the runtime.
-      execute: (input, { abortSignal }) => codegenWorkbookSkill(deps, input, abortSignal),
+      // ENQUEUE only: the build runs in the route's `after()` so a closed tab does not kill it.
+      execute: (input) => codegenWorkbookSkill(deps, input),
       toModelOutput: ({ output }) => {
-        if (output.kind === "file") {
-          return { type: "text", value: `Made ${output.fileName}.` };
+        if (output.kind === "building") {
+          return {
+            type: "text",
+            value:
+              "Queued the spreadsheet build; it is running in the background and will be saved to Reports when done. Tell the grower you are building it and they can leave this page.",
+          };
         }
         return { type: "text", value: output.message };
       },

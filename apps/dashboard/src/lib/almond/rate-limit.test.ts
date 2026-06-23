@@ -182,7 +182,7 @@ describe("the per-farm generation throttle wired into the skill wrappers", () =>
       },
     },
   ) as unknown as PrismaClient;
-  const deps = { prisma, farmId: "farm_throttle", farmName: "Throttle Test Farm", meterUserId: null };
+  const deps = { prisma, farmId: "farm_throttle", farmName: "Throttle Test Farm", meterUserId: null, pendingGenerations: [] };
 
   it("both file-skill wrappers return the calm busy line once the farm's shared budget is full, building nothing", async () => {
     // Spend the farm's generation budget on the same (default) clock the wrappers read.

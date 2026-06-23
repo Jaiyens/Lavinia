@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
@@ -15,6 +16,7 @@ import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
 import { hasGatewayKey } from "@/lib/ai/gateway";
 import { isCodegenExportAvailable } from "@/lib/almond/codegen/flags";
+import { runGenerationJob } from "@/lib/almond/codegen/run-job";
 
 /**
  * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
@@ -147,8 +149,17 @@ export async function POST(req: Request): Promise<Response> {
     decided = undefined;
   }
   const responder = defaultAlmondResponder(modelId, decided);
+  // The SHARED sink for background-generation job ids (Almond v2 Phase 2). A model-authored
+  // spreadsheet/PDF no longer builds inside the tool `execute` (a ~30-90s build would die when the grower
+  // leaves the page); instead the codegen tool ENQUEUES a GenerationJob row and PUSHES its id here, and
+  // we run the build in a Next `after()` callback (below) once the response stream has finished.
+  const pendingGenerations: string[] = [];
+  // The user the finished report is recorded under: the SAME persist-gated id `actor.userId` uses (an
+  // owner/manager who may keep files), null for a viewer or the public Tour. Resolved here so the
+  // background runner records authorship exactly as the synchronous responder did.
+  const persistingUserId = canPersist ? userId : null;
   try {
-    return await responder.toResponse({
+    const res = await responder.toResponse({
       uiMessages: preparedMessages,
       // The caller's role rides into the system prompt so Almond phrases capability accurately (a
       // viewer is read-only; an owner/manager may also build and keep files). Server-resolved, never
@@ -157,14 +168,45 @@ export async function POST(req: Request): Promise<Response> {
       decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
-      // separate "who authored this export" concern.
-      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
+      // separate "who authored this export" concern. `pendingGenerations` is the SAME array the
+      // `after()` below drains — captured by reference, empty now, populated by the tool `execute`.
+      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId, pendingGenerations },
       // `authedOwner` is the persistence capability (now owner OR manager via canPersist). userId
       // rides along so a persisted export (Story 8.6) records who asked; null when the caller
       // cannot persist (a viewer or the public Tour), so a read-only caller is never recorded as
       // an author.
       actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null, role },
     });
+
+    // THE CRUX OF "survive leaving the page" (read this carefully): `responder.toResponse` returns the
+    // streaming Response BEFORE its stream body runs — the tool-calling loop (and so the codegen tool's
+    // `execute`, which pushes onto `pendingGenerations`) only runs as the client CONSUMES the stream.
+    // `after()` registers a callback Next runs once the response (including the streamed body) has fully
+    // finished. So at REGISTRATION time `pendingGenerations` is still empty, but the closure captures it
+    // BY REFERENCE and reads it at CALLBACK time — by which point the stream has finished and every tool
+    // `execute` has pushed its jobId. We therefore drain the populated array here, running each enqueued
+    // build in the background. Because the build runs AFTER the response is delivered, a closed tab does
+    // not kill it; `runGenerationJob` is idempotent + fail-safe (it flips the job to done/failed and
+    // never throws out). Scope (`farmId`) and authorship (`createdById`) come from the server, never the
+    // model.
+    after(async () => {
+      for (const jobId of pendingGenerations) {
+        await runGenerationJob(
+          {
+            prisma,
+            farmId: farm.id,
+            farmName,
+            meterUserId: userId,
+            createdById: persistingUserId,
+            // The runner enqueues no further jobs; an empty sink keeps the deps type satisfied.
+            pendingGenerations: [],
+          },
+          jobId,
+        );
+      }
+    });
+
+    return res;
   } catch {
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a
     // clean 500 the client renders as the inline error state, never an unhandled crash.

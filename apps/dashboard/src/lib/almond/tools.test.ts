@@ -15,6 +15,7 @@ const deps: AlmondToolDeps = {
   farmId: "farm_test",
   farmName: "Test Farm",
   meterUserId: null,
+  pendingGenerations: [],
 };
 
 // The read-safe set: the read tools + `navigate` (Story 7.3) + `queryMeters` (Almond hardening T2).

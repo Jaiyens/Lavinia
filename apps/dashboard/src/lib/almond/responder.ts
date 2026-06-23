@@ -44,7 +44,6 @@ import {
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
-import { type CodegenExportResult } from "./skills/codegen-export";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import { DEFAULT_ALMOND_MODEL } from "./models";
 import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
@@ -57,6 +56,7 @@ import {
   withSolarCredit,
   type AlmondActor,
   type AlmondToolDeps,
+  type CodegenBuildingResult,
 } from "./tools";
 
 /**
@@ -259,24 +259,6 @@ function reportFile(result: GenerateReportResult): StreamableFile | null {
   };
 }
 
-/** Normalize a clean code-gen export result into the common streamable-file shape, or null for
- *  empty/error. Persisted under the distinct `"codegen"` kind so Reports history can tell a model-
- *  authored custom report from a deterministic one. The stream/card path is identical (content-type
- *  driven), so the download card needs no change. */
-function codegenFile(result: CodegenExportResult): StreamableFile | null {
-  if (result.kind !== "file") return null;
-  return {
-    kind: "codegen",
-    preview: result.preview,
-    fileName: result.fileName,
-    contentType: result.contentType,
-    bytes: result.bytes,
-    meterCount: result.meterCount,
-    coverageAsOf: result.coverageAsOf,
-    params: result.params,
-  };
-}
-
 /**
  * Persist a generated file to the owner's Reports (8.6) when the caller is an authed owner, then write
  * the bytes onto the stream as a transient `data-report` download card. Serves BOTH the spreadsheet
@@ -349,12 +331,47 @@ function isReportResult(output: unknown): output is GenerateReportResult {
   return kind === "file" || kind === "empty" || kind === "error";
 }
 
-/** Narrow an unknown tool output to a code-gen export result. Same `file`/`empty`/`error` outcome shape
- *  as the other file skills (the codegen skill mirrors it so this persist-and-stream path serves it). */
-function isCodegenResult(output: unknown): output is CodegenExportResult {
+// --- The background-generation bridge (Almond v2 Phase 2) ---------------------------------------
+//
+// A model-authored spreadsheet/PDF no longer builds INSIDE the tool `execute` (a ~30-90s build would
+// die the moment the grower leaves the page). The codegen tools now ENQUEUE a GenerationJob and return
+// a lightweight "building" result; the actual build runs in the route's Next `after()` callback, AFTER
+// the response stream finishes — so a closed tab does not kill it. The responder lifts the "building"
+// result onto the SAME UI-message stream as a transient `data-generation` part (mirroring data-navigate
+// / data-report): no bytes, no download card yet — just the jobId the client polls (GET
+// /api/almond/generations) until the job is "done", then fetches the file via the existing
+// /api/reports/[resultReportId]/download route. The model STILL answers in text ("I'm building it, you
+// can leave this page"); this part is the structured handle for the poll. Deduped by jobId so a
+// multi-step loop never writes two parts for one job.
+
+/** The data-part type the client background-generation tracker listens for. */
+const GENERATION_PART_TYPE = "data-generation" as const;
+/** A stable part id (one generation per job; deduped by jobId in the writer set, like the file card). */
+const GENERATION_PART_ID = "almond-generation";
+
+/** The payload the client needs to start tracking a background build: the jobId to poll, which kind it
+ *  is (workbook | report), the always-"pending" status at emit time (the job has just been enqueued; the
+ *  client polls /api/almond/generations for the live status), and the grower's request for labeling.
+ *  No bytes, no report id yet — the file is fetched via /api/reports/[resultReportId]/download once the
+ *  poll reports the job "done". */
+export type AlmondGenerationData = {
+  jobId: string;
+  kind: "workbook" | "report";
+  status: "pending";
+  requestText: string;
+};
+
+/** Narrow an unknown tool output to a codegen "building" result (the enqueue-only outcome the codegen
+ *  tools now return). A "busy" result (the per-farm throttle's calm decline) carries no job, so it is
+ *  excluded here and writes no part — the model's text carries that outcome instead. */
+export function isBuildingResult(output: unknown): output is Extract<CodegenBuildingResult, { kind: "building" }> {
   if (typeof output !== "object" || output === null || !("kind" in output)) return false;
-  const kind = (output as { kind: unknown }).kind;
-  return kind === "file" || kind === "empty" || kind === "error";
+  const o = output as { kind: unknown; jobId?: unknown; generationKind?: unknown };
+  return (
+    o.kind === "building" &&
+    typeof o.jobId === "string" &&
+    (o.generationKind === "workbook" || o.generationKind === "report")
+  );
 }
 
 // --- The single-meter inline card bridge (B2) ----------------------------------------------------
@@ -431,6 +448,10 @@ export function createModelResponder(
           // surfacing the same getMeter result twice (or the model re-calling getMeter with the same
           // query) renders one card per meter, not two. Two DIFFERENT meters in one turn both show.
           const writtenMeters = new Set<string>();
+          // Same guard for the background-generation part, keyed by jobId: a multi-step loop surfacing
+          // the same enqueue result twice never writes two parts for one job (the client would otherwise
+          // start two trackers for one build).
+          const writtenGenerations = new Set<string>();
           // The Auto decided-line headline for this turn (the router's classification). A file ask always
           // builds fresh now (no cache), so there is no correction to make: written ONCE in `onFinish`
           // below; undefined for a hand-picked model.
@@ -486,28 +507,32 @@ export function createModelResponder(
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
-                // A clean code-gen export (POC) follows the SAME path: a verified, model-authored PDF is
-                // persisted (kind "codegen") and streamed as a download card. A verification reject /
-                // error already fell back to the deterministic template inside the skill, so whatever
-                // arrives here is a real file or a typed empty/error (which writes no card).
-                if (tr.toolName === "codegenExport" && isCodegenResult(tr.output)) {
-                  const file = codegenFile(tr.output);
-                  if (file && !writtenFiles.has(file.fileName)) {
-                    writtenFiles.add(file.fileName);
-                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
-                  }
-                }
-                // The bespoke WORKBOOK codegen (Phase 3) follows the SAME path: a verified, model-authored
-                // .xlsx persisted (kind "codegen") and streamed as a download card. A reject/error already
-                // fell back to the deterministic workbook inside the skill, so what arrives is a real file
-                // or a typed empty/error (which writes no card). The card is content-type driven, so the
-                // .xlsx renders with the spreadsheet download label unchanged.
-                if (tr.toolName === "codegenWorkbook" && isCodegenResult(tr.output)) {
-                  const file = codegenFile(tr.output);
-                  if (file && !writtenFiles.has(file.fileName)) {
-                    writtenFiles.add(file.fileName);
-                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
-                  }
+                // The model-authored codegen tools (Almond v2 Phase 2) now ENQUEUE a background build
+                // rather than building inline: the tool returns a "building" result carrying the jobId,
+                // which the route's `after()` runs after the response is sent (so a closed tab does not
+                // kill it). Lift it onto the stream as a transient `data-generation` part the client polls
+                // until "done", then fetches the file via /api/reports/[resultReportId]/download. No bytes,
+                // no download card here — the file does not exist yet. Deduped by jobId so a multi-step
+                // loop never starts two trackers for one build. A "busy" throttle decline carries no job
+                // and writes no part (the model's text carries it). Both tool names share this one branch.
+                if (
+                  (tr.toolName === "codegenExport" || tr.toolName === "codegenWorkbook") &&
+                  isBuildingResult(tr.output) &&
+                  !writtenGenerations.has(tr.output.jobId)
+                ) {
+                  writtenGenerations.add(tr.output.jobId);
+                  const data: AlmondGenerationData = {
+                    jobId: tr.output.jobId,
+                    kind: tr.output.generationKind,
+                    status: "pending",
+                    requestText: tr.output.requestText,
+                  };
+                  writer.write({
+                    type: GENERATION_PART_TYPE,
+                    id: GENERATION_PART_ID,
+                    data,
+                    transient: true,
+                  });
                 }
                 // A FOUND single-meter lookup (B2): lift its MeterDetail onto the stream as a transient
                 // `data-meter` part the panel renders as a light inline card (no page jump, no drawer).

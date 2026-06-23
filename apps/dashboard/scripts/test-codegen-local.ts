@@ -50,7 +50,7 @@ console.log(`\nRequest: ${request}\n`);
 
 const t0 = Date.now();
 const result = await runCodegenWorkbook(
-  { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null },
+  { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null, pendingGenerations: [] },
   { request },
 );
 const ms = Date.now() - t0;

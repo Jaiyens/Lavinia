@@ -37,8 +37,10 @@ import { billableTokens, recordUsage } from "@/lib/almond/usage-budget";
  *  allowlist in src/lib/almond/models.ts). */
 const CODEGEN_MODEL = "anthropic/claude-sonnet-4.6";
 
-/** The default ask when the grower did not phrase a specific one. */
-const HARDCODED_ASK =
+/** The default ask when the grower did not phrase a specific one. Exported so the enqueue path (tools.ts)
+ *  stamps the SAME ask onto the job's requestText that the runner would otherwise default to, keeping the
+ *  persisted request and the build prompt identical. */
+export const HARDCODED_ASK =
   "Build a clean, professional PDF report for the farm: a short summary, then the farm's top rate-switch opportunities (meter, current rate, suggested rate, estimated annual savings) and the total estimated savings. Use only the data in the snapshot.";
 
 /** Max steps for the codegen loop (write markup -> render -> see error/verify-fail -> fix -> render). */

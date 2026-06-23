@@ -59,11 +59,11 @@ beforeAll(async () => {
   // used to prove cross-farm isolation.
   const farmA = await seedSampleFarm(prisma);
   farmAPumpNames = farmA.pumps.map((p) => p.name);
-  depsA = { prisma, farmId: farmA.id, farmName: farmA.name, meterUserId: null };
+  depsA = { prisma, farmId: farmA.id, farmName: farmA.name, meterUserId: null, pendingGenerations: [] };
 
   const farmB = await prisma.farm.create({ data: { name: "Other Grower Farms", isDemo: true } });
   await prisma.pump.create({ data: { name: FARM_B_PUMP, farmId: farmB.id } });
-  depsB = { prisma, farmId: farmB.id, farmName: farmB.name, meterUserId: null };
+  depsB = { prisma, farmId: farmB.id, farmName: farmB.name, meterUserId: null, pendingGenerations: [] };
 }, 120_000);
 
 afterAll(async () => {
