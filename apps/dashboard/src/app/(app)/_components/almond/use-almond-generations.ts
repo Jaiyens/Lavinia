@@ -167,8 +167,11 @@ export function useAlmondGenerations(panelOpen: boolean): UseAlmondGenerations {
     return () => window.clearInterval(id);
   }, [anyInFlight, panelOpen, poll]);
 
-  // Opening the panel clears the unread badge (the grower is now looking at the chat).
+  // Opening the panel clears the unread badge (the grower is now looking at the chat). markSeen sets
+  // unreadCount to 0 once on the open transition; panelOpen does not change in response, so there is no
+  // cascade - a deliberate, bounded synchronization, acknowledged like the mount-poll effect above.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (panelOpen) markSeen();
   }, [panelOpen, markSeen]);
 
