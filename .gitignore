@@ -58,3 +58,7 @@ batth-ingestion/*
 !batth-ingestion/extracted/
 !batth-ingestion/dist/
 BatthData/_dupes/
+
+# Local Postgres dumps of the Batth dataset (db:dump:batth output) - too large for git;
+# share via a blob store (Vercel Blob / Drive / S3), restore with db:restore:batth.
+dumps/
