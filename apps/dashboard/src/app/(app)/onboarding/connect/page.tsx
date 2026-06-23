@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { canAccessFarm } from "@/lib/auth/access";
 import { prisma } from "@/lib/db";
 import { hasRealSource, summarizeFarmSources } from "@/lib/onboarding/sources";
 import { OnboardingShell } from "../_components/chrome";
@@ -18,14 +19,11 @@ export default async function OnboardingConnectPage({
   if (!session?.user) redirect("/login");
   const { farm: farmId, add } = await searchParams;
   if (!farmId) notFound();
-  // Ownership-scoped read: a farm id arrives in the URL, so it is not trusted. Loading by
-  // (id, userId) keeps one operator from reading another operator's farm (no cross-tenant
-  // IDOR on this read-side page; the mutating actions already gate on ownsFarm).
-  const farm = await prisma.farm.findFirst({
-    where: { id: farmId, userId: session.user.id },
-    select: { id: true },
-  });
-  if (!farm) notFound();
+  // Membership-scoped read: a farm id arrives in the URL, so it is not trusted. canAccessFarm
+  // gates on an active FarmMembership (the same gate the mutating actions and currentFarm use),
+  // NOT the advisory Farm.userId - so an invited owner/manager can open their farm and a
+  // non-member gets notFound (no cross-tenant IDOR on this read-side page).
+  if (!(await canAccessFarm(prisma, farmId, session.user.id))) notFound();
 
   // A finalized farm (active connection) normally belongs on the dashboard, not back in
   // connect. The one exception is `?add=1` (the Account page's "Connect another account"):

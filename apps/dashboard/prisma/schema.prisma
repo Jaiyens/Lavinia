@@ -283,6 +283,11 @@ model Pump {
   // seasonal load is a pump; a small flat one is an office/shop) and the farmer
   // can override it; non-pump meters are excluded from pump-timing advice.
   kind                String   @default("pump") // "pump" | "non_pump"
+  // The classifier's confidence in `kind` (0..1), persisted at import so the onboarding
+  // confirm step can flag "look twice" meters WITHOUT reloading every meter's interval
+  // history to re-derive it (the confirm-step OOM at 183 meters). Null for meters never
+  // classified (legacy / hand-entered); treated as confident there.
+  confidence          Float?
   powerSource         String   @default("electric") // "electric" | "diesel" | "gas"
   // Map pin. Pre-placed from `location` at onboarding, dragged to the real spot.
   latitude            Float?

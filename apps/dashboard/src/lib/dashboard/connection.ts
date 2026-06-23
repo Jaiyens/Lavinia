@@ -21,5 +21,11 @@ export type PendingPullInput = {
 export function showPendingPullBanner(input: PendingPullInput): boolean {
   if (input.dataKind !== "real") return false;
   if (!input.hasBills) return false;
+  // A farm that already has an ACTIVE pge_smd connection is finalized. A pending connection
+  // alongside it is an "add another account" started from the Account page, not the first
+  // connect still landing - so do NOT show the "PG&E is connecting" banner for it (otherwise
+  // an abandoned add-account leaves the banner stuck on the dashboard forever, with no live
+  // pull behind it). The banner is only honest while the FIRST connect is still in flight.
+  if (input.connections.some((c) => c.type === "pge_smd" && c.status === "active")) return false;
   return input.connections.some((c) => c.type === "pge_smd" && c.status === "pending");
 }

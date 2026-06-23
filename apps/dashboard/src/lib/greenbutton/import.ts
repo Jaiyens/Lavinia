@@ -38,6 +38,29 @@ function deriveName(meter: NormalizedMeter): string {
 }
 
 /**
+ * The [earliest, latest] interval-start span for a meter, computed in a single pass.
+ * Deliberately NOT `new Date(Math.min(...starts.map(d => d.getTime())))`: spreading a
+ * high-history meter's interval array into a call throws "Maximum call stack size exceeded"
+ * once it is large enough (a multi-year 15-minute series is 100k+ points, exactly the Batth
+ * scale). That throw fires INSIDE importOneMeter's per-meter transaction, so it rolls the
+ * whole meter back (Pump + billing periods + intervals) and the catch in importMeters counts
+ * it in `metersFailed` with ZERO rows persisted - the meter silently vanishes from the import.
+ * A reduce is unbounded-safe. Caller guarantees a non-empty array. Exported for the regression test.
+ */
+export function intervalSpan(
+  intervals: readonly { start: string }[],
+): { min: Date; max: Date } {
+  let minMs = Infinity;
+  let maxMs = -Infinity;
+  for (const r of intervals) {
+    const ms = new Date(r.start).getTime();
+    if (ms < minMs) minMs = ms;
+    if (ms > maxMs) maxMs = ms;
+  }
+  return { min: new Date(minMs), max: new Date(maxMs) };
+}
+
+/**
  * Sum metered kWh within a half-open cycle window [startIso, closeIso]. Returns null
  * when the meter carries no intervals in the window, so a summary-only cycle stays
  * honestly empty rather than reading as 0 kWh. A date-only close spans the close day.
@@ -283,6 +306,7 @@ async function importOneMeter(
     // high-history meter does not exceed Postgres's bind-parameter cap in one statement.
     let intervals = 0;
     if (m.intervals.length > 0) {
+<<<<<<< HEAD
       // Find the window min/max in a single pass. A 36-month historical pull is ~100k+
       // intervals per meter; `Math.min(...array)` / `Math.max(...array)` spread that many
       // arguments onto the call stack and throw RangeError (max call-stack/arg count), so a
@@ -296,6 +320,12 @@ async function importOneMeter(
       }
       const min = new Date(minMs);
       const max = new Date(maxMs);
+=======
+      // Span the imported window in a single pass (see intervalSpan): replacing intervals only
+      // within [min, max] keeps the re-import idempotent without dropping history outside this
+      // feed. The createMany below is already chunked for the bind-parameter cap.
+      const { min, max } = intervalSpan(m.intervals);
+>>>>>>> integration/all-24h
       await tx.usageInterval.deleteMany({
         where: { pumpId: pump.id, start: { gte: min, lte: max } },
       });

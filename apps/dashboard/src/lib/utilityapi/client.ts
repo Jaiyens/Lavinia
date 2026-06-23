@@ -22,6 +22,16 @@ const DEFAULT_BASE = "https://utilityapi.com/api/v2";
  * year covers a full true-up cycle and every seasonal AG peak the engine reads. */
 const HISTORICAL_MONTHS = 12;
 
+/**
+ * Per-request timeout. Every UtilityAPI fetch runs on the connecting screen's server action
+ * under a 300s function ceiling with a small fixed worker pool, so a single hung socket (which
+ * never throws on its own) would otherwise silently occupy a worker and burn the whole budget.
+ * A hard deadline turns that into a fast, retryable error: the poll's reveal swallows it and
+ * retries next tick, the per-meter Green Button fetch falls back to identity-only, and the
+ * finalize import fails fast into the connecting screen's network-error state.
+ */
+const REQUEST_TIMEOUT_MS = 25_000;
+
 function env(): { token: string | undefined; base: string } {
   return {
     token: process.env.UTILITYAPI_TOKEN,
@@ -70,6 +80,9 @@ async function utilityApiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     },
     // Always live: this data drives onboarding state, never serve a cached body.
     cache: "no-store",
+    // Hard deadline so a hung socket fails fast (retryable) instead of occupying a worker
+    // for the whole function budget. A caller-supplied signal still wins if one is passed.
+    signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -189,6 +202,10 @@ export async function getUtilityApiGreenButton(meterUid: string): Promise<string
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/xml" },
     cache: "no-store",
+    // Same hard deadline as utilityApiFetch: a hung per-meter export must not pin a pool
+    // worker for the whole pull. On timeout this throws, and fetchGreenButtonForMeter retries
+    // then drops the meter to identity-only - one slow meter never stalls the 183-meter batch.
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`UtilityAPI green button ${meterUid} -> ${res.status} ${res.statusText}`);

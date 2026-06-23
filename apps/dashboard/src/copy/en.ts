@@ -81,7 +81,7 @@ export const en = {
   app: {
     name: "Terra",
   },
-  // Sign-in (Epic 5, Story 5.1). No passwords: Google SSO or an emailed magic link.
+  // Sign-in (Epic 5, Story 5.1). No passwords: Google SSO or an emailed 6-digit code.
   // Plain operator English; no em dashes, no exclamation marks, never salesy.
   auth: {
     heading: "Sign in to Terra",
@@ -90,20 +90,42 @@ export const en = {
     or: "or",
     emailLabel: "Email address",
     emailPlaceholder: "you@farm.com",
+<<<<<<< HEAD
     sendLink: "Send a sign-in link",
     linkSent: "Check your email for a sign-in link.",
     error: "That did not work. Try again.",
     // Shown when a valid sign-in is refused because the email is not on the access list yet
     // (pre-launch gate). Calm and non-blaming: it is access, not a mistake they made.
     accessDenied: "This email is not set up for access yet. Reach out to the Terra team to get added.",
+=======
+    sendCode: "Email me a code",
+    error: "That did not work. Try again, or send a new code.",
+>>>>>>> integration/all-24h
     signOut: "Sign out",
     tourPrompt: "Just want to look around first?",
-    // The magic-link email itself (Story 5.1, real sender). Plain operator English.
+    // The code-entry step: after we email a 6-digit code, the operator types it back here.
+    // A typed code is more reliable on a phone than a tapped link (it works in the same tab
+    // and is not consumed by email link-scanners). Plain operator English.
+    code: {
+      heading: "Check your email",
+      sentTo: (email: string) =>
+        `We sent a 6-digit code to ${email}. Enter it below. It expires in 10 minutes.`,
+      label: "6-digit code",
+      placeholder: "000000",
+      verify: "Verify and sign in",
+      resend: "Send a new code",
+      differentEmail: "Use a different email",
+      // Shown when the verify budget is spent (5 wrong tries): the code is cleared for safety
+      // and they need a fresh one. Lands on the email step.
+      tooManyAttempts: "Too many tries. For your safety we cleared that code. Enter your email to get a new one.",
+      // Shown when too many codes were requested for one email in a short window.
+      tooManyRequests: "You have asked for several codes. Use the most recent one, or wait a few minutes.",
+    },
+    // The code email itself (real sender). The code is rendered large in the body.
     email: {
-      subject: "Your Terra sign-in link",
-      heading: "Sign in to Terra",
-      body: "Tap the button below to sign in. This link works once and expires in 24 hours.",
-      button: "Sign in to Terra",
+      subject: "Your Terra sign-in code",
+      heading: "Your sign-in code",
+      body: "Enter this code to sign in to Terra. It works once and expires in 10 minutes.",
       ignore: "If you did not ask to sign in, you can ignore this email.",
     },
   },
@@ -1700,7 +1722,8 @@ export const en = {
       estimateSuffix: "est.",
       estimateAria: "Estimated from your interval usage, not a printed bill",
       // A null inventory field (ranch / entity / status / rate not on file). Never fabricated.
-      emptyShort: "—",
+      // En dash (not an em dash): user-facing copy must never carry an em dash.
+      emptyShort: "–",
       noMatch: "No meters match",
       // A farm with no meters at all yet (distinct from a filter that excluded everyone).
       emptyFarm: "No meters on this account yet",
