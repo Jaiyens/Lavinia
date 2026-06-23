@@ -5,7 +5,9 @@
 //   DATABASE_URL=postgresql://panda@127.0.0.1:5432/terra_batth \
 //   npx tsx scripts/grant-farm-access.ts <email> ["Farm Name"] [owner|manager|viewer]
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type FarmRole } from "@prisma/client";
+
+const VALID_ROLES = ["owner", "manager", "viewer"] as const;
 
 function assertLocalDb(): void {
   const url = process.env.DATABASE_URL ?? "";
@@ -18,8 +20,12 @@ async function main(): Promise<void> {
   assertLocalDb();
   const email = process.argv[2];
   const farmName = process.argv[3] ?? "Batth Farms";
-  const role = process.argv[4] ?? "owner";
+  const roleArg = process.argv[4] ?? "owner";
   if (!email) throw new Error("usage: grant-farm-access.ts <email> [farmName] [role]");
+  if (!VALID_ROLES.includes(roleArg as (typeof VALID_ROLES)[number])) {
+    throw new Error(`role must be one of: ${VALID_ROLES.join(", ")}`);
+  }
+  const role = roleArg as FarmRole;
 
   const prisma = new PrismaClient();
   try {
