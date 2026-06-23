@@ -73,7 +73,12 @@ export default async function LoginPage({
         </p>
       ) : null}
       {params.error ? (
-        <p className="type-body-md text-alert">{t.error}</p>
+        <p className="type-body-md text-alert">
+          {/* Auth.js sends ?error=AccessDenied when the sign-in callback rejects a
+              non-allowlisted email (pre-launch gate); show the calm access copy for that
+              case and the generic retry copy for everything else. */}
+          {params.error === "AccessDenied" ? t.accessDenied : t.error}
+        </p>
       ) : null}
 
       <div className="flex flex-col gap-4">
