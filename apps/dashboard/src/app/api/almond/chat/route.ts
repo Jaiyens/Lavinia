@@ -266,10 +266,8 @@ function isUIMessageLike(value: unknown): value is UIMessage {
 }
 
 function requiresAlmondSideEffects(intent: TurnIntent): boolean {
-  return (
-    intent === "retrieve_cached" ||
-    intent === "generate_file" ||
-    intent === "codegen_bespoke" ||
-    intent === "navigate"
-  );
+  // A file build (codegen/export) and a navigation both run through the responder's tools, so the
+  // harness must be bypassed for them. (The cache-probe / bespoke-codegen intents were removed when the
+  // Auto router went always-build-fresh, so `generate_file` is the single file-side-effect intent now.)
+  return intent === "generate_file" || intent === "navigate";
 }

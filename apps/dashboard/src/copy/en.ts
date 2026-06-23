@@ -1993,26 +1993,7 @@ export const en = {
       // Pins colored by rate-schedule family; the legacy AG-4/AG-5 meters get a ring. Each color is
       // paired with its label in the legend (never color-only).
       rateLegendLabel: "Rate schedule",
-      rateFamily: {
-        agA: "AG-A",
-        agB: "AG-B",
-        agC: "AG-C",
-        legacy: "Legacy AG-4/AG-5",
-        nonAg: "Non-ag / other",
-      },
       legacyRingNote: "Ringed = legacy AG-4/AG-5",
-      // Hover popup fields on a pin.
-      popup: {
-        rate: "Rate",
-        status: "Status",
-        annual: "Annual",
-        peak: "Peak",
-        gpm: "GPM",
-        annualValue: (usd: string): string => `${usd}/yr`,
-        peakValue: (kw: number): string => `${kw} kW`,
-        gpmValue: (n: string): string => `${n} gpm`,
-        none: "Not on file",
-      },
       // The base-map switch (satellite imagery vs a plain street map), mirroring the mockup.
       basemapLabel: "Base map",
       basemapSatellite: "Satellite",
@@ -2020,8 +2001,7 @@ export const en = {
       // Screen-reader label for a pin that has a known latest bill floating above it.
       pinBillAria: (name: string, bill: string): string => `Meter ${name}, latest bill ${bill}`,
       // The Energy map's "rate" encoding: pins colored by PG&E rate family, sized by annual spend,
-      // ringed when on a closed legacy schedule.
-      rateLegendLabel: "Rate schedule",
+      // ringed when on a closed legacy schedule. (`rateLegendLabel` is declared once above.)
       rateFamily: {
         ag_a: "AG-A",
         ag_b: "AG-B",
