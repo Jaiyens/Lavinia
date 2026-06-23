@@ -1,4 +1,4 @@
-import type { MeterView } from "@/lib/dashboard/load";
+import type { CostSource, MeterView } from "@/lib/dashboard/load";
 import type { KpiStrip } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
 import type { EnrichedMeter, FarmAnalysis } from "./analysis";
@@ -194,6 +194,14 @@ export type MeterSummary = {
   isSolar: boolean;
   status: string | null;
   latestBill: MoneyView | null;
+  /** Cost provenance (WS6): BILLED = a real posted bill (latestBill is actual money). MODELED = an
+   *  ESTIMATE from interval data (no bill posted; `modeledCost` carries it, never quote it as a bill).
+   *  REVIEW = a bill that failed reconciliation. NONE = no cost basis. Lets Almond tell a real billed
+   *  cost from an estimate. Null only on a fixture MeterView with no costSource set. */
+  costSource: CostSource | null;
+  /** The modeled monthly estimate, present ONLY when costSource is MODELED (else null). Almond must
+   *  call this estimated, never a posted bill. */
+  modeledCost: MoneyView | null;
   /** H-1 (FR29): the solar legibility, present only for a solar meter; null for a non-solar meter. */
   solar: MeterSolarView | null;
 };
@@ -219,6 +227,13 @@ function latestPrintedCents(m: MeterView): number | null {
  */
 export type SolarContextByMeter = Map<string, MeterSolarContext>;
 
+/** The modeled estimate, exposed ONLY when the cost provenance is MODELED (an estimate, never a
+ *  posted bill); null otherwise so the model can never read an estimate as a real bill. */
+function modeledCostOf(m: MeterView): MoneyView | null {
+  if (m.costSource !== "MODELED") return null;
+  return m.modeledMonthlyCents == null ? null : money(m.modeledMonthlyCents);
+}
+
 function toMeterSummary(m: MeterView, solarCtx?: SolarContextByMeter): MeterSummary {
   const latest = latestPrintedCents(m);
   return {
@@ -232,6 +247,8 @@ function toMeterSummary(m: MeterView, solarCtx?: SolarContextByMeter): MeterSumm
     isSolar: m.isSolar,
     status: m.status,
     latestBill: latest === null ? null : money(latest),
+    costSource: m.costSource ?? null,
+    modeledCost: modeledCostOf(m),
     // H-1: a solar meter carries the same solar facts the Solar tab shows; non-solar meters carry none.
     solar: m.isSolar ? summarizeMeterSolar(m, solarCtx?.get(m.id) ?? {}) : null,
   };
@@ -306,6 +323,34 @@ export function resolveMeterQuery(meters: MeterView[], query: string): MeterQuer
   return { kind: "none" };
 }
 
+/** The blocks (fields) a meter serves, plain for the model: name + acreage (null when not on file).
+ *  Lets Almond answer "which pumps serve the north block" / "how many acres does this pump cover". */
+export type MeterBlockSummary = { name: string; acreage: number | null };
+
+/** The demand-vs-energy split of one bill (WS6, item 6), summed from the cycle's billing line items
+ *  so Almond can say how much of a bill is demand vs energy. `other` covers NBC and uncategorized
+ *  lines. Each is integer cents + whole dollars; null when no line items are on file for the cycle. */
+export type BillBreakdown = {
+  energy: MoneyView;
+  demand: MoneyView;
+  other: MoneyView;
+} | null;
+
+/** Sum a cycle's line items into a demand / energy / other split, or null when the cycle carries no
+ *  line items (so Almond never quotes a $0 split that is really "not on file"). */
+function billBreakdown(p: MeterView["periods"][number]): BillBreakdown {
+  if (p.lineItems.length === 0) return null;
+  let energy = 0;
+  let demand = 0;
+  let other = 0;
+  for (const li of p.lineItems) {
+    if (li.kind === "demand") demand += li.amountCents;
+    else if (li.kind === "tou_energy") energy += li.amountCents;
+    else other += li.amountCents;
+  }
+  return { energy: money(energy), demand: money(demand), other: money(other) };
+}
+
 export type MeterDetail = {
   id: string;
   name: string;
@@ -321,6 +366,13 @@ export type MeterDetail = {
   nemType: string | null;
   gpm: number | null;
   status: string | null;
+  /** Cost provenance (WS6): see MeterSummary.costSource. Null only on a fixture with none set. */
+  costSource: CostSource | null;
+  /** The modeled monthly estimate, present ONLY when costSource is MODELED; null otherwise. Almond
+   *  must call this estimated, never a posted bill. */
+  modeledCost: MoneyView | null;
+  /** Blocks (fields) this meter serves; empty when none on file (WS6, item 4). */
+  blocks: MeterBlockSummary[];
   recentBills: {
     start: string;
     close: string;
@@ -328,6 +380,8 @@ export type MeterDetail = {
     demandCharge: MoneyView | null;
     peakKw: number | null;
     tariff: string | null;
+    /** The demand/energy/other split of this bill (WS6, item 6); null when no line items on file. */
+    breakdown: BillBreakdown;
   }[];
   /** H-1 (FR29): the solar legibility, present only for a solar meter; null for a non-solar meter. */
   solar: MeterSolarView | null;
@@ -341,6 +395,7 @@ export function summarizeMeterDetail(m: MeterView, solarCtx?: MeterSolarContext)
     demandCharge: p.demandCents === null ? null : money(p.demandCents),
     peakKw: p.peakKw,
     tariff: p.tariff,
+    breakdown: billBreakdown(p),
   }));
   return {
     id: m.id,
@@ -357,6 +412,9 @@ export function summarizeMeterDetail(m: MeterView, solarCtx?: MeterSolarContext)
     nemType: m.nemType,
     gpm: m.gpm,
     status: m.status,
+    costSource: m.costSource ?? null,
+    modeledCost: modeledCostOf(m),
+    blocks: (m.blocks ?? []).map((b) => ({ name: b.name, acreage: b.acreage })),
     recentBills: recent,
     // H-1: a solar meter carries the same solar facts the Solar tab shows; non-solar meters carry none.
     solar: m.isSolar ? summarizeMeterSolar(m, solarCtx ?? {}) : null,
