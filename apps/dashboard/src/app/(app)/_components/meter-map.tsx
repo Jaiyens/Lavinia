@@ -238,9 +238,6 @@ export function MeterMap({
   const basemapRef = useRef<Basemap>(basemap);
   const parcelsRef = useRef<ParcelOverlay | null>(parcels);
   const showParcelsRef = useRef<boolean>(showParcels);
-  // Scroll-zoom toggles, assigned once the map exists (see the create effect).
-  const enableZoomRef = useRef<(() => void) | null>(null);
-  const disableZoomRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     pinsRef.current = pins;
   }, [pins]);
@@ -347,14 +344,11 @@ export function MeterMap({
       });
       map.touchZoomRotate.disableRotation();
       map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
-      // Page-scroll must NOT zoom the map: scroll-zoom is off until the user clicks the map,
-      // and turns back off when the pointer leaves it. So scrolling the page just scrolls the
-      // page (the pins never drift), and you opt into zooming by clicking in first.
-      map.scrollZoom.disable();
-      enableZoomRef.current = () => map.scrollZoom.enable();
-      disableZoomRef.current = () => map.scrollZoom.disable();
-      container.addEventListener("click", enableZoomRef.current);
-      container.addEventListener("mouseleave", disableZoomRef.current);
+      // Wheel scrolls ZOOM the map directly (the natural gesture). The earlier "click to
+      // activate, scroll otherwise pages" opt-in read as broken - scrolling just moved the page
+      // up and down instead of zooming - so the map now zooms on wheel like any map. The +/-
+      // NavigationControl and pinch-zoom keep working too.
+      map.scrollZoom.enable();
       popupRef.current = new lib.Popup({
         closeButton: false,
         closeOnClick: false,
@@ -367,16 +361,14 @@ export function MeterMap({
       map.on("style.load", () => paintParcels(map));
       renderMarkers(lib, map);
       refit(map, pinsRef.current);
+      // The lens mounts the map inside a staggered entrance (Reveal) and a lens tab-switch, so the
+      // container can be mid-transform/zero-size at create time; a resize once the map is ready
+      // makes maplibre re-measure, so zoom anchors correctly instead of drifting vertically.
+      map.once("load", () => map.resize());
     })();
 
     return () => {
       cancelled = true;
-      if (container && enableZoomRef.current) {
-        container.removeEventListener("click", enableZoomRef.current);
-      }
-      if (container && disableZoomRef.current) {
-        container.removeEventListener("mouseleave", disableZoomRef.current);
-      }
       for (const m of markersRef.current) m.marker.remove();
       markersRef.current = [];
       popupRef.current?.remove();
