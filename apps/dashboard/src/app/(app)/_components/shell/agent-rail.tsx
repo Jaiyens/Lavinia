@@ -86,15 +86,16 @@ export function AgentRail({
                   : "text-on-surface hover:bg-surface-container-low",
               )}
             >
-              {/* Almond sits under Home with its own mascot face instead of a lucide icon (its
-                  `icon` is only a fallback), so it stands out as the assistant in the list. */}
-              {agent.key === "almond" ? (
-                <span aria-hidden className="flex shrink-0 items-center">
-                  <AlmondAvatar size={20} />
-                </span>
-              ) : (
-                <Icon size={18} aria-hidden className={active ? "text-primary" : undefined} />
-              )}
+              {/* Fixed-width icon slot so every label lines up at the same x, even though Almond's
+                  mascot face is larger than the lucide icons. Almond sits under Home with its own
+                  face instead of a lucide icon (its `icon` is only a fallback) so it reads as the assistant. */}
+              <span aria-hidden className="flex w-7 shrink-0 items-center justify-center">
+                {agent.key === "almond" ? (
+                  <AlmondAvatar size={28} />
+                ) : (
+                  <Icon size={18} className={active ? "text-primary" : undefined} />
+                )}
+              </span>
               <span>{agent.label}</span>
             </Link>
           );

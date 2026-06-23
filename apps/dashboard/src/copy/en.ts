@@ -1419,6 +1419,15 @@ export const en = {
             // Shown when the file was kept in the grower's Reports (owner-only persistence, Story
             // 8.6), so they know it is safe to fetch again later. Absent for an unsaved export.
             savedToReports: "Saved to your Reports",
+            // The in-app file preview overlay (cursor-history): a grower can look at a generated
+            // report/spreadsheet before downloading it. Plain operator English.
+            preview: "Preview",
+            downloadShort: "Download",
+            previewAria: (fileName: string): string => `Preview ${fileName}`,
+            previewTitle: (fileName: string): string => `Preview of ${fileName}`,
+            closePreview: "Close preview",
+            previewLoading: "Loading preview",
+            previewUnavailable: "This file cannot be previewed here. Download it to view.",
           },
           // Inline failure the panel renders when generation fails (typed, never a raw throw, never a
           // partial file). Calm operator English, offers a retry path by re-asking.
