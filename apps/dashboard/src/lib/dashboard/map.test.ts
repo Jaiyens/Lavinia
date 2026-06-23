@@ -88,4 +88,91 @@ describe("toMapPins", () => {
     toMapPins([m]);
     expect(m).toEqual(snapshot);
   });
+
+  // --- The enriched fields the rate/spend pin encoding reads ---
+  function period(over: Partial<MeterView["periods"][number]> = {}): MeterView["periods"][number] {
+    return {
+      start: "2026-01-01",
+      close: "2026-01-31",
+      printedTotalCents: null,
+      demandCents: null,
+      totalKwh: null,
+      peakKw: null,
+      tariff: null,
+      lineItems: [],
+      ...over,
+    };
+  }
+
+  it("carries rate, legacy, status, gpm and account onto the pin", () => {
+    const { pins } = toMapPins([
+      meter({
+        id: "a",
+        latitude: 36.7,
+        longitude: -119.8,
+        rateSchedule: "AG-4B",
+        isLegacy: true,
+        status: "OLD",
+        gpm: 450,
+        accountNumber: "ACC-9",
+        ranchName: "Home Ranch",
+        growerPumpId: "P031",
+      }),
+    ]);
+    const pin = pins[0];
+    expect(pin).toMatchObject({
+      rateSchedule: "AG-4B",
+      isLegacy: true,
+      status: "OLD",
+      gpm: 450,
+      accountNumber: "ACC-9",
+      ranchName: "Home Ranch",
+      growerPumpId: "P031",
+    });
+  });
+
+  it("sums annual spend across reconciled periods only", () => {
+    const { pins } = toMapPins([
+      meter({
+        id: "a",
+        latitude: 36.7,
+        longitude: -119.8,
+        coverageState: "reconciled" as CoverageState,
+        periods: [
+          period({ printedTotalCents: 10_000 }),
+          period({ printedTotalCents: 25_000 }),
+          period({ printedTotalCents: null }), // a cycle with no printed total is skipped
+        ],
+      }),
+    ]);
+    const pin = pins[0];
+    expect(pin?.annualSpendCents).toBe(35_000);
+  });
+
+  it("withholds annual spend (null) when the meter is not reconciled", () => {
+    const { pins } = toMapPins([
+      meter({
+        id: "a",
+        latitude: 36.7,
+        longitude: -119.8,
+        coverageState: "needs_review" as CoverageState,
+        periods: [period({ printedTotalCents: 10_000 })],
+      }),
+    ]);
+    const pin = pins[0];
+    expect(pin?.annualSpendCents).toBeNull();
+  });
+
+  it("reads the meter's peak kW (latest period's billed peak)", () => {
+    const { pins } = toMapPins([
+      meter({
+        id: "a",
+        latitude: 36.7,
+        longitude: -119.8,
+        periods: [period({ peakKw: 40 }), period({ peakKw: 156 })],
+      }),
+    ]);
+    const pin = pins[0];
+    expect(pin?.peakKw).toBe(156);
+  });
 });

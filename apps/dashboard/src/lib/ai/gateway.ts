@@ -42,3 +42,44 @@ export function createGatewayModel(modelId = "anthropic/claude-opus-4.8"): Langu
   const gateway = createGateway({ apiKey: resolveGatewayKey() });
   return gateway(modelId);
 }
+
+/**
+ * Anthropic EXTENDED THINKING provider options for the codegen `generateText` calls (the openpyxl /
+ * HTML writers), QUALITY ONLY — the thinking is not streamed to the UI. Through the Vercel AI Gateway,
+ * a provider-specific option goes under the provider's slug ("anthropic"); the exact knob is the one in
+ * the Gateway docs: `{ thinking: { type: "enabled", budgetTokens } }` (verified against
+ * @ai-sdk/gateway@3.0.131 + ai@6.0.205 — node_modules/@ai-sdk/gateway/docs/00-ai-gateway.mdx).
+ *
+ * CONSTRAINTS Anthropic enforces: `budgetTokens` must be < the call's `maxOutputTokens`, and
+ * `temperature` must be UNSET when thinking is enabled (the codegen calls set neither, so both hold —
+ * `CODEGEN_MAX_OUTPUT_TOKENS` is the explicit ceiling on those calls).
+ *
+ * This is a SINGLE shared knob so it is trivial to disable: set `enabled: false` here (or drop the
+ * `providerOptions` spread at the call sites) and the working codegen loop is untouched.
+ */
+export const CODEGEN_THINKING = {
+  /** Flip to false to disable extended thinking everywhere without touching the call sites. */
+  enabled: true,
+  /** Must stay < CODEGEN_MAX_OUTPUT_TOKENS. */
+  budgetTokens: 8000,
+} as const;
+
+/** The output-token ceiling on the codegen calls. Set explicitly so `CODEGEN_THINKING.budgetTokens`
+ *  (8000) is comfortably < it and a long openpyxl / HTML script still fits in the remaining budget. */
+export const CODEGEN_MAX_OUTPUT_TOKENS = 32000;
+
+/** One provider's thinking option block — a valid JSON object, so the whole map is structurally a valid
+ *  AI SDK `ProviderOptions` (Record<string, JSONObject>) without importing the SDK's transitive type. */
+type ThinkingOptions = Record<string, { thinking: { type: "enabled"; budgetTokens: number } }>;
+
+/** The `providerOptions` to pass to a codegen `generateText` call to turn on extended thinking, or an
+ *  empty map when it is disabled (so the call is byte-for-byte the prior, known-good shape). The Gateway
+ *  routes the `anthropic` block to the provider. */
+export function codegenThinkingProviderOptions(): ThinkingOptions {
+  if (!CODEGEN_THINKING.enabled) return {};
+  return {
+    anthropic: {
+      thinking: { type: "enabled", budgetTokens: CODEGEN_THINKING.budgetTokens },
+    },
+  };
+}

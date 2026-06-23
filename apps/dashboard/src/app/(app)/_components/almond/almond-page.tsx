@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -47,6 +47,9 @@ export function AlmondPage() {
     status,
     navByMessage,
     reportsByMessage,
+    metersByMessage,
+    generationsByMessage,
+    generations,
     decidedByMessage,
     onReplay,
     send,
@@ -54,10 +57,18 @@ export function AlmondPage() {
     editMessage,
     usageLimit,
     historyEnabled,
+    markGenerationsSeen,
   } = useAlmondChat();
   const empty = messages.length === 0;
   const [showHistory, setShowHistory] = useState(false);
   const greeting = t.greetWithFarm(pacificGreetingPart(new Date()), farmName);
+
+  // The dedicated Almond page is its own surface (the panel-open signal stays false here), so it clears
+  // the unread badge on mount: a grower who opens /almond IS looking at Almond, so any finished build is
+  // now seen. The launcher FAB is hidden on this route, so there is no stray red dot left behind.
+  useEffect(() => {
+    markGenerationsSeen();
+  }, [markGenerationsSeen]);
 
   return (
     <div className="relative flex min-h-[calc(100dvh-4rem)]">
@@ -135,6 +146,9 @@ export function AlmondPage() {
               starters={starters}
               navByMessage={navByMessage}
               reportsByMessage={reportsByMessage}
+              metersByMessage={metersByMessage}
+              generationsByMessage={generationsByMessage}
+              generations={generations}
               decidedByMessage={decidedByMessage}
               onReplay={onReplay}
               onStarter={(q) => send(q)}

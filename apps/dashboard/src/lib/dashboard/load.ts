@@ -64,6 +64,14 @@ export type MeterArrayView = {
   interconnectionDate: string | null;
 };
 
+/** A block (field) this meter serves, with its acreage where known (the Pump.blocks linkage). */
+export type MeterBlockView = {
+  id: string;
+  name: string;
+  /** Block acreage; null when not on file (never inferred). */
+  acreage: number | null;
+};
+
 export type MeterView = {
   id: string;
   name: string;
@@ -76,6 +84,10 @@ export type MeterView = {
   isLegacy: boolean;
   /** Pump health read verbatim from the master sheet; null when unknown. */
   status: string | null;
+  /** The pump motor's prime mover: "electric" | "diesel" | "gas". The power-source breakdown the
+   *  fleet summary reports reads this. Always set by loadMetersForFarm (the schema defaults it to
+   *  "electric"); optional so existing MeterView fixtures (tests) need no change. */
+  powerSource?: string;
   coverageState: CoverageState;
   /** Cost provenance for the dashboard's cost view. BILLED = reconciled printed bill (the
    *  only source rendered as ACTUAL cost). MODELED = tariff estimate from interval data,
@@ -91,6 +103,9 @@ export type MeterView = {
   accountNumber: string | null;
   ranchName: string | null;
   entityName: string | null;
+  /** The legal entity's billing name (how PG&E prints it), distinct from entityName; null when not on
+   *  file. Always set by loadMetersForFarm; optional so existing MeterView fixtures need no change. */
+  entityBillingName?: string | null;
   cropName: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -113,6 +128,9 @@ export type MeterView = {
   benefitingArrays: MeterArrayView[];
   /** Printed NEM months, sorted by start ascending; empty when none persisted. */
   nemPeriods: MeterNemPeriodView[];
+  /** Blocks (fields) this meter serves, in name order; empty when none on file. Always set by
+   *  loadMetersForFarm; optional so existing MeterView fixtures (tests) need no change. */
+  blocks?: MeterBlockView[];
   growerPumpId: string | null;
   /** Sorted by start ascending. */
   periods: MeterPeriodView[];
@@ -182,7 +200,9 @@ export async function loadMetersForFarm(
   const pumps = await prisma.pump.findMany({
     where: { farmId },
     include: {
-      account: { select: { number: true, entity: { select: { name: true } } } },
+      account: {
+        select: { number: true, entity: { select: { name: true, billingName: true } } },
+      },
       ranch: { select: { name: true } },
       crop: { select: { name: true } },
       benefitingArrays: {
@@ -194,6 +214,10 @@ export async function loadMetersForFarm(
           trueUpMonth: true,
           interconnectionDate: true,
         },
+        orderBy: { name: "asc" },
+      },
+      blocks: {
+        select: { id: true, name: true, acreage: true },
         orderBy: { name: "asc" },
       },
       billingPeriods: {
@@ -213,12 +237,14 @@ export async function loadMetersForFarm(
     serialCode: pump.serialCode,
     isLegacy: pump.isLegacy,
     status: pump.status,
+    powerSource: pump.powerSource,
     coverageState: toCoverageState(pump.coverageState),
     costSource: deriveCostSource(pump),
     modeledMonthlyCents: pump.modeledMonthlyCents,
     accountNumber: pump.account?.number ?? null,
     ranchName: pump.ranch?.name ?? null,
     entityName: pump.account?.entity?.name ?? null,
+    entityBillingName: pump.account?.entity?.billingName ?? null,
     cropName: pump.crop?.name ?? null,
     latitude: pump.latitude,
     longitude: pump.longitude,
@@ -241,6 +267,9 @@ export async function loadMetersForFarm(
         : null,
     })),
     growerPumpId: pump.growerPumpId,
+    // `?? []` guards a query result that omits the blocks relation (test mocks that do not stub it);
+    // the real Prisma query always includes it.
+    blocks: (pump.blocks ?? []).map((b) => ({ id: b.id, name: b.name, acreage: b.acreage })),
     nemPeriods: pump.nemPeriods.map((nem) => ({
       start: nem.start.toISOString(),
       close: nem.close.toISOString(),

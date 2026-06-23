@@ -13,7 +13,11 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
-import type { AlmondReportData } from "@/lib/almond/responder";
+import type {
+  AlmondReportData,
+  AlmondMeterData,
+  AlmondGenerationData,
+} from "@/lib/almond/responder";
 import {
   AUTO_SENTINEL,
   isAllowedModel,
@@ -29,7 +33,9 @@ import {
 } from "@/lib/almond/history";
 import type { AlmondNavChip } from "./almond-result";
 import type { AlmondReportCard } from "./almond-download-card";
+import type { AlmondMeterCard } from "./almond-meter-card";
 import { useAlmondNavigation } from "./use-almond-navigation";
+import { useAlmondGenerations, type AlmondGeneration } from "./use-almond-generations";
 
 // The ONE Almond conversation, lifted to a context so BOTH surfaces share it: the floating panel
 // (quick-ask from any screen) and the dedicated /almond full-page tab. Previously this provider held
@@ -39,14 +45,25 @@ import { useAlmondNavigation } from "./use-almond-navigation";
 // known consumers. Must render under the nuqs adapter (the navigation bridge uses useQueryState).
 
 /**
- * Almond's chat carries two custom transient stream parts:
+ * Almond's chat carries these custom transient stream parts:
  *   - `data-navigate` (Story 7.5): a navigation `action` plus a plain-English `label` for the chip.
  *   - `data-report` (Story 8.5): a file Almond made (base64 bytes + file name), rendered as a
  *     download card. Transient, so the bytes are delivered once and never replayed or persisted.
+ *   - `data-meter` (B2): one meter's MeterDetail, rendered as a light inline card right in the chat
+ *     (no page jump). Transient, like the others.
+ *   - `data-generation` (Almond v2 Phase 2): the handle to a background-built file. No bytes — just the
+ *     jobId the client polls (GET /api/almond/generations) until the build is "done", then swaps the
+ *     building card to a download. Transient, like the others.
  */
 export type AlmondUIMessage = UIMessage<
   unknown,
-  { navigate: { action: NavigateAction; label: string }; report: AlmondReportData; decided: AutoDecided }
+  {
+    navigate: { action: NavigateAction; label: string };
+    report: AlmondReportData;
+    decided: AutoDecided;
+    meter: AlmondMeterData;
+    generation: AlmondGenerationData;
+  }
 >;
 
 type AlmondChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -83,6 +100,21 @@ type AlmondChatValue = {
   editMessage: (messageId: string, newText: string) => void;
   navByMessage: Map<string, AlmondNavChip[]>;
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** Light inline meter cards per assistant message id (B2). */
+  metersByMessage: Map<string, AlmondMeterCard[]>;
+  /** Background-build handles per assistant message id (Almond v2 Phase 2): the `data-generation`
+   *  parts a turn emitted, keyed so the building -> download card renders inline at that turn. The
+   *  live status comes from `generations` (polled), joined by jobId. */
+  generationsByMessage: Map<string, AlmondGenerationData[]>;
+  /** The farm's recent background-build jobs, newest first, as last polled (max 12). Joined to the
+   *  per-message handles by jobId so a building card flips to a download card in place when done. */
+  generations: AlmondGeneration[];
+  /** Count of finished files the grower has not yet seen. Drives the RED unread badge on the launcher
+   *  and the rail Almond icon. Resets to 0 when the panel opens. */
+  unreadCount: number;
+  /** Clear the unread badge (mark every currently-done build seen). The panel clears it on open
+   *  automatically; the dedicated /almond page calls this on mount, since it is its own surface. */
+  markGenerationsSeen: () => void;
   /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
   decidedByMessage: Map<string, AutoHeadlineKey>;
   onReplay: (chip: AlmondNavChip) => void;
@@ -156,6 +188,34 @@ function dedupeReports(reports: AlmondReportCard[]): AlmondReportCard[] {
   return out;
 }
 
+/** Drop duplicate meter cards (same meter id), keeping first-seen order. Belt-and-suspenders to the
+ *  server's per-turn meter dedupe: one meter shows exactly one card, never two (B2). */
+function dedupeMeters(meters: AlmondMeterCard[]): AlmondMeterCard[] {
+  const seen = new Set<string>();
+  const out: AlmondMeterCard[] = [];
+  for (const card of meters) {
+    if (!seen.has(card.meter.id)) {
+      seen.add(card.meter.id);
+      out.push(card);
+    }
+  }
+  return out;
+}
+
+/** Drop duplicate generation handles (same jobId), keeping first-seen order. Belt-and-suspenders to
+ *  the server's per-turn dedupe: one background build shows exactly one card, never two. */
+function dedupeGenerations(gens: AlmondGenerationData[]): AlmondGenerationData[] {
+  const seen = new Set<string>();
+  const out: AlmondGenerationData[] = [];
+  for (const gen of gens) {
+    if (!seen.has(gen.jobId)) {
+      seen.add(gen.jobId);
+      out.push(gen);
+    }
+  }
+  return out;
+}
+
 /** A cheap content fingerprint for a saved thread, so an unchanged conversation is never re-saved.
  *  Final answer length is stable once a turn completes (we only save then), so count + last id +
  *  last text length uniquely identifies a settled exchange. */
@@ -204,6 +264,12 @@ export function AlmondChatProvider({
   const [open, setOpen] = useState(false);
   const openAlmond = useCallback(() => setOpen(true), []);
   const closeAlmond = useCallback(() => setOpen(false), []);
+
+  // Background-build tracker (Almond v2 Phase 2): polls the farm-scoped status endpoint so a building
+  // card can flip to a download card, and a RED unread badge lights when a build finishes while the
+  // grower is away. The panel-open signal keeps the poll warm + clears the unread badge; the dedicated
+  // /almond page also clears it on mount (see `markGenerationsSeen` below, called from the page).
+  const { generations, unreadCount, markSeen: markGenerationsSeen } = useAlmondGenerations(open);
 
   // Chosen model. Starts at Auto (the default) for an SSR-safe first render, then hydrates from
   // localStorage so a grower's pick sticks between visits (a farmer specifically liked switching).
@@ -280,10 +346,16 @@ export function AlmondChatProvider({
   const { apply: applyNavigation } = useAlmondNavigation();
   const [navByMessage, setNavByMessage] = useState<Map<string, AlmondNavChip[]>>(new Map());
   const [reportsByMessage, setReportsByMessage] = useState<Map<string, AlmondReportCard[]>>(new Map());
+  const [metersByMessage, setMetersByMessage] = useState<Map<string, AlmondMeterCard[]>>(new Map());
+  const [generationsByMessage, setGenerationsByMessage] = useState<
+    Map<string, AlmondGenerationData[]>
+  >(new Map());
   const [decidedByMessage, setDecidedByMessage] = useState<Map<string, AutoHeadlineKey>>(new Map());
   const [announcement, setAnnouncement] = useState<{ text: string; seq: number }>({ text: "", seq: 0 });
   const pendingChips = useRef<AlmondNavChip[]>([]);
   const pendingReports = useRef<AlmondReportCard[]>([]);
+  const pendingMeters = useRef<AlmondMeterCard[]>([]);
+  const pendingGenerations = useRef<AlmondGenerationData[]>([]);
   const pendingDecided = useRef<AutoHeadlineKey | null>(null);
   const [flushTick, setFlushTick] = useState(0);
 
@@ -304,7 +376,10 @@ export function AlmondChatProvider({
     onData: (part) => {
       if (part.type === "data-navigate") {
         const { action, label } = part.data;
-        applyNavigation(action); // one-shot apply (Story 7.4)
+        // B1: Almond no longer auto-navigates. A `data-navigate` part renders a click-to-go chip
+        // (buffered below, surfaced by AlmondActionChips) and the grower taps it to move the screen
+        // (the chip's onReplay calls applyNavigation). We still buffer + announce, just never apply
+        // the navigation here. This keeps the grower in the chat unless they choose to jump.
         pendingChips.current.push({ action, label });
         setFlushTick((n) => n + 1);
         announce(label);
@@ -312,6 +387,22 @@ export function AlmondChatProvider({
       }
       if (part.type === "data-report") {
         pendingReports.current.push(part.data);
+        setFlushTick((n) => n + 1);
+        return;
+      }
+      if (part.type === "data-meter") {
+        // B2: a light inline meter card. Buffered like the report cards and attributed to the latest
+        // assistant message on the next flush tick.
+        pendingMeters.current.push(part.data);
+        setFlushTick((n) => n + 1);
+        return;
+      }
+      if (part.type === "data-generation") {
+        // Almond v2 Phase 2: the handle to a background-built file. No bytes yet — just the jobId. We
+        // buffer it (like the report/meter cards), attribute it to the assistant turn that drove it on
+        // the next flush tick, and render a BUILDING card there that the poll (useAlmondGenerations)
+        // swaps to a DOWNLOAD card once the job is "done".
+        pendingGenerations.current.push(part.data);
         setFlushTick((n) => n + 1);
         return;
       }
@@ -357,6 +448,41 @@ export function AlmondChatProvider({
       }
       if (reportsToFlush.length > 0 && assistantId) {
         next.set(assistantId, dedupeReports([...(next.get(assistantId) ?? []), ...reportsToFlush]));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+
+    const metersToFlush = assistantId ? pendingMeters.current : [];
+    if (metersToFlush.length > 0) pendingMeters.current = [];
+    setMetersByMessage((prev) => {
+      let changed = false;
+      const next = new Map<string, AlmondMeterCard[]>();
+      for (const [id, cards] of prev) {
+        if (liveIds.has(id)) next.set(id, cards);
+        else changed = true;
+      }
+      if (metersToFlush.length > 0 && assistantId) {
+        next.set(assistantId, dedupeMeters([...(next.get(assistantId) ?? []), ...metersToFlush]));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+
+    const generationsToFlush = assistantId ? pendingGenerations.current : [];
+    if (generationsToFlush.length > 0) pendingGenerations.current = [];
+    setGenerationsByMessage((prev) => {
+      let changed = false;
+      const next = new Map<string, AlmondGenerationData[]>();
+      for (const [id, gens] of prev) {
+        if (liveIds.has(id)) next.set(id, gens);
+        else changed = true;
+      }
+      if (generationsToFlush.length > 0 && assistantId) {
+        next.set(
+          assistantId,
+          dedupeGenerations([...(next.get(assistantId) ?? []), ...generationsToFlush]),
+        );
         changed = true;
       }
       return changed ? next : prev;
@@ -496,9 +622,16 @@ export function AlmondChatProvider({
   const resetConversationState = useCallback(() => {
     setNavByMessage(new Map());
     setReportsByMessage(new Map());
+    setMetersByMessage(new Map());
+    // The per-message building/download cards belong to THIS thread, so they reset with it. The polled
+    // `generations` list is farm-scoped (not conversation-scoped), so it is deliberately NOT cleared
+    // here: a build started in one thread is still the farm's and must keep tracking across a new chat.
+    setGenerationsByMessage(new Map());
     setDecidedByMessage(new Map());
     pendingChips.current = [];
     pendingReports.current = [];
+    pendingMeters.current = [];
+    pendingGenerations.current = [];
     pendingDecided.current = null;
     savedFingerprintRef.current = "";
   }, []);
@@ -606,6 +739,11 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      metersByMessage,
+      generationsByMessage,
+      generations,
+      unreadCount,
+      markGenerationsSeen,
       decidedByMessage,
       onReplay,
       announcement,
@@ -634,6 +772,11 @@ export function AlmondChatProvider({
       editMessage,
       navByMessage,
       reportsByMessage,
+      metersByMessage,
+      generationsByMessage,
+      generations,
+      unreadCount,
+      markGenerationsSeen,
       decidedByMessage,
       onReplay,
       announcement,
@@ -672,6 +815,13 @@ export function useAlmondLauncher(): {
 } {
   const { open, setOpen, openAlmond, closeAlmond } = useAlmondChatContext();
   return { open, setOpen, openAlmond, closeAlmond };
+}
+
+/** Just the unread-build count, for the RED badge on the launcher FAB and the rail Almond icon. The
+ *  rail renders inside the AlmondChatProvider, so it reads this directly — no second poll, no client
+ *  island (the provider's single poll feeds every surface). */
+export function useAlmondUnread(): number {
+  return useAlmondChatContext().unreadCount;
 }
 
 export { ZERO_WIDTH_SPACE };

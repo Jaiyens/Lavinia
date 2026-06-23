@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
-import { attachmentKindsFromMessages, classifyTurn, isBespokeFileAsk } from "./intent";
+import { attachmentKindsFromMessages, classifyTurn } from "./intent";
 
 // Pure, offline (zero DB, zero gateway): the deterministic turn classifier. The verb+noun file gate,
 // the attachment hard-override, the navigation lens/verb gate, and the read fallthrough are all
@@ -21,26 +21,16 @@ function userFile(mediaType: string): UIMessage {
 }
 
 describe("classifyTurn", () => {
-  it("a file VERB + file NOUN -> a standard export build", () => {
-    expect(classifyTurn("export my meters as a spreadsheet", [])).toEqual({
-      kind: "file",
-      pre: "export",
-      bespoke: false,
-    });
+  it("a file VERB + file NOUN -> a file build (a single from-scratch path)", () => {
+    expect(classifyTurn("export my meters as a spreadsheet", [])).toEqual({ kind: "file" });
   });
 
-  it("bespoke wording -> the codegen path (bespoke true)", () => {
-    expect(classifyTurn("make me a custom one-off workbook", [])).toEqual({
-      kind: "file",
-      pre: "codegen",
-      bespoke: true,
-    });
+  it("a custom-styling spreadsheet ask is still just a file build", () => {
+    expect(classifyTurn("make me a custom one-off workbook", [])).toEqual({ kind: "file" });
   });
 
-  it("a report VERB + report NOUN -> the report build", () => {
-    const cls = classifyTurn("make me a pdf report", []);
-    expect(cls.kind).toBe("file");
-    if (cls.kind === "file") expect(cls.pre).toBe("report");
+  it("a report VERB + report NOUN -> a file build", () => {
+    expect(classifyTurn("make me a pdf report", [])).toEqual({ kind: "file" });
   });
 
   it("a file NOUN with NO file verb is a chatty read, not a build (the verb+noun gate)", () => {
@@ -72,15 +62,5 @@ describe("attachmentKindsFromMessages", () => {
 
   it("returns [] when the latest user turn has no file part", () => {
     expect(attachmentKindsFromMessages([userText("just a question")])).toEqual([]);
-  });
-});
-
-describe("isBespokeFileAsk", () => {
-  it("is true for bespoke wording", () => {
-    expect(isBespokeFileAsk("a bespoke layout")).toBe(true);
-  });
-
-  it("is false for a plain ask", () => {
-    expect(isBespokeFileAsk("my meters")).toBe(false);
   });
 });

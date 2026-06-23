@@ -38,19 +38,18 @@ export function SpendHero({
   const months = RANGE_MONTHS[range];
   const sliced = months === null ? series : series.slice(-months);
   const points = sliced.map((p) => ({ value: p.cents, label: shortMonth(p.month) }));
-  // The resting headline is the TOTAL spend across the selected range (All = all-time), so the big
-  // figure reads as cumulative PG&E spend rather than a single cycle. Falls back to the latest cycle
-  // only when the range has no summed data. Hovering a month still shows that one month (below).
-  const rangeTotalCents = sliced.reduce((sum, p) => sum + p.cents, 0) || latestCents;
+  // The resting headline is the LATEST-CYCLE spend (`latestCents` = each reconciled meter's most recent
+  // bill, summed) - the "current PG&E spend" figure the farm knows, NOT a cumulative all-time sum. The
+  // range pills + chart still show the monthly trend; hovering a month shows that one month (below).
 
   // Cursor crosshair: as you drag along the chart the nearest month is "active", and the big
-  // figure + the bubble + a dot on the curve all track it. Resting (no hover) shows the latest.
+  // figure + the bubble + a dot on the curve all track it. Resting (no hover) shows the latest cycle.
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const activeIdx = hoverIdx !== null && hoverIdx >= 0 && hoverIdx < points.length ? hoverIdx : null;
   const activePoint = activeIdx !== null ? points[activeIdx] : undefined;
-  const displayCents = activePoint ? activePoint.value : rangeTotalCents;
-  // At rest the bubble names the RANGE (e.g. "All"); on hover it names the month.
-  const displayLabel = activePoint?.label ?? t.ranges[range];
+  const displayCents = activePoint ? activePoint.value : latestCents;
+  // At rest the bubble names the latest month; on hover it names the hovered month.
+  const displayLabel = activePoint?.label ?? (points.at(-1)?.label ?? t.ranges[range]);
   // The cursor dot rests on the latest point until you hover a month. The vertical range mirrors
   // AreaChart (min clamps to 0, the area baseline), and chartXPct/chartYPct give percent positions
   // that line up with the curve at any size - so the overlay tracks the chart as it scales with the

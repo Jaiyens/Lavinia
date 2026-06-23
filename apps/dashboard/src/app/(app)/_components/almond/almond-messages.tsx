@@ -21,7 +21,12 @@ import {
   type AlmondNavChip,
 } from "./almond-result";
 import { AlmondDownloadCard, type AlmondReportCard } from "./almond-download-card";
+import { AlmondMeterCard } from "./almond-meter-card";
+import type { AlmondMeterCard as AlmondMeterCardData } from "./almond-meter-card";
+import { AlmondGenerationCard } from "./almond-generation-card";
+import type { AlmondGeneration } from "./use-almond-generations";
 import type { AlmondUsageLimit } from "./almond-launcher-provider";
+import type { AlmondGenerationData } from "@/lib/almond/responder";
 import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 
 const t = en.shell.almond;
@@ -74,6 +79,14 @@ type Props = {
   navByMessage: Map<string, AlmondNavChip[]>;
   /** Download cards per assistant message id (Story 8.5). */
   reportsByMessage: Map<string, AlmondReportCard[]>;
+  /** Light inline meter cards per assistant message id (B2). */
+  metersByMessage: Map<string, AlmondMeterCardData[]>;
+  /** Background-build handles per assistant message id (Almond v2 Phase 2): the building/download
+   *  cards rendered inline at the turn that drove them. */
+  generationsByMessage: Map<string, AlmondGenerationData[]>;
+  /** The farm's recent background-build jobs (polled), joined to the handles by jobId so a building
+   *  card flips to a download card in place when the build finishes. */
+  generations: AlmondGeneration[];
   /** The "what Auto decided" headline key per assistant message id (Auto mode only). */
   decidedByMessage: Map<string, AutoHeadlineKey>;
   /** Re-apply a chip's navigation (the chip is a link back to that view). */
@@ -98,6 +111,9 @@ export function AlmondMessages({
   starters,
   navByMessage,
   reportsByMessage,
+  metersByMessage,
+  generationsByMessage,
+  generations,
   decidedByMessage,
   onReplay,
   onStarter,
@@ -106,6 +122,9 @@ export function AlmondMessages({
   onEdit,
   windowScroll = false,
 }: Props) {
+  // Index the polled jobs by id once per render, so a per-message building card can join its live
+  // status (building -> done -> download) without scanning the list per card.
+  const liveByJobId = new Map(generations.map((g) => [g.id, g]));
   const scrollRef = useRef<HTMLDivElement>(null);
   // Pin to the newest content as it streams in. On the full page the WINDOW scrolls, so we send it to
   // its bottom; in the panel the list is its own scroll container, so we pin that. Scrolling the exact
@@ -182,6 +201,8 @@ export function AlmondMessages({
         }
         const chips = navByMessage.get(m.id) ?? [];
         const reports = reportsByMessage.get(m.id) ?? [];
+        const meterCards = metersByMessage.get(m.id) ?? [];
+        const generationHandles = generationsByMessage.get(m.id) ?? [];
         const decided = decidedByMessage.get(m.id);
         const looking = isLookingUp(m);
         // After the answer text has streamed, the model may still be BUILDING something slow (a
@@ -197,8 +218,16 @@ export function AlmondMessages({
           toolRunning(m) &&
           text.length > 0;
         // Skip an assistant message with nothing to show (no text, not looking up, no tool chips,
-        // no action chip, no download card).
-        if (!text && !looking && !hasToolPart(m) && chips.length === 0 && reports.length === 0)
+        // no action chip, no download card, no meter card).
+        if (
+          !text &&
+          !looking &&
+          !hasToolPart(m) &&
+          chips.length === 0 &&
+          reports.length === 0 &&
+          meterCards.length === 0 &&
+          generationHandles.length === 0
+        )
           return null;
         return (
           <AssistantMessage
@@ -209,6 +238,9 @@ export function AlmondMessages({
             working={working}
             chips={chips}
             reports={reports}
+            meterCards={meterCards}
+            generationHandles={generationHandles}
+            liveByJobId={liveByJobId}
             decided={decided}
             onReplay={onReplay}
             onRegenerate={onRetry}
@@ -320,6 +352,9 @@ function AssistantMessage({
   working,
   chips,
   reports,
+  meterCards,
+  generationHandles,
+  liveByJobId,
   decided,
   onReplay,
   onRegenerate,
@@ -331,6 +366,11 @@ function AssistantMessage({
   working: boolean;
   chips: AlmondNavChip[];
   reports: AlmondReportCard[];
+  meterCards: AlmondMeterCardData[];
+  /** Background-build handles this turn emitted (Almond v2 Phase 2). */
+  generationHandles: AlmondGenerationData[];
+  /** The polled jobs indexed by id, so each handle joins its live status for the in-place swap. */
+  liveByJobId: Map<string, AlmondGeneration>;
   decided?: AutoHeadlineKey;
   onReplay: (chip: AlmondNavChip) => void;
   onRegenerate: () => void;
@@ -355,11 +395,26 @@ function AssistantMessage({
           {/* The slow "still working" status sits AT the answer (inline under its text), never as a
               floating second thinking node below the turn. Only one indicator shows at a time. */}
           {working && <WorkingLine />}
+          {/* Single meters Almond pulled into the chat this turn, as light inline cards (B2). Above
+              the action chips so the meter is read first, then the tap-to-open chip beside it. */}
+          {meterCards.map((card, i) => (
+            <AlmondMeterCard key={`${card.meter.id}-${i}`} card={card} />
+          ))}
           {/* What Almond just did on the screen, and a tap back to it (Story 7.5). */}
           <AlmondActionChips chips={chips} onReplay={onReplay} />
           {/* Spreadsheets / PDFs Almond made this turn, as download cards (Story 8.5 / 9.3). */}
           {reports.map((card, i) => (
             <AlmondDownloadCard key={`${card.fileName}-${i}`} card={card} />
+          ))}
+          {/* Background-built files (Almond v2 Phase 2): a building card while the job runs (it
+              survives the grower leaving the page), swapped to a download card in place when done. The
+              live status is joined from the polled jobs by jobId. */}
+          {generationHandles.map((handle) => (
+            <AlmondGenerationCard
+              key={handle.jobId}
+              handle={handle}
+              live={liveByJobId.get(handle.jobId)}
+            />
           ))}
         </div>
         {!looking && text && (

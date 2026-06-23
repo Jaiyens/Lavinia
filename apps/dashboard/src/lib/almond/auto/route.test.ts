@@ -9,21 +9,19 @@ import { decideFromIntent } from "./route";
 
 const ALLOWED_IDS: ReadonlySet<string> = new Set(ALMOND_MODELS.map((m) => m.id));
 
-/** The full expected table: every intent -> (codegen-on id, codegen-off id, headline). */
+/** The full expected table: every intent -> (codegen-on id, codegen-off id, headline). The file path is
+ *  Sonnet either way now (it orchestrates the from-scratch codegen or the deterministic build); there is
+ *  no cache intent, so a file ask always builds fresh (`buildingNew`). */
 const CASES: ReadonlyArray<{
   intent: TurnIntent;
   on: AlmondModelId;
   off: AlmondModelId;
   headline: AutoHeadlineKey;
 }> = [
-  { intent: "retrieve_cached", on: "anthropic/claude-haiku-4.5", off: "anthropic/claude-haiku-4.5", headline: "pulledCached" },
-  { intent: "generate_file", on: "anthropic/claude-haiku-4.5", off: "anthropic/claude-haiku-4.5", headline: "buildingNew" },
+  { intent: "generate_file", on: "anthropic/claude-sonnet-4.6", off: "anthropic/claude-sonnet-4.6", headline: "buildingNew" },
   { intent: "navigate", on: "anthropic/claude-haiku-4.5", off: "anthropic/claude-haiku-4.5", headline: "navigated" },
   { intent: "read_answer", on: "anthropic/claude-sonnet-4.6", off: "anthropic/claude-sonnet-4.6", headline: "answeredDirect" },
   { intent: "reason_attachment", on: "anthropic/claude-opus-4.8", off: "anthropic/claude-opus-4.8", headline: "readingAttachment" },
-  // The one flag-sensitive intent: Opus when codegen is configured, degraded to a deterministic Haiku
-  // build when it is not. The headline stays buildingNew either way (a fresh build, not a pull).
-  { intent: "codegen_bespoke", on: "anthropic/claude-opus-4.8", off: "anthropic/claude-haiku-4.5", headline: "buildingNew" },
 ];
 
 describe("decideFromIntent", () => {
@@ -39,9 +37,10 @@ describe("decideFromIntent", () => {
     });
   }
 
-  it("the degrade: codegen_bespoke with codegen OFF picks the deterministic Haiku build", () => {
-    expect(decideFromIntent("codegen_bespoke", false).modelId).toBe("anthropic/claude-haiku-4.5");
-    expect(decideFromIntent("codegen_bespoke", false).headline).toBe("buildingNew");
+  it("a file ask builds fresh on Sonnet with the buildingNew headline (no cache)", () => {
+    expect(decideFromIntent("generate_file", true).modelId).toBe("anthropic/claude-sonnet-4.6");
+    expect(decideFromIntent("generate_file", true).headline).toBe("buildingNew");
+    expect(decideFromIntent("generate_file", false).headline).toBe("buildingNew");
   });
 
   it("reason_attachment leads with Opus and the reading-attachment headline", () => {

@@ -169,7 +169,9 @@ export async function buildAlmondSandboxContext({
   farmName,
   uiMessages = [],
 }: BuildSandboxContextInput): Promise<AlmondSandboxContext> {
-  const deps: AlmondToolDeps = { prisma, farmId, farmName, meterUserId: userId };
+  // The harness path never enqueues a background generation (it has its own scoped tools), so it passes
+  // an empty sink to satisfy AlmondToolDeps (the codegen tools' `pendingGenerations` field, Almond v2 Phase 2).
+  const deps: AlmondToolDeps = { prisma, farmId, farmName, meterUserId: userId, pendingGenerations: [] };
   const [user, permittedFarms, meters, findings, reports, conversations, reportSnapshot, uploadFiles] =
     await Promise.all([
       userId

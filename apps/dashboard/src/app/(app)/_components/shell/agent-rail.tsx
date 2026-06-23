@@ -7,6 +7,7 @@ import { en } from "@/copy/en";
 import type { FarmAccess } from "@/lib/auth/access";
 import { Wordmark } from "@/components/logo";
 import { AlmondAvatar } from "../almond/almond-avatar";
+import { useAlmondUnread } from "../almond/almond-launcher-provider";
 import { FarmSwitcher } from "./farm-switcher";
 import { RolePill } from "./role-pill";
 import { NAV_SECTIONS, agentHref, isAgentActive, type AgentItem } from "./agents";
@@ -35,6 +36,12 @@ export function AgentRail({
   pendingRequests?: number;
 } = {}) {
   const pathname = usePathname();
+  // Finished background-built files the grower has not seen yet (Almond v2 Phase 2). The rail renders
+  // INSIDE the AlmondChatProvider (both the dashboard and the tour layout), so it reads the unread
+  // count straight from the provider's single poll — no second fetch, no client island. The count
+  // drives a small RED badge on the Almond entry, mirroring the Team pending-requests badge below but
+  // in the reserved risk red (the brand-green count badge means "to manage", red means "ready for you").
+  const almondUnread = useAlmondUnread();
 
   // Whether an item is shown to the current viewer: app-only items are hidden on the public tour, and
   // the admin-only Team entry is hidden from members who cannot manage the team.
@@ -97,6 +104,17 @@ export function AgentRail({
             className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-primary-container px-1.5 py-0.5 type-label-caps text-on-primary-container"
           >
             {pendingRequests}
+          </span>
+        ) : null}
+        {/* RED unread badge on the Almond entry: a finished background-built file is waiting (Almond v2
+            Phase 2). Mirrors the Team badge shape/size but in the reserved risk red (not the brand-green
+            count) so "ready for you" reads distinctly from "to manage". */}
+        {agent.key === "almond" && almondUnread > 0 ? (
+          <span
+            aria-label={en.shell.almond.generation.unreadAria(almondUnread)}
+            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-risk px-1.5 py-0.5 type-label-caps tnum text-white"
+          >
+            {almondUnread}
           </span>
         ) : null}
       </Link>

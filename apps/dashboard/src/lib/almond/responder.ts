@@ -15,7 +15,7 @@ import { en } from "@/copy/en";
 import { formatUsdWhole } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
-import { loadMetersForFarm } from "@/lib/dashboard/load";
+import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { LENS_KEYS } from "@/lib/dashboard/surface";
 import { analyzeFarm, type EnrichedMeter } from "./analysis";
 import {
@@ -23,8 +23,10 @@ import {
   rateSchedulesByFrequency,
   summarizeFarmOverview,
   summarizeFindings,
+  summarizeMeterDetail,
   summarizeReconciliation,
   UNKNOWN_RATE,
+  type MeterDetail,
   type RankMetersOptions,
 } from "./shape";
 import {
@@ -43,7 +45,6 @@ import {
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
-import { type CodegenExportResult } from "./skills/codegen-export";
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import { DEFAULT_ALMOND_MODEL } from "./models";
 import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
@@ -53,10 +54,13 @@ import { loadHarnessSessionState, saveHarnessSessionState } from "./harness/sess
 import { billableTokens, recordUsage } from "./usage-budget";
 import {
   buildAlmondSkills,
+  buildSolarContextByMeter,
   exportSpreadsheetSkill,
   generateReportSkill,
+  withSolarCredit,
   type AlmondActor,
   type AlmondToolDeps,
+  type CodegenBuildingResult,
 } from "./tools";
 
 /**
@@ -80,10 +84,10 @@ export type AlmondRequest = {
    *  (ADR-A08). The stub ignores it (read-only, grounded directly); the model path passes it
    *  to `buildAlmondSkills`. */
   actor: AlmondActor;
-  /** The Auto router's decision for this turn (when the grower picked "Auto"). Carries the PREDICTED
-   *  decided-line headline; the responder writes it once and may correct a stale cache prediction from
-   *  the real file outcome (see `writeDecidedPart`). Absent for a hand-picked model, in which case no
-   *  decided line is written and every existing behavior is unchanged. */
+  /** The Auto router's decision for this turn (when the grower picked "Auto"). Carries the decided-line
+   *  headline; the responder writes it exactly once. A file ask always builds fresh (no cache), so there
+   *  is no correction to make. Absent for a hand-picked model, in which case no decided line is written
+   *  and every existing behavior is unchanged. */
   decided?: AutoDecided;
 };
 
@@ -149,12 +153,9 @@ function isNavigateResult(output: unknown): output is NavigateResult {
 // so the client buffers it once (like navigate/report parts) and never replays it. The concrete model id
 // stays server-side (already recorded on the usage row); only the headline key crosses the wire.
 //
-// ONCE + CORRECTED: the live path writes the part in `streamText`'s `onFinish` (after ALL tool-loop
-// steps), which is exactly-once by construction and reflects any correction made along the way. The one
-// correction: a file ask the router predicted as a cache HIT (`pulledCached`) but whose tool result comes
-// back with `fromCache !== true` (the predicted hit went stale and built fresh) is swapped to
-// `buildingNew`, so the line never claims bytes were pulled when they were actually built. A hand-picked
-// model passes no `decided`, so no part is written and behavior is unchanged.
+// ONCE: the live path writes the part in `streamText`'s `onFinish` (after ALL tool-loop steps), which is
+// exactly-once by construction. A file ask always builds fresh (no cache), so the headline needs no
+// correction. A hand-picked model passes no `decided`, so no part is written and behavior is unchanged.
 
 /** The data-part type the client Auto badge listens for. */
 const DECIDED_PART_TYPE = "data-decided" as const;
@@ -230,12 +231,6 @@ type StreamableFile = {
   meterCount: number;
   coverageAsOf: string | null;
   params: ReportToStore["params"];
-  /** The content-addressed cache key (Phase 2), persisted with a FRESH build so an identical later
-   *  ask resolves to it. Absent for a context that did not compute one. */
-  cacheKey?: string;
-  /** True when these bytes were served from the cache: the row already exists, so the responder
-   *  streams the card WITHOUT persisting a duplicate (and marks it saved). */
-  fromCache?: boolean;
 };
 
 /** Normalize a clean export result into the common streamable-file shape, or null for empty/error
@@ -251,8 +246,6 @@ function exportFile(result: ExportSpreadsheetResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
   };
 }
 
@@ -269,28 +262,6 @@ function reportFile(result: GenerateReportResult): StreamableFile | null {
     meterCount: result.meterCount,
     coverageAsOf: result.coverageAsOf,
     params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
-  };
-}
-
-/** Normalize a clean code-gen export result into the common streamable-file shape, or null for
- *  empty/error. Persisted under the distinct `"codegen"` kind so Reports history can tell a model-
- *  authored custom report from a deterministic one. The stream/card path is identical (content-type
- *  driven), so the download card needs no change. */
-function codegenFile(result: CodegenExportResult): StreamableFile | null {
-  if (result.kind !== "file") return null;
-  return {
-    kind: "codegen",
-    preview: result.preview,
-    fileName: result.fileName,
-    contentType: result.contentType,
-    bytes: result.bytes,
-    meterCount: result.meterCount,
-    coverageAsOf: result.coverageAsOf,
-    params: result.params,
-    cacheKey: result.cacheKey,
-    fromCache: result.fromCache,
   };
 }
 
@@ -316,11 +287,7 @@ async function persistAndWriteReportPart(
   if (file === null) return;
 
   let saved = false;
-  if (file.fromCache) {
-    // A cache hit: the row already exists (it was stored when first built), so we stream the bytes
-    // again without persisting a duplicate. The card still shows "saved to Reports".
-    saved = true;
-  } else if (actor.authedOwner) {
+  if (actor.authedOwner) {
     try {
       await storeReport(
         { prisma: deps.prisma, farmId: deps.farmId, createdById: actor.userId },
@@ -332,8 +299,8 @@ async function persistAndWriteReportPart(
           params: file.params,
           bytes: file.bytes,
           contentType: file.contentType,
-          // Persist the cache key + count so an identical later ask resolves to this row instantly.
-          cacheKey: file.cacheKey ?? null,
+          // No serve-from-cache: every file is built fresh, so the Reports row is history only.
+          cacheKey: null,
           meterCount: file.meterCount,
         },
       );
@@ -370,12 +337,83 @@ function isReportResult(output: unknown): output is GenerateReportResult {
   return kind === "file" || kind === "empty" || kind === "error";
 }
 
-/** Narrow an unknown tool output to a code-gen export result. Same `file`/`empty`/`error` outcome shape
- *  as the other file skills (the codegen skill mirrors it so this persist-and-stream path serves it). */
-function isCodegenResult(output: unknown): output is CodegenExportResult {
+// --- The background-generation bridge (Almond v2 Phase 2) ---------------------------------------
+//
+// A model-authored spreadsheet/PDF no longer builds INSIDE the tool `execute` (a ~30-90s build would
+// die the moment the grower leaves the page). The codegen tools now ENQUEUE a GenerationJob and return
+// a lightweight "building" result; the actual build runs in the route's Next `after()` callback, AFTER
+// the response stream finishes — so a closed tab does not kill it. The responder lifts the "building"
+// result onto the SAME UI-message stream as a transient `data-generation` part (mirroring data-navigate
+// / data-report): no bytes, no download card yet — just the jobId the client polls (GET
+// /api/almond/generations) until the job is "done", then fetches the file via the existing
+// /api/reports/[resultReportId]/download route. The model STILL answers in text ("I'm building it, you
+// can leave this page"); this part is the structured handle for the poll. Deduped by jobId so a
+// multi-step loop never writes two parts for one job.
+
+/** The data-part type the client background-generation tracker listens for. */
+const GENERATION_PART_TYPE = "data-generation" as const;
+/** A stable part id (one generation per job; deduped by jobId in the writer set, like the file card). */
+const GENERATION_PART_ID = "almond-generation";
+
+/** The payload the client needs to start tracking a background build: the jobId to poll, which kind it
+ *  is (workbook | report), the always-"pending" status at emit time (the job has just been enqueued; the
+ *  client polls /api/almond/generations for the live status), and the grower's request for labeling.
+ *  No bytes, no report id yet — the file is fetched via /api/reports/[resultReportId]/download once the
+ *  poll reports the job "done". */
+export type AlmondGenerationData = {
+  jobId: string;
+  kind: "workbook" | "report";
+  status: "pending";
+  requestText: string;
+};
+
+/** Narrow an unknown tool output to a codegen "building" result (the enqueue-only outcome the codegen
+ *  tools now return). A "busy" result (the per-farm throttle's calm decline) carries no job, so it is
+ *  excluded here and writes no part — the model's text carries that outcome instead. */
+export function isBuildingResult(output: unknown): output is Extract<CodegenBuildingResult, { kind: "building" }> {
   if (typeof output !== "object" || output === null || !("kind" in output)) return false;
-  const kind = (output as { kind: unknown }).kind;
-  return kind === "file" || kind === "empty" || kind === "error";
+  const o = output as { kind: unknown; jobId?: unknown; generationKind?: unknown };
+  return (
+    o.kind === "building" &&
+    typeof o.jobId === "string" &&
+    (o.generationKind === "workbook" || o.generationKind === "report")
+  );
+}
+
+// --- The single-meter inline card bridge (B2) ----------------------------------------------------
+//
+// When the grower asks to see ONE meter ("show me Westside Pump 17"), the `getMeter` tool resolves
+// the MeterDetail. The responder lifts that detail onto the SAME UI-message stream as a transient
+// `data-meter` part, which the client renders as a LIGHT inline card right in the chat - no page jump,
+// no heavy drawer. It mirrors the navigate/report bridges above: written from inside the per-turn
+// `toResponse` only (never a timer/effect), `transient: true` so it is delivered once and never
+// replayed or persisted, and a stable part id (a turn shows at most one meter card in the common
+// case). The model still answers in text alongside the card; the card is an at-a-glance companion,
+// not a replacement for the reply. A found result emits a card; a not-found / ambiguous result emits
+// nothing (the model's text carries that outcome).
+
+/** The data-part type the client meter-card listens for. */
+const METER_PART_TYPE = "data-meter" as const;
+/** A stable part id (a turn opens at most one meter card in the common case; non-reconciling). */
+const METER_PART_ID = "almond-meter";
+
+/** The payload the panel needs to render the inline meter card: the resolved MeterDetail. No bytes,
+ *  no path, no model-authored value - the same shape the `getMeter` tool returns, captured client-side
+ *  as the transient part arrives. */
+export type AlmondMeterData = {
+  meter: MeterDetail;
+};
+
+/** The shape of a FOUND `getMeter` result (the executor returns `{ found: true, meter }`). */
+type MeterDetailFound = { found: true; meter: MeterDetail };
+
+/** Narrow an unknown tool output to a FOUND meter-detail result (the live path inspects tool results).
+ *  A not-found / ambiguous result has `found: false` and carries no `meter`, so it is excluded here and
+ *  writes no card. */
+function isMeterDetailFound(output: unknown): output is MeterDetailFound {
+  if (typeof output !== "object" || output === null) return false;
+  const o = output as { found?: unknown; meter?: unknown };
+  return o.found === true && typeof o.meter === "object" && o.meter !== null;
 }
 
 /** Stream Almond's answer through a real LanguageModel with the farm-scoped tools. Works with
@@ -412,10 +450,18 @@ export function createModelResponder(
           // result twice previously rendered (and for an owner, persisted) the SAME file twice. One file
           // name = one card and one Reports row.
           const writtenFiles = new Set<string>();
-          // The Auto decided-line headline for this turn (the router's prediction). Mutable so a stale
-          // cache prediction can be corrected to `buildingNew` when a clean file result comes back fresh
-          // (fromCache !== true). Written ONCE in `onFinish` below; undefined for a hand-picked model.
-          let finalHeadline = turnDecided?.headline;
+          // Same guard for the single-meter inline card (B2), keyed by meter id: a multi-step loop
+          // surfacing the same getMeter result twice (or the model re-calling getMeter with the same
+          // query) renders one card per meter, not two. Two DIFFERENT meters in one turn both show.
+          const writtenMeters = new Set<string>();
+          // Same guard for the background-generation part, keyed by jobId: a multi-step loop surfacing
+          // the same enqueue result twice never writes two parts for one job (the client would otherwise
+          // start two trackers for one build).
+          const writtenGenerations = new Set<string>();
+          // The Auto decided-line headline for this turn (the router's classification). A file ask always
+          // builds fresh now (no cache), so there is no correction to make: written ONCE in `onFinish`
+          // below; undefined for a hand-picked model.
+          const finalHeadline = turnDecided?.headline;
           const result = streamText({
             model,
             system,
@@ -455,10 +501,6 @@ export function createModelResponder(
                   const file = exportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      // The router predicted a cache HIT but the build came back fresh: correct the line.
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
@@ -468,39 +510,51 @@ export function createModelResponder(
                   const file = reportFile(tr.output);
                   if (file && !writtenFiles.has(file.fileName)) {
                     writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
                     await persistAndWriteReportPart(writer, file, deps, actor, requestText);
                   }
                 }
-                // A clean code-gen export (POC) follows the SAME path: a verified, model-authored PDF is
-                // persisted (kind "codegen") and streamed as a download card. A verification reject /
-                // error already fell back to the deterministic template inside the skill, so whatever
-                // arrives here is a real file or a typed empty/error (which writes no card).
-                if (tr.toolName === "codegenExport" && isCodegenResult(tr.output)) {
-                  const file = codegenFile(tr.output);
-                  if (file && !writtenFiles.has(file.fileName)) {
-                    writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
-                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
-                  }
+                // The model-authored codegen tools (Almond v2 Phase 2) now ENQUEUE a background build
+                // rather than building inline: the tool returns a "building" result carrying the jobId,
+                // which the route's `after()` runs after the response is sent (so a closed tab does not
+                // kill it). Lift it onto the stream as a transient `data-generation` part the client polls
+                // until "done", then fetches the file via /api/reports/[resultReportId]/download. No bytes,
+                // no download card here — the file does not exist yet. Deduped by jobId so a multi-step
+                // loop never starts two trackers for one build. A "busy" throttle decline carries no job
+                // and writes no part (the model's text carries it). Both tool names share this one branch.
+                if (
+                  (tr.toolName === "codegenExport" || tr.toolName === "codegenWorkbook") &&
+                  isBuildingResult(tr.output) &&
+                  !writtenGenerations.has(tr.output.jobId)
+                ) {
+                  writtenGenerations.add(tr.output.jobId);
+                  const data: AlmondGenerationData = {
+                    jobId: tr.output.jobId,
+                    kind: tr.output.generationKind,
+                    status: "pending",
+                    requestText: tr.output.requestText,
+                  };
+                  writer.write({
+                    type: GENERATION_PART_TYPE,
+                    id: GENERATION_PART_ID,
+                    data,
+                    transient: true,
+                  });
                 }
-                // The bespoke WORKBOOK codegen (Phase 3) follows the SAME path: a verified, model-authored
-                // .xlsx persisted (kind "codegen") and streamed as a download card. A reject/error already
-                // fell back to the deterministic workbook inside the skill, so what arrives is a real file
-                // or a typed empty/error (which writes no card). The card is content-type driven, so the
-                // .xlsx renders with the spreadsheet download label unchanged.
-                if (tr.toolName === "codegenWorkbook" && isCodegenResult(tr.output)) {
-                  const file = codegenFile(tr.output);
-                  if (file && !writtenFiles.has(file.fileName)) {
-                    writtenFiles.add(file.fileName);
-                    if (finalHeadline === "pulledCached" && file.fromCache !== true) {
-                      finalHeadline = "buildingNew";
-                    }
-                    await persistAndWriteReportPart(writer, file, deps, actor, requestText);
+                // A FOUND single-meter lookup (B2): lift its MeterDetail onto the stream as a transient
+                // `data-meter` part the panel renders as a light inline card (no page jump, no drawer).
+                // A not-found / ambiguous result writes no card - the model's text carries that outcome.
+                // Deduped by meter id so a repeated lookup never doubles the card. The model still
+                // answers in text alongside; this is the at-a-glance companion, not a replacement.
+                if (tr.toolName === "getMeter" && isMeterDetailFound(tr.output)) {
+                  const { meter } = tr.output;
+                  if (!writtenMeters.has(meter.id)) {
+                    writtenMeters.add(meter.id);
+                    writer.write({
+                      type: METER_PART_TYPE,
+                      id: METER_PART_ID,
+                      data: { meter },
+                      transient: true,
+                    });
                   }
                 }
               }
@@ -514,9 +568,9 @@ export function createModelResponder(
             // falls back to a flagged estimate so a hidden-usage provider cannot zero-charge its way
             // around the cap.
             onFinish: async ({ totalUsage }) => {
-              // Write the Auto decided line ONCE, after every tool-loop step, so it reflects any
-              // correction (`pulledCached` -> `buildingNew`) made in `onStepFinish` above. Writing here
-              // (not per step) is exactly-once by construction. Undefined for a hand-picked model.
+              // Write the Auto decided line ONCE, after every tool-loop step. Writing here (not per step)
+              // is exactly-once by construction. A file ask always builds fresh, so there is no headline
+              // correction to make. Undefined for a hand-picked model.
               if (finalHeadline) writeDecidedPart(writer, finalHeadline);
               if (deps.meterUserId === null) return;
               await recordUsage(deps.prisma, {
@@ -878,6 +932,25 @@ export function deriveReportInput(text: string): GenerateReportInput {
   return { sections };
 }
 
+/** The MeterDetail to render as an inline card when a stub navigation OPENS a single named meter (B2):
+ *  a clean open-meter resolve carries the meter id on its action, so the offline/demo path shows the
+ *  SAME light inline card the live model path does (no page jump), with zero external calls. Returns
+ *  null for any other navigation (a lens switch, a filter, a clear) - those drive the screen, not a
+ *  card. Reuses the already-loaded fleet so no second read is needed. */
+function meterCardForNavigation(
+  meters: MeterView[],
+  result: NavigateResult,
+): MeterDetail | null {
+  if (result.kind !== "navigate") return null;
+  const meterId = result.action.meter;
+  if (typeof meterId !== "string" || meterId.length === 0) return null;
+  const match = meters.find((m) => m.id === meterId);
+  if (match === undefined) return null;
+  // A solar meter carries its solar facts; building the context for the whole fleet matches the tab.
+  const solarCtx = match.isSolar ? buildSolarContextByMeter(meters).get(match.id) : undefined;
+  return withSolarCredit(summarizeMeterDetail(match, solarCtx));
+}
+
 /** A short, grounded acknowledgment the stub streams alongside (navigate) or instead of the part. */
 function navigationStubText(result: NavigateResult): string {
   switch (result.kind) {
@@ -909,6 +982,9 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
       const text = lastUserText(uiMessages);
       let navigation: NavigateResult | null = null;
       let file: StreamableFile | null = null;
+      // The single-meter inline card (B2): set when a navigation OPENS one named meter, so the
+      // offline/demo path shows the SAME light inline card the live model path does (no page jump).
+      let meterCard: MeterDetail | null = null;
       let answer: string;
       if (actor.canExport && isReportTurn(text)) {
         // Through the throttled wrapper (Story 10.3), so the offline path honors the SAME per-farm
@@ -957,6 +1033,8 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           const result = resolveNavigate(meters, { open: "meter", query: winner.name });
           if (result.kind === "navigate") {
             navigation = result;
+            // Show the priciest meter as an inline card too (B2), not just a click-to-go chip.
+            meterCard = meterCardForNavigation(meters, result);
             answer = `Opening ${winner.name}: ${openSuperlativeReason(opts, winner)}.`;
           } else {
             // Should not happen (we opened by the meter's own exact name), but never claim an open we
@@ -974,6 +1052,10 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           answer = await composeStubAnswer(deps, uiMessages);
         } else {
           navigation = result;
+          // A "show me <meter>" turn resolves to opening one meter; render it as an inline card too
+          // (B2) so the offline/demo path matches the live one. A lens/filter/clear navigation has no
+          // single meter, so this is null and only the click-to-go chip renders.
+          meterCard = meterCardForNavigation(meters, result);
           answer = navigationStubText(result);
         }
       } else {
@@ -997,6 +1079,17 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           if (navigation?.kind === "navigate") {
             writeNavigatePart(writer, navigation.action, navigation.meterName, navigation.state);
           }
+          // A single-meter "show me X" turn also writes a light inline card (B2): the SAME transient
+          // `data-meter` part the live model path emits, so the offline/demo path shows the meter in
+          // the chat (no page jump) too. Null for a lens/filter/clear navigation.
+          if (meterCard !== null) {
+            writer.write({
+              type: METER_PART_TYPE,
+              id: METER_PART_ID,
+              data: { meter: meterCard },
+              transient: true,
+            });
+          }
           // A clean offline export OR report writes the download card; for an authed owner it is also
           // persisted to Reports first (8.6) inside persistAndWriteReportPart, which is owner-gated, so
           // a demo/Tour export is streamed but never stored. The file branch is reached for any
@@ -1004,15 +1097,11 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
           if (file !== null) {
             await persistAndWriteReportPart(writer, file, deps, actor, text);
           }
-          // The Auto decided line (when the grower picked Auto): a pass-through of the predicted headline,
-          // corrected from the stub's own file outcome when trivially available (a predicted cache HIT
-          // that built fresh becomes `buildingNew`). Written once, after the text/file parts.
+          // The Auto decided line (when the grower picked Auto): a pass-through of the headline. A file
+          // ask always builds fresh now (no cache), so there is nothing to correct. Written once, after
+          // the text/file parts.
           if (turnDecided) {
-            const headline: AutoHeadlineKey =
-              turnDecided.headline === "pulledCached" && file !== null && file.fromCache !== true
-                ? "buildingNew"
-                : turnDecided.headline;
-            writeDecidedPart(writer, headline);
+            writeDecidedPart(writer, turnDecided.headline);
           }
         },
       });

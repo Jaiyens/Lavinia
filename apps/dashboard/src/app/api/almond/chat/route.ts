@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
@@ -15,8 +16,7 @@ import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
 import { hasGatewayKey } from "@/lib/ai/gateway";
 import { isCodegenExportAvailable } from "@/lib/almond/codegen/flags";
-import { resolveExportParams } from "@/lib/almond/skills/export-spreadsheet";
-import { resolveReportParams } from "@/lib/almond/skills/generate-report";
+import { runGenerationJob } from "@/lib/almond/codegen/run-job";
 
 /**
  * Almond's chat endpoint (Story 6.1). Owner-scoped: the farm is resolved ONCE here (from the
@@ -135,10 +135,10 @@ export async function POST(req: Request): Promise<Response> {
     : stripFileAttachments(uiMessages);
   // Resolve the model. Two paths:
   //   - Auto (the sentinel "auto"): the grower let Almond pick. The Auto router classifies the turn
-  //     server-side (text + server-derived attachment kinds + a cache probe) and returns a CONCRETE
-  //     allowlisted id PLUS the predicted decided-line headline — the classifier never names a model
-  //     (ADR-A08), so a forged intent cannot steer the gateway. The decided line rides through to the
-  //     responder so the user sees one honest "what Auto decided" line.
+  //     server-side (text + server-derived attachment kinds) and returns a CONCRETE allowlisted id PLUS
+  //     the decided-line headline — the classifier never names a model (ADR-A08), so a forged intent
+  //     cannot steer the gateway. A file ask builds from scratch (no cache). The decided line rides
+  //     through to the responder so the user sees one honest "what Auto decided" line.
   //   - Otherwise: validate the client's requested id against the allowlist (`resolveModel`), so a
   //     bad/forged value falls back to Opus 4.8 and an arbitrary string never reaches the gateway. The
   //     stub path ignores it (offline/CI). A forged "auto" reaching this path is not allowlisted, so it
@@ -149,18 +149,10 @@ export async function POST(req: Request): Promise<Response> {
   if (isAutoChoice(requestedModel)) {
     const lastText = lastUserTextFor(preparedMessages);
     const attachmentKinds = attachmentKindsFromMessages(preparedMessages);
-    // Codegen (a bespoke one-off artifact) is only reachable when the caller can persist AND the
-    // Gateway key + flag are present; otherwise a bespoke ask degrades to a deterministic build.
-    const codegenOn = canPersist && isCodegenExportAvailable(hasGatewayKey());
-    const decision = await routeAutoModel({
-      text: lastText,
-      attachmentKinds,
-      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
-      codegenOn,
-      resolveExportRequest: () => resolveExportParams({}),
-      resolveReportRequest: () => resolveReportParams({}),
-      resolveCodegenRequest: () => ({ request: null, format: "pdf" }),
-    });
+    // From-scratch codegen is the file path when the Gateway key + a runtime are present; the router
+    // uses this only for symmetry (Sonnet orchestrates the file tool call either way).
+    const codegenOn = canExport && isCodegenExportAvailable(hasGatewayKey());
+    const decision = routeAutoModel({ text: lastText, attachmentKinds, codegenOn });
     modelId = decision.modelId;
     decided = { headline: decision.headline };
     allowHarness = !requiresAlmondSideEffects(decision.intent);
@@ -171,22 +163,67 @@ export async function POST(req: Request): Promise<Response> {
     allowHarness = turn.kind !== "file" && turn.kind !== "navigate";
   }
   const responder = defaultAlmondResponder(modelId, decided, { allowHarness });
+  // The SHARED sink for background-generation job ids (Almond v2 Phase 2). A model-authored
+  // spreadsheet/PDF no longer builds inside the tool `execute` (a ~30-90s build would die when the grower
+  // leaves the page); instead the codegen tool ENQUEUES a GenerationJob row and PUSHES its id here, and
+  // we run the build in a Next `after()` callback (below) once the response stream has finished.
+  const pendingGenerations: string[] = [];
+  // The user the finished report is recorded under: the SAME persist-gated id `actor.userId` uses (an
+  // owner/manager who may keep files), null for a viewer or the public Tour. Resolved here so the
+  // background runner records authorship exactly as the synchronous responder did.
+  const persistingUserId = canPersist ? userId : null;
   try {
-    return await responder.toResponse({
+    const res = await responder.toResponse({
       uiMessages: preparedMessages,
-      system: buildSystemPrompt(farmName),
+      // The caller's role rides into the system prompt so Almond phrases capability accurately (a
+      // viewer is read-only; an owner/manager may also build and keep files). Server-resolved, never
+      // from the client; null for the public Tour / demo viewer.
+      system: buildSystemPrompt(farmName, role),
+      // `chatId` lets the harness path resume its sandbox session (co-founder's agent-SDK); the
+      // responder ignores it on the Gateway path. Harmless to pass on both.
       chatId,
       decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
-      // separate "who authored this export" concern.
-      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId },
+      // separate "who authored this export" concern. `pendingGenerations` is the SAME array the
+      // `after()` below drains — captured by reference, empty now, populated by the tool `execute`.
+      deps: { prisma, farmId: farm.id, farmName, meterUserId: userId, pendingGenerations },
       // `authedOwner` is the persistence capability (now owner OR manager via canPersist). userId
       // rides along so a persisted export (Story 8.6) records who asked; null when the caller
       // cannot persist (a viewer or the public Tour), so a read-only caller is never recorded as
       // an author.
-      actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null },
+      actor: { authedOwner: canPersist, canExport, userId: canPersist ? userId : null, role },
     });
+
+    // THE CRUX OF "survive leaving the page" (read this carefully): `responder.toResponse` returns the
+    // streaming Response BEFORE its stream body runs — the tool-calling loop (and so the codegen tool's
+    // `execute`, which pushes onto `pendingGenerations`) only runs as the client CONSUMES the stream.
+    // `after()` registers a callback Next runs once the response (including the streamed body) has fully
+    // finished. So at REGISTRATION time `pendingGenerations` is still empty, but the closure captures it
+    // BY REFERENCE and reads it at CALLBACK time — by which point the stream has finished and every tool
+    // `execute` has pushed its jobId. We therefore drain the populated array here, running each enqueued
+    // build in the background. Because the build runs AFTER the response is delivered, a closed tab does
+    // not kill it; `runGenerationJob` is idempotent + fail-safe (it flips the job to done/failed and
+    // never throws out). Scope (`farmId`) and authorship (`createdById`) come from the server, never the
+    // model.
+    after(async () => {
+      for (const jobId of pendingGenerations) {
+        await runGenerationJob(
+          {
+            prisma,
+            farmId: farm.id,
+            farmName,
+            meterUserId: userId,
+            createdById: persistingUserId,
+            // The runner enqueues no further jobs; an empty sink keeps the deps type satisfied.
+            pendingGenerations: [],
+          },
+          jobId,
+        );
+      }
+    });
+
+    return res;
   } catch (error) {
     console.error("[almond chat 500]", error);
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a
@@ -229,10 +266,8 @@ function isUIMessageLike(value: unknown): value is UIMessage {
 }
 
 function requiresAlmondSideEffects(intent: TurnIntent): boolean {
-  return (
-    intent === "retrieve_cached" ||
-    intent === "generate_file" ||
-    intent === "codegen_bespoke" ||
-    intent === "navigate"
-  );
+  // A file build (codegen/export) and a navigation both run through the responder's tools, so the
+  // harness must be bypassed for them. (The cache-probe / bespoke-codegen intents were removed when the
+  // Auto router went always-build-fresh, so `generate_file` is the single file-side-effect intent now.)
+  return intent === "generate_file" || intent === "navigate";
 }

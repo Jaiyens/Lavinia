@@ -47,7 +47,7 @@ beforeAll(async () => {
   db = await createTestDb();
   prisma = db.prisma;
   const farm = await seedSampleFarm(prisma);
-  deps = { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null };
+  deps = { prisma, farmId: farm.id, farmName: farm.name, meterUserId: null, pendingGenerations: [] };
 }, 120_000);
 
 afterAll(async () => {
@@ -85,23 +85,19 @@ describe("the Auto decided line is emitted on the stream (the offline stub path)
     expect(body).not.toContain("data-decided");
   });
 
-  it("corrects a PREDICTED cache hit to buildingNew when the file is built fresh, so the line never lies", async () => {
-    // The router predicted pulledCached, but this owner export builds a FRESH file (no cache yet on a
-    // first ask), so file.fromCache !== true and the stub corrects the headline to buildingNew - the
-    // exact honesty guarantee the live model path also enforces (responder.ts onStepFinish/onFinish).
+  it("a file ask builds fresh with the buildingNew headline (no cache)", async () => {
+    // A file ask always builds from scratch now (no cache probe), so the Auto headline for it is
+    // buildingNew and the offline stub still produces the download card for an owner.
     const res = await createStubResponder().toResponse({
       uiMessages: [ask("export my meters as a spreadsheet")],
       system: "ignored by the stub",
       deps,
       actor: { authedOwner: true, canExport: true, userId: "user_owner" },
-      decided: { headline: "pulledCached" },
+      decided: { headline: "buildingNew" },
     });
     const body = await res.text();
-    // The fresh build still produces a download card AND the corrected decided line.
     expect(body).toContain("data-report");
     expect(body).toContain("data-decided");
     expect(body).toContain("buildingNew");
-    // The stale prediction is never shown: a built-fresh file is not "Pulled your saved file".
-    expect(body).not.toContain("pulledCached");
   });
 });

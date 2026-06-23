@@ -68,6 +68,7 @@ model Farm {
   connections     Connection[]
   recommendations Recommendation[]
   generatedReports GeneratedReport[]
+  generationJobs   GenerationJob[]
   almondConversations AlmondConversation[]
   almondUsageEvents AlmondUsageEvent[]
   agentRuns       AgentRun[]
@@ -632,6 +633,65 @@ model GeneratedReport {
   @@index([createdById])
   // Content-addressed cache lookup: the freshest row for a (farm, cacheKey) pair.
   @@index([farmId, cacheKey])
+}
+
+// --- Almond background generation jobs (Almond v2 Phase 2) ---------------------
+// The ledger for a model-authored generation (a bespoke spreadsheet or PDF) that must KEEP RUNNING
+// if the grower leaves the page. The chat tool ENQUEUES a job row (status "pending") and returns
+// immediately; the background runner (scheduled via Next `after()` from the chat route) runs the
+// ~30-90s codegen build AFTER the response is sent, so a closed tab does not kill it, then flips
+// the row to "done" (with the finished GeneratedReport id) or "failed". The frontend polls
+// /api/almond/generations for this row's status and, once "done", fetches the finished file via
+// /api/reports/[resultReportId]/download.
+//
+// A DEDICATED model, NOT AgentRun (which is the cron + owner-approval audit ledger): this is the
+// grower's own in-the-moment build, with no approval gate. Farm-scoped by inheritance, exactly like
+// GeneratedReport: every read resolves the farm server-side and queries `where: { ..., farmId }`,
+// so one grower can never see another's job.
+model GenerationJob {
+  id String @id @default(cuid())
+
+  // The farm this job belongs to (the isolation gate). The status endpoint resolves the caller's own
+  // farm and queries farmId-scoped, so one grower can never see another's generation.
+  farmId String
+
+  // The signed-in grower who asked for it, when known. Null for a non-auth context (the public Tour /
+  // demo): the job + its report are FARM-scoped, so the Tour can still poll its own farm's jobs.
+  createdById String?
+
+  // Which codegen build to run: "workbook" (runCodegenWorkbook -> .xlsx) or "report"
+  // (runCodegenExport -> PDF). String + TS union, never a DB enum (the schema convention).
+  kind String
+
+  // Lifecycle: "pending" (enqueued, not started), "running" (the build is in flight), "done"
+  // (the file was built + persisted; resultReportId is set), or "failed" (error is set).
+  status String @default("pending")
+
+  // The grower's request in their own words (also the GeneratedReport.requestText once done).
+  requestText String
+
+  // The shape params passed through to storeReport ({ ask: requestText }), as JSON. Never a farmId.
+  paramsJson Json
+
+  // The GeneratedReport id once the build is done, so the frontend can fetch the file via the
+  // existing /api/reports/[id]/download route. Null until "done".
+  resultReportId String?
+
+  // A short failure reason when the build failed (plain operator English where surfaced). Null otherwise.
+  error String?
+
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  // Farm-scoped status reads (poll the farm's pending/running jobs).
+  @@index([farmId, status])
+  // Farm-scoped, newest-first reads (the recent-generations list).
+  @@index([farmId, createdAt])
+  // Per-grower status reads (a grower's own in-flight jobs).
+  @@index([createdById, status])
 }
 
 // --- Almond chat history (per-user, per-farm conversations) --------------------

@@ -9,7 +9,7 @@
 // (a meter contributes spend only when its coverageState is reconciled), so the totals here match
 // the KPI strip. Sorts are deterministic with a stable name/id tie-break.
 
-import type { MeterView } from "@/lib/dashboard/load";
+import type { CostSource, MeterView } from "@/lib/dashboard/load";
 import type { FindingView } from "@/lib/dashboard/findings";
 import { centsFromDollars } from "@/lib/format/money";
 import { compareFindings } from "@/lib/recommendations/top-finding";
@@ -59,6 +59,10 @@ export interface EnrichedMeter {
   /** Latest reconciled period demandCents; null when the meter is not reconciled / no demand. */
   demandChargeCents: number | null;
   coverageState: string;
+  /** Cost provenance (WS6): BILLED = thisCycleCents is a real posted bill; MODELED = an estimate
+   *  (thisCycleCents is null - a rank by cost reads the real bill only); REVIEW/NONE = no usable cost.
+   *  Null only on a fixture MeterView with no costSource set. */
+  costSource: CostSource | null;
   flags: {
     /** True iff a finding for this meter has a non-null rateSwitchTo. */
     misRated: boolean;
@@ -189,6 +193,7 @@ export function analyzeFarm(meters: MeterView[], findings: FindingView[]): FarmA
       thisCycleCents,
       demandChargeCents,
       coverageState: meter.coverageState,
+      costSource: meter.costSource ?? null,
       flags: {
         misRated,
         suggestedRate: top?.rateSwitchTo ?? null,

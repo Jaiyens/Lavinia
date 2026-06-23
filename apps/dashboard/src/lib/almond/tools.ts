@@ -1,11 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { FarmRole, PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
 import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
 import { buildSolarDataset } from "@/lib/dashboard/solar";
+import type { GrandfatherPosition } from "@/lib/energy/solar-grandfather";
 import {
   demandUncoveredShare,
   nemDemandInsight,
@@ -33,38 +34,26 @@ import { isCodegenExportAvailable } from "./codegen/flags";
 import { navigateInputSchema, resolveNavigate, type NavigateInput } from "./skills/navigate";
 import {
   exportSpreadsheetInputSchema,
-  previewLine as exportPreviewLine,
-  resolveExportParams,
   runExportSpreadsheet,
   type ExportSpreadsheetInput,
   type ExportSpreadsheetResult,
 } from "./skills/export-spreadsheet";
 import {
   generateReportInputSchema,
-  previewLine as reportPreviewLine,
-  resolveReportParams,
   runGenerateReport,
   type GenerateReportInput,
   type GenerateReportResult,
 } from "./skills/generate-report";
 import {
   codegenExportInputSchema,
-  runCodegenExport,
+  HARDCODED_ASK as CODEGEN_EXPORT_HARDCODED_ASK,
   type CodegenExportInput,
-  type CodegenExportResult,
 } from "./skills/codegen-export";
 import {
   codegenWorkbookInputSchema,
-  runCodegenWorkbook,
+  HARDCODED_ASK as CODEGEN_WORKBOOK_HARDCODED_ASK,
   type CodegenWorkbookInput,
-  type CodegenWorkbookResult,
 } from "./skills/codegen-workbook";
-import {
-  computeCacheKey,
-  computeFarmDataFingerprint,
-  lookupCachedReport,
-  type CachedFile,
-} from "./reports/cache";
 
 /**
  * The read-only, farm-scoped data Almond can read. Each executor takes the SAME `deps` (a
@@ -91,6 +80,13 @@ export type AlmondToolDeps = {
   // sites: the chat responder's `onFinish` and the nested codegen `generateText` (which receives `deps`,
   // not `actor`). Used only to attribute usage rows; never a scope or auth gate.
   meterUserId: string | null;
+  // The SHARED mutable sink for background-generation job ids (Almond v2 Phase 2). The codegen tools
+  // ENQUEUE a GenerationJob row and PUSH its id here; the chat route holds the SAME array by reference
+  // and, in a Next `after()` callback (which runs AFTER the response stream finishes), drains it to run
+  // each build in the background — so a model-authored spreadsheet/PDF keeps running if the grower
+  // leaves the page. The route creates a fresh `[]` per request and passes it in; it is empty when the
+  // tools are built but populated by the time the tool `execute` has run during stream consumption.
+  pendingGenerations: string[];
 };
 
 /**
@@ -109,11 +105,18 @@ export type AlmondToolDeps = {
  *
  * `userId` is the signed-in grower's id, carried so the owner-only persistence can record WHO
  * asked. It is null for the public Tour / demo.
+ *
+ * `role` is the caller's server-resolved farm role (owner | manager | viewer), or null for the public
+ * Tour / demo viewer. It is NOT a capability gate (those are the booleans above, resolved from it in
+ * the route); it is carried so the persona can phrase what the caller may do accurately - a viewer is
+ * read-only, an owner/manager may also build and keep files. Optional (defaults to the read-only,
+ * null-role framing) so existing AlmondActor fixtures (tests) need no change; the route always sets it.
  */
 export type AlmondActor = {
   authedOwner: boolean;
   canExport: boolean;
   userId: string | null;
+  role?: FarmRole | null;
 };
 
 /**
@@ -172,13 +175,32 @@ export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMet
   // Shares: build the farm's solar dataset once (the same derivation the Solar tab renders) and take
   // each meter's LARGEST array share across the arrays it benefits from. A meter with no usage on file
   // has a null share in the dataset, which stays null here (not-on-file, never a fabricated zero).
-  const dataset = buildSolarDataset(meters, nowMonthOf(SOLAR_CONTEXT_AS_OF));
+  // Passing `asOf` also lets the dataset compute each array's grandfather position (WS6 item 3), which
+  // we pull per meter below; without it the position is honest-unknown for every array.
+  const dataset = buildSolarDataset(meters, nowMonthOf(SOLAR_CONTEXT_AS_OF), {
+    asOf: SOLAR_CONTEXT_AS_OF,
+  });
   const largestShareByPump = new Map<string, number>();
+  // The grandfather position to surface per meter: across the arrays that credit a meter, take the one
+  // with the MOST years remaining (the best-protected terms the meter still enjoys). A `known` position
+  // wins over an `unknown` one, so a meter with at least one dated NEM2 array reads its real expiry.
+  const grandfatherByPump = new Map<string, GrandfatherPosition>();
   for (const group of dataset.arrays) {
     for (const row of group.meters) {
-      if (row.share === null) continue;
-      const prev = largestShareByPump.get(row.pumpId);
-      if (prev === undefined || row.share > prev) largestShareByPump.set(row.pumpId, row.share);
+      if (row.share !== null) {
+        const prev = largestShareByPump.get(row.pumpId);
+        if (prev === undefined || row.share > prev) largestShareByPump.set(row.pumpId, row.share);
+      }
+      const gf = group.grandfather;
+      const prevGf = grandfatherByPump.get(row.pumpId);
+      if (
+        gf.state === "known" &&
+        (prevGf === undefined ||
+          prevGf.state !== "known" ||
+          gf.yearsRemaining > prevGf.yearsRemaining)
+      ) {
+        grandfatherByPump.set(row.pumpId, gf);
+      }
     }
   }
 
@@ -187,7 +209,10 @@ export function buildSolarContextByMeter(meters: MeterView[]): SolarContextByMet
   // closed (the context carries no demand fields, so the shape reads honest not-on-file).
   const card = loadRateCard();
   for (const m of solarMeters) {
-    const ctx: MeterSolarContext = { sharePct: largestShareByPump.get(m.id) ?? null };
+    const ctx: MeterSolarContext = {
+      sharePct: largestShareByPump.get(m.id) ?? null,
+      grandfather: grandfatherByPump.get(m.id),
+    };
 
     const insight = nemDemandInsight({
       isSolar: m.isSolar,
@@ -335,31 +360,12 @@ function throttledMessage(): string {
  * per-farm generation throttle (Story 10.3) before any heavy work runs.
  */
 /**
- * Resolve the farm-data fingerprint + content-addressed cache key for a file skill, then look up a
- * cached file. Shared by all three file skills so the cache rule is authored once. Cheap on a MISS
- * (two indexed queries, then the normal build); a HIT skips the build entirely and streams the stored
- * (and, for codegen, already number-verified) bytes. The public Tour never persists, so it never has
- * a hit (it always builds fresh) — the v1 cache policy, with no extra gate needed.
+ * The `exportSpreadsheet` skill executor (Story 8.5). Reads the uncapped export loader (8.1), applies
+ * the requested filter, and builds the file (8.2/8.3) with the coverage footer (8.4). It is now the
+ * DETERMINISTIC FALLBACK builder (the offline stub's file path, and the codegen skills' last resort when
+ * the runtime is down): every artifact is built FROM SCRATCH each turn, no cache. Scope (farmId) is
+ * inherited from `deps`. Guarded by the per-farm generation throttle (Story 10.3) before any heavy work.
  */
-async function findCachedFile(
-  deps: AlmondToolDeps,
-  skill: "export" | "report" | "codegen",
-  request: unknown,
-): Promise<{ cacheKey: string | undefined; hit: CachedFile | null }> {
-  // Throw-safe: the cache is a fast path, never a gate. A flaky DB/Blob read here must degrade to a
-  // MISS (build fresh) rather than throw out of the skill — a thrown tool.execute becomes a tool-error
-  // with no download card and no deterministic fallback. On failure we return no cacheKey (so the
-  // fresh build is simply not cached) and no hit.
-  try {
-    const fingerprint = await computeFarmDataFingerprint(deps.prisma, deps.farmId);
-    const cacheKey = computeCacheKey({ farmId: deps.farmId, fingerprint, skill, request });
-    const hit = await lookupCachedReport(deps.prisma, deps.farmId, cacheKey);
-    return { cacheKey, hit };
-  } catch {
-    return { cacheKey: undefined, hit: null };
-  }
-}
-
 export async function exportSpreadsheetSkill(
   deps: AlmondToolDeps,
   input: ExportSpreadsheetInput,
@@ -367,37 +373,14 @@ export async function exportSpreadsheetSkill(
   if (!checkGenerationThrottle(deps.farmId).allowed) {
     return { kind: "error", message: throttledMessage() };
   }
-  const params = resolveExportParams(input);
-  const { cacheKey, hit } = await findCachedFile(deps, "export", params);
-  if (hit !== null) {
-    const filter = params.filterKey !== null ? { key: params.filterKey, value: params.filterValue ?? "" } : null;
-    return {
-      kind: "file",
-      fromCache: true,
-      cacheKey: hit.cacheKey,
-      preview: exportPreviewLine(hit.meterCount, params.table, filter),
-      fileName: hit.fileName,
-      contentType: hit.contentType,
-      bytes: hit.bytes,
-      meterCount: hit.meterCount,
-      table: params.table,
-      coverageAsOf: hit.coverageAsOf,
-      params,
-    };
-  }
-  const result = await runExportSpreadsheet(deps, input);
-  return result.kind === "file" ? { ...result, cacheKey } : result;
+  return runExportSpreadsheet(deps, input);
 }
 
 /**
- * The `generateReport` skill executor (Story 9.3). Reads the uncapped export loader (8.1), applies the
- * requested filter, authors each chosen section deterministically, and renders the PDF (9.2) with the
- * coverage footer (8.4), returning a typed result. Owner-only: it is only ever wired in for an
- * authenticated owner via `ownerOnlySkills` below. Scope (farmId) is inherited from `deps`, never from
- * the input. The generated bytes ride the result; the responder lifts them onto the stream as a
- * `data-report` part (download card), persists them to Reports (8.6), and collapses the model-visible
- * output to a small text summary. Guarded by the per-farm generation throttle (Story 10.3) before any
- * heavy work runs.
+ * The `generateReport` skill executor (Story 9.3) — the DETERMINISTIC FALLBACK report builder (offline
+ * stub + codegen runtime-down last resort). Reads the uncapped export loader, applies the requested
+ * filter, authors each chosen section, and renders the PDF, FROM SCRATCH each turn (no cache). Scope is
+ * inherited from `deps`. Guarded by the per-farm generation throttle before any heavy work.
  */
 export async function generateReportSkill(
   deps: AlmondToolDeps,
@@ -406,101 +389,85 @@ export async function generateReportSkill(
   if (!checkGenerationThrottle(deps.farmId).allowed) {
     return { kind: "error", message: throttledMessage() };
   }
-  const params = resolveReportParams(input);
-  const { cacheKey, hit } = await findCachedFile(deps, "report", params);
-  if (hit !== null) {
-    const filter = params.filterKey !== null ? { key: params.filterKey, value: params.filterValue ?? "" } : null;
-    return {
-      kind: "file",
-      fromCache: true,
-      cacheKey: hit.cacheKey,
-      preview: reportPreviewLine(params.sections, filter),
-      fileName: hit.fileName,
-      contentType: hit.contentType,
-      bytes: hit.bytes,
-      meterCount: hit.meterCount,
-      coverageAsOf: hit.coverageAsOf,
-      params,
-    };
-  }
-  const result = await runGenerateReport(deps, input);
-  return result.kind === "file" ? { ...result, cacheKey } : result;
+  return runGenerateReport(deps, input);
 }
 
 /**
- * The `codegenExport` skill executor (code-gen export POC). Builds the canonical snapshot, has the model
- * WRITE the report markup, renders it in a Vercel Sandbox, and verifies it fail-closed (falling back to
- * the deterministic report on any failure). Far heavier than the deterministic file skills, so it passes
- * through the SAME per-farm generation throttle (Story 10.3) before any model/sandbox work. The chat
- * tool-call's `abortSignal` is threaded so a closed tab cancels the model loop and the microVM.
+ * The lightweight result the codegen tools now return (Almond v2 Phase 2). The build no longer runs
+ * INSIDE the tool `execute` (which would die when the grower leaves the page); instead the tool ENQUEUES
+ * a GenerationJob row, pushes its id onto `deps.pendingGenerations` for the route's `after()` to run in
+ * the background, and returns this immediately. The responder recognizes a "building" result and emits a
+ * transient `data-generation` part (no bytes, no download card yet); the model answers in text that the
+ * file is being built and the grower can leave the page. A "busy" result is the per-farm throttle's calm
+ * decline (no job enqueued), surfaced inline like the old throttle path.
+ */
+export type CodegenBuildingResult =
+  | {
+      kind: "building";
+      jobId: string;
+      generationKind: "workbook" | "report";
+      requestText: string;
+    }
+  | { kind: "busy"; message: string };
+
+/** Enqueue a background generation job and push its id onto the route's shared sink. Scope (`farmId`)
+ *  and authorship (`createdById = deps.meterUserId`) come from `deps`, never from the model; the public
+ *  Tour enqueues with a null author (its job + report are still farm-scoped, so the Tour can poll them).
+ *  Guarded by the SAME per-farm generation throttle the synchronous path used, so an over-busy farm gets
+ *  the calm decline and NO job is created. */
+async function enqueueGeneration(
+  deps: AlmondToolDeps,
+  generationKind: "workbook" | "report",
+  request: string | undefined,
+  hardcodedAsk: string,
+): Promise<CodegenBuildingResult> {
+  if (!checkGenerationThrottle(deps.farmId).allowed) {
+    return { kind: "busy", message: throttledMessage() };
+  }
+  const requestText = request?.trim() || hardcodedAsk;
+  const job = await deps.prisma.generationJob.create({
+    data: {
+      farmId: deps.farmId,
+      createdById: deps.meterUserId,
+      kind: generationKind,
+      status: "pending",
+      requestText,
+      paramsJson: { ask: requestText },
+    },
+    select: { id: true },
+  });
+  // Hand the id to the route's `after()` sink (captured by reference). The build runs there, after the
+  // response stream finishes — so a closed tab cannot kill it.
+  deps.pendingGenerations.push(job.id);
+  return { kind: "building", jobId: job.id, generationKind, requestText };
+}
+
+/**
+ * The `codegenExport` skill executor — the DEFAULT report path. It no longer builds inline (a ~30-90s
+ * build would die when the grower leaves the page); it ENQUEUES a background GenerationJob and returns a
+ * "building" result. The route's `after()` runs `runCodegenExport` (build the snapshot, model WRITEs the
+ * HTML/CSS, render + verify fail-closed) AFTER the response is sent, then persists the PDF and flips the
+ * job to done. Guarded by the SAME per-farm generation throttle before any row is written.
  */
 export async function codegenExportSkill(
   deps: AlmondToolDeps,
   input: CodegenExportInput,
-  signal?: AbortSignal,
-): Promise<CodegenExportResult> {
-  if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return { kind: "error", message: throttledMessage() };
-  }
-  // The bespoke path is the big cache win: an identical ask on unchanged data returns the verified
-  // bytes without re-running the model + Vercel Sandbox (20-60s saved). The `format` discriminator
-  // keeps the PDF and xlsx codegen in one cache namespace without colliding on an identical request.
-  const request = { request: input.request ?? null, format: "pdf" };
-  const { cacheKey, hit } = await findCachedFile(deps, "codegen", request);
-  if (hit !== null) {
-    return {
-      kind: "file",
-      fromCache: true,
-      cacheKey: hit.cacheKey,
-      preview: en.shell.almond.export.skill.cached,
-      fileName: hit.fileName,
-      contentType: hit.contentType,
-      bytes: hit.bytes,
-      meterCount: hit.meterCount,
-      coverageAsOf: hit.coverageAsOf,
-      params: hit.params as Prisma.InputJsonValue,
-    };
-  }
-  const result = await runCodegenExport(deps, input, signal);
-  // Cache ONLY the verified bespoke render, never the deterministic fallback (else a one-off sandbox
-  // outage pins the generic report under the bespoke key until the data changes / 30d).
-  return result.kind === "file" && !result.fromFallback ? { ...result, cacheKey } : result;
+): Promise<CodegenBuildingResult> {
+  return enqueueGeneration(deps, "report", input.request, CODEGEN_EXPORT_HARDCODED_ASK);
 }
 
 /**
- * The `codegenWorkbook` skill executor (Phase 3) — the xlsx twin of `codegenExportSkill`. Builds the
- * snapshot, has the model WRITE a declarative workbook spec, renders it with openpyxl in a Vercel
- * Sandbox, and verifies it fail-closed (falling back to the deterministic Phase 1 workbook on any
- * failure). Same per-farm generation throttle, same Phase 2 cache (with the `format: "xlsx"`
- * discriminator), same abort-signal threading as the PDF codegen.
+ * The `codegenWorkbook` skill executor — the DEFAULT spreadsheet path; the xlsx twin of
+ * `codegenExportSkill`. It ENQUEUES a background GenerationJob and returns a "building" result; the
+ * route's `after()` runs `runCodegenWorkbook` (model WRITEs an openpyxl script, render + verify the .xlsx
+ * fail-closed) AFTER the response is sent, then persists the workbook and flips the job to done. Same
+ * per-farm generation throttle before any row is written.
  */
 export async function codegenWorkbookSkill(
   deps: AlmondToolDeps,
   input: CodegenWorkbookInput,
-  signal?: AbortSignal,
-): Promise<CodegenWorkbookResult> {
-  if (!checkGenerationThrottle(deps.farmId).allowed) {
-    return { kind: "error", message: throttledMessage() };
-  }
-  const request = { request: input.request ?? null, format: "xlsx" };
-  const { cacheKey, hit } = await findCachedFile(deps, "codegen", request);
-  if (hit !== null) {
-    return {
-      kind: "file",
-      fromCache: true,
-      cacheKey: hit.cacheKey,
-      preview: en.shell.almond.export.skill.cached,
-      fileName: hit.fileName,
-      contentType: hit.contentType,
-      bytes: hit.bytes,
-      meterCount: hit.meterCount,
-      coverageAsOf: hit.coverageAsOf,
-      params: hit.params as Prisma.InputJsonValue,
-    };
-  }
-  const result = await runCodegenWorkbook(deps, input, signal);
-  // Cache ONLY the verified bespoke render, never the deterministic fallback.
-  return result.kind === "file" && !result.fromFallback ? { ...result, cacheKey } : result;
+): Promise<CodegenBuildingResult> {
+  return enqueueGeneration(deps, "workbook", input.request, CODEGEN_WORKBOOK_HARDCODED_ASK);
 }
 
 /**
@@ -552,40 +519,49 @@ function fileSkills(deps: AlmondToolDeps) {
 }
 
 /**
- * The code-gen export skill (POC), spread in ONLY when every dependency is present (the flag + a gateway
- * key + sandbox creds + a built snapshot id — see codegen/flags.ts) AND the caller is an authed OWNER.
- * Owner-only and availability-gated by OMISSION: in dev/CI (no key, no creds) the skill is never
- * registered, so the "zero external calls" law holds and the model is never handed a skill it cannot
- * fulfil. The model is steered (description) to use it ONLY for novel/custom report asks; the instant
- * deterministic `generateReport` still serves ordinary "make me a PDF" requests.
+ * The from-scratch file skills — the DEFAULT way Almond builds a spreadsheet or a report. The model
+ * WRITES the document (an openpyxl script for a workbook, HTML/CSS for a PDF) over the farm snapshot and
+ * a runtime executes it, so the grower gets full styling freedom (any color, font, layout, columns, tabs)
+ * and the file is generated fresh every time (no cache, no fixed template). Every number is verified
+ * against the farm's real data fail-closed (with in-loop repair) before the file is handed over. These
+ * are spread in only when codegen is available (gateway key + a runtime — see codegen/flags.ts); when it
+ * is not, the deterministic `fileSkills` serve instead (capability-by-omission, ADR-A08).
  */
 function codegenSkills(deps: AlmondToolDeps) {
   return {
     codegenExport: tool({
       description:
-        "Build a CUSTOM, one-off PDF report by writing its layout from the farm's data — use this ONLY for a bespoke report request that the standard generateReport sections do not cover (an unusual shape, framing, or selection the grower describes). For an ordinary farm summary, savings, or meter-table PDF, use generateReport instead (it is instant). Every figure is verified against the farm's real numbers before the file is handed over; you choose only the request, never any value.",
+        "Build the grower a PDF report and hand it to them as a download. Use this whenever the grower asks for a report, a PDF, a summary document, or a printout — for the whole farm or a specific slice (an entity, a ranch, a rate, one meter). You WRITE the report's layout from the farm's data, so you can honor anything the grower asks for: which sections, the scope, the styling, the emphasis. Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over. The build runs IN THE BACKGROUND (it takes up to a minute or two): once you call this, tell the grower you are building it and they can leave this page — it will be ready and saved to their Reports when it is done. Do not claim the file is finished or attached; it is still being built.",
       inputSchema: codegenExportInputSchema,
-      // The chat tool-call options carry the abort signal; thread it so a closed tab cancels the nested
-      // model loop and stops the Vercel Sandbox microVM rather than leaking a running render.
-      execute: (input, { abortSignal }) => codegenExportSkill(deps, input, abortSignal),
-      // Keep the PDF bytes OUT of the model's context — the bytes reach the grower via the responder's
-      // `data-report` card, not the prompt window.
+      // ENQUEUE only: the build runs in the route's `after()` (after the response is sent), so a closed
+      // tab does not kill it. No abort signal — we WANT it to survive the request ending.
+      execute: (input) => codegenExportSkill(deps, input),
+      // Tell the model the build was QUEUED (not finished), so it answers "I'm building it, you can
+      // leave this page" rather than claiming an attached file. A busy result carries the calm decline.
       toModelOutput: ({ output }) => {
-        if (output.kind === "file") {
-          return { type: "text", value: `Made ${output.fileName}.` };
+        if (output.kind === "building") {
+          return {
+            type: "text",
+            value:
+              "Queued the report build; it is running in the background and will be saved to Reports when done. Tell the grower you are building it and they can leave this page.",
+          };
         }
         return { type: "text", value: output.message };
       },
     }),
     codegenWorkbook: tool({
       description:
-        "Build a CUSTOM, multi-tab Excel workbook by writing its layout from the farm's data — use this ONLY for a bespoke spreadsheet request that the standard exportSpreadsheet shapes do not cover (an unusual set of tabs, a chart, or a selection the grower describes). For an ordinary meters/bill-dates/overview spreadsheet, use exportSpreadsheet instead (it is instant). Every figure is verified against the farm's real numbers before the file is handed over; you choose only the request, never any value.",
+        "Build the grower an Excel spreadsheet and hand it to them as a download. Use this whenever the grower asks for a spreadsheet, a workbook, an Excel file, a CSV, or a sheet of their meters/bills/savings. You WRITE the workbook from the farm's data, so you can do anything the grower asks: pick the columns and tabs, add charts, and style it exactly as they describe (colors, fonts, bold, merges, frozen headers, conditional formatting). Pass the grower's request verbatim (including any styling they named). Every figure is verified against the farm's real numbers before the file is handed over. The build runs IN THE BACKGROUND (it takes up to a minute or two): once you call this, tell the grower you are building it and they can leave this page — it will be ready and saved to their Reports when it is done. Do not claim the file is finished or attached; it is still being built.",
       inputSchema: codegenWorkbookInputSchema,
-      // Thread the abort signal so a closed tab cancels the nested model loop + the Vercel Sandbox.
-      execute: (input, { abortSignal }) => codegenWorkbookSkill(deps, input, abortSignal),
+      // ENQUEUE only: the build runs in the route's `after()` so a closed tab does not kill it.
+      execute: (input) => codegenWorkbookSkill(deps, input),
       toModelOutput: ({ output }) => {
-        if (output.kind === "file") {
-          return { type: "text", value: `Made ${output.fileName}.` };
+        if (output.kind === "building") {
+          return {
+            type: "text",
+            value:
+              "Queued the spreadsheet build; it is running in the background and will be saved to Reports when done. Tell the grower you are building it and they can leave this page.",
+          };
         }
         return { type: "text", value: output.message };
       },
@@ -597,14 +573,14 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
   const readTools = {
     getFarmOverview: tool({
       description:
-        "Get a high-level overview of the whole farm: number of meters, rate schedules in use, latest month spend, demand charge, and the meter whose bill moved the most. Call this first for broad questions.",
+        "Get a high-level overview of the whole farm: number of meters, rate schedules in use, the power-source breakdown (how many pumps run on electric vs diesel vs gas), the pump-health breakdown (how many are GOOD / BAD / NEW WELL / OLD), latest month spend, demand charge, and the meter whose bill moved the most. Call this first for broad questions, including how the fleet splits by power source or pump condition.",
       inputSchema: z.object({}),
       execute: () => farmOverview(deps),
     }),
 
     listMeters: tool({
       description:
-        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality) plus its credit state. A net-metering true-up credit is NOT on file until the grower uploads a true-up statement: never state a credit dollar; say the credit is not on file yet and point to the upload path the credit state names.",
+        "List the farm's meters (pumps) with their rate, account, entity, ranch, and latest bill. Each meter carries a costSource: BILLED means latestBill is a real posted bill, MODELED means there is no posted bill and modeledCost is an ESTIMATE from usage (say estimated, never a posted bill), REVIEW or NONE means no usable cost yet. A solar meter also carries its solar facts (net-metering program, array membership and usage share, grandfather position, demand-charge reality) plus its credit state. A net-metering true-up credit is NOT on file until the grower uploads a true-up statement: never state a credit dollar; say the credit is not on file yet and point to the upload path the credit state names.",
       inputSchema: z.object({
         rate: z.string().optional().describe("Filter by rate schedule, e.g. AG-A1"),
         entity: z.string().optional().describe("Filter by legal billing entity name"),
@@ -622,7 +598,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     getMeter: tool({
       description:
-        "Get one meter's detail and recent bills. Look it up by meter name, SA id, or id. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, how solar relates to its demand charge, and its credit state. Quote those facts verbatim. A net-metering true-up credit is NEVER on file until the grower uploads a true-up statement: if asked for the credit, say it is not on file yet and point to the upload path the credit state names; never invent or estimate a credit dollar.",
+        "Get one meter's detail and recent bills, and show it as a light card right in the chat. Use this to show, open, or pull up a SINGLE meter (\"show me Westside Pump 17\", \"open pump 4\", \"pull up that meter\") so the grower sees it inline without leaving the chat - prefer this over navigate for a single named meter. Look it up by meter name, SA id, or id. It carries a costSource: BILLED means its bills are real posted bills, MODELED means there is no posted bill and modeledCost is an ESTIMATE (say estimated, never a posted bill), REVIEW/NONE means no usable cost. Each recent bill carries a breakdown of demand vs energy vs other so you can say how much of a bill is the demand charge. It also lists the blocks (fields) this pump serves with their acreage. For a solar meter this also carries its solar facts: its net-metering program, the arrays that credit it and its usage share of them, its grandfather position, how solar relates to its demand charge, and its credit state. Quote those facts verbatim. A net-metering true-up credit is NEVER on file until the grower uploads a true-up statement: if asked for the credit, say it is not on file yet and point to the upload path the credit state names; never invent or estimate a credit dollar.",
       inputSchema: z.object({
         query: z.string().describe("The meter name, SA id, or id to look up"),
       }),
@@ -638,7 +614,7 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
     queryMeters: tool({
       description:
-        'Rank the farm\'s meters (pumps) by a number and get the ordered list back. Use this whenever the grower asks WHICH meter is the most or least of something, the TOP N, a TOTAL, or a breakdown BY ENTITY: "which pump costs me the most", "the priciest pump", "my top 5 by bill", "biggest demand charge", "where are the savings", "most expensive by company". sortBy "cost" ranks by the latest bill (the default), "demand" by the demand charge, "savings" by the estimated dollars from a rate change (mis-rated meters only). order defaults to "desc" (the most first); pass "asc" for the least. Pass limit for the top N (for example limit 1 for "the single priciest"). groupBy "entity" returns a per-entity rollup instead of meters. Optionally narrow with filterRate or filterEntity (case-insensitive). The data ALWAYS comes back ranked; report the order it returns and quote the meter name plus the whole-dollar figure.',
+        'Rank the farm\'s meters (pumps) by a number and get the ordered list back. Use this whenever the grower asks WHICH meter is the most or least of something, the TOP N, a TOTAL, or a breakdown BY ENTITY: "which pump costs me the most", "the priciest pump", "my top 5 by bill", "biggest demand charge", "where are the savings", "most expensive by company". sortBy "cost" ranks by the latest POSTED bill (the default), "demand" by the demand charge, "savings" by the estimated dollars from a rate change (mis-rated meters only). Each row carries a costSource: a cost rank is built from posted bills only, so a meter whose costSource is MODELED (an estimate, no posted bill yet) ranks last and is never "the costliest". order defaults to "desc" (the most first); pass "asc" for the least. Pass limit for the top N (for example limit 1 for "the single priciest"). groupBy "entity" returns a per-entity rollup instead of meters. Optionally narrow with filterRate or filterEntity (case-insensitive). The data ALWAYS comes back ranked; report the order it returns and quote the meter name plus the whole-dollar figure.',
       inputSchema: z.object({
         sortBy: z
           .enum(["cost", "demand", "savings"])
@@ -697,19 +673,18 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
   // Capability seam (ADR-A08): the read tools above (including `navigate`) are public-safe and handed
   // to every actor — `navigate` only sets URL state, so it is read-safe and added UNCONDITIONALLY.
-  // The file-building skills are spread in HERE only when `actor.canExport` is true, so the model is
-  // never handed a skill it must not call. `canExport` now includes the demo/Tour viewer (so a guest
-  // can pull a report of the demo farm); persistence stays owner-only, gated separately in the
-  // responder. A caller without `canExport` gets only the read-safe set — files withheld by OMISSION.
-  // The code-gen export POC is OWNER-ONLY (heavier + experimental) and only offered when every external
-  // dependency is configured (flag + gateway key + sandbox creds + a built snapshot id). When any is
-  // absent it is withheld by omission, so the deterministic file skills above still serve the grower and
-  // dev/CI never even sees a skill that would touch the gateway or a sandbox.
+  // A file-building skill is spread in only when `actor.canExport` is true (an authed owner/manager OR
+  // the demo/Tour viewer), so the model is never handed a skill it must not call; persistence stays
+  // owner-only, gated separately in the responder. WHICH file skill: the FROM-SCRATCH codegen skills are
+  // the default for an owner/manager (`authedOwner`) when codegen is available (gateway key + a runtime,
+  // flags.ts), giving the real grower full styling freedom. The deterministic `fileSkills` serve everyone
+  // else who can export — the public Tour's demo viewer, and an owner when codegen is not configured —
+  // so a guest still gets a file but never triggers the nested model + sandbox spend on a public,
+  // unauthenticated endpoint. Exactly one of the two file sets is handed to the model, never both.
   const codegenOn = actor.authedOwner && isCodegenExportAvailable(hasGatewayKey());
   return {
     ...readTools,
-    ...(actor.canExport ? fileSkills(deps) : {}),
-    ...(codegenOn ? codegenSkills(deps) : {}),
+    ...(codegenOn ? codegenSkills(deps) : actor.canExport ? fileSkills(deps) : {}),
   };
 }
 

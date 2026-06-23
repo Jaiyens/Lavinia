@@ -1220,7 +1220,6 @@ export const en = {
       // English, no em dashes, no exclamation marks, no kW/tariff/interval jargon.
       auto: {
         label: "Auto",
-        pulledCached: "Pulled your saved file",
         buildingNew: "Building a new file",
         answeredDirect: "Answered from your farm data",
         navigated: "Moved you there",
@@ -1368,6 +1367,42 @@ export const en = {
       },
       // Accessible label prefix for an action chip (the chip re-applies the same view).
       navigatedAria: (label: string): string => `${label}. Tap to return to this view.`,
+      // Single-meter inline card (B2): a light, at-a-glance card shown right in the chat when the
+      // grower asks to see one meter, so they never leave the conversation. Plain operator English,
+      // no kW/interval jargon on the labels, no exclamation marks, no em dashes. Money already arrives
+      // as whole-dollar strings on the meter detail; null facts read "Not on file" like the drawer.
+      meterCard: {
+        // The rate line under the meter name; a legacy rate is flagged plainly (a legacy rate may be
+        // costing the grower money).
+        rateLabel: "Rate",
+        legacyTag: "Legacy",
+        notOnFile: "Not on file",
+        // Identity / inventory rows.
+        accountLabel: "Account",
+        entityLabel: "Company",
+        ranchLabel: "Ranch",
+        cropLabel: "Crop",
+        statusLabel: "Status",
+        gpmLabel: "Flow",
+        gpmValue: (gpm: string): string => `${gpm} gpm`,
+        // Latest bill block.
+        latestBillLabel: "Latest bill",
+        billRange: (start: string, close: string): string => `${start} to ${close}`,
+        energyLabel: "Energy",
+        demandLabel: "Demand charge",
+        totalLabel: "Total",
+        // Cost provenance, said plainly. An estimate is never a posted bill; NONE is honest not-on-file.
+        estimatedLabel: "Estimated monthly cost",
+        estimatedTag: "Estimated",
+        noBillOnFile: "Not on file",
+        // Blocks (fields) this pump serves.
+        blocksLabel: "Fields served",
+        blockAcres: (name: string, acres: string): string => `${name} (${acres} ac)`,
+        // Solar summary (only for a solar meter); the phrases arrive pre-composed in plain words.
+        solarLabel: "Solar",
+        // The card's accessible heading prefix.
+        cardAria: (name: string): string => `${name} details`,
+      },
       // Spreadsheet export (Epic 8). The meter-table workbook carries EVERY meter on the farm,
       // never a sample. Plain operator words only, no kW/interval jargon, no exclamation marks,
       // no em dashes. The footer states coverage so a withheld figure reads as a coverage label,
@@ -1490,9 +1525,6 @@ export const en = {
           // Honest empty case: a filter (or an empty farm) left no meters to export, so there is no
           // file to make. Never an empty download.
           empty: "No meters match that, so there is nothing to export.",
-          // Shown when an identical ask on unchanged data is served from the cache (Phase 2): the
-          // same file, returned instantly, without rebuilding it.
-          cached: "Here is that file again, ready to download.",
         },
         // The full multi-tab workbook (the rich default the model builds for a plain "export"/"excel"
         // ask): a Summary cover tab, the Meters inventory, the Bill due dates, and the Rate savings.
@@ -1542,6 +1574,31 @@ export const en = {
           // Footer note restating that the savings come from the rate review and are an estimate.
           savingsNote: "Estimated savings come from the rate review. They are an estimate, not a guarantee.",
         },
+      },
+      // Background-built files (Almond v2 Phase 2). A model-authored spreadsheet/PDF can take a minute
+      // to build, so it no longer runs inside the chat turn: Almond enqueues it and keeps working even
+      // if the grower leaves the page. The chat shows a BUILDING card while it runs, then swaps to a
+      // DOWNLOAD card when it is ready. Plain operator words only, no kW/interval jargon, no exclamation
+      // marks, no em dashes. A RED dot on Almond signals a finished file the grower has not seen yet.
+      generation: {
+        // The building card: a calm "I'm on it, you can leave" line so the grower knows the build
+        // survives them closing the tab. `requestText` is the grower's own words for the file.
+        buildingTitle: "Building your file",
+        buildingNote: "This can take a minute. You can leave this page and I will keep working.",
+        // Accessible group label for the building card (names what is being built).
+        buildingAria: (requestText: string): string => `Building ${requestText}`,
+        // The finished download card: the file is ready to open. The button leads to the saved report.
+        readyTitle: "Your file is ready",
+        download: "Download",
+        // Accessible label for the download link on a finished build.
+        downloadAria: (requestText: string): string => `Download ${requestText}`,
+        // Honest failure line when a build did not finish (typed, never a raw throw). Offers a re-ask.
+        failedTitle: "I could not finish that file",
+        failedNote: "Something went wrong while building it. Ask me to try again.",
+        // The RED unread badge on the launcher and the rail Almond icon: a finished file is waiting.
+        // `count` is how many builds finished unseen.
+        unreadAria: (count: number): string =>
+          count === 1 ? "1 finished file from Almond" : `${count} finished files from Almond`,
       },
       // The PDF report Almond makes (Epic 9). A clean, trustworthy document built from a bounded set
       // of section templates (summary, meter table, mis-rated set, savings, single meter, coverage
@@ -1936,32 +1993,46 @@ export const en = {
       // Pins colored by rate-schedule family; the legacy AG-4/AG-5 meters get a ring. Each color is
       // paired with its label in the legend (never color-only).
       rateLegendLabel: "Rate schedule",
-      rateFamily: {
-        agA: "AG-A",
-        agB: "AG-B",
-        agC: "AG-C",
-        legacy: "Legacy AG-4/AG-5",
-        nonAg: "Non-ag / other",
-      },
       legacyRingNote: "Ringed = legacy AG-4/AG-5",
-      // Hover popup fields on a pin.
-      popup: {
-        rate: "Rate",
-        status: "Status",
-        annual: "Annual",
-        peak: "Peak",
-        gpm: "GPM",
-        annualValue: (usd: string): string => `${usd}/yr`,
-        peakValue: (kw: number): string => `${kw} kW`,
-        gpmValue: (n: string): string => `${n} gpm`,
-        none: "Not on file",
-      },
       // The base-map switch (satellite imagery vs a plain street map), mirroring the mockup.
       basemapLabel: "Base map",
       basemapSatellite: "Satellite",
       basemapStreets: "Map",
       // Screen-reader label for a pin that has a known latest bill floating above it.
       pinBillAria: (name: string, bill: string): string => `Meter ${name}, latest bill ${bill}`,
+      // The Energy map's "rate" encoding: pins colored by PG&E rate family, sized by annual spend,
+      // ringed when on a closed legacy schedule. (`rateLegendLabel` is declared once above.)
+      rateFamily: {
+        ag_a: "AG-A",
+        ag_b: "AG-B",
+        ag_c: "AG-C",
+        ag_other: "Other ag",
+        commercial: "Commercial",
+        legacy: "Legacy AG-4/AG-5",
+        unknown: "Unknown rate",
+      },
+      ringNote: "Ringed pins are on closed legacy rates",
+      sizeNote: "Bigger pins spend more per year",
+      // Screen-reader label for a pin in the rate encoding (the rate is the color, so it is spoken).
+      pinRateAria: (name: string, rate: string): string => `Open meter ${name}, rate ${rate}`,
+      rateUnknownAria: "unknown",
+      // The field-boundary underlay toggle on the Energy map.
+      fieldsLabel: "Fields",
+      fieldsToggleAria: (on: boolean): string =>
+        on ? "Hide field boundaries" : "Show field boundaries",
+      // Hover-popup field labels (a meter's facts on hover; each line is omitted when not on file).
+      popup: {
+        pumpId: "Pump ID",
+        rate: "Rate",
+        legacyTag: "legacy",
+        status: "Status",
+        annualSpend: "Annual spend",
+        latestBill: "Latest bill",
+        peak: "Peak demand",
+        flow: "Flow",
+        account: "Account",
+        ranch: "Ranch",
+      },
     },
     // The filter bar (Story 2.6): narrow the whole dashboard to an entity / ranch / rate.
     // A dimension with no values on this farm renders no control.
@@ -2815,6 +2886,13 @@ export const en = {
       // The grandfather position (FR16, data-gated on the interconnection date DM1, not on file at
       // launch): Almond says it is not on file rather than estimating a vintage or an expiry.
       grandfatherNotOnFile: "its interconnection date is not on file, so its grandfather position is not known",
+      // The grandfather position when the interconnection date IS on file and the array is in the
+      // NEM2 cohort: a real expiry year and the whole years remaining (never a guessed vintage). Mirrors
+      // the F4 watch wording so Almond and the Solar tab never disagree.
+      grandfatherKnown: (expiryYear: number, yearsRemaining: number): string => {
+        const years = yearsRemaining === 1 ? "1 year" : `${yearsRemaining} years`;
+        return `grandfathered on its current net-metering terms until ${expiryYear}, about ${years} from now`;
+      },
       // The demand-charge reality (E-1/E-2, FR21/FR23): solar does not lower the demand charge, said
       // honestly. The dollar is the demand charge already PRINTED on the bill, never a net-metering
       // credit; the uncovered share is a percentage of the bill, never a credit multiplied from a share.

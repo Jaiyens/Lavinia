@@ -60,7 +60,7 @@ beforeAll(async () => {
   // as it does in production (where the id is always a real authenticated user). Without it the
   // best-effort persist silently swallows a foreign-key violation and no row is written.
   await prisma.user.create({ data: { id: "user_owner", name: "Sample Owner" } });
-  depsA = { prisma, farmId: farmA.id, farmName: farmA.name, meterUserId: null };
+  depsA = { prisma, farmId: farmA.id, farmName: farmA.name, meterUserId: null, pendingGenerations: [] };
 }, 120_000);
 
 afterAll(async () => {
@@ -198,7 +198,7 @@ describe("runGenerateReport over the real Batth seed: the opportunities-first mo
     batthDb = await createTestDb();
     const seeded = await seedBatthFarm(batthDb.prisma);
     await runEngines(batthDb.prisma, seeded.id);
-    batthDeps = { prisma: batthDb.prisma, farmId: seeded.id, farmName: seeded.name, meterUserId: null };
+    batthDeps = { prisma: batthDb.prisma, farmId: seeded.id, farmName: seeded.name, meterUserId: null, pendingGenerations: [] };
   }, 120_000);
 
   afterAll(async () => {

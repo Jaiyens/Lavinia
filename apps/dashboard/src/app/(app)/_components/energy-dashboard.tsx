@@ -7,6 +7,8 @@ import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
+import { loadBatthFarm } from "@/lib/parcel/farm/seed";
+import { toParcelOverlay, type ParcelOverlay } from "@/lib/dashboard/parcel-overlay";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -85,6 +87,15 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
     timeZone: "America/Los_Angeles",
   }).format(new Date());
 
+  // Field-boundary underlay for the Map lens: the farm's parcels drawn beneath the meter pins.
+  // Gated to the farm that actually has committed parcel geometry today (Batth) by name-matching
+  // the fixture, so other farms render the enriched pins with no overlay (and no toggle). The
+  // loader is request-cached and falls back safely when the fixture is absent.
+  // TODO: real per-farm parcel geometry needs a persistent store; this is fixture-backed for now.
+  const batthFarm = loadBatthFarm(todayIso);
+  const parcels: ParcelOverlay | null =
+    farm.name === batthFarm.name ? toParcelOverlay(batthFarm.parcels) : null;
+
   // Bill-accuracy verification (Story 4.1, FR-19): recompute each meter's latest
   // bill server-side and pass the small verdict map to the (client) drawer. The
   // rate card is fs-backed (process.cwd()), so it is loaded and applied HERE and
@@ -146,7 +157,12 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
             </div>
 
             <div>
-              <LensRegion meters={meters} schedule={schedule} todayIso={todayIso} />
+              <LensRegion
+                meters={meters}
+                schedule={schedule}
+                todayIso={todayIso}
+                parcels={parcels}
+              />
             </div>
           </Reveal>
 
