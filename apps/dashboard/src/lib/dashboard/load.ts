@@ -76,6 +76,15 @@ export type MeterView = {
   /** Pump health read verbatim from the master sheet; null when unknown. */
   status: string | null;
   coverageState: CoverageState;
+  /** Cost provenance for the dashboard's cost view. BILLED = reconciled printed bill (the
+   *  only source rendered as ACTUAL cost). MODELED = tariff estimate from interval data,
+   *  always shown as an estimate, never as billed. REVIEW = a bill that failed cent
+   *  reconciliation (kept out of the cost view). NONE = no cost basis at all. Always set by
+   *  loadMetersForFarm; optional so existing MeterView fixtures (tests) need no change. */
+  costSource?: CostSource;
+  /** Modeled monthly tariff-component cost in integer cents (an ESTIMATE from intervals);
+   *  null unless there is an interval basis. Render only when costSource === "MODELED". */
+  modeledMonthlyCents?: number | null;
   accountNumber: string | null;
   ranchName: string | null;
   entityName: string | null;
@@ -107,6 +116,18 @@ export type DashboardData = {
   dataKind: "real" | "representative";
   meters: MeterView[];
 };
+
+/** Cost provenance, derived from coverageState + the presence of a modeled estimate. */
+export type CostSource = "BILLED" | "MODELED" | "REVIEW" | "NONE";
+
+/** Derive the cost provenance shown in the dashboard. Only "reconciled" is actual billed
+ *  money; a meter with usage but no reconciled bill carries a modeled estimate; everything
+ *  else is honest-blank. */
+function deriveCostSource(coverageState: string, modeledMonthlyCents: number | null): CostSource {
+  if (coverageState === "reconciled") return "BILLED";
+  if (coverageState === "needs_review") return "REVIEW";
+  return modeledMonthlyCents != null ? "MODELED" : "NONE";
+}
 
 const COVERAGE_STATES: readonly string[] = ["no_bill", "needs_review", "reconciled"];
 const LINE_ITEM_KINDS: readonly string[] = ["tou_energy", "demand", "nbc", "other"];
@@ -162,6 +183,8 @@ export async function loadMetersForFarm(
     isLegacy: pump.isLegacy,
     status: pump.status,
     coverageState: toCoverageState(pump.coverageState),
+    costSource: deriveCostSource(pump.coverageState, pump.modeledMonthlyCents),
+    modeledMonthlyCents: pump.modeledMonthlyCents,
     accountNumber: pump.account?.number ?? null,
     ranchName: pump.ranch?.name ?? null,
     entityName: pump.account?.entity?.name ?? null,

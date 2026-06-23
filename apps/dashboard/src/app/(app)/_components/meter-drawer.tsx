@@ -264,6 +264,18 @@ export function MeterDrawer({
                   {t.confirmIt}
                 </span>
               ) : null}
+              {/* MODELED cost: a meter with real interval usage but no printed bill carries a
+                  tariff estimate. Shown labeled as an estimate, visually separate from any
+                  printed figure, so it can never read as billed money. */}
+              {meter.costSource === "MODELED" && meter.modeledMonthlyCents != null ? (
+                <div className="mt-2 rounded-[var(--radius-control)] border border-dashed border-outline-variant bg-surface-container-low p-3">
+                  <p className="type-label-caps text-on-surface-variant">{t.modeledLabel}</p>
+                  <p className="type-num tnum mt-0.5 text-on-surface">
+                    {t.modeledValue(formatUsd(meter.modeledMonthlyCents))}
+                  </p>
+                  <p className="type-caption mt-1 text-on-surface-variant">{t.modeledNote}</p>
+                </div>
+              ) : null}
             </div>
           ) : d.latest === null ? (
             <p className="type-body-md text-on-surface-variant">{t.noPeriodNote}</p>

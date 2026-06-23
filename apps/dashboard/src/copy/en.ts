@@ -1282,6 +1282,10 @@ export const en = {
       legacyFlag: "Legacy",
       // A reconciled meter that carries no demand charge this cycle (honest absence).
       none: "None",
+      // A meter with interval usage but no printed bill: a modeled cost ESTIMATE, always
+      // marked as such (the "~" prefix + "est."), never presented as an actual billed figure.
+      estimateSuffix: "est.",
+      estimateAria: "Estimated from your interval usage, not a printed bill",
       // A null inventory field (ranch / entity / status / rate not on file). Never fabricated.
       emptyShort: "—",
       noMatch: "No meters match",
@@ -1409,6 +1413,11 @@ export const en = {
       confirmIt: "Confirm it",
       noBillNote: "No bill loaded for this meter yet.",
       noPeriodNote: "No billing detail on file yet.",
+      // MODELED cost: a meter with interval usage but no printed bill. Shown as an estimate
+      // from usage + rate, clearly separated from any printed figure (never billed money).
+      modeledLabel: "Estimated monthly cost",
+      modeledValue: (usd: string): string => `~${usd} a month`,
+      modeledNote: "An estimate from your interval usage and rate, not a printed bill.",
       historyHeader: "Past cycles",
       // Inventory section.
       inventoryHeader: "On the farm",

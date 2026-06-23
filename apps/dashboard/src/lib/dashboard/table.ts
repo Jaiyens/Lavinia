@@ -5,7 +5,7 @@
 // meters; an unreconciled meter's figure is null (the cell renders the coverage treatment,
 // never a fabricated $0).
 
-import type { MeterView } from "./load";
+import type { MeterView, CostSource } from "./load";
 import type { CoverageState } from "@/lib/recommendations/types";
 
 export type SortKey =
@@ -46,6 +46,12 @@ export type MeterRow = {
   coverageState: CoverageState;
   /** This-cycle cost (latest period) in integer cents; null unless reconciled. */
   costCents: number | null;
+  /** Cost provenance (BILLED renders as actual; MODELED renders as an estimate; REVIEW/NONE
+   *  render the coverage treatment). Carried so the cell can show a modeled estimate without
+   *  ever presenting it as a billed figure. */
+  costSource: CostSource;
+  /** Modeled monthly cost estimate in integer cents; rendered ONLY when costSource is MODELED. */
+  modeledCents: number | null;
   /** Latest demand charge in integer cents; null unless reconciled. A reconciled meter that
       carries NO demand charge is also null here - the cell distinguishes the two by reading
       coverageState (reconciled + null = "None"; unreconciled = the coverage treatment). */
@@ -75,6 +81,8 @@ export function toMeterRow(m: MeterView): MeterRow {
     status: m.status,
     coverageState: m.coverageState,
     costCents: reconciled ? (latest?.printedTotalCents ?? null) : null,
+    costSource: m.costSource ?? "NONE",
+    modeledCents: m.costSource === "MODELED" ? (m.modeledMonthlyCents ?? null) : null,
     demandCents: reconciled ? (latest?.demandCents ?? null) : null,
     isFlagged: m.status === "BAD",
   };

@@ -100,6 +100,17 @@ function StatusCell({ status, flagged }: { status: string | null; flagged: boole
 // demand charge this cycle reads a neutral "None" (honest absence, distinct from withheld).
 function MoneyCell({ row, kind }: { row: MeterRow; kind: "cost" | "demand" }) {
   if (row.coverageState !== "reconciled") {
+    // Cost column only: a MODELED meter (real interval usage, no printed bill) shows a clearly
+    // marked estimate ("~$X est."), muted and never presented as billed. Everything else - and
+    // the demand column, which has no modeled basis - reads its coverage state (AR-15).
+    if (kind === "cost" && row.costSource === "MODELED" && row.modeledCents !== null) {
+      return (
+        <span className="type-num tnum text-on-surface-variant" aria-label={t.estimateAria}>
+          ~{formatUsd(row.modeledCents)}{" "}
+          <span className="type-label-caps text-on-surface-variant/70">{t.estimateSuffix}</span>
+        </span>
+      );
+    }
     return (
       <span className="type-num text-on-surface-variant/70">{coverageLabel(row.coverageState)}</span>
     );

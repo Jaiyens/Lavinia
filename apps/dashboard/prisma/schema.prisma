@@ -314,6 +314,11 @@ model Pump {
   // Billing coverage for this meter (FR-6): no_bill | needs_review | reconciled. Defaults
   // to no_bill; Story 1.7 sets it from reconciliation. Mirrored as CoverageState in TS.
   coverageState       String   @default("no_bill")
+  // Modeled monthly tariff-component cost in integer cents, computed from interval data by
+  // src/lib/energy/modeled-cost.ts when a meter has usage but no reconciled printed bill
+  // (costSource MODELED). Always surfaced as an estimate, never as actual billed cost. Null
+  // when there is no interval basis (costSource NONE) or a printed bill exists (BILLED).
+  modeledMonthlyCents Int?
   farmId              String
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
