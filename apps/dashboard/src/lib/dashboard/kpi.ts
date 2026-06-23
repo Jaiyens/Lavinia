@@ -4,6 +4,7 @@
 // and vs-last deltas appear only when there are >=2 comparable points; otherwise they are omitted,
 // never faked. No projection, no savings, no overpayment (planner, not live meter). Pure + tested.
 
+import { isSolarNemMeter } from "@/lib/energy/solar-meter";
 import type { MeterView, MeterPeriodView } from "./load";
 
 export type Coverage = { loaded: number; total: number };
@@ -73,7 +74,10 @@ function lastDelta(series: number[]): number | null {
 export function spendByMonth(meters: MeterView[]): { month: string; cents: number }[] {
   const byMonth = new Map<string, number>();
   for (const m of meters) {
-    if (m.coverageState !== RECONCILED) continue;
+    // A solar/NEM meter's printed monthly total is a NET running balance that settles
+    // only at the annual true-up, never a settled monthly spend - exclude it from the
+    // farm-spend series (its genuinely-owed demand is carried in the demand rollup).
+    if (m.coverageState !== RECONCILED || isSolarNemMeter(m)) continue;
     for (const p of m.periods) {
       if (p.printedTotalCents != null) {
         const k = monthKey(p.close);
@@ -97,14 +101,19 @@ export function computeKpiStrip(meters: MeterView[]): KpiStrip {
   const demandByMonth = new Map<string, number>();
 
   for (const m of reconciled) {
+    // A solar/NEM meter's printed monthly total is a NET running balance (it omits the
+    // energy settling at the annual true-up), so it is excluded from farm SPEND. Its
+    // DEMAND charge is genuinely owed (solar never offsets demand) and IS counted - the
+    // locked decision: keep the printed demand, suppress only the net figure.
+    const isSolar = isSolarNemMeter(m);
     const latest = latestPeriod(m);
-    if (latest?.printedTotalCents != null) spendCents += latest.printedTotalCents;
+    if (!isSolar && latest?.printedTotalCents != null) spendCents += latest.printedTotalCents;
     if (latest?.demandCents != null && latest.demandCents > 0) {
       demandTotalCents += latest.demandCents;
     }
     // Series buckets use ALL reconciled periods so the trend has history where it exists.
     for (const p of m.periods) {
-      if (p.printedTotalCents != null) {
+      if (!isSolar && p.printedTotalCents != null) {
         const k = monthKey(p.close);
         spendByMonth.set(k, (spendByMonth.get(k) ?? 0) + p.printedTotalCents);
       }
@@ -141,6 +150,9 @@ export function computeKpiStrip(meters: MeterView[]): KpiStrip {
   // --- Biggest mover: largest |latest - prior| among reconciled meters with >= 2 periods ---
   let biggestMover: KpiMover = null;
   for (const m of reconciled) {
+    // Solar/NEM meters are excluded: their printed-total movement is net-balance noise,
+    // not a settled-cost swing the farmer can act on.
+    if (isSolarNemMeter(m)) continue;
     if (m.periods.length < 2) continue;
     const latest = m.periods[m.periods.length - 1];
     const prior = m.periods[m.periods.length - 2];

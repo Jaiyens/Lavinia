@@ -97,7 +97,9 @@ export function AlmondComposer({ variant = "panel", autoFocus = false }: Props) 
     >
       <AlmondAttachments files={files} onRemove={(i) => setFiles((prev) => prev.filter((_, j) => j !== i))} />
 
-      <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low transition-colors focus-within:border-primary">
+      {/* Neutral border only — no green focus ring/box: the textarea is outline-none, so a focused
+          composer simply keeps the resting border (cleaner on the new white command-center surface). */}
+      <div className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-low transition-colors">
         <textarea
           ref={textareaRef}
           value={value}

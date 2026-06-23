@@ -15,6 +15,7 @@ import type { DraftRecommendation } from "@/lib/recommendations";
 import { intervalKw } from "./demand";
 import { isInPeakWindow } from "./peak";
 import { roundUsd } from "./recommend";
+import { reproductionToleranceRatio } from "./back-test-config";
 import {
   annualCostUnderRate,
   planFor,
@@ -148,7 +149,11 @@ export type RateOptimizationInput = {
   card: RateCard;
   /** Local "today"; becomes the rec's createdAt. */
   asOf: string;
-  /** Bill-reproduction tolerance for an "act" claim. Default 0.10 (±10%). */
+  /**
+   * Bill-reproduction tolerance for an "act" claim, as a ratio. Defaults to
+   * reproductionToleranceRatio() - the single back-test band (3%) expressed as
+   * 0.03 - so this engine and the rate lever share one configurable tolerance.
+   */
   tolerance?: number;
   /** Savings floor for a material finding. Default $200/yr. */
   minSavingsUsd?: number;
@@ -196,7 +201,7 @@ function errorPct(reproductionError: number): number {
 export function rateOptimization(
   input: RateOptimizationInput,
 ): RateOptimizationResult {
-  const tolerance = input.tolerance ?? 0.1;
+  const tolerance = input.tolerance ?? reproductionToleranceRatio();
   const minSavingsUsd = input.minSavingsUsd ?? 200;
   const minSavingsFraction = input.minSavingsFraction ?? 0.03;
 

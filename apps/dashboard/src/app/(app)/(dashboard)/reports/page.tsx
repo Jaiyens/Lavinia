@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { activeFarmId } from "@/lib/auth/active-farm";
@@ -21,9 +20,10 @@ import { en } from "@/copy/en";
  *  - Each row links to the OWNER-SCOPED download route (Story 8.6), the only path that streams a
  *    byte; the list never embeds a blob URL or the bytes themselves.
  *
- * Reads live DB data, so it is request-time dynamic. It sits OUTSIDE the (dashboard) shell group
- * (build-notes path), so it is a self-contained page with its own back-to-home link and its own
- * auth + farm resolution. Mobile-first; the rows are real anchors (keyboard + tap, >= 44px targets).
+ * Reads live DB data, so it is request-time dynamic. It now sits INSIDE the (dashboard) shell group,
+ * so it renders within the agent rail + tab bar (no standalone back-to-home link needed). It still
+ * does its own auth + farm resolution. Mobile-first; the rows are real anchors (keyboard + tap,
+ * >= 44px targets).
  */
 export const dynamic = "force-dynamic";
 
@@ -41,15 +41,7 @@ export default async function ReportsPage() {
   const t = en.reports;
 
   return (
-    <div className="mx-auto min-h-dvh max-w-2xl bg-paper px-5 py-8 text-on-surface lg:px-0 lg:py-12">
-      <Link
-        href="/"
-        className="mb-6 inline-flex min-h-[44px] items-center gap-2 type-body-sm text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <ArrowLeft size={16} aria-hidden />
-        {en.shell.agents.home}
-      </Link>
-
+    <div className="mx-auto max-w-2xl px-5 py-8 text-on-surface lg:px-12 lg:py-10">
       <header className="mb-8">
         <p className="type-label-caps text-primary">{t.eyebrow}</p>
         <h1 className="type-display-lg mt-1 text-on-surface">{t.title}</h1>

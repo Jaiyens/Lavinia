@@ -72,7 +72,7 @@ export type FindingView = {
 };
 
 const SEVERITIES: readonly string[] = ["info", "watch", "act"];
-const STATUSES: readonly string[] = ["pending", "done", "dismissed", "overridden"];
+const STATUSES: readonly string[] = ["pending", "todo", "done", "dismissed", "overridden"];
 
 function toSeverity(s: string): Severity {
   return SEVERITIES.includes(s) ? (s as Severity) : "info";
@@ -206,9 +206,27 @@ export async function loadFindings(
   prisma: PrismaClient,
   farmId: string,
 ): Promise<FindingView[]> {
+  return loadFindingsByStatus(prisma, farmId, "pending");
+}
+
+/** Load the findings the grower parked on the To-do list (status "todo"), newest first. The To-do
+ *  page renders these with "Mark done" / "Remove" actions. Same projection as the pending rail. */
+export async function loadTodoFindings(
+  prisma: PrismaClient,
+  farmId: string,
+): Promise<FindingView[]> {
+  return loadFindingsByStatus(prisma, farmId, "todo");
+}
+
+/** Shared loader: the farm's findings in a single status, projected to the view shape. */
+async function loadFindingsByStatus(
+  prisma: PrismaClient,
+  farmId: string,
+  status: RecStatus,
+): Promise<FindingView[]> {
   const [rows, pumps] = await Promise.all([
     prisma.recommendation.findMany({
-      where: { farmId, status: "pending" },
+      where: { farmId, status },
       // Not the display order (toFindingViews re-sorts by severity then dollars); this
       // survives only as the stable-sort tiebreaker for equal-severity, equal-impact rows.
       orderBy: { createdAt: "asc" },

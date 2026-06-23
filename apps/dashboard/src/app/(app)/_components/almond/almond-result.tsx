@@ -1,6 +1,11 @@
 import type { UIMessage } from "ai";
-import { ChevronRight, CornerUpLeft } from "lucide-react";
+import { CornerUpLeft } from "lucide-react";
 import { en } from "@/copy/en";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
 import type { NavigateAction } from "@/lib/almond/skills/navigate";
 import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
 
@@ -78,19 +83,14 @@ export function AlmondThought({ message }: { message: UIMessage }) {
   const text = reasoningText(message);
   if (!text) return null;
   return (
-    <details className="group/thought mb-1.5">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 type-label-caps text-on-surface-variant hover:text-on-surface">
-        <ChevronRight
-          size={12}
-          className="transition-transform group-open/thought:rotate-90"
-          aria-hidden
-        />
+    <Reasoning className="mb-1.5">
+      <ReasoningTrigger className="type-label-caps text-on-surface-variant hover:text-on-surface">
         {en.shell.almond.thoughtLabel}
-      </summary>
-      <div className="mt-1 whitespace-pre-wrap border-l-2 border-outline-variant pl-2 type-body-sm text-on-surface-variant">
+      </ReasoningTrigger>
+      <ReasoningContent className="type-body-sm text-on-surface-variant">
         {text}
-      </div>
-    </details>
+      </ReasoningContent>
+    </Reasoning>
   );
 }
 

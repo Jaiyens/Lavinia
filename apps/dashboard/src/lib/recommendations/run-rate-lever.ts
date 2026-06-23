@@ -13,7 +13,11 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { en } from "@/copy/en";
 import { rateLever } from "@/lib/energy/rate-lever";
+import { backTestTolerance } from "@/lib/energy/back-test-config";
+import { reconcileMeter } from "@/lib/energy/back-test-report";
+import { logReconciliation } from "@/lib/energy/back-test-log";
 import { RATE_OPTIMIZATION_TOOL } from "@/lib/energy/rate-compare";
+import { isSolarNemMeter } from "@/lib/energy/solar-meter";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMetersForFarm } from "@/lib/dashboard/load";
 import { formatUsdWhole } from "@/lib/format/money";
@@ -92,7 +96,9 @@ export async function runRateLever(
   const legacyUpdates: { pumpId: string; isLegacy: boolean }[] = [];
 
   for (const meter of meters) {
-    const isSolarMeter = meter.isSolar || meter.solarKw !== null;
+    // The shared solar/NEM predicate (widened to also catch a nemType-only meter): a solar
+    // meter is never priced, its monthly charge pages omit the energy that settles at true-up.
+    const isSolarMeter = isSolarNemMeter(meter);
 
     const result = rateLever(
       {
@@ -104,6 +110,27 @@ export async function runRateLever(
       },
       card,
     );
+
+    // Per-meter reconciliation log (behind TERRA_RECONCILE_LOG): the same pure
+    // back-test the gate just ran, surfaced for every reconciled non-solar meter
+    // with its error and best-guess cause. reconcileMeter shares the lever's
+    // engine, so the log can never disagree with the gate. Logging only; it
+    // computes no figure of its own and changes nothing the lever decided.
+    if (meter.coverageState === "reconciled" && !isSolarMeter) {
+      logReconciliation(
+        reconcileMeter({
+          meter: {
+            id: meter.id,
+            name: meter.name,
+            serviceId: meter.serviceId,
+            rateSchedule: meter.rateSchedule,
+          },
+          periods: meter.periods,
+          card,
+          tolerance: backTestTolerance(),
+        }),
+      );
+    }
 
     // Backfill the legacy flag whenever the mapping settled it.
     if (result.isLegacy !== null && result.isLegacy !== meter.isLegacy) {

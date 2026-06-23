@@ -117,8 +117,8 @@ export function ParcelsGis({ myFarm, year }: { myFarm: Farm; year: number }) {
   const closeDrawer = useCallback(() => handleSelect(null), [handleSelect]);
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-16 z-10 overflow-hidden bg-[#070a10] text-white lg:bottom-0 lg:left-40">
-      {/* The map fills the surface to the right of the global Terra sidebar (lg:left-40). */}
+    <div className="fixed inset-x-0 top-0 bottom-16 z-10 overflow-hidden bg-[#070a10] text-white lg:bottom-0 lg:left-48">
+      {/* The map fills the surface to the right of the global Terra sidebar (lg:left-48 == rail w-48). */}
       <div className="absolute inset-0">
         <GisMap
           handleRef={mapHandle}

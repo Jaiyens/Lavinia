@@ -126,6 +126,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "min-h-0 overflow-hidden col-span-2 row-span-4",
       node: (
         <ExpandablePanel
+          key="calendar"
           label={en.shell.calendar.heading}
           className="h-full overflow-auto"
           modal={<CalendarLens meters={meters} schedule={schedule} todayIso={todayIso} />}
@@ -139,13 +140,14 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       // to the full Parcels surface (no expand-to-modal; the whole tile is one click-through).
       id: "map",
       className: "min-h-0 col-span-2 row-span-2",
-      node: <ParcelsPreview data={parcelsPreview} href={parcelsHref} />,
+      node: <ParcelsPreview key="map" data={parcelsPreview} href={parcelsHref} />,
     },
     {
       id: "spend",
       className: "min-h-0 overflow-hidden col-span-2 row-span-2",
       node: (
         <ExpandablePanel
+          key="spend"
           label={en.home.spendHero.title}
           className="h-full overflow-auto"
           modal={
@@ -171,6 +173,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "min-h-0 overflow-hidden col-span-2 row-span-2",
       node: (
         <ExpandablePanel
+          key="findings"
           label={en.home.findingsTitle}
           className="h-full"
           modal={
@@ -188,6 +191,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
+          key="closes"
           className="h-full w-full"
           label={en.shell.calendar.cycle.closesEyebrow}
           detail={<BillingClosesCard closes={upcomingCloses(meters, schedule, todayIso)} energyHref={energyHref} />}
@@ -210,6 +214,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
+          key="fix"
           className="h-full w-full"
           label={en.home.rateFix.biggestEyebrow}
           detail={<RateFixCard finding={rateFinding} analyzed={rateAnalyzed} energyHref={energyHref} readOnly={findingsReadOnly} />}
@@ -238,6 +243,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
+          key="bills"
           className="h-full w-full"
           label={en.home.bills.eyebrow}
           detail={<BillsCard scan={bills} energyHref={energyHref} />}
@@ -258,6 +264,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
+          key="savings"
           className="h-full w-full"
           label={en.home.savingsCard.eyebrow}
           detail={

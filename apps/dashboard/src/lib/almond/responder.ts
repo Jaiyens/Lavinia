@@ -5,6 +5,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
+  toUIMessageStream,
   type LanguageModel,
   type UIMessage,
   type UIMessageStreamWriter,
@@ -47,6 +48,9 @@ import {
 import { storeReport, type GeneratedReportKind, type ReportToStore } from "./reports/store";
 import { DEFAULT_ALMOND_MODEL } from "./models";
 import type { AutoDecided, AutoHeadlineKey } from "./auto/types";
+import { buildAlmondSandboxContext } from "./harness/context";
+import { createAlmondHarnessAgent, harnessRuntimeForModel, hasAlmondHarnessRuntime } from "./harness/agent";
+import { loadHarnessSessionState, saveHarnessSessionState } from "./harness/session-store";
 import { billableTokens, recordUsage } from "./usage-budget";
 import {
   buildAlmondSkills,
@@ -73,6 +77,8 @@ import {
 export type AlmondRequest = {
   uiMessages: UIMessage[];
   system: string;
+  /** Stable chat id from AI SDK UI. Required for harness session resume; model/stub paths ignore it. */
+  chatId?: string;
   deps: AlmondToolDeps;
   /** The server-resolved capability of the caller; gates which skills the model is handed
    *  (ADR-A08). The stub ignores it (read-only, grounded directly); the model path passes it
@@ -592,6 +598,81 @@ export function createGatewayResponder(modelId?: string, decided?: AutoDecided):
   return createModelResponder(createGatewayModel(modelId), modelId ?? DEFAULT_ALMOND_MODEL, decided);
 }
 
+function harnessPrompt(req: AlmondRequest): string {
+  const latestUser = [...req.uiMessages].reverse().find((message) => message.role === "user");
+  const userText = (latestUser?.parts ?? [])
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("\n")
+    .trim();
+  return [
+    req.system,
+    "",
+    "Use the packaged Terra context in the sandbox before answering. It contains the user's authorized farm data, uploads, reports, and conversation context.",
+    "If you inspect files or run shell commands, mention the key context files you used in the final answer.",
+    "",
+    "User request:",
+    userText || "(No text request; inspect the packaged uploads and current chat context.)",
+  ].join("\n");
+}
+
+export function createHarnessResponder(modelId: string, decided?: AutoDecided): AlmondResponder | null {
+  const runtime = harnessRuntimeForModel(modelId);
+  if (runtime === null) return null;
+
+  return {
+    async toResponse(req) {
+      const context = await buildAlmondSandboxContext({
+        prisma: req.deps.prisma,
+        userId: req.deps.meterUserId,
+        farmId: req.deps.farmId,
+        farmName: req.deps.farmName,
+        uiMessages: req.uiMessages,
+      });
+      const agent = createAlmondHarnessAgent({ context, runtime, modelId });
+      const chatId = req.chatId ?? `almond-${req.deps.meterUserId ?? "anonymous"}-${req.deps.farmId}-${modelId}`;
+      const resumeFrom = await loadHarnessSessionState({ chatId, harnessId: agent.harnessId });
+      const session = await agent.createSession(
+        resumeFrom ? { sessionId: chatId, resumeFrom } : { sessionId: chatId },
+      );
+
+      const stream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          try {
+            const result = await agent.stream({
+              session,
+              prompt: harnessPrompt(req),
+            });
+            writer.merge(
+              toUIMessageStream({
+                stream: result.stream,
+                onEnd: async () => {
+                  const resumeState = await session.detach();
+                  await saveHarnessSessionState({ chatId, harnessId: agent.harnessId, resumeState });
+                  if (req.deps.meterUserId !== null) {
+                    await recordUsage(req.deps.prisma, {
+                      userId: req.deps.meterUserId,
+                      farmId: req.deps.farmId,
+                      source: "chat",
+                      model: modelId,
+                      ...billableTokens(await result.usage),
+                    });
+                  }
+                  const headline = req.decided?.headline ?? decided?.headline;
+                  if (headline) writeDecidedPart(writer, headline);
+                },
+              }),
+            );
+          } catch (error) {
+            await session.destroy().catch(() => undefined);
+            throw error;
+          }
+        },
+      });
+      return createUIMessageStreamResponse({ stream });
+    },
+  };
+}
+
 /** Split the stub answer into word-sized deltas (each word plus its trailing whitespace) so the
  *  offline/demo path types in word-by-word and reads as smoothly as the live model's `smoothStream`
  *  cadence, instead of arriving in fixed character blocks. The reassembled text is byte-identical. */
@@ -1030,13 +1111,21 @@ export function createStubResponder(decided?: AutoDecided): AlmondResponder {
 }
 
 /**
- * The default responder: live Gateway when a key is present, else the offline stub. This is the
- * single selection point — the route just calls this. `modelId` is the grower's chosen model (an
- * allowlisted Gateway `provider/model` string, already validated in the route); the stub ignores it
- * so dev/CI stays offline regardless of the picked model. `decided` is the Auto router's decision for
- * an Auto turn (absent for a hand-picked model); it rides through to whichever responder is built so
- * the decided line is written on both the live and offline paths.
+ * The default responder: when a Gateway key is present, prefer the sandboxed harness that matches the
+ * selected model family (Claude -> Claude Code, GPT -> Codex). Unsupported future models fall back to
+ * the direct Gateway tool loop. With no Gateway key, use the offline stub so dev/CI still make zero
+ * external calls regardless of the picked model. `decided` is the Auto router's decision for an Auto
+ * turn (absent for a hand-picked model); it rides through to whichever responder is built so the
+ * decided line is written on both live and offline paths.
  */
-export function defaultAlmondResponder(modelId?: string, decided?: AutoDecided): AlmondResponder {
+export function defaultAlmondResponder(
+  modelId?: string,
+  decided?: AutoDecided,
+  options: { allowHarness?: boolean } = {},
+): AlmondResponder {
+  if (options.allowHarness !== false && modelId && hasGatewayKey() && hasAlmondHarnessRuntime()) {
+    const harness = createHarnessResponder(modelId, decided);
+    if (harness !== null) return harness;
+  }
   return hasGatewayKey() ? createGatewayResponder(modelId, decided) : createStubResponder(decided);
 }

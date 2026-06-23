@@ -141,13 +141,15 @@ describe("verifyBill", () => {
   });
 
   it("defaults the band to BACK_TEST_BAND_PCT and honors an override", () => {
-    // A ~4% drift: inside the 5% default, outside a tight 2% override.
-    const drifted = billPeriod({ printedTotalCents: Math.round(RECOMPUTED_A1_CENTS / 1.04) });
+    // A ~2% drift: inside the tightened 3% default band, outside a tight 1% override. (The
+    // recompute is unchanged; only the default band moved from 5 to 3, so the fixture drift
+    // moves with it to keep exercising the same in-band-default / out-of-band-override mechanism.)
+    const drifted = billPeriod({ printedTotalCents: Math.round(RECOMPUTED_A1_CENTS / 1.02) });
     const dev = Math.abs(verifyBill({ scheduleLabel: "AG-A1", period: drifted }, CARD)!.deviationPct);
-    expect(dev).toBeGreaterThan(2);
+    expect(dev).toBeGreaterThan(1);
     expect(dev).toBeLessThan(BACK_TEST_BAND_PCT);
     expect(verifyBill({ scheduleLabel: "AG-A1", period: drifted }, CARD)?.verified).toBe(true);
-    expect(verifyBill({ scheduleLabel: "AG-A1", period: drifted }, CARD, { bandPct: 2 })?.verified).toBe(false);
+    expect(verifyBill({ scheduleLabel: "AG-A1", period: drifted }, CARD, { bandPct: 1 })?.verified).toBe(false);
   });
 
   it("treats a deviation exactly at the band as verified (the boundary is inclusive)", () => {

@@ -7,18 +7,16 @@
  * client's requested model against it (`resolveModel`) before constructing anything, so the
  * public/Tour fallback endpoint can never be steered to an arbitrary (or expensive) model string.
  *
- * Opus 4.8 leads and is the default — it has the strongest document/vision handling for the bills
- * and spreadsheets a grower can now attach. This is one flagship per tier: the latest Claude trio
- * (Opus/Sonnet/Haiku), OpenAI's current flagship (GPT-5.5), and Google's Gemini 3 Pro + the faster
- * Gemini 3.5 Flash.
+ * Opus 4.8 leads and is the default. Anthropic models route to the Claude Code harness by default;
+ * OpenAI models route to the Codex harness by default. Gemini is intentionally omitted until we can
+ * write a Gemini-capable harness loop with the same sandbox/context guarantees.
  *
  * Every id is the EXACT slug from the live Vercel AI Gateway catalog (GET /v1/models), verified to
- * answer with this key — note the catalog uses dots (`claude-opus-4.8`, not `-4-8`) and Gemini 3 Pro
- * ships as the `-preview` slug. If a provider renames a model the gateway returns an error the route
+ * answer with this key — note the catalog uses dots (`claude-opus-4.8`, not `-4-8`). If a provider renames a model the gateway returns an error the route
  * surfaces as the inline chat error, so a stale slug degrades gracefully rather than crashing —
  * re-check against the catalog when adding or rotating models here.
  */
-export type AlmondModelProvider = "Anthropic" | "OpenAI" | "Google" | "Auto";
+export type AlmondModelProvider = "Anthropic" | "OpenAI" | "Auto";
 
 export type AlmondModel = {
   /** The Gateway `provider/model` string passed to `createGatewayModel`. */
@@ -33,8 +31,6 @@ export const ALMOND_MODELS = [
   { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", provider: "Anthropic" },
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", provider: "Anthropic" },
   { id: "openai/gpt-5.5", label: "GPT-5.5", provider: "OpenAI" },
-  { id: "google/gemini-3-pro-preview", label: "Gemini 3 Pro", provider: "Google" },
-  { id: "google/gemini-3.5-flash", label: "Gemini 3.5 Flash", provider: "Google" },
 ] as const satisfies readonly AlmondModel[];
 
 export type AlmondModelId = (typeof ALMOND_MODELS)[number]["id"];

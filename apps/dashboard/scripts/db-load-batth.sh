@@ -46,11 +46,15 @@ else
   echo "[db-load-batth]   terra_batth already exists (ok)"
 fi
 
-# Apply the schema. Prefer migrate deploy; fall back to db push if no migration history applies.
+# Apply the schema. Prefer migrate deploy; fall back to db push when the migration history
+# can't be applied cleanly to a fresh DB (e.g. a later migration re-CREATEs a table that
+# 0_init already created). db push reconciles the schema straight from schema.prisma.
+# --accept-data-loss is safe here: this script is guarded to the local, disposable terra_batth
+# dev DB only, and on a fresh or already-in-sync DB there is nothing to lose.
 echo "[db-load-batth] applying Prisma schema (migrate deploy) ..."
 if ! npx prisma migrate deploy; then
   echo "[db-load-batth]   migrate deploy failed; falling back to prisma db push ..."
-  npx prisma db push --skip-generate
+  npx prisma db push --skip-generate --accept-data-loss
 fi
 
 # Run the loader with enough heap for ~6.75M rows.

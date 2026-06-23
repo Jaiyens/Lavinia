@@ -300,6 +300,13 @@ export function AlmondChatProvider({
   // {error:"usage_limit"}). The custom transport fetch below reads that body — useChat's onError only
   // sees a message string and cannot tell a usage cap from any other error. Cleared on the next send.
   const [usageLimit, setUsageLimit] = useState<AlmondUsageLimit | null>(null);
+  const [chatId] = useState(() => {
+    const random =
+      typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+    return `almond-${random}`;
+  });
 
   // One transport for the provider's life. The chosen model rides on each request's body (passed at
   // send time), so the transport itself stays static. A wrapped `fetch` intercepts the per-user
@@ -357,6 +364,7 @@ export function AlmondChatProvider({
   }, []);
 
   const { messages, sendMessage, setMessages, status, regenerate } = useChat<AlmondUIMessage>({
+    id: chatId,
     transport,
     // Coalesce the flood of token updates into ~50ms frames so a fast stream paints smoothly instead
     // of thrashing a re-render per token (the "choppy" output). The server also paces words via

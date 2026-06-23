@@ -12,6 +12,7 @@ import { familyOf } from "@/lib/energy/rates";
 import { solarNemChecks, SOLAR_TOOL } from "@/lib/energy/solar-nem";
 import { retrospective, DEMAND_CHARGE_TOOL } from "@/lib/energy/retrospective";
 import { billAudit, BILL_AUDIT_TOOL } from "@/lib/energy/bill-audit";
+import { isSolarNemMeter } from "@/lib/energy/solar-meter";
 import { draftRecommendation } from "@/lib/recommendations";
 import type { DraftRecommendation } from "@/lib/recommendations";
 import { loadRateCard } from "@/lib/pge/rate-card";
@@ -91,6 +92,7 @@ export async function runEngines(
       id: true,
       name: true,
       rateSchedule: true,
+      isSolar: true,
       solarKw: true,
       nemType: true,
       trueUpMonth: true,
@@ -167,7 +169,7 @@ export async function runEngines(
         pump.rateSchedule &&
         isAg(pump.rateSchedule) &&
         intervals.length > 0 &&
-        pump.solarKw === null
+        !isSolarNemMeter(pump)
       ) {
         const profile = bucketUsage(intervals, bills, tz, card);
         const res = rateOptimization({
@@ -203,7 +205,7 @@ export async function runEngines(
       // honest "this month paid a $X demand charge" heads-up. Dropping the flat ones (the old
       // behavior) silently swallowed every demand cycle that lacked a clear avoidable spike,
       // so a real demand-charged month with sparse interval coverage produced no finding at all.
-      if (intervals.length > 0 && pump.solarKw === null) {
+      if (intervals.length > 0 && !isSolarNemMeter(pump)) {
         const demandRecs = retrospective({
           farmId,
           pumpId: pump.id,
@@ -219,18 +221,23 @@ export async function runEngines(
         }
       }
 
-      // Bill audit: a posted cycle higher than the meter's usual, with usage flat. Runs
-      // on every pump with bills; the lever's own gates keep it quiet for flat meters.
-      drafts.push(
-        ...billAudit({
-          farmId,
-          pumpId: pump.id,
-          pumpName: pump.name,
-          bills,
-          summerMonths: card.summerMonths,
-          asOf,
-        }),
-      );
+      // Bill audit: a posted cycle higher than the meter's usual, with usage flat. Runs on
+      // every NON-solar pump with bills; the lever's own gates keep it quiet for flat meters.
+      // Solar/NEM meters are excluded: their monthly printed totals are net running balances
+      // (the energy settles at the annual true-up), so a month-over-month excess-dollar claim
+      // there would be a monthly net figure by another name. They speak through the solar path.
+      if (!isSolarNemMeter(pump)) {
+        drafts.push(
+          ...billAudit({
+            farmId,
+            pumpId: pump.id,
+            pumpName: pump.name,
+            bills,
+            summerMonths: card.summerMonths,
+            asOf,
+          }),
+        );
+      }
 
       // Solar / NEM checks: solar-paired meters only, and ONLY on a demo/seed farm.
       // On a real farm the canonical runSolarInsight engine is the sole SOLAR_TOOL

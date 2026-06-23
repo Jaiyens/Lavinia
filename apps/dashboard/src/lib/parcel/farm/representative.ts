@@ -167,6 +167,19 @@ const CROPS: readonly CropPreset[] = [
     costPerAcre: [2600, 3600],
   },
   {
+    name: "Walnuts",
+    type: "tree",
+    weight: 9,
+    varieties: ["Chandler", "Howard", "Tulare", "Vina"],
+    rootstocks: ["Paradox", "RX1", "VX211"],
+    spacings: ["30 x 18 ft", "28 x 16 ft", "30 x 20 ft"],
+    yield: [4000, 7000],
+    yieldUnit: "lb",
+    pricePerUnit: 0.85,
+    irrigation: ["micro_sprinkler", "flood"],
+    costPerAcre: [2600, 3600],
+  },
+  {
     name: "Oranges",
     type: "tree",
     weight: 10,
@@ -239,16 +252,22 @@ function weightedCrop(rng: Rng): CropPreset {
 function presetsForCropLabel(label: string): CropPreset[] {
   const byName = (n: string): CropPreset => CROPS.find((c) => c.name === n)!;
   const l = label.toLowerCase();
+  // Specific crop names (e.g. the USDA CDL category) map to exactly one preset for true agronomy.
   if (l.includes("almond")) return [byName("Almonds")];
   if (l.includes("pistachio")) return [byName("Pistachios")];
+  if (l.includes("walnut")) return [byName("Walnuts")];
   if (l.includes("wine")) return [byName("Grapes (Wine)")];
-  if (l.includes("vineyard") || l.includes("grape")) return [byName("Grapes (Raisin)"), byName("Grapes (Wine)")];
+  if (l.includes("vineyard") || l.includes("grape") || l.includes("raisin")) return [byName("Grapes (Raisin)"), byName("Grapes (Wine)")];
   if (l.includes("citrus") || l.includes("orange") || l.includes("mandarin")) return [byName("Oranges")];
-  if (l.includes("deciduous") || l.includes("orchard") || l.includes("nut"))
-    return [byName("Almonds"), byName("Pistachios")];
   if (l.includes("cotton")) return [byName("Cotton")];
   if (l.includes("tomato")) return [byName("Processing Tomatoes")];
-  if (l.includes("alfalfa") || l.includes("grain") || l.includes("hay") || l.includes("pasture"))
+  if (l.includes("safflower")) return [byName("Cotton")]; // closest oilseed/row agronomy on file
+  if (l.includes("corn")) return [byName("Processing Tomatoes"), byName("Cotton")];
+  if (l.includes("wheat") || l.includes("grain") || l.includes("barley") || l.includes("oat") || l.includes("sorghum"))
+    return [byName("Alfalfa")];
+  if (l.includes("deciduous") || l.includes("orchard") || l.includes("nut"))
+    return [byName("Almonds"), byName("Pistachios")];
+  if (l.includes("alfalfa") || l.includes("hay") || l.includes("pasture"))
     return [byName("Alfalfa")];
   if (l.includes("truck") || l.includes("row") || l.includes("field"))
     return [byName("Processing Tomatoes"), byName("Cotton")];
@@ -323,22 +342,27 @@ export function buildFarmParcel(
   const today = new Date(`${todayIso}T12:00:00`);
   const sources: Record<string, string> = {};
 
-  // Crop: prefer the live DWR value; otherwise weighted-pick. Either way, drive agronomy from a
-  // matching preset so variety/yield/spacing stay consistent with the crop shown.
+  // Crop: prefer the live enrichment value (e.g. a specific USDA CDL crop, or a coarse DWR land-use
+  // class); otherwise weighted-pick. Either way, drive agronomy from a matching preset so
+  // variety/yield/spacing stay consistent with the crop shown. INVARIANT: when `enrichment.crop` is
+  // set we ALWAYS record its source (so the drawer badges it and never shows a "sample" tag).
   let preset: CropPreset;
   let cropLabel: string;
   if (enrichment.crop) {
     const candidates = presetsForCropLabel(enrichment.crop.value);
     if (candidates.length > 0) {
-      // Real DWR land-use class -> a specific crop within it (consistent agronomy), source-badged.
+      // Enriched crop -> a matching preset for consistent agronomy. When the enrichment value is a
+      // SPECIFIC crop (one candidate), show it verbatim; a coarse class with several candidates
+      // keeps the existing deterministic pick (preset name) so the demo farm path is unchanged.
       preset = pick(rng, candidates);
-      cropLabel = preset.name;
-      sources.crop = enrichment.crop.source;
+      cropLabel = candidates.length === 1 ? enrichment.crop.value : preset.name;
     } else {
-      // DWR class is non-ag / unmappable here -> representative crop, no source claim.
+      // Value didn't map to a preset (non-ag / unknown): keep the real crop label shown, drive
+      // agronomy from a representative pick. Still source-badged below since enrichment is present.
       preset = weightedCrop(rng);
-      cropLabel = preset.name;
+      cropLabel = enrichment.crop.value;
     }
+    sources.crop = enrichment.crop.source;
   } else {
     preset = weightedCrop(rng);
     cropLabel = preset.name;

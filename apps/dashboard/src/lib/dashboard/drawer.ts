@@ -14,6 +14,7 @@ import {
   type NemEnergyPosition,
 } from "@/lib/energy/solar-nem";
 import { allocateArray } from "@/lib/energy/solar-allocation";
+import { isSolarNemMeter } from "@/lib/energy/solar-meter";
 import {
   grandfatherPosition,
   type GrandfatherPosition,
@@ -197,8 +198,16 @@ export type DrawerSolar = {
 };
 
 export type DrawerDetail = {
-  /** True only for a reconciled meter; everything money-bearing is gated on it. */
+  /** Gates the MONTHLY net billing detail (the printed period total, TOU + other rows, history).
+   *  `reconciled` AND NOT a solar/NEM meter: a solar meter's monthly total is a NET figure that
+   *  omits the energy settling at the annual true-up, so it is suppressed here. Use this for any
+   *  monthly net-metering dollar; use `isCoveredForFloor` for the genuinely-owed demand floor. */
   isCovered: boolean;
+  /** Gates the DEMAND floor (`demandOwedCents`, the floor block, the uncovered share): `reconciled`
+   *  ONLY, solar included. Solar does not offset the demand charge, so a reconciled solar meter's
+   *  printed demand charge is genuinely owed and is PRESERVED (the locked-decision honesty feature)
+   *  even though its monthly net total is suppressed. */
+  isCoveredForFloor: boolean;
   /** DR program enrollment as the LATEST bill prints it (Story 3.7); null when
    *  the latest bill prints nothing. Latest-only deliberately: enrollment is a
    *  current-state fact, and an event credit on an old bill must not present a
@@ -224,7 +233,8 @@ export type DrawerDetail = {
  * Fails closed, silently, returning null when the bill cannot be honestly checked:
  *   - solar / NEM meters: their monthly charge pages omit the energy that settles
  *     at true-up, so a recompute from them would mislead - the SAME exclusion and
- *     reason run-rate-lever.ts applies before pricing (meter.isSolar || solarKw).
+ *     reason run-rate-lever.ts applies before pricing (the shared isSolarNemMeter
+ *     predicate, widened to also catch a nemType-only meter).
  *   - unreconciled meters: the AR-15 gate - no trusted figures exist (mirrors
  *     toDrawerDetail's own gate).
  *   - no periods on file: nothing to verify.
@@ -242,7 +252,7 @@ export function verificationFor(
   meter: MeterView,
   card: RateCard,
 ): BillVerification | null {
-  if (meter.isSolar || meter.solarKw !== null) return null;
+  if (isSolarNemMeter(meter)) return null;
   if (meter.coverageState !== "reconciled") return null;
   const latest = meter.periods[meter.periods.length - 1];
   if (latest === undefined) return null;
@@ -260,12 +270,21 @@ export function toDrawerDetail(
   allMeters?: MeterView[],
   asOf?: string,
 ): DrawerDetail {
-  const isCovered = meter.coverageState === "reconciled";
+  const isReconciled = meter.coverageState === "reconciled";
+  const isSolar = isSolarNemMeter(meter);
+  // The MONTHLY net billing gate: reconciled AND not solar. A solar meter's monthly printed total
+  // is a NET figure (it omits the energy that settles at the annual true-up), so the whole monthly
+  // billing-detail block is withheld for it - the solar section below carries the annual true-up
+  // (when on file) or the not-yet-settled state instead, never a monthly net total.
+  const isCovered = isReconciled && !isSolar;
+  // The DEMAND floor gate: reconciled only, solar included. Solar never offsets the demand charge,
+  // so a reconciled solar meter's printed demand charge is genuinely owed and is preserved here.
+  const isCoveredForFloor = isReconciled;
 
   let latest: DrawerLatest | null = null;
   let history: DrawerHistoryRow[] = [];
 
-  // The coverage gate: an unreconciled meter yields no billing figures at all (AR-15).
+  // The coverage gate: an unreconciled (or solar) meter yields no monthly billing figures (AR-15).
   if (isCovered && meter.periods.length > 0) {
     const last = meter.periods[meter.periods.length - 1];
     if (last !== undefined) {
@@ -304,8 +323,11 @@ export function toDrawerDetail(
   // months (statement prints, shown as printed); the demand dollar is quotable
   // only for a reconciled meter (the AR-15 gate), and only when demand was
   // actually billed (a zero sum reads as absence, not a fabricated "None owed").
+  // The demand floor uses isCoveredForFloor (reconciled, solar INCLUDED): solar
+  // does not offset the demand charge, so a reconciled solar meter's printed demand
+  // is genuinely owed and is preserved even though its monthly net total is withheld.
   const nemSummary = summarizeNemMonths(meter.nemPeriods);
-  const demandSumCents = isCovered
+  const demandSumCents = isCoveredForFloor
     ? meter.periods.reduce<number>((sum, p) => sum + (p.demandCents ?? 0), 0)
     : 0;
 
@@ -317,7 +339,7 @@ export function toDrawerDetail(
   const demandOwedCents = meter.isSolar && demandSumCents > 0 ? demandSumCents : null;
   const billFloor = solarBillFloor(meter.periods.flatMap((p) => p.lineItems));
   const solarFloor =
-    isCovered && demandOwedCents !== null
+    isCoveredForFloor && demandOwedCents !== null
       ? {
           demandCents: billFloor.demandCents,
           serviceCents: billFloor.serviceCents,
@@ -335,10 +357,13 @@ export function toDrawerDetail(
 
   return {
     isCovered,
+    isCoveredForFloor,
     drProgram: drEnrollment(meter.periods[meter.periods.length - 1]?.lineItems ?? []),
     latest,
     history,
-    showSolar: meter.isSolar || meter.nemType !== null,
+    // The shared solar/NEM predicate (widened to also catch a solarKw-paired meter, not just
+    // isSolar || nemType): the solar section renders for any solar/NEM meter.
+    showSolar: isSolarNemMeter(meter),
     solar: {
       nemType: meter.nemType,
       // A-9 (FR2/FR5): the program said in plain words, resolved from the meter's own token only -

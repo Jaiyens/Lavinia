@@ -102,6 +102,10 @@
             ]
           },
           "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
+        },
+        "crop": {
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         }
       }
     },
@@ -195,8 +199,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "McMullin Area GSA",
@@ -308,8 +312,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -414,8 +418,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "McMullin Area GSA",
@@ -523,8 +527,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Vineyard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -626,8 +630,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "McMullin Area GSA",
@@ -732,8 +736,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -871,8 +875,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -1035,6 +1039,10 @@
             ]
           },
           "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
+        },
+        "crop": {
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         }
       }
     },
@@ -1080,8 +1088,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Vineyard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -1182,8 +1190,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Vineyard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -1293,8 +1301,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Deciduous orchard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Almonds",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "North Fork Kings GSA",
@@ -1410,8 +1418,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Vineyard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "Central Kings GSA",
@@ -1528,8 +1536,8 @@
       },
       "enrichment": {
         "crop": {
-          "value": "Vineyard",
-          "source": "DWR Crop Mapping 2022 (land-use class)"
+          "value": "Grapes",
+          "source": "USDA CDL 2023"
         },
         "gsa_name": {
           "value": "McMullin Area GSA",

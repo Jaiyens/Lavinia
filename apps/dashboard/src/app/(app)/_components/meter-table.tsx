@@ -125,6 +125,21 @@ function StatusCell({ status, flagged }: { status: string | null; flagged: boole
 // reads its coverage state, never a fabricated $0. A reconciled meter with no demand charge reads
 // a neutral "None".
 function MoneyCell({ row, kind }: { row: MeterRow; kind: "cost" | "demand" }) {
+  // Cost column, solar/NEM meter: never a monthly figure. With a printed true-up on file,
+  // show that ANNUAL amount (suffixed "true-up"); otherwise the honest not-yet-settled state.
+  // The demand column is unaffected - solar's printed demand is genuinely owed and renders
+  // through the normal path below.
+  if (kind === "cost" && (row.costSource === "NEM_TRUEUP" || row.costSource === "NEM_UNSETTLED")) {
+    if (row.costSource === "NEM_TRUEUP" && row.trueUpAmountCents !== null) {
+      return (
+        <span className="type-num tnum text-on-surface" aria-label={t.trueUpAria}>
+          {formatUsd(row.trueUpAmountCents)}{" "}
+          <span className="type-label-caps text-on-surface-variant/70">{t.trueUpSuffix}</span>
+        </span>
+      );
+    }
+    return <span className="type-num text-on-surface-variant/70">{t.notYetSettled}</span>;
+  }
   if (row.coverageState !== "reconciled") {
     // Cost column only: a MODELED meter (real interval usage, no printed bill) shows a clearly
     // marked estimate ("~$X est."), muted and never presented as billed. Everything else - and

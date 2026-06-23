@@ -22,6 +22,7 @@ import { SpikeSection } from "./spike-section";
 import { ProofSection } from "./proof-section";
 import { RefundFindingCard } from "./refund-finding-card";
 import { MeterCurveGraph } from "./meter-curve-graph";
+import { derivePeakKw } from "@/lib/energy/demand-ceiling";
 
 // The meter drawer (Story 2.5): the ONE shared drill-in surface, opened from any table row
 // (and later any chart bar / map pin) by the nuqs `meter` key. Open/close is pure URL state,
@@ -211,6 +212,10 @@ export function MeterDrawer({
     }
     return mx;
   })();
+  // The intra-day curve's ceiling: the billed peak when on file, else a representative ceiling
+  // derived from this meter's size (so the curve renders on every meter, labeled as an estimate).
+  // Distinct from `peakKw` above, which feeds only the header chip and stays billed-only.
+  const curve = derivePeakKw(meter);
   const close = () => void setMeter(null);
 
   // Demand visuals (Features A + B), reconciled meters only. The spike detail is the latest
@@ -286,14 +291,18 @@ export function MeterDrawer({
             <FieldRow label={t.account} value={meter.accountNumber} />
           </dl>
 
-          {/* Today's draw: the intra-day load curve (the meters-tab graph), with the ceiling at this
-              meter's peak. Representative shape pinned to the real peak; renders whenever a peak is
-              on file, else a short note. */}
+          {/* Today's draw: the intra-day load curve (the meters-tab graph). The ceiling is the
+              billed peak when one is on file; otherwise it is a representative ceiling derived
+              from the meter's own size (hp/gpm/modeled cost), labeled honestly as an estimate, so
+              the curve renders on every meter. Falls back to the short note only if no ceiling can
+              be derived at all (effectively never). */}
           <SectionHeader>{t.curveTitle}</SectionHeader>
-          {peakKw !== null ? (
+          {curve !== null ? (
             <>
-              <MeterCurveGraph peakKw={peakKw} seed={meter.id} />
-              <p className="type-caption mt-1 text-on-surface-variant">{t.curveNote}</p>
+              <MeterCurveGraph peakKw={curve.kw} seed={meter.id} />
+              <p className="type-caption mt-1 text-on-surface-variant">
+                {curve.derived ? t.curveDerivedNote : t.curveNote}
+              </p>
             </>
           ) : (
             <p className="type-body-md text-on-surface-variant">{t.curveNoPeak}</p>
@@ -304,7 +313,11 @@ export function MeterDrawer({
           {!d.isCovered ? (
             <div className="flex flex-col gap-2">
               <p className="type-body-md text-on-surface-variant">
-                {meter.coverageState === "needs_review" ? t.withheldNote : t.noBillNote}
+                {meter.costSource === "NEM_TRUEUP" || meter.costSource === "NEM_UNSETTLED"
+                  ? t.nemUnsettledNote
+                  : meter.coverageState === "needs_review"
+                    ? t.withheldNote
+                    : t.noBillNote}
               </p>
               {/* Story 5.3, AC4: a field we could not read is flagged for a second look,
                   never blank-faked. Text + treatment, not color-only. */}

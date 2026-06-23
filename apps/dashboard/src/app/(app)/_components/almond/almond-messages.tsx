@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { AlmondAvatar } from "./almond-avatar";
 import { AlmondMarkdown } from "./almond-markdown";
@@ -283,7 +288,7 @@ function UserMessage({
 
   if (editing) {
     return (
-      <div className="flex justify-end">
+      <Message from="user">
         <div className="w-full max-w-[85%]">
           <textarea
             value={draft}
@@ -316,15 +321,15 @@ function UserMessage({
             </button>
           </div>
         </div>
-      </div>
+      </Message>
     );
   }
 
   return (
-    <div className="group flex flex-col items-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-[var(--radius-lg)] rounded-br-sm bg-primary px-3 py-2 type-body-md text-on-primary">
-        {text}
-      </div>
+    <Message from="user" className="group flex-col items-end">
+      <MessageContent className="max-w-[85%] rounded-[var(--radius-lg)] rounded-br-sm bg-primary px-3 py-2 type-body-md text-on-primary">
+        <MessageResponse className="whitespace-pre-wrap">{text}</MessageResponse>
+      </MessageContent>
       <AlmondMessageActions
         text={text}
         align="end"
@@ -333,7 +338,7 @@ function UserMessage({
           setEditing(true);
         }}
       />
-    </div>
+    </Message>
   );
 }
 
@@ -371,13 +376,13 @@ function AssistantMessage({
   onRegenerate: () => void;
 }) {
   return (
-    <div className="group flex items-start gap-2">
+    <Message from="assistant" className="group items-start gap-2">
       <AlmondAvatar
         size={MSG_AVATAR}
         state={looking || working ? "thinking" : "idle"}
         className="mt-0.5"
       />
-      <div className="min-w-0 flex-1">
+      <MessageContent className="min-w-0 flex-1">
         <div className={cn("max-w-[92%] type-body-md text-on-surface")}>
           <AlmondThought message={message} />
           {decided ? <AlmondDecidedLine headline={decided} /> : null}
@@ -415,8 +420,8 @@ function AssistantMessage({
         {!looking && text && (
           <AlmondMessageActions text={text} align="start" onRegenerate={onRegenerate} />
         )}
-      </div>
-    </div>
+      </MessageContent>
+    </Message>
   );
 }
 

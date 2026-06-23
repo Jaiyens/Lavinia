@@ -9,8 +9,8 @@ import { buildSystemPrompt } from "@/lib/almond/persona";
 import { defaultAlmondResponder } from "@/lib/almond/responder";
 import { resolveModel, isAutoChoice } from "@/lib/almond/models";
 import { routeAutoModel } from "@/lib/almond/auto/route";
-import { attachmentKindsFromMessages } from "@/lib/almond/auto/intent";
-import type { AutoHeadlineKey } from "@/lib/almond/auto/types";
+import { attachmentKindsFromMessages, classifyTurn } from "@/lib/almond/auto/intent";
+import type { AutoHeadlineKey, TurnIntent } from "@/lib/almond/auto/types";
 import { parseSpreadsheetAttachments, stripFileAttachments } from "@/lib/almond/attachments/parse";
 import { checkChatRateLimit, clientIp } from "@/lib/almond/rate-limit";
 import { checkUsageBudget } from "@/lib/almond/usage-budget";
@@ -81,7 +81,13 @@ export async function POST(req: Request): Promise<Response> {
   // cookie. Public Tour (no session): the demo farm, read-only — Almond is part of the full tour
   // now, never a leak (demoFarm is isDemo-only, never real data).
   const activeId = await activeFarmId(userId);
-  const resolved = userId ? await dashboardFarm(prisma, userId, activeId) : await demoFarm(prisma);
+  // Almond must never dead-end on a 400 just because the caller has no farm yet. A signed-in user
+  // who has not finished onboarding (no accessible+ready farm) falls back to the representative demo
+  // farm, exactly like the public Tour, so Almond still answers. This stays read-only: `canPersist`
+  // below is false because they are not a member of the demo farm. Dashboard PAGES still route such a
+  // user to onboarding (dashboardFarm returns null); this fallback is scoped to the chat endpoint.
+  const resolved =
+    (userId ? await dashboardFarm(prisma, userId, activeId) : null) ?? (await demoFarm(prisma));
   if (!resolved) {
     return Response.json({ error: "no farm" }, { status: 400 });
   }
@@ -90,16 +96,20 @@ export async function POST(req: Request): Promise<Response> {
   // The grower's chosen model rides on the body too (Story: model picker). Captured here, validated
   // against the allowlist below — never trusted as-is.
   let requestedModel: unknown;
+  let chatId: string | undefined;
   try {
     const body: unknown = await req.json();
     const obj =
-      body && typeof body === "object" ? (body as { messages?: unknown; model?: unknown }) : {};
-    const messages = obj.messages;
-    if (!Array.isArray(messages) || messages.length === 0) {
+      body && typeof body === "object"
+        ? (body as { id?: unknown; message?: unknown; messages?: unknown; model?: unknown })
+        : {};
+    const messages = resolveRequestMessages(obj);
+    if (messages.length === 0) {
       return Response.json({ error: "messages required" }, { status: 400 });
     }
-    uiMessages = messages as UIMessage[];
+    uiMessages = messages;
     requestedModel = obj.model;
+    chatId = typeof obj.id === "string" && obj.id.trim().length > 0 ? obj.id : undefined;
   } catch {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
@@ -135,6 +145,7 @@ export async function POST(req: Request): Promise<Response> {
   //     too falls back to the default.
   let modelId: string;
   let decided: { headline: AutoHeadlineKey } | undefined;
+  let allowHarness = true;
   if (isAutoChoice(requestedModel)) {
     const lastText = lastUserTextFor(preparedMessages);
     const attachmentKinds = attachmentKindsFromMessages(preparedMessages);
@@ -144,11 +155,14 @@ export async function POST(req: Request): Promise<Response> {
     const decision = routeAutoModel({ text: lastText, attachmentKinds, codegenOn });
     modelId = decision.modelId;
     decided = { headline: decision.headline };
+    allowHarness = !requiresAlmondSideEffects(decision.intent);
   } else {
+    const turn = classifyTurn(lastUserTextFor(preparedMessages), attachmentKindsFromMessages(preparedMessages));
     modelId = resolveModel(requestedModel);
     decided = undefined;
+    allowHarness = turn.kind !== "file" && turn.kind !== "navigate";
   }
-  const responder = defaultAlmondResponder(modelId, decided);
+  const responder = defaultAlmondResponder(modelId, decided, { allowHarness });
   // The SHARED sink for background-generation job ids (Almond v2 Phase 2). A model-authored
   // spreadsheet/PDF no longer builds inside the tool `execute` (a ~30-90s build would die when the grower
   // leaves the page); instead the codegen tool ENQUEUES a GenerationJob row and PUSHES its id here, and
@@ -165,6 +179,9 @@ export async function POST(req: Request): Promise<Response> {
       // viewer is read-only; an owner/manager may also build and keep files). Server-resolved, never
       // from the client; null for the public Tour / demo viewer.
       system: buildSystemPrompt(farmName, role),
+      // `chatId` lets the harness path resume its sandbox session (co-founder's agent-SDK); the
+      // responder ignores it on the Gateway path. Harmless to pass on both.
+      chatId,
       decided,
       // `meterUserId` is the TRUE session id (ungated by canPersist), so usage metering counts every
       // authed user INCLUDING a read-only viewer — `actor.userId` below stays persist-gated for the
@@ -207,7 +224,8 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     return res;
-  } catch {
+  } catch (error) {
+    console.error("[almond chat 500]", error);
     // Construction/conversion errors (e.g. a malformed message reaching the live model) become a
     // clean 500 the client renders as the inline error state, never an unhandled crash.
     return Response.json({ error: "almond failed" }, { status: 500 });
@@ -228,4 +246,30 @@ function lastUserTextFor(messages: UIMessage[]): string {
     .join(" ")
     .toLowerCase()
     .trim();
+}
+
+function resolveRequestMessages(body: { message?: unknown; messages?: unknown }): UIMessage[] {
+  if (Array.isArray(body.messages) && body.messages.length > 0) {
+    return body.messages as UIMessage[];
+  }
+  return isUIMessageLike(body.message) ? [body.message] : [];
+}
+
+function isUIMessageLike(value: unknown): value is UIMessage {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof (value as { id?: unknown }).id === "string" &&
+    typeof (value as { role?: unknown }).role === "string" &&
+    Array.isArray((value as { parts?: unknown }).parts)
+  );
+}
+
+function requiresAlmondSideEffects(intent: TurnIntent): boolean {
+  return (
+    intent === "retrieve_cached" ||
+    intent === "generate_file" ||
+    intent === "codegen_bespoke" ||
+    intent === "navigate"
+  );
 }

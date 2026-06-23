@@ -806,6 +806,26 @@ export const en = {
       body: "Ask Almond for a spreadsheet of your meters or your bill due dates. Whatever it makes you will be kept here so you can download it again any time.",
     },
   },
+  // The To-do area: findings the grower parked from the Energy findings rail. Each card can be
+  // marked done or removed. Plain operator English, the grower's words. No jargon, no em dashes,
+  // no exclamation marks.
+  todos: {
+    // Left-rail / mobile-tab nav label and the page chrome.
+    navLabel: "To-do",
+    eyebrow: "To-do",
+    title: "Your to-do list",
+    lede: "Findings you parked to act on later. Mark one done when you have handled it, or remove it.",
+    // Calm empty state, pointing back at where to-dos come from.
+    empty: {
+      title: "Nothing on your list",
+      body: 'When a finding looks worth acting on, tap "Add to to-do" on it and it lands here.',
+    },
+    // Per-card actions on the To-do page.
+    markDone: "Mark done",
+    remove: "Remove",
+    saving: "Saving",
+    error: "That did not save. Try it again.",
+  },
   // The Agents audit area (the agentic foundation). The page lists what Terra's agents have
   // done for this farm, newest first, and lets the farm owner approve or reject anything an
   // agent proposed before it acts. Plain operator English, the grower's words. No utility
@@ -1031,16 +1051,31 @@ export const en = {
     agentsLabel: "Agents",
     // Section label above the nav list (the reference groups its nav under headings).
     navTrack: "Track",
+    // The rail is grouped into three sections (Palantir-style hierarchy), each with a small caps
+    // heading: live operating surfaces, the intelligence layer, and account/organization.
+    sections: {
+      operations: "Operations",
+      intelligence: "Intelligence",
+      organization: "Organization",
+    },
     agents: {
       home: "Home",
+      dashboard: "Dashboard",
       energy: "Energy",
       almond: "Almond",
+      assistant: "Assistant",
+      todos: "To-do",
       solar: "Solar",
       meters: "Meters",
       parcels: "Parcels",
       water: "Water",
+      agents: "Agents",
+      settings: "Settings",
     },
     comingTag: "Coming",
+    // Tag on the not-yet-shipped "Beta" rail group (Water, Solar, Agents): sold in the rail,
+    // grayed out and non-interactive until each ships.
+    betaTag: "Beta",
     // One-time welcome shown on Home to an invited member (someone added to a farm another operator
     // set up). The owner who created the farm never sees it. No em dashes, no exclamation marks.
     memberWelcome: {
@@ -1159,6 +1194,24 @@ export const en = {
       // operator English, no exclamation mark.
       pageEyebrow: "Assistant",
       pageGreeting: "How can I help you today?",
+      // Time-aware greeting on the full Almond page command center ("Good morning, Batth Farms").
+      greetMorning: "Good morning",
+      greetAfternoon: "Good afternoon",
+      greetEvening: "Good evening",
+      greetWithFarm: (part: string, farm: string): string => `${part}, ${farm}`,
+      // The farm command-center stat cards on the Almond landing (Palantir-style KPI row). Each
+      // figure is real (computed from the farm's own reconciled data), never fabricated.
+      stats: {
+        savings: "Savings opportunity",
+        savingsHint: "Across open findings",
+        metersAtRisk: "Meters at risk",
+        metersAtRiskHint: "Flagged or unreviewed",
+        lastMonthSpend: "Last month PG&E spend",
+        lastMonthSpendHint: "Latest billed cycle",
+        activeAlerts: "Active alerts",
+        activeAlertsHint: "Need a decision",
+        empty: "Not on file",
+      },
       // Model picker (a grower can switch which model answers; one farmer loved this). Plain words.
       modelLabel: "Model",
       modelPickerAria: "Choose which model answers",
@@ -1233,6 +1286,8 @@ export const en = {
       newChatAria: "Start a new chat",
       history: "History",
       historyAria: "Your saved chats",
+      // Labeled button on the Almond page that opens the saved-chats overlay (replaces the always-on rail).
+      savedChats: "Saved chats",
       chatsHeading: "Chats",
       historyEmpty: "No saved chats yet",
       historyLoading: "Loading your chats",
@@ -1769,9 +1824,10 @@ export const en = {
     findings: {
       // Fallback action line when a stored action cannot be read; never a blank.
       actionFallback: "Review this finding",
-      // One-tap responses: record the grower's call, never execute anything.
-      respondDone: "Done",
-      respondDismiss: "Not now",
+      // One-tap responses: "Add to to-do" parks the finding on the To-do list; "Dismiss"
+      // clears it. Neither executes anything — they record the grower's call.
+      respondDone: "Add to to-do",
+      respondDismiss: "Dismiss",
       // Disabled-state label while a response is saving.
       saving: "Saving",
       // Inline failure when a response does not stick (kept short and calm).
@@ -1860,6 +1916,13 @@ export const en = {
       // marked as such (the "~" prefix + "est."), never presented as an actual billed figure.
       estimateSuffix: "est.",
       estimateAria: "Estimated from your interval usage, not a printed bill",
+      // A solar / net-metering meter nets out over the year and settles only at the annual
+      // true-up, so it never shows a monthly cost. With a printed true-up on file it shows that
+      // ANNUAL figure (suffixed "true-up"); otherwise it reads the not-yet-settled state. No em
+      // dashes (user-facing copy).
+      notYetSettled: "Settles at true-up",
+      trueUpSuffix: "true-up",
+      trueUpAria: "Settles once a year at the annual true-up, not a monthly bill",
       // A null inventory field (ranch / entity / status / rate not on file). Never fabricated.
       // En dash (not an em dash): user-facing copy must never carry an em dash.
       emptyShort: "–",
@@ -1927,6 +1990,29 @@ export const en = {
       pinOpenNote: "Its detail is open",
       emptyView: "No meters in this view",
       legendLabel: "Pin colors",
+      // Pins colored by rate-schedule family; the legacy AG-4/AG-5 meters get a ring. Each color is
+      // paired with its label in the legend (never color-only).
+      rateLegendLabel: "Rate schedule",
+      rateFamily: {
+        agA: "AG-A",
+        agB: "AG-B",
+        agC: "AG-C",
+        legacy: "Legacy AG-4/AG-5",
+        nonAg: "Non-ag / other",
+      },
+      legacyRingNote: "Ringed = legacy AG-4/AG-5",
+      // Hover popup fields on a pin.
+      popup: {
+        rate: "Rate",
+        status: "Status",
+        annual: "Annual",
+        peak: "Peak",
+        gpm: "GPM",
+        annualValue: (usd: string): string => `${usd}/yr`,
+        peakValue: (kw: number): string => `${kw} kW`,
+        gpmValue: (n: string): string => `${n} gpm`,
+        none: "Not on file",
+      },
       // The base-map switch (satellite imagery vs a plain street map), mirroring the mockup.
       basemapLabel: "Base map",
       basemapSatellite: "Satellite",
@@ -2003,6 +2089,10 @@ export const en = {
       curveTitle: "Today's draw",
       curveAria: "Representative daily load curve",
       curveNote: "Representative 15-minute shape, pinned to this meter's peak.",
+      // Shown when no demand was billed: the ceiling is estimated from the meter's size,
+      // so the curve still renders but is labeled honestly as an estimate.
+      curveDerivedNote:
+        "Representative 15-minute shape. No billed peak on file yet, so the ceiling is estimated from this meter's size.",
       curveCeiling: (kw: number): string => `Peak ${kw} kW`,
       curveNoPeak: "No demand reading yet.",
       // Billing detail section.
@@ -2030,6 +2120,11 @@ export const en = {
       confirmIt: "Confirm it",
       noBillNote: "No bill loaded for this meter yet.",
       noPeriodNote: "No billing detail on file yet.",
+      // A solar / net-metering meter: its monthly statements are a running balance that nets out
+      // and settles only once a year at the true-up, so no monthly cost is shown here. The annual
+      // figure (when on file) appears in the solar section below. No em dashes (user-facing copy).
+      nemUnsettledNote:
+        "This meter is on net metering. Its balance settles once a year at the true-up, so there is no monthly bill figure to show. See the solar section below.",
       // MODELED cost: a meter with interval usage but no printed bill. Shown as an estimate
       // from usage + rate, clearly separated from any printed figure (never billed money).
       modeledLabel: "Estimated monthly cost",
