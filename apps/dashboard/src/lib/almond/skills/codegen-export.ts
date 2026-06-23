@@ -135,14 +135,14 @@ function buildCodegenSystemPrompt(snapshot: ReportSnapshot): string {
     "snapshot does (dollars and cents with thousands separators); the snapshot's money fields are integer",
     "cents and carry a pre-formatted display string where one is provided.",
     "",
-    "MANIFEST. When you call renderReport, pass a manifest listing EVERY figure you printed:",
-    "  - LITERAL: { label, value, sourcePath } where value is the figure in integer CENTS and sourcePath is",
-    '    its snapshot path, e.g. "opportunities[0].savingsCents" or "totals.rateSwitchSavingsCents".',
-    '  - DERIVED (a total/count you compute): { kind: "derived", label, value, op, sourcePaths }. op "sum"',
-    "    sums the CENTS at every sourcePath; op \"count\" is the length of the array at sourcePaths[0]. The",
-    "    verifier recomputes it; a wrong value is rejected.",
-    "If a number you printed has no manifest entry, or your value does not match, the render is rejected and",
-    "you will be told which number — fix the markup and call renderReport again.",
+    "MANIFEST — USUALLY EMPTY. Every number you copy straight from the snapshot is checked and allowed",
+    "automatically, so most reports need NO manifest. The snapshot already provides meterCount,",
+    "totals.reconciledCount/needsReviewCount/noBillCount, and totals.rateSwitchSavingsCents — print THOSE",
+    "values directly; do not recompute a count. Only pass a manifest entry for a NEW total you compute that",
+    'is not already a snapshot value, as { kind: "derived", label, value, op, sourcePaths } (op "sum" sums',
+    'the CENTS at every sourcePath; op "count" is the array length at sourcePaths[0]; the verifier',
+    "recomputes it). Any number you print that is not a snapshot value (or a correct declared derived total)",
+    "is rejected and named; fix the markup and call renderReport again.",
     "",
     "SNAPSHOT (the only source of truth):",
     JSON.stringify(snapshot, null, 2),
@@ -177,11 +177,13 @@ export async function runCodegenExport(
 
     const renderReport = tool({
       description:
-        "Render the report to PDF by running WeasyPrint over your markup. Pass the complete report.html, the styles.css, and a manifest of every figure you printed (each with its snapshot sourcePath, or a derived op). Returns whether the PDF built AND verified; if not, fix the markup and call again.",
+        "Render the report to PDF by running WeasyPrint over your markup. Pass the complete report.html and styles.css. The `manifest` is OPTIONAL: include it only to declare a derived total you computed (sum/count) that is not already a snapshot value. Returns whether the PDF built AND verified; if not, fix the markup and call again.",
       inputSchema: z.object({
         html: z.string().describe("A complete, self-contained HTML document for the report."),
         css: z.string().describe("The stylesheet."),
-        manifest: manifestSchema.describe("Every figure printed in the report, tied to its snapshot path or derived op."),
+        manifest: manifestSchema
+          .optional()
+          .describe("Optional. Only the DERIVED totals (sum/count) you computed; omit when every number is copied from the snapshot."),
       }),
       execute: async ({ html, css, manifest }) => {
         let out: { pdfBytes: Buffer | null; stdout: string; stderr: string; exitCode: number };

@@ -118,8 +118,7 @@ const manifestSchema = z.array(
 function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
   return [
     "You build the grower's Excel workbook by WRITING a complete, self-contained Python 3 script that uses",
-    "openpyxl. Then you call the renderWorkbook tool with that script (as `code`) and a manifest of every",
-    "figure. Your script MUST:",
+    "openpyxl. Then you call the renderWorkbook tool with that script (as `code`). Your script MUST:",
     '  - `import json` and load the data with `json.load(open("snapshot.json"))`,',
     "  - build a Workbook with openpyxl, and",
     '  - save it with `wb.save("out.xlsx")` (exactly that file name, in the current directory).',
@@ -139,14 +138,15 @@ function buildCodegenWorkbookSystemPrompt(snapshot: ReportSnapshot): string {
     "subtotal in your python and write the resulting NUMBER. (The verifier reads cell values; a live formula",
     "has no readable value and will be rejected.)",
     "",
-    "MANIFEST. When you call renderWorkbook, pass a manifest listing EVERY figure you wrote:",
-    "  - LITERAL: { label, value, sourcePath } where value is the figure in integer CENTS and sourcePath is",
-    '    its snapshot path, e.g. "opportunities[0].savingsCents" or "totals.rateSwitchSavingsCents".',
-    '  - DERIVED (a total/count you compute): { kind: "derived", label, value, op, sourcePaths }. op "sum"',
-    "    sums the CENTS at every sourcePath (value = that sum in cents); op \"count\" is the length of the",
-    "    array at sourcePaths[0]. The verifier recomputes it; a wrong value is rejected.",
-    "If a number you printed has no manifest entry, or your value does not match, the render is rejected and",
-    "you will be told which number — fix it and call renderWorkbook again.",
+    "MANIFEST — USUALLY EMPTY. Every number you copy straight from the snapshot is checked and allowed",
+    "automatically, so most workbooks need NO manifest at all. The snapshot ALREADY gives you the totals you",
+    "are likely to want: meterCount, totals.reconciledCount, totals.needsReviewCount, totals.noBillCount,",
+    "and totals.rateSwitchSavingsCents — write THOSE values directly; do not recompute a count yourself.",
+    "Only pass a manifest entry for a NEW total you compute that is not already in the snapshot, as",
+    '{ kind: "derived", label, value, op, sourcePaths }: op "sum" sums the CENTS at every sourcePath, op',
+    '"count" is the length of the array at sourcePaths[0]; the verifier recomputes it. Any number you print',
+    "that is not a snapshot value (or a correct declared derived total) is rejected and named; fix it and",
+    "call renderWorkbook again.",
     "",
     "SNAPSHOT (the only source of truth; also available to your script as snapshot.json):",
     JSON.stringify(snapshot, null, 2),
@@ -209,12 +209,14 @@ export async function runCodegenWorkbook(
 
     const renderWorkbook = tool({
       description:
-        "Render the workbook to .xlsx by running your openpyxl python. Pass the complete script as `code` and a manifest of every figure you wrote (each with its snapshot sourcePath, or a derived op). Returns whether the workbook built AND verified; if not, fix the code and call again.",
+        "Render the workbook to .xlsx by running your openpyxl python. Pass the complete script as `code`. The `manifest` is OPTIONAL: include it only to declare a derived total you computed (sum/count) that is not already a snapshot value. Returns whether the workbook built AND verified; if not, fix the code and call again.",
       inputSchema: z.object({
         code: z
           .string()
           .describe('The complete openpyxl python script: load snapshot.json, build the workbook, wb.save("out.xlsx").'),
-        manifest: manifestSchema.describe("Every figure written in the workbook, tied to its snapshot path or derived op."),
+        manifest: manifestSchema
+          .optional()
+          .describe("Optional. Only the DERIVED totals (sum/count) you computed; omit when every number is copied from the snapshot."),
       }),
       execute: async ({ code, manifest }) => {
         let out: { xlsxBytes: Buffer | null; stdout: string; stderr: string; exitCode: number };

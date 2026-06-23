@@ -272,45 +272,51 @@ function recomputeDerived(snapshot: ReportSnapshot, entry: { op: DerivedOp; sour
 }
 
 /**
- * Verify a rendered WORKBOOK fail-closed (Phase 3). A superset of `verifyArtifact`: the FORWARD check
- * accepts derived entries (recomputed by the verifier, never the model), and a VERIFIED derived value's
- * canonical forms are folded into the reverse allowlist so a proven subtotal is permitted — while any
- * undeclared or mis-declared number is still rejected. `cellText` is the flattened text of the ACTUAL
- * produced .xlsx (extractXlsxNumbers), so a fabricated number cannot hide in a rendering artifact. Pure
- * (the caller does the xlsx read).
+ * Verify a rendered WORKBOOK / report fail-closed. The REVERSE number-token scan is the authoritative
+ * gate: every number visible in the produced file (`cellText` from extractXlsxNumbers, or extractPdfText)
+ * must be a snapshot-derived value, so a fabricated dollar can never reach the grower — this scales to a
+ * full data dump (every meter's real cost) because the allowlist is built from the WHOLE snapshot.
+ *
+ * The manifest is OPTIONAL and only WIDENS the allowlist for a number the model legitimately COMPUTED and
+ * that is not a raw snapshot value (a sum/count total, or a snapshot field the default allowlist does not
+ * enumerate). It is NON-FATAL: an absent, empty, malformed, unresolved, or mismatched manifest entry just
+ * fails to widen — it never rejects the workbook on its own, because the reverse scan still catches any
+ * genuinely-unverifiable number. (Before this, a missing/imperfect manifest rejected an otherwise-correct
+ * data dump, which is why a real 183-meter export could never pass.) A VERIFIED derived value is folded in
+ * only after the VERIFIER recomputes it, so the model can never supply the arithmetic. Pure (no I/O).
  */
 export function verifyWorkbookArtifact(
   snapshot: ReportSnapshot,
   manifest: unknown,
   cellText: string,
 ): VerifyVerdict {
-  const entries = asWorkbookManifest(manifest);
-  if (entries === null) return { ok: false, reason: "manifest malformed" };
-  if (entries.length === 0) return { ok: false, reason: "manifest empty" };
+  // A malformed manifest is treated as NO manifest (the reverse scan is the gate), not a rejection.
+  const entries = asWorkbookManifest(manifest) ?? [];
 
   const allow = buildAllowlist(snapshot);
   for (const e of entries) {
     if ("kind" in e && e.kind === "derived") {
+      // Widen ONLY when the verifier itself recomputes the same value; otherwise skip (non-fatal).
       const recomputed = recomputeDerived(snapshot, e);
-      if (recomputed === null) return { ok: false, reason: `derived unresolved: ${e.label}` };
-      if (recomputed !== e.value) {
-        return { ok: false, reason: `derived mismatch ${e.label}: ${e.value} != ${recomputed}` };
+      if (recomputed !== null && recomputed === e.value) {
+        // sum is integer cents (money forms); count is a plain integer (one form).
+        if (e.op === "sum") for (const f of moneyForms(e.value)) allow.add(f);
+        else allow.add(String(e.value));
       }
-      // sum is integer cents (money forms); count is a plain integer (one form).
-      if (e.op === "sum") for (const f of moneyForms(e.value)) allow.add(f);
-      else allow.add(String(e.value));
     } else {
+      // A literal entry points at a raw snapshot value; widen with it (covers a snapshot field the
+      // default allowlist does not enumerate). Non-fatal if it does not resolve or match.
       const resolved = resolvePath(snapshot, e.sourcePath);
-      if (resolved === undefined) return { ok: false, reason: `manifest path not found: ${e.sourcePath}` };
-      if (resolved !== e.value) {
-        return { ok: false, reason: `manifest mismatch at ${e.sourcePath}: ${e.value} != ${String(resolved)}` };
+      if (typeof resolved === "number" && resolved === e.value) {
+        for (const f of moneyForms(e.value)) allow.add(f);
+        allow.add(String(e.value));
       }
     }
   }
 
   for (const tok of numberTokens(cellText)) {
     if (!allow.has(canon(tok))) {
-      return { ok: false, reason: `undeclared number in workbook: ${tok}` };
+      return { ok: false, reason: `undeclared number in document: ${tok}` };
     }
   }
   return { ok: true };
