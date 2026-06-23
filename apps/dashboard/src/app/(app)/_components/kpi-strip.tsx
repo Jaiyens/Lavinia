@@ -8,6 +8,7 @@ import { cardClass } from "@/components/ui";
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
+import { demandShare } from "@/lib/energy/demand-share";
 import { filterMeters } from "@/lib/dashboard/table";
 import type { MeterView } from "@/lib/dashboard/load";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -90,13 +91,17 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
   const [rate] = useQueryState(SURFACE.rate);
   const [, setMeter] = useQueryState(SURFACE.meter);
 
-  const { spend, demand, biggestMover } = useMemo(
-    () => computeKpiStrip(filterMeters(meters, { entity, ranch, rate })),
+  const filtered = useMemo(
+    () => filterMeters(meters, { entity, ranch, rate }),
     [meters, entity, ranch, rate],
   );
+  const { spend, demand, biggestMover } = useMemo(() => computeKpiStrip(filtered), [filtered]);
+  // Feature C: demand charges as a share of total reconciled spend, computed from the same
+  // filtered meters. The one stat that proves the bill is not rate x usage.
+  const share = useMemo(() => demandShare(filtered), [filtered]);
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Card label={en.shell.kpi.spendLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.spendAria}>
         {spend.coverage.loaded > 0 ? (
           <span className="type-headline mt-1 tnum text-on-surface">{formatUsd(spend.cents)}</span>
@@ -118,6 +123,23 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
           </div>
         )}
       </Card>
+
+      {/* Feature C: the demand-share headline. Computed from this set's reconciled bills
+          (demand line cents / total spend cents), never asserted. The bold percentage proves
+          the bill is not rate times usage. Omitted (never a fabricated 0%) when nothing is
+          reconciled in view. */}
+      {share.percent !== null && (
+        <Card
+          label={en.spike.shareLabel}
+          onClick={scrollToLens}
+          ariaLabel={en.spike.shareAria(share.percent)}
+        >
+          <span className="type-display-lg tnum mt-1 text-alert">
+            {en.spike.sharePercent(share.percent)}
+          </span>
+          <span className="type-caption mt-1 text-on-surface-variant">{en.spike.shareCaption}</span>
+        </Card>
+      )}
 
       <Card label={en.shell.kpi.demandLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.demandAria}>
         {demand.hasDemand ? (

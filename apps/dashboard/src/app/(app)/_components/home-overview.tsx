@@ -1,5 +1,9 @@
 import Link from "next/link";
+<<<<<<< HEAD
 import { cookies } from "next/headers";
+=======
+import type { Feature, FeatureCollection } from "geojson";
+>>>>>>> origin/main
 import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
@@ -15,7 +19,14 @@ import { closeDateShort } from "@/lib/format/date";
 import { scanBills } from "@/lib/dashboard/bills";
 import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
+<<<<<<< HEAD
 import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
+=======
+import { loadRepresentativeFarm } from "@/lib/parcel/farm/seed";
+import { colorForParcel } from "@/lib/parcel/farm/color";
+import type { FarmParcel } from "@/lib/parcel/farm/types";
+import { resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
+>>>>>>> origin/main
 import { CalendarLens } from "./calendar-lens";
 import { DashboardTile } from "./dashboard-tile";
 import { ExpandablePanel } from "./expandable-panel";
@@ -24,7 +35,7 @@ import { HomeBoard } from "./home-board";
 import { BillingClosesCard } from "./billing-closes-card";
 import { RateFixCard } from "./rate-fix-card";
 import { BillsCard } from "./bills-card";
-import { HomeMap } from "./home-map";
+import { ParcelsPreview, type ParcelsPreviewData } from "./parcels-preview";
 import { SpendHero } from "./spend-hero";
 
 // HOME: a no-scroll BENTO of rich, Apple-widget-style panels - each shows its real data at a glance
@@ -108,13 +119,18 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   }).format(now);
 
   const energyHref = demoOnly ? "/tour/energy" : "/energy";
+  const parcelsHref = demoOnly ? "/tour/parcels" : "/parcels";
+  // The Home "Your parcels" tile: a satellite preview of the operation's land that links to the
+  // full Parcels surface. Built from the seeded representative farm (same source as /parcels), so
+  // the preview shows the grower's actual blocks, not a static image.
+  const parcelsPreview = buildParcelsPreview(loadRepresentativeFarm(todayIso).parcels);
 
   // The bento widgets, in default order. The BentoGrid lets the grower drag them into any order
   // (saved per browser); spans/sizes are fixed here so the one-screen layout always holds.
   const bentoItems: BentoItem[] = [
     {
       id: "calendar",
-      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-4",
+      className: "min-h-0 overflow-hidden col-span-2 row-span-4",
       node: (
         <ExpandablePanel
           label={en.shell.calendar.heading}
@@ -126,30 +142,15 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
       ),
     },
     {
+      // The parcels preview: a clickable satellite thumbnail of the operation's land that navigates
+      // to the full Parcels surface (no expand-to-modal; the whole tile is one click-through).
       id: "map",
-      className: "min-h-0 lg:col-span-2 lg:row-span-2",
-      node: (
-        <ExpandablePanel
-          label={en.shell.map.caption}
-          className="h-full"
-          modal={
-            <div className="h-[72vh]">
-              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-full" />
-            </div>
-          }
-        >
-          <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-3" })}>
-            <h2 className="type-label-caps mb-2 px-1 text-on-surface-variant">{en.shell.map.caption}</h2>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-[var(--radius-control)]">
-              <HomeMap meters={meters} energyHref={energyHref} heightClass="h-[260px] lg:h-full" />
-            </div>
-          </section>
-        </ExpandablePanel>
-      ),
+      className: "min-h-0 col-span-2 row-span-2",
+      node: <ParcelsPreview data={parcelsPreview} href={parcelsHref} />,
     },
     {
       id: "spend",
-      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
+      className: "min-h-0 overflow-hidden col-span-2 row-span-2",
       node: (
         <ExpandablePanel
           label={en.home.spendHero.title}
@@ -174,7 +175,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "findings",
-      className: "min-h-0 overflow-hidden lg:col-span-2 lg:row-span-2",
+      className: "min-h-0 overflow-hidden col-span-2 row-span-2",
       node: (
         <ExpandablePanel
           label={en.home.findingsTitle}
@@ -191,7 +192,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "closes",
-      className: "lg:col-span-1 lg:row-span-1",
+      className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -213,7 +214,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "fix",
-      className: "lg:col-span-1 lg:row-span-1",
+      className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -241,7 +242,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "bills",
-      className: "lg:col-span-1 lg:row-span-1",
+      className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -261,7 +262,7 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
     },
     {
       id: "savings",
-      className: "lg:col-span-1 lg:row-span-1",
+      className: "col-span-1 row-span-1",
       node: (
         <DashboardTile
           className="h-full w-full"
@@ -281,14 +282,52 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
+<<<<<<< HEAD
     <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-120px)] lg:overflow-hidden lg:p-4">
       {/* One-time welcome for an invited member (shrinks to nothing once dismissed). */}
       <MemberWelcome show={showMemberWelcome} farmName={farm.name} />
+=======
+    // Capped to the viewport height at EVERY width (not just lg) so the bento keeps its fixed
+    // 6x4 composition on smaller laptops instead of reflowing: the rows hold a defined height and
+    // the board scrolls horizontally inside, rather than collapsing to a single column.
+    <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-3 overflow-hidden p-3 lg:p-4">
+>>>>>>> origin/main
       {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
           the viewport (minus the tour banner) so the whole farm stays on one screen. */}
       <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />
     </div>
   );
+}
+
+// Build the Home parcels-preview payload from the operation's blocks: each block as a colored
+// polygon (crop palette, same as the Parcels surface) plus the bounds that frame the whole farm.
+// Server-side and serializable, so the client preview map just draws and fits.
+function buildParcelsPreview(parcels: FarmParcel[]): ParcelsPreviewData {
+  const features: Feature[] = parcels.map((p) => ({
+    type: "Feature",
+    properties: { fill: colorForParcel(p, "crop", new Date().getUTCFullYear()) },
+    geometry: p.geometry,
+  }));
+  const collection: FeatureCollection = { type: "FeatureCollection", features };
+
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+  for (const p of parcels) {
+    if (p.centroid_lon < minLng) minLng = p.centroid_lon;
+    if (p.centroid_lat < minLat) minLat = p.centroid_lat;
+    if (p.centroid_lon > maxLng) maxLng = p.centroid_lon;
+    if (p.centroid_lat > maxLat) maxLat = p.centroid_lat;
+  }
+  const bounds: ParcelsPreviewData["bounds"] = Number.isFinite(minLng)
+    ? [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ]
+    : null;
+
+  return { features: collection, bounds };
 }
 
 // The money-found band: the top-level total across the whole operation, with the opportunity count.

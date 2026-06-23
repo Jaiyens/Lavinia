@@ -1,12 +1,14 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutGrid, Zap, Sparkles, Sun } from "lucide-react";
+import { LayoutGrid, Zap, Sparkles, Sun, MapPin, Droplets } from "lucide-react";
 import { en } from "@/copy/en";
 
 // The agent rail lists AGENTS, not features (EXPERIENCE.md). Almond (the farm assistant) sits right
 // under Home as the second item — its own mascot glyph marks it out (rendered in AgentRail), and the
-// floating launcher still offers the same assistant from anywhere. Unbuilt domains (Water/Labor) are
-// not shown at all.
-export type AgentKey = "home" | "almond" | "energy" | "solar";
+// floating launcher still offers the same assistant from anywhere. Home, Almond, Energy, Solar, and
+// Parcels are live; Water sells the OS but is not built, so it renders at reduced opacity with a
+// "coming" tag and is non-interactive (href === null). (Meters was folded into Energy: every meter
+// is searchable + groupable in Energy's table, and clicking one opens its load-curve graph.)
+export type AgentKey = "home" | "almond" | "energy" | "solar" | "parcels" | "water";
 
 export type AgentItem = {
   key: AgentKey;
@@ -26,6 +28,8 @@ export const AGENTS: readonly AgentItem[] = [
   // Solar is a first-class rail entry (the grower thinks "show me my solar", not "switch a lens
   // inside Energy"). It opens the /solar tab on the same shell as Energy, scoped to the active farm.
   { key: "solar", label: en.shell.agents.solar, href: "/solar", icon: Sun, live: true },
+  { key: "parcels", label: en.shell.agents.parcels, href: "/parcels", icon: MapPin, live: true },
+  { key: "water", label: en.shell.agents.water, href: null, icon: Droplets, live: false },
 ] as const;
 
 // The public Tour renders the SAME shell as the signed-in app, but its routes live under
@@ -36,6 +40,7 @@ const TOUR_HREF: Partial<Record<AgentKey, string>> = {
   almond: "/tour/almond",
   energy: "/tour/energy",
   solar: "/tour/solar",
+  parcels: "/tour/parcels",
 };
 
 /** The destination for an agent, under the tour shell (demo) or the real app. */

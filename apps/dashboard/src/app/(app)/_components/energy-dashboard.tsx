@@ -157,7 +157,12 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
             findings={findings}
             verifications={verifications}
             trackedResults={trackedResults}
+<<<<<<< HEAD
             readOnly={findingsReadOnly}
+=======
+            card={card}
+            readOnly={demoOnly}
+>>>>>>> origin/main
           />
         </div>
 

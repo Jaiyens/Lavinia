@@ -205,6 +205,12 @@ export const en = {
     // The lock toggle (top right) that turns drag-to-rearrange on/off, so a tile is never moved by
     // accident. Locked by default; the lock icon shows the state.
     editLayout: "Edit tabs",
+    // The Home "parcels" tile: a non-interactive satellite preview of the operation's land that
+    // links through to the full Parcels surface.
+    parcelsPreview: {
+      caption: "Your parcels",
+      cta: "Open the parcels map",
+    },
     // The summary card row across the top of Home (mirrors the mockup's stat cards).
     kpi: {
       meters: "Meters",
@@ -369,6 +375,183 @@ export const en = {
     attentionHeading: "What needs a look",
     attentionEmpty: "Nothing needs you right now. We will flag it here when it does.",
     attentionViewAll: "See all in Energy",
+  },
+  // Parcels: the public-records parcel lookup (a top-level agent). Given a point, find the county
+  // parcel that contains it (APN + boundary + acreage) from free county GIS sources. Plain operator
+  // English; no em dashes; the grower's words (parcel, county, acres).
+  parcel: {
+    eyebrow: "Public records",
+    title: "Parcel lookup",
+    intro:
+      "Enter a point and Terra finds the public county parcel that contains it: its APN, acreage, and boundary, straight from the county's own records.",
+    latLabel: "Latitude",
+    lngLabel: "Longitude",
+    lookup: "Look up parcel",
+    lookingUp: "Looking up...",
+    emptyTitle: "Look up a parcel",
+    emptyBody: "Enter a latitude and longitude, then look up the parcel that contains the point.",
+    apnLabel: "APN",
+    copyApn: "Copy",
+    copied: "Copied",
+    countyLabel: "County",
+    acresLabel: "Acres",
+    centroidLabel: "Centroid (lat, lng)",
+    sourceLink: "View county parcel source",
+    countyValue: (county: string): string => `${county} County`,
+    acresValue: (acres: number): string =>
+      `${acres.toLocaleString("en-US", { maximumFractionDigits: 2 })} acres`,
+    centroidValue: (lat: number, lng: number): string => `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+    metersAway: (m: number): string =>
+      `${m.toLocaleString("en-US", { maximumFractionDigits: 1 })} m`,
+    // Honest note when the point fell on a road / right-of-way and we returned the nearest parcel.
+    nearestNote: (distance: string): string =>
+      `This point sits on a road or right-of-way, so no parcel contains it. Showing the nearest parcel, about ${distance} away.`,
+    // Error states keyed by the code /api/parcel returns.
+    errors: {
+      invalid_point: "Enter a latitude between -90 and 90 and a longitude between -180 and 180.",
+      out_of_coverage:
+        "Terra does not have a parcel source for this spot yet. Fresno County is live; more counties are coming.",
+      not_found: "No county parcel found at this point.",
+      upstream: "The county parcel service did not respond. Try again in a moment.",
+      lookup_failed: "That lookup did not work. Check the numbers and try again.",
+    },
+    // The map-first farm OS: every block on the map, click for the grouped detail drawer, shade by
+    // attribute, portfolio summary. Plain operator English; the grower's words (block, acres, crop).
+    farm: {
+      // Top banner over the map (representative data + connect CTA).
+      banner: "Representative farm. Connect yours to see your own blocks.",
+      connect: "Connect your farm",
+      // The + Add parcel tool.
+      addParcel: "Add parcel",
+      addTitle: "Add a parcel",
+      addHint: "Enter an APN or a coordinate. Terra pulls the boundary and fills in the rest.",
+      addApnLabel: "APN",
+      addApnPlaceholder: "e.g. 33803239S",
+      addLatLabel: "Latitude",
+      addLngLabel: "Longitude",
+      addByApn: "Add by APN",
+      addByCoord: "Add by coordinate",
+      adding: "Pulling boundary...",
+      addNote: "Connecting a real farm enters all your APNs at once and auto-enriches every block.",
+      // Color-by + base map controls.
+      colorBy: "Color by",
+      baseMap: "Base map",
+      satellite: "Satellite",
+      streets: "Map",
+      // Portfolio summary strip.
+      summary: {
+        acres: "Acres",
+        blocks: "Blocks",
+        leased: "Leased",
+        expiring: "Leases expiring",
+        attention: "Need a look",
+        none: "All clear",
+      },
+      // Keyboard / screen-reader block list (the map canvas is pointer-only).
+      blocksLabel: "Blocks",
+      openBlock: (name: string, crop: string, acres: string): string => `Open ${name}, ${crop}, ${acres}`,
+      // Detail drawer.
+      attention: "Needs a look",
+      copyApn: "Copy",
+      copied: "Copied",
+      close: "Close",
+      notOnFile: "Not on file",
+      sourceFrom: (source: string): string => `from ${source}`,
+      // Marks a representative/sample value (no real public source) so it is never mistaken for fact.
+      sampleTag: "sample",
+      sampleDisclaimer:
+        "Fields marked sample are representative data until you connect your records. Sourced fields show where the public data came from.",
+      sections: {
+        identity: "Identity & lease",
+        planting: "Planting",
+        water: "Water",
+        energy: "Energy",
+        soil: "Soil",
+        health: "Health & monitoring",
+        compliance: "Spray & compliance",
+        financial: "Financial",
+      },
+      labels: {
+        grossAcres: "Gross acres",
+        netPlanted: "Net planted",
+        mtrs: "Section (MTRS)",
+        tenure: "Tenure",
+        landlord: "Landlord",
+        rentPerAcre: "Rent / acre",
+        leaseTerm: "Lease term",
+        crop: "Crop",
+        variety: "Variety",
+        rootstock: "Rootstock",
+        plantingYear: "Planted",
+        treeCount: "Trees / vines",
+        spacing: "Spacing",
+        irrigation: "Irrigation",
+        expectedYield: "Expected yield",
+        historicalYield: "Last season's yield",
+        waterSource: "Source",
+        wellDepth: "Well depth",
+        wellHp: "Well HP",
+        wellCapacity: "Well capacity",
+        gsa: "Groundwater agency",
+        allocation: "GW allocation",
+        waterDistrict: "Water district",
+        et: "Seasonal ET",
+        pgeMeter: "PG&E meter",
+        rateSchedule: "Rate schedule",
+        pumpHp: "Pump HP",
+        annualEnergyCost: "Energy cost / yr",
+        soilClass: "Soil",
+        slope: "Slope",
+        salinity: "Salinity",
+        ndvi: "NDVI",
+        ndviTrend: "Trend",
+        scouting: "Scouting notes",
+        photos: "Field photos",
+        permit: "Permit site",
+        sprayHistory: "Spray history",
+        tasks: "Upcoming tasks",
+        revenue: "Revenue",
+        costPerAcre: "Cost / acre",
+        leaseCost: "Lease cost",
+      },
+      tenure: { owned: "Owned", leased: "Leased" },
+      irrigation: {
+        drip: "Drip",
+        micro_sprinkler: "Micro-sprinkler",
+        fanjet: "Fanjet",
+        flood: "Flood",
+        furrow: "Furrow",
+        solid_set: "Solid set",
+      } as Record<string, string>,
+      waterSource: {
+        well: "Well",
+        district: "District water",
+        well_and_district: "Well + district",
+        riparian: "Riparian",
+      } as Record<string, string>,
+      ndviTrend: { improving: "Improving", stable: "Stable", declining: "Declining" } as Record<string, string>,
+      rateMisclassified: "Looks misclassified",
+      reiActive: "REI active",
+      phiActive: "PHI active",
+      overdue: "Overdue",
+      acres: (n: number): string => `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })} ac`,
+      perAcre: (n: number, unit: string): string => `${num(n)} ${unit}/ac`,
+      af: (n: number): string => `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })} ac-ft`,
+      afPerAcre: (n: number): string => `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} ac-ft/ac`,
+      feet: (n: number): string => `${num(n)} ft`,
+      hp: (n: number): string => `${num(n)} hp`,
+      gpm: (n: number): string => `${num(n)} gpm`,
+      pct: (n: number): string => `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`,
+      // A spray record line; rei/phi badges are added by the component when still active.
+      sprayLine: (material: string, date: string): string => `${material} - ${date}`,
+      // The real DPR PUR section-level summary (1-sq-mi PLSS section, not the exact field).
+      spraySection: {
+        title: (year: number): string => `Pesticides in this section (${year})`,
+        summary: (records: number, lbs: number): string =>
+          `${records} reported applications, about ${lbs.toLocaleString("en-US")} lb of active ingredient.`,
+        note: "Reported to CA DPR by 1-square-mile section, not this exact field.",
+      },
+    },
   },
   // The account / profile page (signed-in operator's own details + connected sources).
   // The post-login fork (the /start screen): a signed-in user with no farm chooses to create a
@@ -833,10 +1016,14 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
+<<<<<<< HEAD
       almond: "Almond",
       solar: "Solar",
+=======
+      meters: "Meters",
+      parcels: "Parcels",
+>>>>>>> origin/main
       water: "Water",
-      labor: "Labor",
     },
     comingTag: "Coming",
     // One-time welcome shown on Home to an invited member (someone added to a farm another operator
@@ -1477,11 +1664,29 @@ export const en = {
         ranch: "Ranch",
         entity: "Entity",
         rate: "Rate",
-        legacy: "Legacy",
+        peak: "Peak kW",
         cost: "This cycle",
         demand: "Demand charge",
         status: "Status",
         coverage: "Coverage",
+      },
+      // Search + group controls (meters folded into the Energy table).
+      searchPlaceholder: "Search meters",
+      searchClear: "Clear search",
+      groupToggle: "Group by group",
+      ungrouped: "Other meters",
+      groupCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      peakUnit: "kW",
+      // The "Sort by" control. Default is demand charge, highest first.
+      sortByLabel: "Sort by",
+      sortByCustom: "Custom",
+      sortOptions: {
+        demand: "Demand charge (high to low)",
+        cost: "This cycle's cost (high to low)",
+        peak: "Peak demand (high to low)",
+        group: "Meter group",
+        status: "Needs a look first",
+        name: "Name (A to Z)",
       },
       // One label per coverage state, reused by the drawer (2.5), CSV (2.7), map (2.9).
       coverage: {
@@ -1599,6 +1804,14 @@ export const en = {
       account: "Account",
       rate: "Rate",
       legacyFlag: "Legacy",
+      // Peak demand (shown in the header in place of the old legacy flag).
+      peakValue: (kw: number): string => `${kw} kW peak`,
+      // Intra-day load-curve graph (the meters-tab graph, reused here).
+      curveTitle: "Today's draw",
+      curveAria: "Representative daily load curve",
+      curveNote: "Representative 15-minute shape, pinned to this meter's peak.",
+      curveCeiling: (kw: number): string => `Peak ${kw} kW`,
+      curveNoPeak: "No demand reading yet.",
       // Billing detail section.
       billingHeader: "This cycle",
       periodRange: (start: string, close: string): string => `${start} to ${close}`,
@@ -2570,6 +2783,94 @@ export const en = {
     },
   },
 
+  // The Meters demand-risk board. PG&E bills a demand charge on each meter's single highest
+  // 15-minute draw of the billing cycle, separately per meter. The board makes the gap between
+  // a meter's current draw and its own highest point so far (its "ceiling") obvious, and warns
+  // when that gap closes. Plain operator English: "highest point so far this cycle", never "kW
+  // peak" jargon where it can be avoided.
+  meters: {
+    title: "Meters",
+    // The representative-data marking (consistent with the app's other demo surfaces).
+    representativeTag: "Representative data",
+    // The freshness line. Interval data lags about a day, so we never call a draw "live".
+    asOf: (phrase: string): string => `Latest meter reads from ${phrase}`,
+    asOfShort: (phrase: string): string => `as of ${phrase}`,
+
+    // The "do I need to pay attention?" copy, shared by the side rail: the all-clear title and
+    // the daily-read eyebrow.
+    top: {
+      allClearTitle: "Nothing needs attention",
+      readEyebrow: "Today's read",
+    },
+
+    // The side rail: compact "Most urgent" + "Today's read" stat cards.
+    side: {
+      label: "At a glance",
+      urgentEyebrow: "Most urgent",
+      // The dollar consequence if the most urgent meter beats its own highest point.
+      urgentAmount: (amount: string): string => `${amount} at risk`,
+      atRiskLabel: "at risk",
+    },
+
+    // Group containers.
+    group: {
+      // A group is organizational, never a billing unit: it shows a summed dollar roll-up + a
+      // meter count, never a pooled kW (demand is per meter).
+      meterCount: (n: number): string => (n === 1 ? "1 meter" : `${n} meters`),
+      collapse: "Collapse",
+      expand: "Expand",
+      moveTo: "Move to group",
+      newGroup: "New group name",
+      rename: "Rename group",
+      edit: "Edit group",
+      doneEditing: "Done editing",
+      cancel: "Cancel",
+      resetGroups: "Reset grouping",
+      resetGroupsHint: "Undo your manual group changes.",
+    },
+
+    // A single meter tile.
+    tile: {
+      currentDraw: "Drawing now",
+      peakSoFar: "Highest this cycle",
+      headroom: "Room left",
+      overPeak: "Over its highest point",
+      // The timestamp that rides every current-draw figure (the ~1-day lag, made honest).
+      drawAsOf: (phrase: string): string => `reading from ${phrase}`,
+      kindPump: "Pump",
+      kindWell: "Well",
+      kindShop: "Shop",
+      openDetail: "Open meter",
+    },
+
+    // The meter detail view.
+    detail: {
+      back: "Back to meters",
+      curveTitle: "Today's draw, every 15 minutes",
+      ceilingLabel: "Highest point this cycle (the demand ceiling)",
+      nowLabel: "Latest reading",
+      chargeTitle: "This cycle's demand charge",
+      // What set the charge, in plain English.
+      chargeSet: (amount: string, kw: string, time: string): string =>
+        `${amount}. Set by the highest 15-minute draw so far this cycle: about ${kw} around ${time}.`,
+      chargeRate: (perKw: string): string => `Priced at ${perKw} per kW on this meter's rate.`,
+      // Stagger advice is ONLY ever shown when overlapping loads share ONE meter.
+      sameMeterNote:
+        "This is one meter. Spreading its own overlapping runs apart lowers its single highest draw. Pumps on separate meters running at once do not stack into one demand charge.",
+      crossMeterNote:
+        "Demand is billed per meter. Running this meter at the same time as another meter has no effect on either meter's demand charge.",
+      noData: "We could not find this meter.",
+    },
+
+    // Axis + chart labels.
+    chart: {
+      kwAxis: "kW",
+      timeAxis: "Time of day",
+      ceiling: "Ceiling",
+      now: "Now",
+    },
+  },
+
   onboarding: {
     connect: {
       title: "Connect your power use",
@@ -2814,6 +3115,184 @@ export const en = {
       editFarmCta: "Edit farm details",
       back: "Back to Pump Timing",
     },
+  },
+
+  // Parcels GIS: the full-screen land-mapping surface. Original Terra copy only; no third-party
+  // brand names or wording. Plain operator English, no exclamation marks, no em dashes.
+  parcelsGis: {
+    searchPlaceholder: "Search by address, APN, or coordinates",
+    // Search resolution notes (shown in the dropdown under the search pill).
+    search: {
+      noParcel: "No parcel found at that spot.",
+      badCoord: "Enter a latitude between -90 and 90 and a longitude between -180 and 180.",
+      noApn: "No parcel found for that APN. APN search currently covers Fresno County.",
+      noAddress: "No match for that address in the Central Valley.",
+      error: "Search is unavailable right now. Try again.",
+    },
+    // Viewport streaming status (a small pill over the map).
+    status: {
+      zoomIn: "Zoom in to see parcel boundaries",
+      loading: "Loading parcels",
+      dense: "Dense area. Zoom in for every parcel.",
+      error: "Couldn't load parcels here",
+    },
+    // The farmer's own blocks panel (replaces the for-sale listings). Hybrid: a "Blocks" tab of the
+    // farmer's own land (ops data), plus a "Market" tab of nearby comparable land values.
+    blocks: {
+      title: "Your blocks",
+      close: "Close panel",
+      info: "Your mapped blocks",
+      empty: "No blocks loaded yet.",
+      acresLabel: "ac",
+      colorByLabel: "Color by",
+      searchHint: "Search to jump anywhere in the Central Valley.",
+      tabBlocks: "Blocks",
+      tabMarket: "Market",
+      marketNote: "Recent comparable land values near your blocks.",
+      owned: "Owned",
+      leased: "Leased",
+      count: (n: number): string => `${n} ${n === 1 ? "block" : "blocks"}`,
+    },
+    // The right-side "farm at a glance" card.
+    summaryCard: {
+      county: (county: string): string => `${county} County`,
+      close: "Close summary",
+      acres: "Acres",
+      blocks: "Blocks",
+      leased: "Leased",
+      attention: "Need a look",
+      cropMix: "Crop mix",
+    },
+    listings: {
+      title: "Your blocks",
+      close: "Close listings",
+      info: "About listings",
+      breadcrumb: "Batth Farms / Fresno County",
+      tabAll: "All",
+      tabSaved: "Saved",
+      filters: "Filters",
+      save: "Save listing",
+      available: "Available",
+      pending: "Pending",
+      perAcre: "/ac",
+      acresLabel: "acres",
+    },
+    // Top toolbar tool tooltips.
+    tools: {
+      select: "Select",
+      addPoint: "Add point",
+      measureWalk: "Walk a boundary",
+      history: "History",
+      drawRectangle: "Draw a rectangle",
+      drawLine: "Draw a line",
+      dropPin: "Drop a pin",
+      text: "Add a label",
+      duplicate: "Duplicate shape",
+      ruler: "Measure distance",
+      area: "Measure area",
+      export: "Export view",
+    },
+    right: {
+      newMap: "New Map",
+      insights: "Insights",
+      export: "Export",
+      banner: "Select land to get started.",
+      dismissBanner: "Dismiss",
+      close: "Close panel",
+      breadcrumb: "Home / California",
+      heading: "California",
+      // Two short paragraphs of original Terra-voice copy. Words wrapped in [[...]] render
+      // as green inline links in the panel.
+      bodyOne:
+        "California works more farmland than any other state, spread across [[58 counties]] and a patchwork of water districts. Terra pulls the public parcel record for each one, so ownership, acreage, and zoning sit in a single view.",
+      bodyTwo:
+        "Click any parcel to open its land record, or draw a boundary to measure acreage on the spot. Saved parcels and [[recent sales]] follow you into every county you work.",
+      allCounties: "All California Counties",
+      comparePlans: "Compare Plans",
+    },
+    controls: {
+      threeD: "3D",
+      layers: "Layers",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      fsa: "FSA",
+      parcel: "Parcel",
+      home: "My farm",
+    },
+  },
+
+  // Energy demand visuals (Feature A): the intra-day load curve that makes one expensive
+  // 15-minute window visible, and the concrete fix with the new number. No em dashes.
+  spike: {
+    sectionTitle: "Demand spike",
+    intro:
+      "One short window set this whole month's demand charge. Here is the day it happened.",
+    // The peak window callout: time of day + the dollars that window set.
+    windowSet: (time: string, amount: string): string =>
+      `${time} set ${amount} of demand charge`,
+    peakAtLabel: "Peak demand",
+    peakKw: (kw: string): string => `${kw} kW`,
+    curveAria: "Intra-day load curve for the peak day, fifteen-minute readings",
+    yAxisLabel: "kW",
+    representativeNote:
+      "Representative shape from this meter's billed peak. The peak kW and the demand charge are the real billed figures.",
+    // Cause + fix lines.
+    causeOverlap: "Several pumps ran at the same time and stacked into one peak.",
+    causePeakWindow: "One run set the peak inside the 5 to 8pm price window.",
+    fixLabel: "The fix",
+    overlapPumpsNote:
+      "Representative split across this meter's pumps. The combined peak and the charge are billed figures.",
+    // The before/after dollar line: "$X now to about $Y, save about $Z".
+    delta: (now: string, after: string, save: string): string =>
+      `${now} now to about ${after}, save about ${save}`,
+    nowLabel: "This cycle's demand charge",
+    afterLabel: "After the fix",
+    saveLabel: "You keep",
+    newPeakLabel: "New peak",
+    // The headline demand-share stat (Feature C), proving demand is not rate x usage.
+    shareLabel: "Demand charges",
+    sharePercent: (pct: number): string => `${pct}%`,
+    shareCaption: "of your PG&E bill is the demand charge",
+    shareAria: (pct: number): string =>
+      `Demand charges are about ${pct} percent of your total PG&E bill`,
+  },
+
+  // The "Show meter" proof layer (Feature B): the meter's own shape, then the same usage
+  // priced under two rates so the saving is not a claim, it is arithmetic.
+  proof: {
+    sectionTitle: "Why this rate",
+    shapeTitle: "This meter's pattern",
+    shapeIntro: "How this pump draws power over a representative day.",
+    trendTitle: "Peak demand by month",
+    trendIntro: "The highest fifteen-minute demand each billing cycle.",
+    compareTitle: "Same usage, two rates",
+    compareIntro:
+      "We took this cycle's exact usage and priced it on both rates. Same kilowatt-hours, same peak, different cost.",
+    currentColumn: (schedule: string): string => `Now: ${schedule}`,
+    recommendedColumn: (schedule: string): string => `Recommended: ${schedule}`,
+    energyRow: "Energy",
+    demandRow: "Demand",
+    customerRow: "Service charge",
+    totalRow: "Total this cycle",
+    saving: (amount: string): string => `Saves ${amount} on this cycle`,
+    noSaving: "This cycle does not favor a switch.",
+    billedNote: "Current column is your printed bill total.",
+    modelNote: (delta: string): string =>
+      `Our model of the current rate is within ${delta} of the printed bill.`,
+    aria: "Side by side bill comparison, current rate versus recommended rate",
+  },
+
+  // Misclassification refund (Feature D): a pump billed on a commercial rate it was never
+  // eligible for. Framed as money that may be owed, never a promised payout.
+  refund: {
+    findingTitle: "Wrong rate class, refund may be owed",
+    situation: (tariff: string): string =>
+      `This meter runs like an irrigation pump but is billed on ${tariff}, a commercial rate. That looks like a billing-class error.`,
+    action: "Ask PG&E to review the rate class and back-bill the difference",
+    impactNote: (amount: string): string => `Up to ${amount} may be recoverable`,
+    rule:
+      "Under PG&E Rule 17.1 a billing-class error can be corrected for past cycles, capped at 36 months.",
+    upTo: (amount: string): string => `Up to ${amount}`,
   },
 } as const;
 

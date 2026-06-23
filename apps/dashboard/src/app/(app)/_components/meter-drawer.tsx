@@ -10,11 +10,23 @@ import type { MeterView } from "@/lib/dashboard/load";
 import type { FindingView } from "@/lib/dashboard/findings";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import type { ResultView } from "@/lib/recommendations/result";
+import type { RateCard } from "@/lib/energy/rates";
 import { toDrawerDetail } from "@/lib/dashboard/drawer";
+<<<<<<< HEAD
 import { SURFACE } from "@/lib/dashboard/surface";
 import { CoveragePill } from "./coverage-pill";
 import { FindingCard } from "./finding-card";
 import { StatementUpload } from "./solar/statement-upload";
+=======
+import { spikeDetailForMeter } from "@/lib/dashboard/spike-detail";
+import { refundFindingForMeter } from "@/lib/dashboard/refund-finding";
+import { CoveragePill } from "./coverage-pill";
+import { FindingCard } from "./finding-card";
+import { SpikeSection } from "./spike-section";
+import { ProofSection } from "./proof-section";
+import { RefundFindingCard } from "./refund-finding-card";
+import { MeterCurveGraph } from "./meter-curve-graph";
+>>>>>>> origin/main
 
 // The meter drawer (Story 2.5): the ONE shared drill-in surface, opened from any table row
 // (and later any chart bar / map pin) by the nuqs `meter` key. Open/close is pure URL state,
@@ -107,6 +119,7 @@ export function MeterDrawer({
   findings,
   verifications,
   trackedResults,
+  card,
   readOnly = false,
   solar = false,
   nowIso,
@@ -118,6 +131,9 @@ export function MeterDrawer({
   verifications: Record<string, BillVerification | null>;
   /** Accepted recommendations' predicted-vs-realized results per meter id (Story 4.2). */
   trackedResults: Record<string, ResultView[]>;
+  /** The fs-backed rate card (loaded server-side, serializable): powers the demand-spike
+   *  load curve and the two-rate proof. Null when unavailable (those sections then omit). */
+  card: RateCard | null;
   /** The public Tour (Story 5.3) renders findings display-only (no authed response buttons). */
   readOnly?: boolean;
   /** On the Solar tab (C-2): feed the fleet to toDrawerDetail so the solar section's allocation row
@@ -191,7 +207,32 @@ export function MeterDrawer({
   // The rate the header shows: the latest bill's printed tariff first (what PG&E actually
   // billed), falling back to the inventory rate schedule when no reconciled period exists.
   const rateShown = d.latest?.tariff ?? meter.rateSchedule;
+  // The meter's peak demand kW (the billed 15-min peak): latest period's, else the highest on file.
+  // Drives the header chip (in place of the old legacy flag) and the intra-day curve's ceiling.
+  const peakKw = ((): number | null => {
+    let mx: number | null = null;
+    for (const p of meter.periods) {
+      if (p.peakKw != null) mx = mx === null ? p.peakKw : Math.max(mx, p.peakKw);
+    }
+    return mx;
+  })();
   const close = () => void setMeter(null);
+
+  // Demand visuals (Features A + B), reconciled meters only. The spike detail is the latest
+  // material-demand cycle's analysis (curve + cause + fix); it is null for a meter with no
+  // demand-driven cycle, so the section simply does not render. The two-rate proof needs the
+  // rate card; when it is absent the proof omits gracefully. Both run pure foundation logic.
+  const spikeDetail = d.isCovered ? spikeDetailForMeter(meter) : null;
+  // The recommended schedule for the proof: this meter's rate finding hints it (a switch
+  // finding carries a target), else spike-detail falls back to the standard ag target.
+  // FindingView does not expose the action's `to`, so we let buildProofComparison derive the
+  // standard target (the rate-lever-equivalent path). Left explicit for a future params hookup.
+  const recommendedSchedule: string | null = null;
+
+  // Misclassification refund (Feature D): a distinct card, only when this meter classifies as
+  // a pump but is billed on a commercial rate (null otherwise, including on the demo where the
+  // B-1 meters are genuine non-pumps). Needs the rate card to re-price the trailing cycles.
+  const refundFinding = d.isCovered && card !== null ? refundFindingForMeter(meter, card) : null;
 
   return (
     <div className="fixed inset-0 z-50">
@@ -218,9 +259,9 @@ export function MeterDrawer({
               {rateShown !== null && rateShown !== "" ? (
                 <>
                   {t.rate}: {rateShown}
-                  {meter.isLegacy && (
-                    <span className="type-label-caps ml-2 rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
-                      {t.legacyFlag}
+                  {peakKw !== null && (
+                    <span className="type-label-caps tnum ml-2 rounded-[var(--radius-control)] bg-surface-container-high px-2 py-0.5 text-on-surface-variant">
+                      {t.peakValue(Math.round(peakKw))}
                     </span>
                   )}
                 </>
@@ -249,6 +290,19 @@ export function MeterDrawer({
             <FieldRow label={t.saId} value={meter.serviceId} />
             <FieldRow label={t.account} value={meter.accountNumber} />
           </dl>
+
+          {/* Today's draw: the intra-day load curve (the meters-tab graph), with the ceiling at this
+              meter's peak. Representative shape pinned to the real peak; renders whenever a peak is
+              on file, else a short note. */}
+          <SectionHeader>{t.curveTitle}</SectionHeader>
+          {peakKw !== null ? (
+            <>
+              <MeterCurveGraph peakKw={peakKw} seed={meter.id} />
+              <p className="type-caption mt-1 text-on-surface-variant">{t.curveNote}</p>
+            </>
+          ) : (
+            <p className="type-body-md text-on-surface-variant">{t.curveNoPeak}</p>
+          )}
 
           {/* Billing detail: figures only when reconciled (the gate lives in toDrawerDetail). */}
           <SectionHeader>{t.billingHeader}</SectionHeader>
@@ -364,6 +418,24 @@ export function MeterDrawer({
                   </div>
                 </div>
               )}
+            </>
+          )}
+
+          {/* Demand spike (Feature A): the intra-day load curve for the cycle whose demand a
+              single 15-minute window set, with the derived time, dollars, cause, and fix. */}
+          {spikeDetail !== null && (
+            <>
+              <SectionHeader>{en.spike.sectionTitle}</SectionHeader>
+              <SpikeSection detail={spikeDetail} />
+            </>
+          )}
+
+          {/* Why this rate (Feature B): the meter's own shape, then the same usage priced
+              under two rates so the saving is arithmetic, not a claim. */}
+          {d.isCovered && card !== null && (
+            <>
+              <SectionHeader>{en.proof.sectionTitle}</SectionHeader>
+              <ProofSection meter={meter} card={card} recommendedSchedule={recommendedSchedule} />
             </>
           )}
 
@@ -625,9 +697,17 @@ export function MeterDrawer({
           {/* This meter's findings (Story 3.1): the same cards as the rail, minus the trace
               affordance (you are already on the meter). Empty reads the calm line. */}
           <SectionHeader>{t.findingsHeader}</SectionHeader>
-          {meterFindings.length === 0 ? (
+          {/* Feature D: the distinct misclassification-refund card, above the go-forward
+              findings. Renders only on a true qualifier (pump on a commercial rate); the demo's
+              B-1 meters are non-pumps so it does not appear there. */}
+          {refundFinding !== null && (
+            <div className="mb-3">
+              <RefundFindingCard finding={refundFinding} />
+            </div>
+          )}
+          {meterFindings.length === 0 && refundFinding === null ? (
             <p className="type-body-md text-on-surface-variant">{t.findingsEmpty}</p>
-          ) : (
+          ) : meterFindings.length === 0 ? null : (
             <ul className="flex flex-col gap-3">
               {meterFindings.map((finding) => (
                 <li key={finding.id}>
