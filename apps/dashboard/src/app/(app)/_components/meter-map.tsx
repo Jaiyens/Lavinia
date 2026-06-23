@@ -196,17 +196,26 @@ function pinElement(
   return { el, dot, chip, baseLabel };
 }
 
-/** Fit the camera to the pin set (no-op when empty). */
+/** Value at percentile `f` (0..1) of an ascending-sorted array. */
+function percentile(sorted: readonly number[], f: number): number {
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * f)));
+  return sorted[i] as number;
+}
+
+/** Frame the camera on the farm's MAIN base of operations: fit to the central 80% of meters
+ *  (10th-90th percentile of lat/lng), so a handful of far-flung outlying wells don't zoom the
+ *  whole region out. The dense home-ranch cluster fills the view; outliers stay one zoom-out away.
+ *  No-op when empty. */
 function refit(map: MapLibreMap, pins: readonly MapPin[]): void {
   if (pins.length === 0) return;
-  const lats = pins.map((p) => p.latitude);
-  const lngs = pins.map((p) => p.longitude);
+  const lats = pins.map((p) => p.latitude).sort((a, b) => a - b);
+  const lngs = pins.map((p) => p.longitude).sort((a, b) => a - b);
   map.fitBounds(
     [
-      [Math.min(...lngs), Math.min(...lats)],
-      [Math.max(...lngs), Math.max(...lats)],
+      [percentile(lngs, 0.1), percentile(lats, 0.1)],
+      [percentile(lngs, 0.9), percentile(lats, 0.9)],
     ],
-    { padding: 56, maxZoom: 14, duration: 0 },
+    { padding: 48, maxZoom: 14, duration: 0 },
   );
 }
 
@@ -233,6 +242,9 @@ export function MeterMap({
   const [showParcels, setShowParcels] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  // The rounded wrapper (map + the satellite/Fields toggles) is what goes fullscreen, so those
+  // overlay controls stay usable in fullscreen rather than just the bare canvas.
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<PinEntry[]>([]);
   const popupRef = useRef<Popup | null>(null);
@@ -349,6 +361,14 @@ export function MeterMap({
       });
       map.touchZoomRotate.disableRotation();
       map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
+      // Fullscreen the whole wrapper (so the satellite/Fields toggles stay visible), not just the
+      // canvas. The button sits with the +/- zoom in the bottom-right.
+      map.addControl(
+        new lib.FullscreenControl(
+          wrapperRef.current ? { container: wrapperRef.current } : undefined,
+        ),
+        "bottom-right",
+      );
       // Wheel scrolls ZOOM the map directly (the natural gesture). The earlier "click to
       // activate, scroll otherwise pages" opt-in read as broken - scrolling just moved the page
       // up and down instead of zooming - so the map now zooms on wheel like any map. The +/-
@@ -433,6 +453,7 @@ export function MeterMap({
 
   return (
     <div
+      ref={wrapperRef}
       className={cn(
         "relative w-full overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant",
         heightClass,

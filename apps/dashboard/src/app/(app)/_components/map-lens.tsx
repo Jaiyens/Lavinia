@@ -106,11 +106,12 @@ export function MapLens({
         </p>
       </div>
 
+      {/* No bill chips here: a $ label on every pin was too cluttered. The pin's COLOR (rate) and
+          SIZE (annual spend) carry the at-a-glance read; the exact dollars are on the hover popup. */}
       <MeterMap
         pins={pins}
         openMeterId={meterId}
         onOpen={(id) => void setMeter(id)}
-        showBill
         encoding="rate"
         parcels={parcels}
         heightClass="h-[360px]"
