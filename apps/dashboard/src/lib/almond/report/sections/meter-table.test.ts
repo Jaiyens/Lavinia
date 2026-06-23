@@ -66,7 +66,7 @@ function exportData(meters: MeterView[]): ExportData {
   };
 }
 
-const HEADER = ["Meter", "Ranch", "Entity", "Rate", "Legacy", "This cycle", "Demand charge", "Status", "Coverage"];
+const HEADER = ["Meter", "Ranch", "Entity", "Rate", "Peak kW", "This cycle", "Demand charge", "Status", "Coverage"];
 
 function renderToPdf(data: ExportData): Promise<Uint8Array> {
   const doc = createElement(

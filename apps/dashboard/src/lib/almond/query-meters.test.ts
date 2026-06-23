@@ -66,6 +66,7 @@ function period(
     close: "2026-03-31",
     printedTotalCents: null,
     demandCents: null,
+    totalKwh: null,
     peakKw: null,
     tariff: null,
     lineItems: [],
@@ -343,7 +344,7 @@ describe("the stub responder resolves 'open priciest' over the real Batth seed",
     const res = await createStubResponder().toResponse({
       uiMessages: [ask("open the pump that costs me the most")],
       system: "ignored by the stub",
-      deps: { prisma, farmId, farmName: "Batth Family Farms" },
+      deps: { prisma, farmId, farmName: "Batth Family Farms", meterUserId: null },
       actor: READ_ONLY,
     });
     expect(res.status).toBe(200);
@@ -364,7 +365,7 @@ describe("the stub responder resolves 'open priciest' over the real Batth seed",
   });
 
   it("composeStubAnswer ranks the costliest meter (Westside Pump 17), no longer punting", async () => {
-    const answer = await composeStubAnswer({ prisma, farmId, farmName: "Batth Family Farms" }, [
+    const answer = await composeStubAnswer({ prisma, farmId, farmName: "Batth Family Farms", meterUserId: null }, [
       ask("which meters cost me the most"),
     ]);
     expect(answer).toMatch(/costliest/i);

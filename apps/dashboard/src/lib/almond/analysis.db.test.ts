@@ -38,12 +38,15 @@ describe("analyzeFarm over the real Batth seed", () => {
     const a = analyzeFarm(meters, findings);
 
     // topFinding (the cover hero / ACT card) is the AG-B -> AG-C switch on Westside Pump 17,
-    // ~$61,417.76 = 6,141,776 cents, tool rate-optimization. (The findings.ts fix is what makes
-    // suggestedRate read "AG-C" off params.toSchedule instead of null.)
+    // ~$45,223.72 = 4,522,372 cents, tool rate-optimization. (The findings.ts fix is what makes
+    // suggestedRate read "AG-C" off params.toSchedule instead of null.) The dollar magnitude is the
+    // current rate engine's output (post-integration: the corrected AG rate card + the evolved
+    // rate-compare/rate-lever engine from main); night's pre-merge ground truth read $61,417.76 off
+    // the older engine.
     expect(a.topFinding?.meterName).toBe("Westside Pump 17");
     expect(a.topFinding?.suggestedRate).toBe("AG-C");
-    expect(a.topFinding?.impactCents).toBeGreaterThanOrEqual(6_141_776 - 200);
-    expect(a.topFinding?.impactCents).toBeLessThanOrEqual(6_141_776 + 200);
+    expect(a.topFinding?.impactCents).toBeGreaterThanOrEqual(4_522_372 - 200);
+    expect(a.topFinding?.impactCents).toBeLessThanOrEqual(4_522_372 + 200);
 
     // The rate-switch Opportunities table populates to exactly 4 (it was EMPTY before the fix),
     // led by Westside Pump 17.

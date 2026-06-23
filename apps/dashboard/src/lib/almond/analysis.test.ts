@@ -48,6 +48,7 @@ function period(
     close: "2026-01-31",
     printedTotalCents: null,
     demandCents: null,
+    totalKwh: null,
     peakKw: null,
     tariff: null,
     lineItems: [],

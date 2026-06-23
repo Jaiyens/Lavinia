@@ -136,8 +136,10 @@ describe("buildAnalystMetersWorkbook over the real Batth seed", () => {
     expect(firstData.getCell(4).value).toBe("AG-C"); // suggested rate from flags.suggestedRate
     const savings = firstData.getCell(5);
     expect(savings.type).toBe(ExcelJS.ValueType.Number);
-    // ~$61,417.76 estimated annual rate-switch saving (modeledCurrent - modeledBest).
-    expect(savings.value).toBeCloseTo(61_417.76, 0);
+    // ~$45,223.72 estimated annual rate-switch saving (modeledCurrent - modeledBest), the current
+    // rate engine's output post-integration (corrected AG card + evolved rate engine from main);
+    // night's pre-merge ground truth read $61,417.76 off the older engine.
+    expect(savings.value).toBeCloseTo(45_223.72, 0);
     expect(cfRuleTypes(opps)).toContain("dataBar");
   });
 

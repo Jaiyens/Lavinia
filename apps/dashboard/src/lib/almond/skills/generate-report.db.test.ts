@@ -198,7 +198,7 @@ describe("runGenerateReport over the real Batth seed: the opportunities-first mo
     batthDb = await createTestDb();
     const seeded = await seedBatthFarm(batthDb.prisma);
     await runEngines(batthDb.prisma, seeded.id);
-    batthDeps = { prisma: batthDb.prisma, farmId: seeded.id, farmName: seeded.name };
+    batthDeps = { prisma: batthDb.prisma, farmId: seeded.id, farmName: seeded.name, meterUserId: null };
   }, 120_000);
 
   afterAll(async () => {

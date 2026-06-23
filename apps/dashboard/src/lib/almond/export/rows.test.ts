@@ -103,7 +103,7 @@ describe("exportMetersCsv (reuses metersCsv, no parallel format)", () => {
     expect(csv.endsWith("\r\n")).toBe(true);
     const header = csv.replace(/^﻿/, "").split("\r\n")[0];
     expect(header).toBe(
-      "Meter,Ranch,Entity,Rate,Legacy,This cycle,Demand charge,Status,Coverage",
+      "Meter,Ranch,Entity,Rate,Peak kW,This cycle,Demand charge,Status,Coverage",
     );
   });
 

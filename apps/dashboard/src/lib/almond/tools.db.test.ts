@@ -156,14 +156,6 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
     // The card carries a server-authored file name and the base64 bytes (non-empty).
     expect(body).toContain(".xlsx");
     expect(body).toContain("base64");
-<<<<<<< HEAD
-    // The one-line preview is streamed as the answer text. The stub types word-by-word, so each
-    // word rides its own `text-delta`; reassemble them before asserting on the contiguous preview.
-    const streamedAnswer = [...body.matchAll(/"type":"text-delta"[^}]*"delta":"((?:[^"\\]|\\.)*)"/g)]
-      .map((m) => JSON.parse(`"${m[1] ?? ""}"`))
-      .join("");
-    expect(streamedAnswer).toContain("I will export your");
-=======
     // The one-line preview is streamed as the answer text. smoothStream chunks it into
     // word-level text-delta events, so reconstruct the streamed text before asserting the
     // phrase (a raw substring check on the SSE body is brittle against word-chunking).
@@ -171,7 +163,6 @@ describe("the offline stub responder: exportSpreadsheet (Story 8.5)", () => {
       .map((m) => m[1])
       .join("");
     expect(streamedText).toContain("I will export your");
->>>>>>> night/integration
     // The base64 payload is substantial (a real zipped workbook, not an empty file).
     const match = body.match(/"base64":"([^"]+)"/);
     expect(match?.[1]).toBeTruthy();

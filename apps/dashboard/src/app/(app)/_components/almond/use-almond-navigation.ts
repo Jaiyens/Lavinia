@@ -4,14 +4,10 @@ import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { SURFACE, lensQueryOptions, type Lens } from "@/lib/dashboard/surface";
-<<<<<<< HEAD
 import type { SolarLens } from "@/lib/solar/lens-solar";
-import type { NavigateAction } from "@/lib/almond/skills/navigate";
-=======
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterMeters } from "@/lib/dashboard/table";
 import { type NavigateAction, type NavState } from "@/lib/almond/skills/navigate";
->>>>>>> night/integration
 
 /**
  * The client half of the server->client navigation bridge (Story 7.4).

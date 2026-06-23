@@ -5,7 +5,6 @@ import { en } from "@/copy/en";
 import { loadMetersForFarm, type MeterView } from "@/lib/dashboard/load";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
 import { loadFindings } from "@/lib/dashboard/findings";
-<<<<<<< HEAD
 import { buildSolarDataset } from "@/lib/dashboard/solar";
 import {
   demandUncoveredShare,
@@ -13,9 +12,7 @@ import {
   solarBillFloor,
 } from "@/lib/energy/solar-nem";
 import { loadRateCard } from "@/lib/pge/rate-card";
-=======
 import { analyzeFarm } from "./analysis";
->>>>>>> night/integration
 import {
   rateSchedulesByFrequency,
   resolveMeterQuery,
@@ -26,12 +23,9 @@ import {
   summarizeRanking,
   summarizeReconciliation,
   type MeterFilters,
-<<<<<<< HEAD
   type MeterSolarContext,
   type SolarContextByMeter,
-=======
   type RankMetersOptions,
->>>>>>> night/integration
 } from "./shape";
 import { checkGenerationThrottle } from "./rate-limit";
 import { hasGatewayKey } from "@/lib/ai/gateway";

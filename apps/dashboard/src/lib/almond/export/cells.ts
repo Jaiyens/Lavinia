@@ -35,7 +35,7 @@ export function meterCellsTyped(row: MeterRow): SheetCell[] {
     { value: row.ranch ?? "" },
     { value: row.entity ?? "" },
     { value: row.rate ?? "" },
-    { value: row.isLegacy ? t.legacyFlag : "" },
+    { value: row.peakKw !== null ? String(Math.round(row.peakKw)) : "" },
     moneyCellTyped(row, row.costCents, "cost"),
     moneyCellTyped(row, row.demandCents, "demand"),
     { value: row.status ?? "" },

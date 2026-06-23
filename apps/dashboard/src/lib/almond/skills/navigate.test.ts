@@ -184,7 +184,7 @@ describe("resolveNavigate — lens / filter path", () => {
   it("an absent surface never stamps `surface` onto an energy action (the pre-H-3 shape is preserved)", () => {
     // The bridge defaults to energy, so an energy action must stay byte-identical: no `surface` key.
     const lensResult = resolveNavigate(METERS, { lens: "map" });
-    expect(lensResult).toEqual({ kind: "navigate", action: { lens: "map" } });
+    expect(lensResult).toEqual({ kind: "navigate", action: { lens: "map" }, state: ALL_VISIBLE(null) });
     if (lensResult.kind !== "navigate") throw new Error("expected navigate");
     expect("surface" in lensResult.action).toBe(false);
 
@@ -194,7 +194,7 @@ describe("resolveNavigate — lens / filter path", () => {
 
     // An explicit energy surface is the default too: still no `surface` key on the action.
     const explicit = resolveNavigate(METERS, { surface: "energy", lens: "table" });
-    expect(explicit).toEqual({ kind: "navigate", action: { lens: "table" } });
+    expect(explicit).toEqual({ kind: "navigate", action: { lens: "table" }, state: ALL_VISIBLE(null) });
   });
 });
 
@@ -205,6 +205,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     expect(resolveNavigate(METERS, { surface: "solar", lens: "arrays" })).toEqual({
       kind: "navigate",
       action: { lens: "arrays", surface: "solar" },
+      state: ALL_VISIBLE(null),
     });
   });
 
@@ -213,6 +214,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
       expect(resolveNavigate(METERS, { surface: "solar", lens })).toEqual({
         kind: "navigate",
         action: { lens, surface: "solar" },
+        state: ALL_VISIBLE(null),
       });
     }
   });
@@ -235,6 +237,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     expect(resolveNavigate(METERS, { surface: "energy", lens: "chart" })).toEqual({
       kind: "navigate",
       action: { lens: "chart" },
+      state: ALL_VISIBLE(null),
     });
   });
 
@@ -242,6 +245,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     expect(resolveNavigate(METERS, { surface: "solar", program: "NEM2" })).toEqual({
       kind: "navigate",
       action: { program: "NEM2", surface: "solar" },
+      state: ALL_VISIBLE(null),
     });
   });
 
@@ -249,6 +253,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     expect(resolveNavigate(METERS, { surface: "solar", account: "1001" })).toEqual({
       kind: "navigate",
       action: { account: "1001", surface: "solar" },
+      state: ALL_VISIBLE(null),
     });
   });
 
@@ -263,6 +268,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     ).toEqual({
       kind: "navigate",
       action: { lens: "table", program: "NEM2", account: "1001", surface: "solar" },
+      state: ALL_VISIBLE(null),
     });
   });
 
@@ -280,6 +286,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
       kind: "navigate",
       action: { meter: "m4", surface: "solar" },
       meterName: "West Pump 4",
+      state: ALL_VISIBLE("m4"),
     });
   });
 
@@ -288,6 +295,7 @@ describe("resolveNavigate — solar surface (H-3)", () => {
     expect(resolveNavigate(METERS, { program: "NEM2", account: "1001" })).toEqual({
       kind: "navigate",
       action: { program: "NEM2", account: "1001" },
+      state: ALL_VISIBLE(null),
     });
   });
 });

@@ -78,14 +78,14 @@ export type NavigateAction = {
 };
 
 /**
-<<<<<<< HEAD
  * The two closed dashboard surfaces Almond can point at. `"energy"` is the shipped Energy tab (the
  * default); `"solar"` is the Solar tab (H-3). Each owns its own closed lens registry, so the same
  * `lens` field is validated against a different registry depending on the surface (ADR-S09). A value
  * outside this union is refused, never coerced, exactly as an unknown lens is.
  */
 export type Surface = "energy" | "solar";
-=======
+
+/**
  * The post-action state the resolver computes by running the SAME pure `filterMeters` over the farm's
  * meters with the action's target filter keys — the "verify before narrate" contract (T5). The
  * confirmation copy (`describeNavigation`) is generated FROM this, never from the request, so Almond
@@ -103,7 +103,6 @@ export type NavState = {
   activeFilter: { entity: string | null; ranch: string | null; rate: string | null };
   openMeter: string | null;
 };
->>>>>>> night/integration
 
 /**
  * The typed result the skill returns to the model (and, on `navigate`, to the 7.4/7.5 bridge):
@@ -149,20 +148,9 @@ export const navigateInputSchema = z.object({
   lens: z
     .string()
     .optional()
-<<<<<<< HEAD
     .describe(
       "Switch the lens. Energy: chart, table, map, or calendar. Solar: arrays, calendar, map, or table.",
     ),
-  entity: z.string().optional().describe("Filter the table by legal billing entity name."),
-  ranch: z.string().optional().describe("Filter the table by ranch name."),
-  rate: z.string().optional().describe("Filter the table by rate schedule, e.g. AG-A1."),
-  account: z.string().optional().describe("Filter by PG&E account number."),
-  program: z
-    .string()
-    .optional()
-    .describe("Filter the Solar tab by net-metering program code, e.g. NEM2."),
-=======
-    .describe("Switch the dashboard lens: chart, table, map, or calendar."),
   entity: z
     .string()
     .optional()
@@ -181,13 +169,17 @@ export const navigateInputSchema = z.object({
     .describe(
       "Filter the table by rate schedule, e.g. AG-A1. A case-insensitive contains phrase the resolver maps to the real rate value on the farm.",
     ),
+  account: z.string().optional().describe("Filter by PG&E account number."),
+  program: z
+    .string()
+    .optional()
+    .describe("Filter the Solar tab by net-metering program code, e.g. NEM2."),
   clear: z
     .boolean()
     .optional()
     .describe(
       'Set to true to clear ALL table filters and show the whole farm again ("show all meters").',
     ),
->>>>>>> night/integration
 });
 
 export type NavigateInput = z.infer<typeof navigateInputSchema>;
@@ -301,16 +293,8 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
   const query = (input.query ?? "").trim();
   if (query !== "") {
     const match = resolveMeterQuery(meters, query);
-<<<<<<< HEAD
-    if (match.kind === "found")
-      return {
-        kind: "navigate",
-        action: withSurface({ meter: match.meter.id }, surface),
-        meterName: match.meter.name,
-      };
-=======
     if (match.kind === "found") {
-      const action: NavigateAction = { meter: match.meter.id };
+      const action: NavigateAction = withSurface({ meter: match.meter.id }, surface);
       return {
         kind: "navigate",
         action,
@@ -318,7 +302,6 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
         state: stateForAction(meters, action),
       };
     }
->>>>>>> night/integration
     // >= 2 matches: name them and emit NOTHING (FR3 — never auto-navigate an ambiguous request).
     if (match.kind === "ambiguous") return { kind: "clarify", candidates: match.names };
     return { kind: "none" };
@@ -327,13 +310,8 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
   // (empty-query) `open: "meter"` is still honored, and a truly empty request lands on `none` below.
 
   // Lens / filter path. Assemble an action from the present canonical keys, validating `lens` against
-<<<<<<< HEAD
-  // the registry the requested surface OWNS (refuse an unknown one). entity/ranch/rate/account/program
-  // are raw contains-filters (the registry defines them as nullable strings with no parser), so any
-  // non-empty value is a valid filter.
-=======
-  // the registry (refuse an unknown one).
->>>>>>> night/integration
+  // the registry the requested surface OWNS (refuse an unknown one). entity/ranch/rate are mapped onto
+  // the farm's real values (case-insensitive contains); account/program are raw contains-filters.
   const action: NavigateAction = {};
   if (input.lens !== undefined) {
     // Validate against the solar registry on the solar surface (Arrays/Calendar/Map/Table), the
@@ -344,35 +322,6 @@ export function resolveNavigate(meters: MeterView[], input: NavigateInput): Navi
     if (lens === null) return { kind: "unknown-surface", requested: input.lens };
     action.lens = lens;
   }
-<<<<<<< HEAD
-  const entity = filterValue(input.entity);
-  if (entity !== null) action.entity = entity;
-  const ranch = filterValue(input.ranch);
-  if (ranch !== null) action.ranch = ranch;
-  const rate = filterValue(input.rate);
-  if (rate !== null) action.rate = rate;
-  const account = filterValue(input.account);
-  if (account !== null) action.account = account;
-  const program = filterValue(input.program);
-  if (program !== null) action.program = program;
-
-  // Nothing actionable in the request (no meter, no valid lens, no filter): found nothing to do. A
-  // bare `surface: "solar"` with nothing to apply is NOT actionable on its own (the tab default opens
-  // anyway), so it does not fabricate a navigate; this keeps `none` honest.
-  if (Object.keys(action).length === 0) return { kind: "none" };
-  return { kind: "navigate", action: withSurface(action, surface) };
-}
-
-/**
- * Stamp the resolved surface onto an action ONLY when it is `"solar"`. The energy surface is the
- * default the bridge already assumes, so omitting the field for energy keeps every pre-H-3 action
- * (and its test) byte-identical, while a solar action explicitly carries `surface: "solar"` so the
- * bridge opens `/solar`.
- */
-function withSurface(action: NavigateAction, surface: Surface): NavigateAction {
-  return surface === "solar" ? { ...action, surface } : action;
-=======
-
   // Clear-filters intent ("show me the whole farm again"): null all three filter keys so the bridge's
   // setters actively clear them and the table returns to every meter. This was the bug — there was no
   // clear action, so "show all meters" narrated success while nothing reset. A clear may carry a lens
@@ -382,7 +331,8 @@ function withSurface(action: NavigateAction, surface: Surface): NavigateAction {
     action.entity = null;
     action.ranch = null;
     action.rate = null;
-    return { kind: "navigate", action, state: stateForAction(meters, action) };
+    const cleared = withSurface(action, surface);
+    return { kind: "navigate", action: cleared, state: stateForAction(meters, cleared) };
   }
 
   // Filter phrases. `filterMeters` is an EXACT (trim) match, so a raw phrase that is not a real value
@@ -413,8 +363,27 @@ function withSurface(action: NavigateAction, surface: Surface): NavigateAction {
     return { kind: "clarify", candidates: realValues(meters, dim.pick) };
   }
 
-  // Nothing actionable in the request (no meter, no valid lens, no clear, no filter): found nothing.
+  // Solar-tab filters (H-3) are raw contains-filters with no real-value mapping (PG&E account number
+  // and NEM program code), so any non-empty value is a valid filter.
+  const account = filterValue(input.account);
+  if (account !== null) action.account = account;
+  const program = filterValue(input.program);
+  if (program !== null) action.program = program;
+
+  // Nothing actionable in the request (no meter, no valid lens, no clear, no filter): found nothing. A
+  // bare `surface: "solar"` with nothing to apply is NOT actionable on its own (the tab default opens
+  // anyway), so it does not fabricate a navigate; this keeps `none` honest.
   if (Object.keys(action).length === 0) return { kind: "none" };
-  return { kind: "navigate", action, state: stateForAction(meters, action) };
->>>>>>> night/integration
+  const navigated = withSurface(action, surface);
+  return { kind: "navigate", action: navigated, state: stateForAction(meters, navigated) };
+}
+
+/**
+ * Stamp the resolved surface onto an action ONLY when it is `"solar"`. The energy surface is the
+ * default the bridge already assumes, so omitting the field for energy keeps every pre-H-3 action
+ * (and its test) byte-identical, while a solar action explicitly carries `surface: "solar"` so the
+ * bridge opens `/solar`.
+ */
+function withSurface(action: NavigateAction, surface: Surface): NavigateAction {
+  return surface === "solar" ? { ...action, surface } : action;
 }

@@ -659,10 +659,9 @@ export async function composeStubAnswer(
 // enough to drive the SAME shipped skill so e2e/CI prove navigation with ZERO external calls
 // (NFR3, AR18). Intentionally a simple deterministic parser — a fixture, not the model.
 
-<<<<<<< HEAD
-export const NAV_VERB = /\b(open|show|see|view|go to)\b/;
-=======
-const NAV_VERB = /\b(open|show|see|view|go to|clear|reset)\b/;
+// NAV_VERB stays exported (auto/intent.ts reads it to classify nav-class intent); night's T5 work
+// widened it to include clear/reset so "clear the filter" also reads as a navigation intent.
+export const NAV_VERB = /\b(open|show|see|view|go to|clear|reset)\b/;
 // A "show the whole farm again" / "clear the filter" / "show all meters" phrase: the clear-filters
 // intent (T5). Matched here so the offline stub drives the SAME clear action the live model would,
 // proving the bug fix (the table returns to every meter) with zero external calls.
@@ -681,7 +680,6 @@ const SUPERLATIVE =
 const RANK_FIELD_DEMAND = /\bdemand\b/;
 const RANK_FIELD_SAVINGS = /\b(save|saving|savings)\b/;
 const RANK_ORDER_ASC = /\b(cheapest|smallest|lowest|least expensive)\b|costs?\s+(me\s+)?the\s+least/;
->>>>>>> night/integration
 
 /** Whether the latest user turn is a request to drive the screen (vs. a data question). A lens word
  *  ("map"/"table"/...) also counts, so "switch to the map" is caught without `switch` being a verb. */
