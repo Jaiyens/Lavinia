@@ -1344,7 +1344,8 @@ export async function importUtilityApiIntoFarm(
   // Button XML are different sources that can disagree at scale - if readiness says ready but
   // every export fetch failed, the import lands identity-only meters with no real history.
   // Returning null then keeps the poller waiting instead of advancing the grower to a confirm
-  // that immediately bounces back (hasRealSource is false), the connecting<->confirm loop.
+  // that immediately bounces back (hasRealSource is false), the connecting<->confirm loop. A
+  // force on a still-collecting pull lands the same identity-only state, covered here too.
   const historyLanded = imported.billingPeriods > 0 || imported.intervals > 0;
   if (!historyLanded) return null;
   await classifyFarmPumps(prisma, farmId);
