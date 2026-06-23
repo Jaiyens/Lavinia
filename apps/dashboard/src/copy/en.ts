@@ -90,17 +90,13 @@ export const en = {
     or: "or",
     emailLabel: "Email address",
     emailPlaceholder: "you@farm.com",
-<<<<<<< HEAD
     sendLink: "Send a sign-in link",
     linkSent: "Check your email for a sign-in link.",
-    error: "That did not work. Try again.",
+    sendCode: "Email me a code",
+    error: "That did not work. Try again, or send a new code.",
     // Shown when a valid sign-in is refused because the email is not on the access list yet
     // (pre-launch gate). Calm and non-blaming: it is access, not a mistake they made.
     accessDenied: "This email is not set up for access yet. Reach out to the Terra team to get added.",
-=======
-    sendCode: "Email me a code",
-    error: "That did not work. Try again, or send a new code.",
->>>>>>> integration/all-24h
     signOut: "Sign out",
     tourPrompt: "Just want to look around first?",
     // The code-entry step: after we email a 6-digit code, the operator types it back here.

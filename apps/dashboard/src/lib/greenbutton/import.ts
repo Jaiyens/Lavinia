@@ -306,26 +306,10 @@ async function importOneMeter(
     // high-history meter does not exceed Postgres's bind-parameter cap in one statement.
     let intervals = 0;
     if (m.intervals.length > 0) {
-<<<<<<< HEAD
-      // Find the window min/max in a single pass. A 36-month historical pull is ~100k+
-      // intervals per meter; `Math.min(...array)` / `Math.max(...array)` spread that many
-      // arguments onto the call stack and throw RangeError (max call-stack/arg count), so a
-      // real multi-year import would abort the meter. A reduce-style loop has no such ceiling.
-      let minMs = Infinity;
-      let maxMs = -Infinity;
-      for (const r of m.intervals) {
-        const t = new Date(r.start).getTime();
-        if (t < minMs) minMs = t;
-        if (t > maxMs) maxMs = t;
-      }
-      const min = new Date(minMs);
-      const max = new Date(maxMs);
-=======
       // Span the imported window in a single pass (see intervalSpan): replacing intervals only
       // within [min, max] keeps the re-import idempotent without dropping history outside this
       // feed. The createMany below is already chunked for the bind-parameter cap.
       const { min, max } = intervalSpan(m.intervals);
->>>>>>> integration/all-24h
       await tx.usageInterval.deleteMany({
         where: { pumpId: pump.id, start: { gte: min, lte: max } },
       });
