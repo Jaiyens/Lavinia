@@ -9,14 +9,17 @@
 // SAFETY: refuses to run unless DATABASE_URL points at a local Postgres (terra_batth). A real
 // grower's savings ride on this data, so it never silently writes a remote/prod database.
 //
-// Run:
-//   DATABASE_URL=postgresql://panda@127.0.0.1:5432/terra_batth \
-//   DATABASE_URL_UNPOOLED=postgresql://panda@127.0.0.1:5432/terra_batth \
+// Run (from apps/dashboard) — easiest via the wrapper that sets all of this up:
+//   bash scripts/db-load-batth.sh
+// or directly:
+//   DATABASE_URL=postgresql://$USER@127.0.0.1:5432/terra_batth \
+//   DATABASE_URL_UNPOOLED=postgresql://$USER@127.0.0.1:5432/terra_batth \
 //   NODE_OPTIONS=--max-old-space-size=6144 \
 //   npx tsx scripts/load-batth-full.ts
 
-import { readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
 import { seedBatthRealFarm } from "../prisma/batth-real-farm";
 import { normalizeDownloadMyDataCsv } from "@/lib/normalize/downloadmydata";
@@ -29,7 +32,29 @@ import { reconcileFarm } from "./reconcile-batth";
 
 const OWNER_EMAIL = "jaiyen_shetty@berkeley.edu";
 const FARM_NAME = "Batth Farms";
-const REPO_ROOT = "/Users/panda/Lavinia";
+
+/** Resolve the monorepo root machine-independently: walk up from this script's own
+ *  location until we hit the repo root marker (the single root `package-lock.json`,
+ *  or the `.git` dir/file in a worktree). Works for any collaborator regardless of
+ *  where they cloned, and whether run from `apps/dashboard` or elsewhere. Falls back
+ *  to the known fixed offset (scripts -> apps/dashboard -> apps -> root) if no marker
+ *  is found, so it never silently resolves to the wrong tree. */
+function resolveRepoRoot(): string {
+  const scriptDir = dirname(fileURLToPath(import.meta.url)); // apps/dashboard/scripts
+  let dir = scriptDir;
+  for (let i = 0; i < 12; i++) {
+    if (existsSync(join(dir, "package-lock.json")) || existsSync(join(dir, ".git"))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break; // reached filesystem root
+    dir = parent;
+  }
+  // Fixed offset fallback: apps/dashboard/scripts -> repo root is three levels up.
+  return join(scriptDir, "..", "..", "..");
+}
+
+const REPO_ROOT = resolveRepoRoot();
 const CSV_DIR = join(REPO_ROOT, "BatthData");
 const BILLS_DIR = join(REPO_ROOT, "batth-ingestion/extracted/bills");
 const REPORTS_DIR = join(REPO_ROOT, "batth-ingestion/reports");
@@ -74,6 +99,7 @@ function assertLocalDb(): void {
 
 async function main(): Promise<void> {
   assertLocalDb();
+  log(`[paths] repo root -> ${REPO_ROOT}`);
   const prisma = new PrismaClient();
   const card = loadRateCard();
   const summary: Record<string, unknown> = { generated: "2026-06-22" };
