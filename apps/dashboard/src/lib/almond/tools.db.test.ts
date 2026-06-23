@@ -5,7 +5,6 @@ import { seedSampleFarm } from "../../../prisma/sample-farm";
 import { createTestDb, type TestDb } from "@/test/pg-harness";
 import {
   buildAlmondSkills,
-  exportSpreadsheetSkill,
   farmOverview,
   findingList,
   meterDetail,
@@ -16,7 +15,6 @@ import {
   type AlmondToolDeps,
 } from "./tools";
 import { composeStubAnswer, createStubResponder } from "./responder";
-import { storeReport } from "./reports/store";
 
 // Integration test: run Almond's tool executors through Prisma against a throwaway Postgres
 // database on the local test cluster (src/test/pg-harness.ts), never the dev/prod Neon db.
@@ -367,53 +365,5 @@ describe("the offline stub responder", () => {
   });
 });
 
-// The content-addressed report cache (Phase 2). Proves the user's law end-to-end against real
-// Postgres: an identical ask on UNCHANGED data is served from the cache (the stored bytes, no
-// rebuild), and any real data change yields a fresh build. The Blob seam is mocked above, so the
-// cached read returns FAKE_BYTES; here we assert the CONTROL FLOW (hit vs miss), not the bytes.
-describe("content-addressed report cache (Phase 2)", () => {
-  it("returns the stored file on an identical ask, then rebuilds after the farm data changes", async () => {
-    // 1. First ask: a MISS (no row yet). The result carries a cacheKey but is not fromCache.
-    const first = await exportSpreadsheetSkill(depsA, { table: "meters" });
-    expect(first.kind).toBe("file");
-    if (first.kind !== "file") return;
-    expect(first.fromCache).toBeFalsy();
-    expect(first.cacheKey).toBeTruthy();
-
-    // 2. Persist it the way the responder does for an owner (with the cache key + meter count).
-    await storeReport(
-      { prisma, farmId: depsA.farmId, createdById: null },
-      {
-        kind: first.table,
-        title: first.fileName,
-        requestText: "export my meters",
-        coverageAsOf: first.coverageAsOf,
-        params: first.params,
-        bytes: first.bytes,
-        contentType: first.contentType,
-        cacheKey: first.cacheKey ?? null,
-        meterCount: first.meterCount,
-      },
-    );
-
-    // 3. Identical ask on UNCHANGED data: a HIT. Same key, served from cache, same meter count.
-    const second = await exportSpreadsheetSkill(depsA, { table: "meters" });
-    expect(second.kind).toBe("file");
-    if (second.kind !== "file") return;
-    expect(second.fromCache).toBe(true);
-    expect(second.cacheKey).toBe(first.cacheKey);
-    expect(second.meterCount).toBe(first.meterCount);
-
-    // 4. A REAL change to the farm data (touch a pump) moves the fingerprint -> a new key -> a MISS,
-    //    so a stale file is never served after the data changes.
-    await prisma.pump.update({
-      where: { id: (await prisma.pump.findFirstOrThrow({ where: { farmId: depsA.farmId } })).id },
-      data: { status: "BAD" },
-    });
-    const third = await exportSpreadsheetSkill(depsA, { table: "meters" });
-    expect(third.kind).toBe("file");
-    if (third.kind !== "file") return;
-    expect(third.fromCache).toBeFalsy();
-    expect(third.cacheKey).not.toBe(first.cacheKey);
-  });
-});
+// The content-addressed report cache was REMOVED (the from-scratch rework builds every artifact fresh,
+// no cache). The Phase-2 cache suite that lived here (hit/miss/refingerprint) was deleted with it.

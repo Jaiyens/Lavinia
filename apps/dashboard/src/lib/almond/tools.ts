@@ -617,17 +617,18 @@ export function buildAlmondSkills(deps: AlmondToolDeps, actor: AlmondActor) {
 
   // Capability seam (ADR-A08): the read tools above (including `navigate`) are public-safe and handed
   // to every actor — `navigate` only sets URL state, so it is read-safe and added UNCONDITIONALLY.
-  // A file-building skill is spread in only when `actor.canExport` is true (an authed owner OR the
-  // demo/Tour viewer), so the model is never handed a skill it must not call; persistence stays
+  // A file-building skill is spread in only when `actor.canExport` is true (an authed owner/manager OR
+  // the demo/Tour viewer), so the model is never handed a skill it must not call; persistence stays
   // owner-only, gated separately in the responder. WHICH file skill: the FROM-SCRATCH codegen skills are
-  // the default when codegen is available (gateway key + a runtime — flags.ts), giving the grower full
-  // styling freedom; when codegen is NOT available (no key/runtime, e.g. CI) the deterministic
-  // `fileSkills` serve instead so a canExport caller still gets a file. Exactly one of the two file sets
-  // is ever handed to the model — never both — so there is a single, unambiguous file path per turn.
-  const codegenOn = actor.canExport && isCodegenExportAvailable(hasGatewayKey());
+  // the default for an owner/manager (`authedOwner`) when codegen is available (gateway key + a runtime,
+  // flags.ts), giving the real grower full styling freedom. The deterministic `fileSkills` serve everyone
+  // else who can export — the public Tour's demo viewer, and an owner when codegen is not configured —
+  // so a guest still gets a file but never triggers the nested model + sandbox spend on a public,
+  // unauthenticated endpoint. Exactly one of the two file sets is handed to the model, never both.
+  const codegenOn = actor.authedOwner && isCodegenExportAvailable(hasGatewayKey());
   return {
     ...readTools,
-    ...(actor.canExport ? (codegenOn ? codegenSkills(deps) : fileSkills(deps)) : {}),
+    ...(codegenOn ? codegenSkills(deps) : actor.canExport ? fileSkills(deps) : {}),
   };
 }
 

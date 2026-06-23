@@ -201,6 +201,18 @@ export async function runCodegenExport(
 
         // Verify the rendered PDF fail-closed; a number mismatch is fed back so the model repairs.
         const pdfText = await extractPdfText(out.pdfBytes);
+        // FAIL-CLOSED on empty extraction: extractPdfText returns "" on ANY pdf-parse failure, and the
+        // reverse number-token scan over "" iterates zero tokens and trivially passes — leaving only the
+        // forward (model-declared) manifest check, which a fabricated number OMITTED from the manifest
+        // defeats. A real report always has text (the farm name, headers), so empty text means we cannot
+        // number-check it: reject and have the model re-render, never wave it through.
+        if (pdfText.trim() === "") {
+          return {
+            ok: false as const,
+            error:
+              "the rendered PDF produced no extractable text, so its numbers cannot be verified. Re-render a plain, text-based PDF (do not rasterize the text or embed numbers as images) and call renderReport again.",
+          };
+        }
         const verdict = verifyWorkbookArtifact(snapshot, manifest, pdfText);
         if (!verdict.ok) {
           return {
