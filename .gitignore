@@ -50,6 +50,15 @@ _bmad-output/
 # overnight orchestration scaffolding (not product code)
 .night/
 
-# Batth data-ingestion run (autonomous): outputs + quarantined raw dupes (large/derived, not product code)
-batth-ingestion/
+# Batth data-ingestion run (autonomous): outputs + quarantined raw dupes (large/derived, not product code).
+# Ignore everything under batth-ingestion/ (incl. reports/ = run logs only)...
+batth-ingestion/*
+# ...but TRACK the two small loadable artifacts collaborators need to load the farm locally
+# (the loader reads bills + interval_aggregates.json). Re-include the dirs so git descends into them.
+!batth-ingestion/extracted/
+!batth-ingestion/dist/
 BatthData/_dupes/
+
+# Local Postgres dumps of the Batth dataset (db:dump:batth output) - too large for git;
+# share via a blob store (Vercel Blob / Drive / S3), restore with db:restore:batth.
+dumps/
