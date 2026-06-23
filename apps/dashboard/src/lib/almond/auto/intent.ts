@@ -2,7 +2,7 @@
  * The PURE deterministic turn classifier for Almond's Auto router. No I/O, no model, no DB: it reads
  * the latest user text plus the SERVER-DERIVED attachment kinds and returns a closed `TurnClass`, so
  * the whole module is unit-testable in CI with no gateway key. This is the first half of the router
- * brain — route.ts maps a `TurnClass` (and a cache probe) onto the concrete `AutoDecision`.
+ * brain — route.ts maps a `TurnClass` onto the concrete `AutoDecision` (no cache; a file ask builds fresh).
  *
  * The two gates that carry the most weight:
  *   - An attachment present is a HARD override (the route reads a bill/image natively, deep reasoning),

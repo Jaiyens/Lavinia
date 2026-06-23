@@ -1167,7 +1167,6 @@ export const en = {
       // English, no em dashes, no exclamation marks, no kW/tariff/interval jargon.
       auto: {
         label: "Auto",
-        pulledCached: "Pulled your saved file",
         buildingNew: "Building a new file",
         answeredDirect: "Answered from your farm data",
         navigated: "Moved you there",
@@ -1435,9 +1434,6 @@ export const en = {
           // Honest empty case: a filter (or an empty farm) left no meters to export, so there is no
           // file to make. Never an empty download.
           empty: "No meters match that, so there is nothing to export.",
-          // Shown when an identical ask on unchanged data is served from the cache (Phase 2): the
-          // same file, returned instantly, without rebuilding it.
-          cached: "Here is that file again, ready to download.",
         },
         // The full multi-tab workbook (the rich default the model builds for a plain "export"/"excel"
         // ask): a Summary cover tab, the Meters inventory, the Bill due dates, and the Rate savings.

@@ -74,10 +74,10 @@ export type AlmondRequest = {
    *  (ADR-A08). The stub ignores it (read-only, grounded directly); the model path passes it
    *  to `buildAlmondSkills`. */
   actor: AlmondActor;
-  /** The Auto router's decision for this turn (when the grower picked "Auto"). Carries the PREDICTED
-   *  decided-line headline; the responder writes it once and may correct a stale cache prediction from
-   *  the real file outcome (see `writeDecidedPart`). Absent for a hand-picked model, in which case no
-   *  decided line is written and every existing behavior is unchanged. */
+  /** The Auto router's decision for this turn (when the grower picked "Auto"). Carries the decided-line
+   *  headline; the responder writes it exactly once. A file ask always builds fresh (no cache), so there
+   *  is no correction to make. Absent for a hand-picked model, in which case no decided line is written
+   *  and every existing behavior is unchanged. */
   decided?: AutoDecided;
 };
 
@@ -143,12 +143,9 @@ function isNavigateResult(output: unknown): output is NavigateResult {
 // so the client buffers it once (like navigate/report parts) and never replays it. The concrete model id
 // stays server-side (already recorded on the usage row); only the headline key crosses the wire.
 //
-// ONCE + CORRECTED: the live path writes the part in `streamText`'s `onFinish` (after ALL tool-loop
-// steps), which is exactly-once by construction and reflects any correction made along the way. The one
-// correction: a file ask the router predicted as a cache HIT (`pulledCached`) but whose tool result comes
-// back with `fromCache !== true` (the predicted hit went stale and built fresh) is swapped to
-// `buildingNew`, so the line never claims bytes were pulled when they were actually built. A hand-picked
-// model passes no `decided`, so no part is written and behavior is unchanged.
+// ONCE: the live path writes the part in `streamText`'s `onFinish` (after ALL tool-loop steps), which is
+// exactly-once by construction. A file ask always builds fresh (no cache), so the headline needs no
+// correction. A hand-picked model passes no `decided`, so no part is written and behavior is unchanged.
 
 /** The data-part type the client Auto badge listens for. */
 const DECIDED_PART_TYPE = "data-decided" as const;
@@ -479,9 +476,9 @@ export function createModelResponder(
             // falls back to a flagged estimate so a hidden-usage provider cannot zero-charge its way
             // around the cap.
             onFinish: async ({ totalUsage }) => {
-              // Write the Auto decided line ONCE, after every tool-loop step, so it reflects any
-              // correction (`pulledCached` -> `buildingNew`) made in `onStepFinish` above. Writing here
-              // (not per step) is exactly-once by construction. Undefined for a hand-picked model.
+              // Write the Auto decided line ONCE, after every tool-loop step. Writing here (not per step)
+              // is exactly-once by construction. A file ask always builds fresh, so there is no headline
+              // correction to make. Undefined for a hand-picked model.
               if (finalHeadline) writeDecidedPart(writer, finalHeadline);
               if (deps.meterUserId === null) return;
               await recordUsage(deps.prisma, {

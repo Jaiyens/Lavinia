@@ -97,12 +97,6 @@ export type ExportSpreadsheetResult =
       /** The SHAPE params the file was built from (table + the single applied filter), recorded with
        *  a persisted report so a refresh can reproduce the same shape. No farmId, no value. */
       params: ExportParams;
-      /** The content-addressed cache key this file is stored under (Phase 2). Set by the skill
-       *  wrapper; the responder persists it so an identical later ask resolves to the same key. */
-      cacheKey?: string;
-      /** True when these bytes were served from the cache (an identical ask on unchanged data), so
-       *  the responder streams them without persisting a duplicate row. */
-      fromCache?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };

@@ -174,7 +174,6 @@ describe("almond Auto decision copy (the voice law)", () => {
 
   it("phrases the picker entry and each decision in plain words", () => {
     expect(a.label).toBe("Auto");
-    expect(a.pulledCached).toBe("Pulled your saved file");
     expect(a.buildingNew).toBe("Building a new file");
     expect(a.answeredDirect).toBe("Answered from your farm data");
     expect(a.navigated).toBe("Moved you there");

@@ -139,12 +139,6 @@ export type GenerateReportResult =
        *  recorded with a persisted report so a refresh can reproduce the same shape. No farmId, no
        *  value. */
       params: ReportParams;
-      /** The content-addressed cache key this report is stored under (Phase 2); the responder
-       *  persists it so an identical later ask resolves to the same key. */
-      cacheKey?: string;
-      /** True when these bytes were served from the cache, so the responder streams them without
-       *  persisting a duplicate row. */
-      fromCache?: boolean;
     }
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
