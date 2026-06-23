@@ -13,6 +13,7 @@ function period(
     close,
     printedTotalCents,
     demandCents,
+    totalKwh: null,
     peakKw: demandCents !== null ? 100 : null,
     tariff: "AG-C",
     lineItems: [],

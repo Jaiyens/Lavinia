@@ -37,13 +37,13 @@ function row(over: Partial<MeterView> & { id: string; coverageState: CoverageSta
   return toMeterRow(meter(over));
 }
 
-const period = (totalCents: number | null, demandCents: number | null) => ({
+const period = (totalCents: number | null, demandCents: number | null, peakKw: number | null = null) => ({
   start: "2026-02-11T00:00:00.000Z",
   close: "2026-03-12T00:00:00.000Z",
   printedTotalCents: totalCents,
   demandCents,
   totalKwh: null,
-  peakKw: null,
+  peakKw,
   tariff: "AGC",
   lineItems: [],
 });
@@ -67,7 +67,7 @@ describe("metersCsv", () => {
       "Ranch",
       "Entity",
       "Rate",
-      "Legacy",
+      "Peak kW",
       "This cycle",
       "Demand charge",
       "Status",
@@ -131,7 +131,7 @@ describe("metersCsv", () => {
         rateSchedule: "AGA2",
         isLegacy: true,
         status: "BAD",
-        periods: [period(5000, 200)],
+        periods: [period(5000, 200, 318)],
       }),
     ]);
     expect(parse(csv)[1]).toEqual([
@@ -139,7 +139,7 @@ describe("metersCsv", () => {
       "South Ranch",
       "Batth Bros",
       "AGA2",
-      "Legacy",
+      "318",
       "$50.00",
       "$2.00",
       "BAD",
@@ -154,13 +154,13 @@ describe("metersCsv", () => {
     expect(r?.[6]).toBe("None"); // demand: honest absence label
   });
 
-  it("exports the legacy flag label only when set", () => {
+  it("exports the rounded peak kW, empty when there is no peak reading", () => {
     const csv = metersCsv([
-      row({ id: "a", coverageState: "no_bill", isLegacy: true }),
-      row({ id: "b", coverageState: "no_bill", isLegacy: false }),
+      row({ id: "a", coverageState: "reconciled", periods: [period(5000, 200, 41.6)] }),
+      row({ id: "b", coverageState: "no_bill" }),
     ]);
     const rows = parse(csv);
-    expect(rows[1]?.[4]).toBe("Legacy");
+    expect(rows[1]?.[4]).toBe("42");
     expect(rows[2]?.[4]).toBe("");
   });
 });

@@ -18,6 +18,7 @@ function period(
     close: opts.close,
     printedTotalCents: opts.printedTotalCents ?? null,
     demandCents: opts.demandCents ?? null,
+    totalKwh: opts.totalKwh ?? null,
     peakKw: opts.peakKw ?? null,
     tariff: opts.tariff ?? "AG-B",
     lineItems: opts.lineItems ?? [],

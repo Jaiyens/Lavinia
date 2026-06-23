@@ -12,21 +12,16 @@ import type { BillVerification } from "@/lib/energy/bill-verify";
 import type { ResultView } from "@/lib/recommendations/result";
 import type { RateCard } from "@/lib/energy/rates";
 import { toDrawerDetail } from "@/lib/dashboard/drawer";
-<<<<<<< HEAD
 import { SURFACE } from "@/lib/dashboard/surface";
-import { CoveragePill } from "./coverage-pill";
-import { FindingCard } from "./finding-card";
-import { StatementUpload } from "./solar/statement-upload";
-=======
 import { spikeDetailForMeter } from "@/lib/dashboard/spike-detail";
 import { refundFindingForMeter } from "@/lib/dashboard/refund-finding";
 import { CoveragePill } from "./coverage-pill";
 import { FindingCard } from "./finding-card";
+import { StatementUpload } from "./solar/statement-upload";
 import { SpikeSection } from "./spike-section";
 import { ProofSection } from "./proof-section";
 import { RefundFindingCard } from "./refund-finding-card";
 import { MeterCurveGraph } from "./meter-curve-graph";
->>>>>>> origin/main
 
 // The meter drawer (Story 2.5): the ONE shared drill-in surface, opened from any table row
 // (and later any chart bar / map pin) by the nuqs `meter` key. Open/close is pure URL state,

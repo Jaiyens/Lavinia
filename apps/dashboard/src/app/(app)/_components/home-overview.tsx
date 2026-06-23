@@ -1,9 +1,6 @@
 import Link from "next/link";
-<<<<<<< HEAD
 import { cookies } from "next/headers";
-=======
 import type { Feature, FeatureCollection } from "geojson";
->>>>>>> origin/main
 import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
@@ -19,14 +16,10 @@ import { closeDateShort } from "@/lib/format/date";
 import { scanBills } from "@/lib/dashboard/bills";
 import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
-<<<<<<< HEAD
-import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
-=======
 import { loadRepresentativeFarm } from "@/lib/parcel/farm/seed";
 import { colorForParcel } from "@/lib/parcel/farm/color";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
-import { resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
->>>>>>> origin/main
+import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
 import { CalendarLens } from "./calendar-lens";
 import { DashboardTile } from "./dashboard-tile";
 import { ExpandablePanel } from "./expandable-panel";
@@ -282,16 +275,12 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   ];
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col gap-3 p-3 lg:h-[calc(100dvh-120px)] lg:overflow-hidden lg:p-4">
-      {/* One-time welcome for an invited member (shrinks to nothing once dismissed). */}
-      <MemberWelcome show={showMemberWelcome} farmName={farm.name} />
-=======
     // Capped to the viewport height at EVERY width (not just lg) so the bento keeps its fixed
     // 6x4 composition on smaller laptops instead of reflowing: the rows hold a defined height and
     // the board scrolls horizontally inside, rather than collapsing to a single column.
     <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-3 overflow-hidden p-3 lg:p-4">
->>>>>>> origin/main
+      {/* One-time welcome for an invited member (shrinks to nothing once dismissed). */}
+      <MemberWelcome show={showMemberWelcome} farmName={farm.name} />
       {/* Header (greeting + date + the "Edit tabs" lock) and the drag-to-rearrange bento. Capped to
           the viewport (minus the tour banner) so the whole farm stays on one screen. */}
       <HomeBoard greeting={greeting} dateStr={dateStr} items={bentoItems} />

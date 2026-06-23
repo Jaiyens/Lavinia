@@ -166,6 +166,7 @@ export async function SolarDashboard({ demoOnly = false }: { demoOnly?: boolean 
             findings={findings}
             verifications={verifications}
             trackedResults={trackedResults}
+            card={card}
             readOnly={findingsReadOnly}
             solar
             nowIso={nowIso}

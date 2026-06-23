@@ -85,7 +85,7 @@ async function readGrid(bytes: Uint8Array): Promise<string[][]> {
   return grid;
 }
 
-const HEADER = ["Meter", "Ranch", "Entity", "Rate", "Legacy", "This cycle", "Demand charge", "Status", "Coverage"];
+const HEADER = ["Meter", "Ranch", "Entity", "Rate", "Peak kW", "This cycle", "Demand charge", "Status", "Coverage"];
 
 describe("buildMetersWorkbook", () => {
   it("produces a non-trivial .xlsx byte payload (assertable size)", async () => {

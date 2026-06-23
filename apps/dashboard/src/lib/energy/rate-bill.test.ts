@@ -60,6 +60,7 @@ function winterPeriod(overrides: Partial<MeterPeriodView> = {}): MeterPeriodView
     close: "2026-01-30T00:00:00.000Z", // inclusive span = 30 days
     printedTotalCents: null,
     demandCents: null,
+    totalKwh: null,
     peakKw: 100,
     tariff: "AG-A2",
     lineItems: [

@@ -40,7 +40,7 @@ function moneyCell(row: MeterRow, cents: number | null, kind: "cost" | "demand")
     operator headers as this CSV - one header definition, never a parallel spreadsheet format. */
 export function metersHeader(): string[] {
   const c = t.columns;
-  return [c.name, c.ranch, c.entity, c.rate, c.legacy, c.cost, c.demand, c.status, c.coverage];
+  return [c.name, c.ranch, c.entity, c.rate, c.peak, c.cost, c.demand, c.status, c.coverage];
 }
 
 /** The nine cell STRINGS for one meter row, in header order, carrying the exact cell semantics
@@ -54,7 +54,7 @@ export function meterCells(row: MeterRow): string[] {
     row.ranch ?? "",
     row.entity ?? "",
     row.rate ?? "",
-    row.isLegacy ? t.legacyFlag : "",
+    row.peakKw !== null ? String(Math.round(row.peakKw)) : "",
     moneyCell(row, row.costCents, "cost"),
     moneyCell(row, row.demandCents, "demand"),
     row.status ?? "",

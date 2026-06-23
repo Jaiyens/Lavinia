@@ -10,6 +10,7 @@ function period(over: Partial<MeterPeriodView> & { close: string }): MeterPeriod
     close: over.close,
     printedTotalCents: over.printedTotalCents ?? null,
     demandCents: over.demandCents ?? null,
+    totalKwh: over.totalKwh ?? null,
     peakKw: over.peakKw ?? null,
     tariff: over.tariff ?? null,
     lineItems: over.lineItems ?? [],

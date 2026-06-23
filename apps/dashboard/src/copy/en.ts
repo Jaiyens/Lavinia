@@ -1016,13 +1016,10 @@ export const en = {
     agents: {
       home: "Home",
       energy: "Energy",
-<<<<<<< HEAD
       almond: "Almond",
       solar: "Solar",
-=======
       meters: "Meters",
       parcels: "Parcels",
->>>>>>> origin/main
       water: "Water",
     },
     comingTag: "Coming",

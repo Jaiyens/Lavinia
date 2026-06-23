@@ -176,22 +176,14 @@ function renderCell(key: SortKey, row: MeterRow, maxPeak: number): ReactNode {
 }
 
 export function MeterTable({ meters }: { meters: MeterView[] }) {
-<<<<<<< HEAD
   const [entity, setEntity] = useQueryState(SURFACE.entity);
   const [ranch, setRanch] = useQueryState(SURFACE.ranch);
   const [rate, setRate] = useQueryState(SURFACE.rate);
   const [meterId, setMeter] = useQueryState(SURFACE.meter);
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "name", dir: "asc" });
-=======
-  const [entity, setEntity] = useQueryState("entity");
-  const [ranch, setRanch] = useQueryState("ranch");
-  const [rate, setRate] = useQueryState("rate");
-  const [meterId, setMeter] = useQueryState("meter");
   // Default: demand charge, highest first - the demand charge is the big PG&E lever for a farmer.
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "demand", dir: "desc" });
   const [query, setQuery] = useState("");
   const [grouped, setGrouped] = useState(false);
->>>>>>> origin/main
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
