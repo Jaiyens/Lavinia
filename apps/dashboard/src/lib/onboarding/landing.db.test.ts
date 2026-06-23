@@ -39,7 +39,9 @@ async function makeReadyFarm(userId: string, name = "Ready"): Promise<{ id: stri
   });
 }
 
-/** An in-progress farm the user owns: a pending pge_smd, none active (the resume signal). */
+/** An in-progress farm the user owns: a pending pge_smd, none active (the resume signal). The
+ *  resume gate keys on the active owner membership (the team-access model), not Farm.userId, so the
+ *  fixture must build the farm the way the product does (matches makeReadyFarm + resume.db.test). */
 async function makePendingFarm(userId: string, name = "Pending"): Promise<{ id: string }> {
   return prisma.farm.create({
     data: {
@@ -47,6 +49,7 @@ async function makePendingFarm(userId: string, name = "Pending"): Promise<{ id: 
       userId,
       isDemo: false,
       connections: { create: [{ type: "pge_smd", status: "pending" }] },
+      memberships: { create: [{ userId, role: "owner", status: "active" }] },
     },
     select: { id: true },
   });
