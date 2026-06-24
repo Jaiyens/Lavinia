@@ -42,7 +42,6 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-  Textarea,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -559,14 +558,14 @@ function Composer({
   return (
     <form onSubmit={onSubmit} className="px-3 pb-3 sm:px-4 sm:pb-4">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="flex flex-col gap-1.5 rounded-[1.75rem] border border-outline-variant bg-surface-bright px-2.5 py-2 shadow-[var(--shadow-soft)] transition-colors focus-within:border-outline">
-          <Textarea
+        <div className="flex flex-col gap-1.5 rounded-[1.75rem] border border-outline-variant bg-surface-bright px-2.5 py-2 shadow-[var(--shadow-soft)]">
+          <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
             rows={1}
             placeholder="Ask Almond about this farm"
             aria-label="Message Almond"
-            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-on-surface shadow-none outline-none placeholder:text-on-surface-variant/60 focus:ring-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0"
+            className="field-sizing-content max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-on-surface !shadow-none outline-none placeholder:text-on-surface-variant/60 focus:border-0 focus:outline-none focus:ring-0 focus:!shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:!shadow-none focus-visible:[box-shadow:none]"
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
