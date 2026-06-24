@@ -117,9 +117,12 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "farm_not_found" }, { status: 404 });
   }
 
+  const snapshotId = process.env.DOC_EXPORT_SNAPSHOT_ID;
   const sandbox = await Sandbox.create({
     ...sandboxCredentials(),
-    runtime: "node24",
+    ...(snapshotId
+      ? { source: { type: "snapshot" as const, snapshotId } }
+      : { runtime: "node24" as const }),
     timeout: 5 * 60 * 1000,
   });
 

@@ -566,7 +566,7 @@ function Composer({
             rows={1}
             placeholder="Ask Almond about this farm"
             aria-label="Message Almond"
-            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-on-surface shadow-none placeholder:text-on-surface-variant/60 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0"
+            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-on-surface shadow-none outline-none placeholder:text-on-surface-variant/60 focus:ring-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0"
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();

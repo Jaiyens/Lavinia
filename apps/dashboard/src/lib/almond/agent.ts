@@ -184,6 +184,7 @@ export async function createAlmondAgent(opts: {
   sandbox: Sandbox;
 }) {
   const seenOutputSignatures = new Map<string, string>();
+  const hasDocExportSnapshot = !!process.env.DOC_EXPORT_SNAPSHOT_ID;
   const { tools } = await createBashTool({
     sandbox: opts.sandbox,
     files: opts.farmFiles,
@@ -191,6 +192,15 @@ export async function createAlmondAgent(opts: {
       `The farm data for "${opts.farmName}" is staged under ./inputs/.`,
       "Start by running: ls inputs/ && sed -n '1,80p' inputs/context-index.md",
       "Save files meant for the grower under ./outputs/ so Terra can offer them as downloads.",
+      ...(hasDocExportSnapshot
+        ? [
+            "",
+            "Document generation libraries are pre-installed:",
+            "  Python: openpyxl, pandas, numpy, reportlab, pypdf",
+            "  Node:   pptxgenjs (use NODE_PATH=$(npm root -g) before node commands)",
+            "Use python3 for xlsx/pdf generation and Node for pptx. Write output files to ./outputs/.",
+          ]
+        : []),
     ].join("\n"),
     onBeforeBashCall: ({ command }) => ({ command: guardCommand(command) }),
     maxOutputLength: 30_000,
@@ -222,7 +232,12 @@ export async function createAlmondAgent(opts: {
     model: createGatewayModel(opts.modelId),
     instructions: buildAlmondInstructions(
       opts.farmName,
-      `Vercel Sandbox ${opts.sandbox.sandboxId}; working directory is /vercel/sandbox/workspace.`,
+      [
+        `Vercel Sandbox ${opts.sandbox.sandboxId}; working directory is /vercel/sandbox/workspace.`,
+        ...(hasDocExportSnapshot
+          ? ["Python 3.13 + Node 18 available. Pre-installed: openpyxl, pandas, numpy, reportlab, pypdf, pptxgenjs."]
+          : []),
+      ].join(" "),
     ),
     tools: aiSdk7Tools,
     stopWhen: isStepCount(24),
