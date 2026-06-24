@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { formatUsdWhole } from "@/lib/format/money";
 import { AreaChart, chartXPct, chartYPct } from "@/components/charts/area-chart";
 
@@ -62,7 +62,8 @@ export function SpendHero({
   const vSpan = vMax - vMin || 1;
 
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-6" })}>
+    <Card asChild className="flex h-full min-h-0 flex-col gap-0 overflow-hidden rounded-2xl p-6">
+      <section>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="type-label-caps text-on-surface-variant">{t.title}</h2>
@@ -158,6 +159,7 @@ export function SpendHero({
           <AreaChart points={points} ariaLabel={t.title} />
         </div>
       )}
-    </section>
+      </section>
+    </Card>
   );
 }

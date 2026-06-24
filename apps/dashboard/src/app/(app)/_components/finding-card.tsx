@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { SeverityBadge, cardClass } from "@/components/ui";
+import { Card, SeverityBadge } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import { isSolarBillingFinding, type FindingView } from "@/lib/dashboard/findings";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -80,18 +80,17 @@ export function FindingCard({
   const showBillingChip = isSolarBillingFinding(finding);
 
   return (
-    <article
-      aria-busy={isPending}
-      className={cardClass({
-        className: cn(
-          "p-4 transition-opacity",
-          finding.severity === "act" && "border-l-2 border-l-alert",
-          // While the response is in flight the card recedes; the revalidated shell then
-          // re-renders without it. A visible "saving" beat, not a silent disappear.
-          isPending && "opacity-70",
-        ),
-      })}
+    <Card
+      asChild
+      className={cn(
+        "gap-0 p-4 transition-opacity",
+        finding.severity === "act" && "border-l-2 border-l-alert",
+        // While the response is in flight the card recedes; the revalidated shell then
+        // re-renders without it. A visible "saving" beat, not a silent disappear.
+        isPending && "opacity-70",
+      )}
     >
+      <article aria-busy={isPending}>
       <div className="flex items-center justify-between gap-3">
         <SeverityBadge severity={finding.severity} />
         {impact !== null && (
@@ -173,6 +172,7 @@ export function FindingCard({
           {t.respondError}
         </p>
       )}
-    </article>
+      </article>
+    </Card>
   );
 }

@@ -8,7 +8,7 @@ import type { LngLatBoundsLike, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { buildStyle, DEFAULT_CENTER, DEFAULT_ZOOM } from "./basemap";
 
 // The Home "Your parcels" tile: a LIGHTWEIGHT, non-interactive satellite preview of the operation's
@@ -87,15 +87,8 @@ export function ParcelsPreview({ data, href }: { data: ParcelsPreviewData; href:
   }, []);
 
   return (
-    <Link
-      href={href}
-      aria-label={en.home.parcelsPreview.cta}
-      className={cardClass({
-        interactive: true,
-        radius: "2xl",
-        className: "group flex h-full min-h-0 flex-col overflow-hidden p-3",
-      })}
-    >
+    <Card asChild className="group flex h-full min-h-0 flex-col gap-0 overflow-hidden rounded-2xl p-3">
+      <Link href={href} aria-label={en.home.parcelsPreview.cta}>
       <div className="mb-2 flex items-center justify-between gap-2 px-1">
         <h2 className="type-label-caps text-on-surface-variant">{en.home.parcelsPreview.caption}</h2>
         <ArrowUpRight
@@ -107,6 +100,7 @@ export function ParcelsPreview({ data, href }: { data: ParcelsPreviewData; href:
         {/* The preview canvas: pointer-events off so the whole card is one click-through to /parcels. */}
         <div ref={containerRef} className={cn("h-full min-h-[120px] w-full", "pointer-events-none")} />
       </div>
-    </Link>
+      </Link>
+    </Card>
   );
 }

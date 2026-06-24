@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { en } from "@/copy/en";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -45,29 +45,17 @@ function Tile({
   );
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel}
-        className={cardClass({
-          interactive: true,
-          radius: "control",
-          className: "flex min-h-[6rem] flex-col p-4 text-left",
-        })}
-      >
+      <Card asChild className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
+        <button type="button" onClick={onClick} aria-label={ariaLabel}>
         {body}
-      </button>
+        </button>
+      </Card>
     );
   }
   return (
-    <div
-      className={cardClass({
-        radius: "control",
-        className: "flex min-h-[6rem] flex-col p-4 text-left",
-      })}
-    >
+    <Card className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
       {body}
-    </div>
+    </Card>
   );
 }
 

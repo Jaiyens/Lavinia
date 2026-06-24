@@ -9,7 +9,7 @@
 import { useActionState, useRef, useState, type ReactNode } from "react";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import type { ConnectState } from "../actions";
 
 const t = en.connect.picker;
@@ -43,7 +43,8 @@ export function UploadCard({
   const [chosen, setChosen] = useState<string | null>(null);
 
   return (
-    <form ref={formRef} action={formAction} className={cardClass({ className: "flex flex-col gap-4 p-5" })}>
+    <Card asChild className="flex flex-col gap-4 p-5">
+      <form ref={formRef} action={formAction}>
       <input type="hidden" name="farmId" value={farmId} />
 
       <div className="flex items-start gap-3">
@@ -104,7 +105,8 @@ export function UploadCard({
 
       <p className="type-caption text-on-surface-variant/70">{hint}</p>
       {state.error ? <p className="type-caption font-medium text-alert">{state.error}</p> : null}
-    </form>
+      </form>
+    </Card>
   );
 }
 

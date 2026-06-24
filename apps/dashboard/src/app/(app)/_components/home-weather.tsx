@@ -9,7 +9,7 @@ import {
   Sun,
 } from "lucide-react";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import type { FarmWeather } from "@/lib/weather/forecast";
 
 // Weather UI (server components) over the best-effort FarmWeather. Both the compact top-strip
@@ -46,10 +46,8 @@ const fmtTemp = (f: number): string => `${Math.round(f)}°`;
 export function WeatherWidget({ weather }: { weather: FarmWeather | null }) {
   if (weather === null) return null;
   return (
-    <div
-      className={cardClass({ className: "flex items-center gap-2.5 px-4 py-2.5" })}
-      aria-label={`${en.home.weather.condition(weather.current.code)}, ${fmtTemp(weather.current.tempF)}`}
-    >
+    <Card asChild className="flex-row items-center gap-2.5 px-4 py-2.5">
+      <div aria-label={`${en.home.weather.condition(weather.current.code)}, ${fmtTemp(weather.current.tempF)}`}>
       <WeatherGlyph code={weather.current.code} size={20} className="text-gold" />
       <div className="leading-tight">
         <p className="type-body-sm tnum font-semibold text-on-surface">
@@ -59,14 +57,16 @@ export function WeatherWidget({ weather }: { weather: FarmWeather | null }) {
           {en.home.weather.condition(weather.current.code)}
         </p>
       </div>
-    </div>
+      </div>
+    </Card>
   );
 }
 
 /** The bottom forecast card: today's reading plus the next few days. */
 export function WeatherCard({ weather }: { weather: FarmWeather | null }) {
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-5" })}>
+    <Card asChild className="flex flex-col gap-0 rounded-2xl p-5">
+      <section>
       <h2 className="type-label-caps text-on-surface-variant">{en.home.weather.title}</h2>
       {weather === null ? (
         <p className="type-body-md mt-4 text-on-surface-variant">{en.home.weather.unavailable}</p>
@@ -105,6 +105,7 @@ export function WeatherCard({ weather }: { weather: FarmWeather | null }) {
           </ul>
         </>
       )}
-    </section>
+      </section>
+    </Card>
   );
 }

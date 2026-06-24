@@ -1,37 +1,32 @@
-import { useId, type InputHTMLAttributes, type Ref } from "react";
-import { cn } from "@/lib/cn";
+import * as React from "react"
 
-export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-  /** label-caps label shown above the field. Omit for an unlabeled control. */
-  label?: string;
-  ref?: Ref<HTMLInputElement>;
-};
+import { cn } from "@/lib/cn"
 
-// DESIGN.md input. Minimalist: a label-caps label above, a hairline outline-variant box
-// that goes to brand green on focus. The label is associated with the field for screen
-// readers. Tokens only; no hardcoded color.
-export function Input({ label, id, className, ref, ...props }: InputProps) {
-  const generatedId = useId();
-  const inputId = id ?? generatedId;
-  return (
-    <div className="flex flex-col gap-1.5">
-      {label ? (
-        <label htmlFor={inputId} className="type-label-caps text-on-surface-variant">
-          {label}
-        </label>
-      ) : null}
-      <input
-        ref={ref}
-        id={inputId}
-        className={cn(
-          "type-body-md h-11 rounded-[var(--radius-control)] border border-outline-variant bg-surface-bright px-3 text-on-surface",
-          "placeholder:text-on-surface-variant/60",
-          "focus:border-primary focus-visible:outline-none",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className,
-        )}
-        {...props}
-      />
-    </div>
-  );
+type InputProps = React.ComponentProps<"input"> & {
+  label?: React.ReactNode
 }
+
+function Input({ className, label, type, ...props }: InputProps) {
+  const input = (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+
+  if (!label) return input
+
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="type-label-caps text-on-surface-variant">{label}</span>
+      {input}
+    </label>
+  )
+}
+
+export { Input, type InputProps }

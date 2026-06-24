@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, HandCoins, ShieldAlert } from "lucide-react";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import type { RefundScan } from "@/lib/dashboard/refunds";
 
 // The retroactive-refund hook (PG&E Rule 17.1), near the top of Home: commercial-rate meters that
@@ -15,7 +15,8 @@ export function RefundCard({ scan, energyHref }: { scan: RefundScan; energyHref:
   const upTo = `~$${Math.round(scan.estimatedUpToCents / 100 / 1000)}k`;
 
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
+    <Card asChild className="flex flex-col gap-0 rounded-2xl p-6">
+      <section>
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/20 text-on-surface">
           <HandCoins size={16} aria-hidden />
@@ -43,6 +44,7 @@ export function RefundCard({ scan, energyHref }: { scan: RefundScan; energyHref:
         {t.cta}
         <ArrowRight size={16} aria-hidden />
       </Link>
-    </section>
+      </section>
+    </Card>
   );
 }

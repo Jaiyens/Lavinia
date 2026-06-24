@@ -9,7 +9,7 @@ import { MEMBER_WELCOME_COOKIE, shouldShowMemberWelcome } from "@/lib/member-wel
 import { en } from "@/copy/en";
 import { MemberWelcome } from "./member-welcome";
 import { formatUsdWhole } from "@/lib/format/money";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { upcomingCloses } from "@/lib/dashboard/calendar";
 import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
 import { closeDateShort } from "@/lib/format/date";
@@ -378,7 +378,8 @@ function TypeTag({ tool }: { tool: string }) {
 // The prioritized "what needs a look" list: each row a plain one-line story with a type tag.
 function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energyHref: string }) {
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex h-full min-h-0 flex-col overflow-hidden p-5" })}>
+    <Card asChild className="flex h-full min-h-0 flex-col gap-0 overflow-hidden rounded-2xl p-5">
+      <section>
       <h2 className="type-label-caps mb-3 shrink-0 text-on-surface-variant">{en.home.findingsTitle}</h2>
       {findings.length === 0 ? (
         <p className="type-body-md text-on-surface-variant">{en.home.findingsEmpty}</p>
@@ -409,6 +410,7 @@ function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energ
           ))}
         </ul>
       )}
-    </section>
+      </section>
+    </Card>
   );
 }

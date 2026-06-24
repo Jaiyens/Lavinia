@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock } from "lucide-react";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import type { UpcomingClose } from "@/lib/dashboard/calendar";
 
 // The front-page billing-close surface: WHEN each meter's PG&E billing closes (the date the serial
@@ -32,7 +32,8 @@ export function BillingClosesCard({
   const rest = closes.slice(1);
 
   return (
-    <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
+    <Card asChild className="flex flex-col gap-0 rounded-2xl p-6">
+      <section>
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-container text-on-primary-container">
           <CalendarClock size={16} aria-hidden />
@@ -74,6 +75,7 @@ export function BillingClosesCard({
       ) : (
         <p className="type-body-md mt-3 text-on-surface-variant">{t.closesNone}</p>
       )}
-    </section>
+      </section>
+    </Card>
   );
 }

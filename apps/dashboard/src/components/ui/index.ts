@@ -10,7 +10,6 @@ export {
   CardFooter,
   CardHeader,
   CardTitle,
-  cardClass,
 } from "./card";
 export { Skeleton } from "./skeleton";
 export { Alert, AlertDescription, AlertTitle } from "./alert";

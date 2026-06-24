@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
@@ -75,7 +75,7 @@ export function AddParcelTool({ onAdded }: { onAdded: (block: FarmParcel) => voi
   }
 
   return (
-    <div className={cardClass({ className: "pointer-events-auto w-[min(92vw,320px)] p-4" })}>
+    <Card className="pointer-events-auto w-[min(92vw,320px)] gap-0 p-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="type-label-caps text-primary">{t.addParcel}</p>
@@ -120,7 +120,7 @@ export function AddParcelTool({ onAdded }: { onAdded: (block: FarmParcel) => voi
         {loading ? t.adding : t.addParcel}
       </Button>
       <p className="mt-2 type-label-caps text-on-surface-variant/70">{t.addNote}</p>
-    </div>
+    </Card>
   );
 }
 

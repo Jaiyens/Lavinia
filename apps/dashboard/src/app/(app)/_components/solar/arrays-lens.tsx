@@ -3,7 +3,7 @@
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
 import type { SolarArrayGroup, SolarNeedsReview } from "@/lib/dashboard/solar";
 import { auditAllocation, classifyProgramType } from "@/lib/energy/solar-allocation";
@@ -104,7 +104,8 @@ function ArrayCard({
   onOpen: (id: string) => void;
 }) {
   return (
-    <article className={cardClass({ className: "overflow-hidden" })}>
+    <Card asChild className="gap-0 overflow-hidden">
+      <article>
       <header className="border-b border-outline-variant p-4">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="type-title text-on-surface">{group.name ?? t.unnamed}</h3>
@@ -149,7 +150,8 @@ function ArrayCard({
       </ul>
 
       <AuditRows group={group} onOpen={onOpen} />
-    </article>
+      </article>
+    </Card>
   );
 }
 
@@ -252,7 +254,8 @@ export function ArraysLens({
       ))}
 
       {unlinkedMeters.length > 0 && (
-        <article className={cardClass({ className: "overflow-hidden" })}>
+        <Card asChild className="gap-0 overflow-hidden">
+          <article>
           <header className="border-b border-outline-variant p-4">
             <h3 className="type-title text-on-surface">{t.unlinkedHeading}</h3>
             <p className="type-caption mt-1 text-on-surface-variant">{t.unlinkedNote}</p>
@@ -272,14 +275,16 @@ export function ArraysLens({
               </li>
             ))}
           </ul>
-        </article>
+          </article>
+        </Card>
       )}
 
       {/* C-1 (FR6): array codes meters referenced but no generating meter defined, surfaced as a muted
           needs-review card rather than silently dropped. The code is shown verbatim (never a guess,
           never normalized); there is no meter to open, so the rows are static. */}
       {unlinkedCodes.length > 0 && (
-        <article className={cardClass({ className: "overflow-hidden" })}>
+        <Card asChild className="gap-0 overflow-hidden">
+          <article>
           <header className="border-b border-outline-variant p-4">
             <h3 className="type-title text-on-surface">{t.unlinkedCodeHeading}</h3>
             <p className="type-caption mt-1 text-on-surface-variant">{t.unlinkedCodeNote}</p>
@@ -294,7 +299,8 @@ export function ArraysLens({
               </li>
             ))}
           </ul>
-        </article>
+          </article>
+        </Card>
       )}
     </section>
   );

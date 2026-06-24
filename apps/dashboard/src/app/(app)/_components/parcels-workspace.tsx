@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en, num } from "@/copy/en";
-import { cardClass } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { COLOR_BYS, legendFor, type LegendItem } from "@/lib/parcel/farm/color";
 import { summarize, type PortfolioSummary } from "@/lib/parcel/farm/portfolio";
 import type { ColorByKey, Farm, FarmParcel } from "@/lib/parcel/farm/types";
@@ -114,7 +114,7 @@ function PortfolioStrip({
 }) {
   const total = summary.total_acres || 1;
   return (
-    <div className={cardClass({ className: "p-3.5" })}>
+    <Card className="gap-0 p-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <h1 className="type-title text-on-surface">{farmName}</h1>
         <span className="type-label-caps text-on-surface-variant">{county} County</span>
@@ -156,7 +156,7 @@ function PortfolioStrip({
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -186,7 +186,7 @@ function ColorByControl({
   legend: LegendItem[];
 }) {
   return (
-    <div className={cardClass({ className: "p-3.5" })}>
+    <Card className="gap-0 p-3.5">
       <p className="type-label-caps text-on-surface-variant">{t.colorBy}</p>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {COLOR_BYS.map((cb) => (
@@ -220,6 +220,6 @@ function ColorByControl({
           <span className="type-body-sm text-on-surface-variant">{t.attention}</span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

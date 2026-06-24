@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import type { FindingView } from "@/lib/dashboard/findings";
@@ -43,7 +43,8 @@ export function RateFixCard({
   // check; otherwise say plainly that there is not enough billing history yet.
   if (finding === null) {
     return (
-      <section className={cardClass({ radius: "2xl", className: "flex flex-col p-6" })}>
+      <Card asChild className="flex flex-col gap-0 rounded-2xl p-6">
+        <section>
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-container text-on-primary-container">
             <Zap size={16} aria-hidden />
@@ -58,7 +59,8 @@ export function RateFixCard({
         ) : (
           <p className="type-title mt-3 text-on-surface">{en.home.spendTrendEmpty}</p>
         )}
-      </section>
+        </section>
+      </Card>
     );
   }
 
@@ -79,13 +81,11 @@ export function RateFixCard({
   };
 
   return (
-    <section
-      aria-busy={isPending}
-      className={cardClass({
-        radius: "2xl",
-        className: cn("relative flex flex-col overflow-hidden p-6", isPending && "opacity-70"),
-      })}
+    <Card
+      asChild
+      className={cn("relative flex flex-col gap-0 overflow-hidden rounded-2xl p-6", isPending && "opacity-70")}
     >
+      <section aria-busy={isPending}>
       {/* The one flourish: a green border beam on entrance (idle after), dropped under reduced motion. */}
       {!resolved && <BorderBeam size={140} duration={9} colorFrom={GREEN} colorTo={GOLD} />}
 
@@ -170,6 +170,7 @@ export function RateFixCard({
           )}
         </>
       )}
-    </section>
+      </section>
+    </Card>
   );
 }

@@ -4,7 +4,7 @@ import { type ReactNode, useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { cardClass } from "@/components/ui";
+import { Card as UiCard } from "@/components/ui";
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
@@ -47,7 +47,7 @@ function Delta({ deltaCents, series }: { deltaCents: number | null; series?: num
   );
 }
 
-function Card({
+function KpiCard({
   label,
   onClick,
   ariaLabel,
@@ -59,19 +59,12 @@ function Card({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className={cardClass({
-        interactive: true,
-        radius: "control",
-        className: "flex min-h-[6rem] flex-col p-4 text-left",
-      })}
-    >
+    <UiCard asChild className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
+      <button type="button" onClick={onClick} aria-label={ariaLabel}>
       <span className="type-label-caps text-on-surface-variant">{label}</span>
       {children}
-    </button>
+      </button>
+    </UiCard>
   );
 }
 
@@ -102,7 +95,7 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Card label={en.shell.kpi.spendLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.spendAria}>
+      <KpiCard label={en.shell.kpi.spendLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.spendAria}>
         {spend.coverage.loaded > 0 ? (
           <span className="type-headline mt-1 tnum text-on-surface">{formatUsd(spend.cents)}</span>
         ) : (
@@ -122,14 +115,14 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
             <Sparkline series={spend.series} className="text-on-surface-variant" />
           </div>
         )}
-      </Card>
+      </KpiCard>
 
       {/* Feature C: the demand-share headline. Computed from this set's reconciled bills
           (demand line cents / total spend cents), never asserted. The bold percentage proves
           the bill is not rate times usage. Omitted (never a fabricated 0%) when nothing is
           reconciled in view. */}
       {share.percent !== null && (
-        <Card
+        <KpiCard
           label={en.spike.shareLabel}
           onClick={scrollToLens}
           ariaLabel={en.spike.shareAria(share.percent)}
@@ -138,10 +131,10 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
             {en.spike.sharePercent(share.percent)}
           </span>
           <span className="type-caption mt-1 text-on-surface-variant">{en.spike.shareCaption}</span>
-        </Card>
+        </KpiCard>
       )}
 
-      <Card label={en.shell.kpi.demandLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.demandAria}>
+      <KpiCard label={en.shell.kpi.demandLabel} onClick={scrollToLens} ariaLabel={en.shell.kpi.demandAria}>
         {demand.hasDemand ? (
           <>
             <span className="type-headline mt-1 tnum text-on-surface">{formatUsd(demand.cents)}</span>
@@ -154,10 +147,10 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
         ) : (
           <span className="type-body-md mt-2 text-on-surface-variant">{en.shell.kpi.noDemand}</span>
         )}
-      </Card>
+      </KpiCard>
 
       {biggestMover && (
-        <Card
+        <KpiCard
           label={en.shell.kpi.moverLabel}
           onClick={() => {
             void setMeter(biggestMover.meterId);
@@ -167,7 +160,7 @@ export function KpiStrip({ meters }: { meters: MeterView[] }) {
         >
           <span className="type-headline mt-1 text-on-surface">{biggestMover.meterName}</span>
           <Delta deltaCents={biggestMover.deltaCents} />
-        </Card>
+        </KpiCard>
       )}
     </div>
   );

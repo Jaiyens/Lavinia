@@ -3,7 +3,7 @@
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
 import { solarLensQueryOptions } from "@/lib/solar/lens-solar";
 import type { SolarDataset } from "@/lib/dashboard/solar";
@@ -84,14 +84,16 @@ export function SolarCalendarLens({ dataset }: { dataset: SolarDataset }) {
     <section id="solar-lens" aria-label={en.solar.lens.calendar} className="scroll-mt-6 space-y-4">
       {/* The next-upcoming pull-out, above the grid, in plain words (FR13). Honest absence when no
           meter has a true-up month on file - never a fabricated date. */}
-      <article className={cardClass({ className: "p-4" })}>
+      <Card asChild className="gap-0 p-4">
+        <article>
         <p className="type-label-caps text-on-surface-variant">{t.nextLabel}</p>
         <p className="type-title mt-1 text-on-surface" aria-live="polite">
           {nextUpcoming !== null
             ? t.nextLine(nextUpcoming.month, nextUpcoming.meterCount, nextUpcoming.monthsAhead)
             : t.nextNone}
         </p>
-      </article>
+        </article>
+      </Card>
 
       {anyPlaced ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">

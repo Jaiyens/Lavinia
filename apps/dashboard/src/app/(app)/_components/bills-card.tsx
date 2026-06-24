@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, CheckCircle2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { formatUsdWhole } from "@/lib/format/money";
 import type { BillsScan } from "@/lib/dashboard/bills";
 
@@ -42,12 +42,11 @@ export function BillsCard({ scan, energyHref }: { scan: BillsScan; energyHref: s
     .slice(0, 6);
 
   return (
-    <section
-      className={cardClass({
-        radius: "2xl",
-        className: cn("flex flex-col p-6", overdue && "border-l-4 border-l-alert"),
-      })}
+    <Card
+      asChild
+      className={cn("flex flex-col gap-0 rounded-2xl p-6", overdue && "border-l-4 border-l-alert")}
     >
+      <section>
       <div className="flex items-center gap-2">
         <span
           className={cn(
@@ -148,6 +147,7 @@ export function BillsCard({ scan, energyHref }: { scan: BillsScan; energyHref: s
         {t.cta}
         <ArrowRight size={16} aria-hidden />
       </Link>
-    </section>
+      </section>
+    </Card>
   );
 }

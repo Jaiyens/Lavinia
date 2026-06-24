@@ -1,9 +1,29 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { ChevronDown, Download, FileText, RotateCcw, Send, Square, Terminal } from "lucide-react";
+import {
+  ArrowUp,
+  ChevronDown,
+  Download,
+  FileText,
+  Mic,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Square,
+  Terminal,
+} from "lucide-react";
 import { Streamdown } from "streamdown";
 import {
   Alert,
@@ -11,19 +31,17 @@ import {
   Badge,
   Button,
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ScrollArea,
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
-  Separator,
   Textarea,
   Tooltip,
   TooltipContent,
@@ -322,51 +340,309 @@ function MessagePart({
   return null;
 }
 
-function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
-  const isUser = message.role === "user";
+function AssistantAvatar() {
   return (
-    <article className={cn("flex min-w-0", isUser ? "justify-end" : "justify-start")}>
-      <Card
-        className={cn(
-          "min-w-0 max-w-[92%] gap-3 overflow-hidden rounded-2xl px-4 py-3 type-body-md shadow-[var(--shadow-soft)]",
-          isUser
-            ? "bg-primary text-on-primary"
-            : "border border-outline-variant bg-surface-container-lowest text-on-surface",
-        )}
-      >
+    <span
+      aria-hidden
+      className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+    >
+      <Sparkles size={16} />
+    </span>
+  );
+}
+
+function MessageTurn({
+  message,
+  isStreaming,
+  showRegenerate,
+  onRegenerate,
+}: {
+  message: UIMessage;
+  isStreaming: boolean;
+  showRegenerate: boolean;
+  onRegenerate: () => void;
+}) {
+  const isUser = message.role === "user";
+
+  if (isUser) {
+    return (
+      <div className="flex min-w-0 justify-end">
+        <div className="min-w-0 max-w-[85%] rounded-3xl rounded-br-md bg-surface-container-high px-4 py-2.5 type-body-md text-on-surface">
+          {message.parts.map((part, index) =>
+            part.type === "text" ? (
+              <MessagePart key={`${message.id}-${index}`} part={part} isUser isStreaming={false} />
+            ) : null,
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 gap-3">
+      <AssistantAvatar />
+      <div className="flex min-w-0 flex-1 flex-col gap-3 pt-1">
         {message.parts.map((part, index) => (
-          <MessagePart key={`${message.id}-${index}`} part={part} isUser={isUser} isStreaming={isStreaming} />
+          <MessagePart key={`${message.id}-${index}`} part={part} isUser={false} isStreaming={isStreaming} />
         ))}
-      </Card>
-    </article>
+        {showRegenerate ? (
+          <div className="flex">
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 type-caption text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+            >
+              <RotateCcw size={13} aria-hidden />
+              Regenerate
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 function EmptyState({ starters, onStarter }: { starters: readonly string[]; onStarter: (text: string) => void }) {
   return (
-    <Card className="mx-auto flex min-h-72 max-w-2xl items-center justify-center border-dashed border-outline-variant bg-surface-container-lowest px-4 py-8 text-center shadow-none">
-      <CardContent className="px-0">
-        <p className="type-label-caps text-primary">Almond</p>
-        <h2 className="type-display-lg mt-1 text-on-surface">Ask about this farm</h2>
-        <p className="type-body-md mt-2 max-w-md text-on-surface-variant">
-          Almond can inspect the farm files with bash, read full files, and save notes in the sandbox.
-        </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {starters.map((starter) => (
-            <Button
-              key={starter}
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => onStarter(starter)}
-              className="h-auto rounded-full px-3 py-2 font-medium"
-            >
-              {starter}
-            </Button>
-          ))}
+    <div className="flex min-h-[55vh] flex-col items-center justify-center px-2 text-center">
+      <span aria-hidden className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <Sparkles size={28} />
+      </span>
+      <h2 className="type-display-lg mt-5 text-on-surface">Ask about this farm</h2>
+      <p className="type-body-md mt-2 max-w-md text-on-surface-variant">
+        Almond can inspect your meters, rates, and bills, then save notes you can download.
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {starters.map((starter) => (
+          <button
+            key={starter}
+            type="button"
+            onClick={() => onStarter(starter)}
+            className="rounded-full border border-outline-variant bg-surface-bright px-3.5 py-2 type-body-sm text-on-surface transition-colors hover:bg-surface-container-low"
+          >
+            {starter}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type SpeechRecognitionResultLike = ArrayLike<ArrayLike<{ transcript: string }>>;
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  onresult: ((event: { results: SpeechRecognitionResultLike }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const scope = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
+}
+
+const subscribeNoop = () => () => {};
+const isVoiceSupported = () => getSpeechRecognitionCtor() !== null;
+const isVoiceSupportedOnServer = () => false;
+
+// Optional voice dictation via the browser Speech Recognition API. Feature-detected
+// (through useSyncExternalStore so it stays SSR-safe) so the mic only shows where it
+// actually works (Chrome and friends) and the UI stays honest everywhere else.
+function useVoiceInput(onTranscript: (text: string) => void) {
+  const supported = useSyncExternalStore(subscribeNoop, isVoiceSupported, isVoiceSupportedOnServer);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const toggle = useCallback(() => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Recognition = getSpeechRecognitionCtor();
+    if (!Recognition) return;
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) onTranscript(transcript);
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }, [listening, onTranscript]);
+
+  return { supported, listening, toggle };
+}
+
+function ComposerIconButton({
+  label,
+  onClick,
+  disabled,
+  active,
+  filled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  filled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={label}
+          aria-pressed={active}
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+            filled
+              ? "bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+            active && "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary",
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function Composer({
+  input,
+  setInput,
+  onSubmit,
+  busy,
+  onStop,
+  model,
+  setModel,
+  hasMessages,
+  onNewChat,
+}: {
+  input: string;
+  setInput: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  busy: boolean;
+  onStop: () => void;
+  model: AlmondModelId;
+  setModel: (value: AlmondModelId) => void;
+  hasMessages: boolean;
+  onNewChat: () => void;
+}) {
+  const appendTranscript = useCallback(
+    (text: string) => setInput(input.trim() ? `${input.trim()} ${text}` : text),
+    [input, setInput],
+  );
+  const voice = useVoiceInput(appendTranscript);
+  const canSend = input.trim().length > 0 && !busy;
+
+  return (
+    <form onSubmit={onSubmit} className="px-3 pb-3 sm:px-4 sm:pb-4">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="flex flex-col gap-1.5 rounded-[1.75rem] border border-outline-variant bg-surface-bright px-2.5 py-2 shadow-[var(--shadow-soft)] transition-colors focus-within:border-outline">
+          <Textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            rows={1}
+            placeholder="Ask Almond about this farm"
+            aria-label="Message Almond"
+            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 type-body-md text-on-surface shadow-none placeholder:text-on-surface-variant/60 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0 md:text-[0.9375rem]"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (canSend) event.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          <div className="flex items-center gap-1">
+            <ComposerIconButton label="New chat" onClick={onNewChat} disabled={!hasMessages} filled>
+              <Plus size={18} aria-hidden />
+            </ComposerIconButton>
+
+            <div className="flex-1" />
+
+            <Select value={model} onValueChange={(value) => setModel(value as AlmondModelId)} disabled={busy}>
+              <SelectTrigger aria-label="Model" className="w-full max-w-48">
+                <SelectValue placeholder="Model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Model</SelectLabel>
+                  {ALMOND_MODELS.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {voice.supported ? (
+              <ComposerIconButton
+                label={voice.listening ? "Stop listening" : "Dictate"}
+                onClick={voice.toggle}
+                active={voice.listening}
+              >
+                <Mic size={18} aria-hidden />
+              </ComposerIconButton>
+            ) : null}
+
+            {busy ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onStop}
+                    aria-label="Stop Almond"
+                    className="grid size-9 shrink-0 place-items-center rounded-full bg-inverse-surface text-inverse-on-surface transition-colors hover:bg-inverse-surface/90"
+                  >
+                    <Square size={15} aria-hidden className="fill-current" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Stop Almond</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="submit"
+                disabled={!canSend}
+                aria-label="Send message"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-inverse-surface text-inverse-on-surface transition-colors hover:bg-inverse-surface/90 disabled:bg-surface-container-high disabled:text-on-surface-variant"
+              >
+                <ArrowUp size={18} aria-hidden />
+              </button>
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </form>
   );
 }
 
@@ -380,145 +656,114 @@ export function AlmondChat({
   const [input, setInput] = useState("");
   const [model, setModel] = useState<AlmondModelId>(DEFAULT_ALMOND_MODEL);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/almond/chat" }), []);
-  const { messages, sendMessage, status, stop, regenerate, error } = useChat<UIMessage>({
+  const { messages, sendMessage, setMessages, status, stop, regenerate, error } = useChat<UIMessage>({
     transport,
     experimental_throttle: 80,
   });
   const busy = status === "submitted" || status === "streaming";
   const lastMessageId = messages.at(-1)?.id;
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const starters = [
     "What should I look at first?",
     "Find meters with the highest demand charges.",
     "Summarize open findings by dollars at stake.",
   ];
 
-  async function submitText(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || busy) return;
-    setInput("");
-    await sendMessage({ text: trimmed }, { body: { model } });
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, busy]);
+
+  const submitText = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || busy) return;
+      setInput("");
+      await sendMessage({ text: trimmed }, { body: { model } });
+    },
+    [busy, model, sendMessage],
+  );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await submitText(input);
   }
 
+  function onNewChat() {
+    void stop();
+    setMessages([]);
+    setInput("");
+  }
+
   return (
     <TooltipProvider>
-      <Card
+      <div
         className={cn(
-          "flex h-full min-h-[560px] min-w-0 max-w-full gap-0 overflow-hidden rounded-3xl border-outline-variant bg-surface-container-lowest py-0 text-on-surface shadow-[var(--shadow-soft)]",
+          "flex h-full min-h-[480px] min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest text-on-surface shadow-[var(--shadow-soft)]",
           className,
         )}
       >
-        <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-3 border-b border-outline-variant px-4 py-3">
-          <div className="min-w-0">
-            <p className="type-label-caps text-primary">Almond</p>
-            <CardTitle className="type-title text-on-surface">Farm data agent</CardTitle>
+        <header className="flex min-w-0 items-center justify-between gap-3 border-b border-outline-variant px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span aria-hidden className="grid size-7 place-items-center rounded-full bg-primary/10 text-primary">
+              <Sparkles size={15} />
+            </span>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <p className="type-title leading-none text-on-surface">Almond</p>
+              <span className="hidden type-caption text-on-surface-variant sm:inline">Farm data agent</span>
+            </div>
           </div>
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <Select value={model} onValueChange={(value) => setModel(value as AlmondModelId)} disabled={busy}>
-              <SelectTrigger
-                aria-label="Model"
-                size="sm"
-                className="max-w-[11rem] border-outline-variant bg-surface-bright type-body-sm text-on-surface sm:max-w-none"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ALMOND_MODELS.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {header}
-          </div>
-        </CardHeader>
+          {header ? <div className="flex shrink-0 items-center gap-2">{header}</div> : null}
+        </header>
 
         <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden">
-          <CardContent className="min-w-0 overflow-hidden px-4 py-5">
+          <div className="mx-auto min-w-0 max-w-3xl px-4 py-6">
             {messages.length === 0 ? (
               <EmptyState starters={starters} onStarter={submitText} />
             ) : (
-              <div className="flex min-w-0 flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-6">
                 {messages.map((message) => (
-                  <MessageBubble
+                  <MessageTurn
                     key={message.id}
                     message={message}
                     isStreaming={busy && message.role === "assistant" && message.id === lastMessageId}
+                    showRegenerate={!busy && message.role === "assistant" && message.id === lastMessageId}
+                    onRegenerate={() => void regenerate({ body: { model } })}
                   />
                 ))}
+                <div ref={bottomRef} aria-hidden />
               </div>
             )}
-          </CardContent>
+          </div>
         </ScrollArea>
 
         {error ? (
-          <Alert
-            variant="destructive"
-            className="rounded-none border-x-0 border-b-0 border-outline-variant bg-risk/10 text-risk"
-          >
-            <AlertDescription className="flex items-center gap-2 text-risk">
-              <span>Almond could not finish that request.</span>
-              <Button type="button" variant="secondary" size="sm" onClick={() => void regenerate({ body: { model } })}>
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <div className="mx-auto w-full max-w-3xl px-4">
+            <Alert
+              variant="destructive"
+              className="rounded-[var(--radius-control)] border-risk/20 bg-risk/10 text-risk"
+            >
+              <AlertDescription className="flex items-center justify-between gap-2 text-risk">
+                <span>Almond could not finish that request.</span>
+                <Button type="button" variant="secondary" size="sm" onClick={() => void regenerate({ body: { model } })}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
         ) : null}
 
-        <Separator className="bg-outline-variant" />
-        <form onSubmit={onSubmit} className="bg-surface-container-low p-3">
-          <div className="flex items-end gap-2">
-            <Textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              rows={2}
-              placeholder="Ask Almond to inspect the farm files..."
-              className="type-body-md min-h-11 flex-1 resize-none rounded-2xl border-outline-variant bg-surface-bright text-on-surface placeholder:text-on-surface-variant/60 focus-visible:border-primary focus-visible:ring-primary/20"
-              disabled={busy}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void submitText(input);
-                }
-              }}
-            />
-            {busy ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void stop()} aria-label="Stop Almond">
-                    <Square size={15} aria-hidden />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Stop Almond</TooltipContent>
-              </Tooltip>
-            ) : messages.length > 0 ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void regenerate({ body: { model } })}
-                    aria-label="Regenerate response"
-                  >
-                    <RotateCcw size={15} aria-hidden />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Regenerate response</TooltipContent>
-              </Tooltip>
-            ) : null}
-            <Button type="submit" size="sm" disabled={busy || input.trim().length === 0}>
-              <Send size={15} aria-hidden />
-              Send
-            </Button>
-          </div>
-        </form>
-      </Card>
+        <Composer
+          input={input}
+          setInput={setInput}
+          onSubmit={onSubmit}
+          busy={busy}
+          onStop={() => void stop()}
+          model={model}
+          setModel={setModel}
+          hasMessages={messages.length > 0}
+          onNewChat={onNewChat}
+        />
+      </div>
     </TooltipProvider>
   );
 }

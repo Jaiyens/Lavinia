@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CalendarDays, Lock, LockOpen } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { BentoGrid, type BentoItem } from "./bento-grid";
 
 // The home board: the header (greeting + date + the "Edit tabs" lock toggle) and the bento grid.
@@ -40,10 +40,12 @@ export function HomeBoard({
             {editing ? <LockOpen size={15} aria-hidden /> : <Lock size={15} aria-hidden />}
             {en.home.editLayout}
           </button>
-          <div className={cardClass({ className: "flex items-center gap-2 px-3 py-1.5" })} aria-hidden>
+          <Card asChild className="flex-row items-center gap-2 px-3 py-1.5">
+            <div aria-hidden>
             <CalendarDays size={16} className="text-on-surface-variant" />
             <span className="type-caption tnum text-on-surface">{dateStr}</span>
-          </div>
+            </div>
+          </Card>
         </div>
       </header>
 

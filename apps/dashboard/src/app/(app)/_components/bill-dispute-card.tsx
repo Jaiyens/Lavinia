@@ -15,7 +15,7 @@
 import { useState, useTransition } from "react";
 import { FileText, Check, X, Download } from "lucide-react";
 import { en } from "@/copy/en";
-import { cardClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import {
   approveAndPrepareDisputeAction,
   skipDisputeAction,
@@ -80,7 +80,7 @@ export function BillDisputeCard({
   }
 
   return (
-    <div className={cardClass({ radius: "2xl", className: "flex flex-col gap-3 p-5" })}>
+    <Card className="flex flex-col gap-3 rounded-2xl p-5">
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-container text-on-primary-container">
           <FileText size={18} aria-hidden />
@@ -145,6 +145,6 @@ export function BillDisputeCard({
           {error}
         </p>
       )}
-    </div>
+    </Card>
   );
 }
