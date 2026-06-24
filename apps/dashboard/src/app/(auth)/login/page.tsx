@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { signIn, DEV_BYPASS_EMAIL } from "@/lib/auth";
 import { checkCodeRequest } from "@/lib/auth/login-rate-limit";
 import { Button, Input } from "@/components/ui";
 import { LogoMark } from "@/components/logo";
@@ -42,6 +42,10 @@ async function requestCode(formData: FormData) {
   const callbackUrl = safeCallback(formData.get("callbackUrl"));
   if (!email || !email.includes("@")) {
     redirect("/login?error=1");
+  }
+  // Dev-only: skip the 6-digit code entirely for the designated bypass email on localhost.
+  if (process.env.NODE_ENV !== "production" && email === DEV_BYPASS_EMAIL) {
+    await signIn("dev-bypass", { email, redirectTo: callbackUrl });
   }
   // Per-email send throttle (lib/auth/login-rate-limit.ts): bounds mailbombing and stops the
   // "Send a new code" loop from minting unlimited fresh codes to brute-force against. Over

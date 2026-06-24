@@ -1,7 +1,11 @@
-import { AlmondPage } from "@/app/(app)/_components/almond/almond-page";
+import { AlmondChat } from "@/app/(app)/_components/almond/almond-chat";
 
-// The Almond tab on the public Tour (badged demo farm). Same surface as the signed-in /almond page;
-// the tour layout's provider withholds attachments/export (demo is never an owner).
-export default function TourAlmondRoute() {
-  return <AlmondPage />;
+export const dynamic = "force-dynamic";
+
+export default function TourAlmondPage() {
+  return (
+    <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-5xl px-4 py-4 lg:px-8 lg:py-6">
+      <AlmondChat className="flex-1" />
+    </div>
+  );
 }

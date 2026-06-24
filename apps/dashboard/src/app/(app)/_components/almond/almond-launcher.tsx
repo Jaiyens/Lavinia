@@ -1,59 +1,43 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { AnimatePresence } from "motion/react";
-import { en } from "@/copy/en";
-import { ShimmerButton } from "@/components/ui/shimmer-button";
-import { BorderBeam } from "@/components/ui/border-beam";
-import { AlmondAvatar } from "./almond-avatar";
-import { AlmondPanel } from "./almond-panel";
-import { useAlmondChat, ZERO_WIDTH_SPACE } from "./almond-launcher-provider";
+import { useState } from "react";
+import { MessageCircle, X } from "lucide-react";
+import { Button } from "@/components/ui";
+import { cn } from "@/lib/cn";
+import { AlmondChat } from "./almond-chat";
 
-const t = en.shell.almond;
-
-/**
- * Almond's floating quick-ask launcher: a corner FAB on every (app) screen that opens the chat
- * PANEL. The conversation itself now lives in `AlmondChatProvider` (so the panel and the dedicated
- * /almond page share one thread); this component is just the FAB + the panel mount + the polite
- * navigation announcer. On the dedicated Almond page the FAB is hidden — the page is the surface
- * there, so a floating duplicate would be redundant.
- */
 export function AlmondLauncher() {
-  const { open, setOpen, announcement } = useAlmondChat();
-  const pathname = usePathname();
-  const onAlmondPage = pathname === "/almond" || pathname === "/tour/almond";
+  const [open, setOpen] = useState(false);
 
   return (
     <>
-      {/* Polite, visually hidden announcer for navigations Almond drives (UX-DR7). Mounted here (not
-          the panel) so it announces whether or not the panel is open. The trailing zero-width space
-          (toggled by `seq`) forces a text change so repeats are re-announced. */}
-      <span className="sr-only" role="status" aria-live="polite">
-        {announcement.text}
-        {announcement.seq % 2 === 1 ? ZERO_WIDTH_SPACE : ""}
-      </span>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "fixed bottom-20 right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-[var(--shadow-soft)] transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:bottom-6",
+          open && "pointer-events-none scale-95 opacity-0",
+        )}
+        aria-label="Open Almond"
+      >
+        <MessageCircle size={22} aria-hidden />
+      </button>
 
-      {!open && !onAlmondPage && (
-        <ShimmerButton
-          onClick={() => setOpen(true)}
-          aria-label={t.openLabel}
-          aria-expanded={false}
-          background="#2fa84f"
-          shimmerColor="#f2c14e"
-          borderRadius="999px"
-          className="fixed bottom-20 right-4 z-40 gap-2.5 py-2 pl-2 pr-5 shadow-[var(--shadow-elevated)] lg:bottom-6 lg:right-6"
-        >
-          {/* The mascot is the hero: a big almond on its own avatar disc, the label beside it. */}
-          <span className="relative grid h-12 w-12 place-items-center rounded-full bg-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.06)] ring-1 ring-black/5">
-            {/* The resting mascot watches the cursor wherever it goes on the screen. */}
-            <AlmondAvatar size={40} animated trackCursor />
-          </span>
-          <span className="type-body-md font-semibold text-white">{t.launcherLabel}</span>
-          <BorderBeam size={56} duration={6} colorFrom="#f2c14e" colorTo="#ffffff" />
-        </ShimmerButton>
-      )}
-
-      <AnimatePresence>{open && <AlmondPanel />}</AnimatePresence>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/20 p-3 backdrop-blur-sm lg:p-6">
+          <div className="flex h-full w-full max-w-2xl flex-col">
+            <AlmondChat
+              className="min-h-0 flex-1"
+              header={
+                <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+                  <X size={16} aria-hidden />
+                  Close
+                </Button>
+              }
+            />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

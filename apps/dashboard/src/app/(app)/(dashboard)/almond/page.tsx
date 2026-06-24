@@ -1,8 +1,11 @@
-import { AlmondPage } from "../../_components/almond/almond-page";
+import { AlmondChat } from "@/app/(app)/_components/almond/almond-chat";
 
-// The dedicated Almond tab. The conversation lives in the dashboard layout's AlmondChatProvider
-// (shared with the floating panel), so this page renders only the full-page surface. The landing is a
-// minimalist, centered command center (greeting + composer + suggestions); no farm-stat rollups.
-export default function AlmondRoute() {
-  return <AlmondPage />;
+export const dynamic = "force-dynamic";
+
+export default function AlmondPage() {
+  return (
+    <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-5xl px-4 py-4 lg:px-8 lg:py-6">
+      <AlmondChat className="flex-1" />
+    </div>
+  );
 }

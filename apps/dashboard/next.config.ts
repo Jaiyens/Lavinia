@@ -1,14 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // AI SDK harness adapters load bridge/runtime assets dynamically with import.meta.url.
-  // Keep them external to Turbopack's server bundle so those package-internal files are resolved
-  // by Node from node_modules at runtime instead of being statically traced as app modules.
+  // bash-tool and the Vercel Sandbox SDK load runtime assets and optional Node packages dynamically.
+  // Keep them external to Turbopack's server bundle so package-internal fallbacks resolve in Node
+  // at runtime instead of being statically traced as app modules.
   serverExternalPackages: [
-    "@ai-sdk/harness",
-    "@ai-sdk/harness-claude-code",
-    "@ai-sdk/harness-codex",
-    "@ai-sdk/sandbox-vercel",
+    "bash-tool",
+    "just-bash",
     "@vercel/sandbox",
   ],
   // Server code reads committed fixtures from ./fixtures at runtime (the rate card, the

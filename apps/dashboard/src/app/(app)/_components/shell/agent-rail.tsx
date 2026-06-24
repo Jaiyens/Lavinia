@@ -6,7 +6,6 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import type { FarmAccess } from "@/lib/auth/access";
 import { Wordmark } from "@/components/logo";
-import { AlmondAvatar } from "../almond/almond-avatar";
 import { FarmSwitcher } from "./farm-switcher";
 import { RolePill } from "./role-pill";
 import { NAV_SECTIONS, agentHref, isAgentActive, type AgentItem } from "./agents";
@@ -80,14 +79,9 @@ export function AgentRail({
             : "text-on-surface hover:bg-surface-container-low",
         )}
       >
-        {/* Fixed-width icon slot so every label lines up at the same x, even though Almond's mascot
-            face is larger than the lucide icons (its `icon` is only a fallback). */}
+        {/* Fixed-width icon slot so every label lines up at the same x. */}
         <span aria-hidden className="flex w-7 shrink-0 items-center justify-center">
-          {agent.key === "almond" ? (
-            <AlmondAvatar size={28} />
-          ) : (
-            <Icon size={18} className={active ? "text-primary" : undefined} />
-          )}
+          <Icon size={18} className={active ? "text-primary" : undefined} />
         </span>
         <span>{agent.label}</span>
         {/* Open join-request count on the Team entry (admin-only). */}

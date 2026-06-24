@@ -4,7 +4,6 @@ import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
 import { resolveFarmAccess } from "@/lib/auth/access";
-import { checkUsageBudget, usageMeterCounts, type UsageBudgetDecision } from "@/lib/almond/usage-budget";
 import { RolePill } from "@/app/(app)/_components/shell/role-pill";
 import { signOutAction } from "../../actions";
 import { resolveActiveFarmId, resolveFarm } from "../_data";
@@ -39,10 +38,6 @@ export default async function AccountPage() {
   const canManageData = access?.canManageData ?? false;
   const canManageTeam = access?.canManageTeam ?? false;
 
-  // The signed-in operator's own Almond usage for the current window (per-user, durable). Read-only
-  // here (no recording). Null for the public Tour, where there is no userId to meter.
-  const usage = userId ? await checkUsageBudget(prisma, userId) : null;
-
   const t = en.account;
   const name = session?.user?.name?.trim() || null;
   const email = session?.user?.email ?? null;
@@ -64,13 +59,6 @@ export default async function AccountPage() {
           <Row label={t.emailLabel} value={email ?? t.noName} />
         </dl>
       </section>
-
-      {usage && (
-        <section className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-          <h2 className="type-label-caps mb-4 text-on-surface-variant">{t.usage.heading}</h2>
-          <UsageMeter budget={usage} />
-        </section>
-      )}
 
       {farm && (
         <section className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
@@ -142,49 +130,6 @@ export default async function AccountPage() {
           {t.signOut}
         </button>
       </form>
-    </div>
-  );
-}
-
-// Almond usage meter — the per-user budget shown like Claude's account usage panel, but in
-// plain operator English: a concrete "about N messages left" count over a bar, with the bar
-// filling and shifting green -> amber -> red as the window drains (color reinforces the count,
-// never the sole signal). The count is approximate (the real cap is token-based); "About" is honest.
-function UsageMeter({ budget }: { budget: UsageBudgetDecision }) {
-  const t = en.account.usage;
-  const weekly = budget.window === "weekly";
-  const { total, remaining, fractionUsed } = usageMeterCounts(budget);
-  const remainingFraction = 1 - fractionUsed;
-  const fillPct = Math.round(fractionUsed * 100);
-  const fill =
-    !budget.allowed || remainingFraction <= 0.1
-      ? "bg-risk"
-      : remainingFraction <= 0.4
-        ? "bg-gold"
-        : "bg-primary";
-  const period = weekly ? t.periodWeekly : t.periodDaily;
-  return (
-    <div className="flex flex-col gap-2">
-      {budget.allowed ? (
-        <p className="type-body-md text-on-surface">{t.remaining(remaining, total, period)}</p>
-      ) : (
-        <p className="type-body-md text-risk">{weekly ? t.limitReachedWeekly : t.limitReachedDaily}</p>
-      )}
-      <div
-        className="h-2 w-full overflow-hidden rounded-full bg-surface-container"
-        role="progressbar"
-        aria-valuenow={budget.allowed ? fillPct : 100}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={t.heading}
-      >
-        <div
-          className={`h-full rounded-full ${fill}`}
-          style={{ width: `${budget.allowed ? fillPct : 100}%` }}
-        />
-      </div>
-      <p className="type-body-sm text-on-surface-variant">{weekly ? t.resetsWeekly : t.resetsDaily}</p>
-      <p className="type-body-sm text-on-surface-variant">{t.hint}</p>
     </div>
   );
 }

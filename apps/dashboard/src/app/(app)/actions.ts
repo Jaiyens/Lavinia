@@ -16,7 +16,6 @@ import { dashboardFarm } from "@/lib/onboarding/farm";
 import { acceptanceResult } from "@/lib/recommendations/result";
 import { importBillUpload } from "@/lib/onboarding/sources";
 import { runSolarInsight } from "@/lib/recommendations/run-solar-insight";
-import { ALMOND_NUDGE_COOKIE } from "@/lib/almond/nudge";
 import { MEMBER_WELCOME_COOKIE } from "@/lib/member-welcome";
 import { en } from "@/copy/en";
 
@@ -53,25 +52,6 @@ export async function setActiveFarmAction(farmId: string): Promise<void> {
  */
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
-}
-
-/**
- * Mark the first-run Almond nudge as seen (Story 10.2). Sets an httpOnly cookie so the server gate
- * (`shouldShowAlmondNudge`) hides the nudge before render on every later view — it never reappears.
- * Re-checks `auth()` like the other shell actions (a Server Action is independently reachable). A
- * no-op for an unauthenticated caller (the nudge is owner-only); the client also self-hides at once,
- * so this write is fire-and-forget and never blocks the grower.
- */
-export async function dismissAlmondNudgeAction(): Promise<void> {
-  const session = await auth();
-  if (!session?.user) return;
-  const store = await cookies();
-  store.set(ALMOND_NUDGE_COOKIE, "1", {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365, // one year — a one-time hint, remembered
-  });
 }
 
 /**

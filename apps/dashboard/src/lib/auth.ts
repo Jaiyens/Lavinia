@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import type { EmailConfig } from "@auth/core/providers/email";
+import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
 import { terraPrismaAdapter } from "@/lib/auth-adapter";
@@ -18,6 +19,30 @@ import { sendLoginCode } from "@/lib/email";
 // (Auth.js deletes the VerificationToken row on a correct guess), and minting a new code deletes
 // any prior one (lib/auth-adapter.ts). 10 minutes balances "didn't arrive yet" against the window.
 const CODE_TTL_SECONDS = 10 * 60;
+
+export const DEV_BYPASS_EMAIL = "jaiyen_shetty@berkeley.edu";
+const isDevBypassEnabled = process.env.NODE_ENV !== "production";
+
+const devBypassProvider = isDevBypassEnabled
+  ? [
+      Credentials({
+        id: "dev-bypass",
+        name: "Dev Bypass",
+        credentials: { email: { type: "email" } },
+        async authorize(credentials) {
+          const email =
+            typeof credentials?.email === "string" ? credentials.email.toLowerCase().trim() : "";
+          if (email !== DEV_BYPASS_EMAIL) return null;
+          const user = await prisma.user.upsert({
+            where: { email },
+            update: {},
+            create: { email, name: "Jaiyen Shetty" },
+          });
+          return user;
+        },
+      }),
+    ]
+  : [];
 
 // Passwordless email sign-in via a typed 6-digit CODE (not a magic link). Built as a plain
 // `type: "email"` provider object rather than the Nodemailer factory on purpose: that factory
@@ -64,7 +89,8 @@ const emailCodeProvider: EmailConfig = {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   // Append the adapter-backed email code provider to the edge-safe providers from authConfig.
-  providers: [...authConfig.providers, emailCodeProvider],
+  // In dev, also append the dev-bypass credentials provider for code-free local sign-in.
+  providers: [...authConfig.providers, emailCodeProvider, ...devBypassProvider],
   adapter: terraPrismaAdapter(prisma),
   // JWT sessions, capped at 4 hours. Paired with the browser-session cookie in
   // auth.config.ts this gives the "log in every time" policy: a fresh browser open always
