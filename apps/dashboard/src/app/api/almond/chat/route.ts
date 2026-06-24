@@ -1,4 +1,4 @@
-import { createAgentUIStreamResponse } from "ai";
+import { createAgentUIStreamResponse, smoothStream } from "ai";
 import { Sandbox } from "@vercel/sandbox";
 import { sessionUserId } from "@/lib/auth";
 import { activeFarmId } from "@/lib/auth/active-farm";
@@ -141,6 +141,10 @@ export async function POST(req: Request): Promise<Response> {
       abortSignal: req.signal,
       timeout: { totalMs: 290_000 },
       sendReasoning: true,
+      experimental_transform: smoothStream({
+        delayInMs: 20,
+        chunking: "word",
+      }),
     });
 
     return withSandboxCleanup(response, sandbox);
