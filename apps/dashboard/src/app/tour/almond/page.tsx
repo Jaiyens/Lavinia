@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 
 export default function TourAlmondPage() {
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-5xl px-4 py-4 lg:px-8 lg:py-6">
-      <AlmondChat className="flex-1" />
+    <div className="flex min-h-[calc(100dvh-5rem)] min-w-0">
+      <AlmondChat className="flex-1" variant="full" />
     </div>
   );
 }

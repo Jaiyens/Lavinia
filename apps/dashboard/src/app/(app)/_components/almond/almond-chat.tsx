@@ -29,7 +29,6 @@ import {
   Alert,
   AlertDescription,
   Button,
-  ScrollArea,
   Select,
   SelectContent,
   SelectGroup,
@@ -48,6 +47,11 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
 import {
   Reasoning,
   ReasoningContent,
@@ -90,6 +94,7 @@ const STREAMDOWN_CONTROLS = {
   mermaid: false,
 } as const;
 const BLOCK_TRANSITION = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const;
+const TEXT_TRANSITION = { duration: 0.18, ease: [0.16, 1, 0.3, 1] } as const;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -215,6 +220,44 @@ function generatedFilesFromOutput(output: unknown): GeneratedFile[] {
   return output.generatedFiles.filter(isGeneratedFile);
 }
 
+function writeFileDownload(part: ToolPart): GeneratedFile | null {
+  if (part.type !== "tool-writeFile") return null;
+  if (part.state !== "output-available" || !isObject(part.output) || part.output.success !== true) return null;
+  if (!isObject(part.input) || typeof part.input.path !== "string" || typeof part.input.content !== "string") {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+
+  return {
+    path: part.input.path,
+    filename: filenameFromPath(part.input.path),
+    mimeType: mimeForPath(part.input.path),
+    size: encoder.encode(part.input.content).byteLength,
+    encoding: "utf8",
+    content: part.input.content,
+  };
+}
+
+function downloadableFilesFromTraceBlocks(blocks: AssistantTraceBlock[]): GeneratedFile[] {
+  const filesByKey = new Map<string, GeneratedFile>();
+
+  blocks.forEach((block) => {
+    if (block.type !== "tools") return;
+
+    block.parts.forEach((part) => {
+      const writeFile = writeFileDownload(part);
+      const files = writeFile ? [writeFile] : generatedFilesFromOutput(part.output);
+
+      files.forEach((file) => {
+        filesByKey.set(`${file.path}:${file.filename}:${file.size}`, file);
+      });
+    });
+  });
+
+  return Array.from(filesByKey.values());
+}
+
 function bytesFromBase64(base64: string): ArrayBuffer {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -294,11 +337,56 @@ function AnimatedMount({ children }: { children: ReactNode }) {
   );
 }
 
+function FadeText({ children, className }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 3 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : TEXT_TRANSITION}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function FadeInline({ children, className }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
+
+  return (
+    <motion.span
+      initial={reduce ? false : { opacity: 0, y: 3 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : TEXT_TRANSITION}
+      className={className}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+function FadeParagraph({ children, className }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
+
+  return (
+    <motion.p
+      initial={reduce ? false : { opacity: 0, y: 3 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : TEXT_TRANSITION}
+      className={className}
+    >
+      {children}
+    </motion.p>
+  );
+}
+
 function GeneratedFilesList({ files }: { files: GeneratedFile[] }) {
   if (files.length === 0) return null;
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {files.map((file) => (
         <Button
           key={`${file.path}:${file.size}`}
@@ -309,8 +397,10 @@ function GeneratedFilesList({ files }: { files: GeneratedFile[] }) {
           className="h-auto min-w-0 max-w-full justify-start gap-2 py-1.5 text-primary"
         >
           <Download size={14} aria-hidden className="shrink-0" />
-          <span className="min-w-0 truncate">Download {file.filename}</span>
-          <span className="shrink-0 text-[11px] font-normal text-on-surface-variant">{formatBytes(file.size)}</span>
+          <FadeInline className="min-w-0 truncate">Download {file.filename}</FadeInline>
+          <FadeInline className="shrink-0 text-[11px] font-normal text-on-surface-variant">
+            {formatBytes(file.size)}
+          </FadeInline>
         </Button>
       ))}
     </div>
@@ -348,49 +438,36 @@ function ToolStep({ part }: { part: ToolPart }) {
 
   if (part.type === "tool-writeFile") {
     const filePath = isObject(part.input) && typeof part.input.path === "string" ? part.input.path : "";
-    const content = isObject(part.input) && typeof part.input.content === "string" ? part.input.content : null;
-    const filename = filenameFromPath(filePath);
     const succeeded = isComplete && isObject(part.output) && part.output.success === true;
 
     return (
       <ChainOfThoughtStep
         icon={FileText}
-        label={filePath || "writeFile"}
-        description={succeeded ? "Created" : isError ? "Failed" : undefined}
+        label={<FadeText>{filePath || "writeFile"}</FadeText>}
+        description={
+          succeeded ? <FadeText>Created</FadeText> : isError ? <FadeText>Failed</FadeText> : undefined
+        }
         status={status}
-      >
-        {succeeded && content !== null && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadBlob(content, filename, mimeForPath(filePath))}
-            className="h-auto min-w-0 max-w-full justify-start gap-1.5 py-1 text-primary"
-          >
-            <Download size={13} aria-hidden className="shrink-0" />
-            <span className="min-w-0 truncate text-xs">Download {filename}</span>
-          </Button>
-        )}
-      </ChainOfThoughtStep>
+      />
     );
   }
 
   const output = status !== "active" ? toolOutput(part) : "";
-  const generatedFiles = generatedFilesFromOutput(part.output);
 
   return (
     <ChainOfThoughtStep
       icon={part.type === "tool-bash" ? Terminal : FileText}
-      label={toolTitle(part)}
-      description={isError ? "Failed" : undefined}
+      label={<FadeText>{toolTitle(part)}</FadeText>}
+      description={isError ? <FadeText>Failed</FadeText> : undefined}
       status={status}
     >
-      <GeneratedFilesList files={generatedFiles} />
       {output ? (
         <div className="max-h-48 overflow-y-auto overflow-x-hidden rounded-lg bg-surface-container-low">
-          <pre className="w-full whitespace-pre-wrap break-all p-2.5 text-[11px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
-            {output}
-          </pre>
+          <FadeText>
+            <pre className="w-full whitespace-pre-wrap break-all p-2.5 text-[11px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
+              {output}
+            </pre>
+          </FadeText>
         </div>
       ) : null}
     </ChainOfThoughtStep>
@@ -403,15 +480,17 @@ function ReasoningTraceStep({ parts }: { parts: ReasoningPart[] }) {
   const content = parts.map((part) => part.text).join("\n\n");
 
   return (
-    <ChainOfThoughtStep icon={Sparkles} label="Thinking" status="complete">
-      <Streamdown
-        className="max-w-full overflow-hidden text-sm text-pretty text-on-surface-variant [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_pre]:max-w-full [&_pre]:overflow-x-auto"
-        controls={STREAMDOWN_CONTROLS}
-        lineNumbers={false}
-        mode="static"
-      >
-        {content}
-      </Streamdown>
+    <ChainOfThoughtStep icon={Sparkles} label={<FadeText>Thinking</FadeText>} status="complete">
+      <FadeText>
+        <Streamdown
+          className="max-w-full overflow-hidden text-sm text-pretty text-on-surface-variant [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_pre]:max-w-full [&_pre]:overflow-x-auto"
+          controls={STREAMDOWN_CONTROLS}
+          lineNumbers={false}
+          mode="static"
+        >
+          {content}
+        </Streamdown>
+      </FadeText>
     </ChainOfThoughtStep>
   );
 }
@@ -502,17 +581,19 @@ function MessagePart({
   if (part.type === "text") {
     const text = (part as TextPart).text;
     if (isUser) {
-      return <p className="whitespace-pre-wrap text-pretty">{text}</p>;
+      return <FadeParagraph className="whitespace-pre-wrap text-pretty">{text}</FadeParagraph>;
     }
     return (
-      <Streamdown
-        className="min-w-0 max-w-full overflow-hidden text-sm text-pretty [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_[data-streamdown='code-block']]:bg-surface-container-low [&_[data-streamdown='code-block']]:text-on-surface [&_[data-streamdown='inline-code']]:bg-surface-container [&_[data-streamdown='table-wrapper']]:max-w-full [&_[data-streamdown='table-wrapper']]:overflow-x-auto [&_[data-streamdown='table-wrapper']]:bg-surface-container-low [&_pre]:max-w-full [&_pre]:overflow-x-auto"
-        controls={STREAMDOWN_CONTROLS}
-        lineNumbers={false}
-        mode={isStreaming ? "streaming" : "static"}
-      >
-        {text}
-      </Streamdown>
+      <FadeText>
+        <Streamdown
+          className="min-w-0 max-w-full overflow-hidden text-sm text-pretty [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_[data-streamdown='code-block']]:bg-surface-container-low [&_[data-streamdown='code-block']]:text-on-surface [&_[data-streamdown='inline-code']]:bg-surface-container [&_[data-streamdown='table-wrapper']]:max-w-full [&_[data-streamdown='table-wrapper']]:overflow-x-auto [&_[data-streamdown='table-wrapper']]:bg-surface-container-low [&_pre]:max-w-full [&_pre]:overflow-x-auto"
+          controls={STREAMDOWN_CONTROLS}
+          lineNumbers={false}
+          mode={isStreaming ? "streaming" : "static"}
+        >
+          {text}
+        </Streamdown>
+      </FadeText>
     );
   }
   if (part.type === "reasoning") return null;
@@ -555,6 +636,7 @@ function MessageTurn({
   const textBlocks = renderBlocks.filter((block) => block.type === "part");
   const isFinalAnswerPhase = latestBlock?.type === "part";
   const shouldShowTrace = traceBlocks.length > 0 && (!isStreaming || isFinalAnswerPhase);
+  const downloadableFiles = downloadableFilesFromTraceBlocks(traceBlocks);
 
   return (
     <div className="flex w-full min-w-0 max-w-full overflow-hidden">
@@ -572,6 +654,11 @@ function MessageTurn({
               <MessagePart part={block.part} isUser={false} isStreaming={false} />
             </AnimatedMount>
           ))}
+        {shouldShowTrace && downloadableFiles.length > 0 ? (
+          <AnimatedMount>
+            <GeneratedFilesList files={downloadableFiles} />
+          </AnimatedMount>
+        ) : null}
         {showRegenerate ? (
           <div className="flex">
             <button
@@ -836,9 +923,11 @@ function Composer({
 export function AlmondChat({
   className,
   header,
+  variant = "panel",
 }: {
   className?: string;
   header?: ReactNode;
+  variant?: "panel" | "full";
 }) {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<AlmondModelId>(DEFAULT_ALMOND_MODEL);
@@ -849,16 +938,11 @@ export function AlmondChat({
   });
   const busy = status === "submitted" || status === "streaming";
   const lastMessageId = messages.at(-1)?.id;
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const starters = [
     "What should I look at first?",
     "Find meters with the highest demand charges.",
     "Summarize open findings by dollars at stake.",
   ];
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, busy]);
 
   const submitText = useCallback(
     async (text: string) => {
@@ -885,7 +969,9 @@ export function AlmondChat({
     <TooltipProvider>
       <div
         className={cn(
-          "flex h-full min-h-[480px] min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest text-on-surface shadow-[var(--shadow-soft)]",
+          "flex h-full min-h-[480px] min-w-0 max-w-full flex-col overflow-hidden bg-surface-container-lowest text-on-surface",
+          variant === "panel" &&
+            "rounded-[var(--radius-lg)] border border-outline-variant shadow-[var(--shadow-soft)]",
           className,
         )}
       >
@@ -902,8 +988,8 @@ export function AlmondChat({
           {header ? <div className="flex shrink-0 items-center gap-2">{header}</div> : null}
         </header>
 
-        <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!min-w-0">
-          <div className="mx-auto w-full min-w-0 max-w-3xl px-4 py-6">
+        <Conversation className="min-h-0 min-w-0 flex-1">
+          <ConversationContent className="mx-auto w-full min-w-0 max-w-3xl px-4 py-6">
             {messages.length === 0 ? (
               <EmptyState starters={starters} onStarter={submitText} />
             ) : (
@@ -917,11 +1003,11 @@ export function AlmondChat({
                     onRegenerate={() => void regenerate({ body: { model } })}
                   />
                 ))}
-                <div ref={bottomRef} aria-hidden />
               </div>
             )}
-          </div>
-        </ScrollArea>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
         {error ? (
           <div className="mx-auto w-full max-w-3xl px-4">
