@@ -310,10 +310,14 @@ function MessagePart({
     const output = part.state === "output-available" || part.state === "output-error" ? toolOutput(part) : "";
     const generatedFiles = generatedFilesFromOutput(part.output);
     return (
-      <Collapsible defaultOpen={part.state !== "output-available"} className="min-w-0 max-w-full">
-        <Card className="min-w-0 gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-          <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 text-left type-body-sm font-medium text-on-surface [&[data-state=open]>svg:last-child]:rotate-180">
-            {part.type === "tool-bash" ? <Terminal size={16} aria-hidden /> : <FileText size={16} aria-hidden />}
+      <Collapsible defaultOpen={part.state !== "output-available"} className="w-full min-w-0 max-w-full overflow-hidden">
+        <Card className="w-full min-w-0 max-w-full gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
+          <CollapsibleTrigger className="flex min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden text-left type-body-sm font-medium text-on-surface [&[data-state=open]>svg:last-child]:rotate-180">
+            {part.type === "tool-bash" ? (
+              <Terminal size={16} aria-hidden className="shrink-0" />
+            ) : (
+              <FileText size={16} aria-hidden className="shrink-0" />
+            )}
             <span className="min-w-0 flex-1 truncate">{toolTitle(part)}</span>
             <Badge
               variant={part.state === "output-error" ? "destructive" : "secondary"}
@@ -321,16 +325,16 @@ function MessagePart({
             >
               {part.state.replace("-", " ")}
             </Badge>
-            <ChevronDown size={14} aria-hidden />
+            <ChevronDown size={14} aria-hidden className="shrink-0" />
           </CollapsibleTrigger>
           <GeneratedFilesList files={generatedFiles} />
-          <CollapsibleContent>
+          <CollapsibleContent className="min-w-0 max-w-full overflow-hidden">
             {output ? (
-              <ScrollArea className="mt-3 h-72 max-w-full rounded-lg bg-paper">
-                <pre className="max-w-full whitespace-pre-wrap break-words p-3 text-[12px] leading-relaxed text-on-surface-variant">
+              <div className="mt-3 h-72 w-full overflow-y-auto overflow-x-hidden rounded-lg bg-paper">
+                <pre className="w-full whitespace-pre-wrap break-all p-3 text-[12px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
                   {output}
                 </pre>
-              </ScrollArea>
+              </div>
             ) : null}
           </CollapsibleContent>
         </Card>
@@ -338,17 +342,6 @@ function MessagePart({
     );
   }
   return null;
-}
-
-function AssistantAvatar() {
-  return (
-    <span
-      aria-hidden
-      className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
-    >
-      <Sparkles size={16} />
-    </span>
-  );
 }
 
 function MessageTurn({
@@ -379,9 +372,8 @@ function MessageTurn({
   }
 
   return (
-    <div className="flex min-w-0 gap-3">
-      <AssistantAvatar />
-      <div className="flex min-w-0 flex-1 flex-col gap-3 pt-1">
+    <div className="flex w-full min-w-0 max-w-full overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden">
         {message.parts.map((part, index) => (
           <MessagePart key={`${message.id}-${index}`} part={part} isUser={false} isStreaming={isStreaming} />
         ))}
@@ -715,12 +707,12 @@ export function AlmondChat({
           {header ? <div className="flex shrink-0 items-center gap-2">{header}</div> : null}
         </header>
 
-        <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden">
-          <div className="mx-auto min-w-0 max-w-3xl px-4 py-6">
+        <ScrollArea className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!min-w-0">
+          <div className="mx-auto w-full min-w-0 max-w-3xl px-4 py-6">
             {messages.length === 0 ? (
               <EmptyState starters={starters} onStarter={submitText} />
             ) : (
-              <div className="flex min-w-0 flex-col gap-6">
+              <div className="flex w-full min-w-0 max-w-full flex-col gap-6 overflow-hidden">
                 {messages.map((message) => (
                   <MessageTurn
                     key={message.id}

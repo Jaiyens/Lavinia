@@ -44,7 +44,12 @@ export interface ParcelSelection {
 
 function cssVar(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  // MapLibre rejects lab()/oklch() — normalize to hex via canvas.
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return fallback;
+  ctx.fillStyle = raw;
+  return ctx.fillStyle;
 }
 
 function myParcelsToFeatures(parcels: FarmParcel[], colorBy: ColorByKey, year: number): FeatureCollection {
