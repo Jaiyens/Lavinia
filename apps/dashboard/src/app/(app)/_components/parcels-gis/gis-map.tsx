@@ -44,12 +44,24 @@ export interface ParcelSelection {
 
 function cssVar(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-  // MapLibre rejects lab()/oklch() — normalize to hex via canvas.
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!raw) return fallback;
+  // MapLibre only accepts hex/rgb(a), not the wide-gamut color() forms (lab()/oklch()) that the
+  // shadcn theme uses. Modern browsers PRESERVE those through `canvas.fillStyle` instead of
+  // converting, so reading fillStyle back leaks the raw lab()/oklch() string. Paint the color into
+  // a 1px canvas and read it back as sRGB bytes to force a MapLibre-valid rgb()/rgba(). Seed with
+  // the fallback first so a value the canvas can't parse degrades to the fallback, not to black.
   const ctx = document.createElement("canvas").getContext("2d");
   if (!ctx) return fallback;
+  ctx.fillStyle = fallback;
   ctx.fillStyle = raw;
-  return ctx.fillStyle;
+  ctx.fillRect(0, 0, 1, 1);
+  const d = ctx.getImageData(0, 0, 1, 1).data;
+  const r = d[0] ?? 0;
+  const g = d[1] ?? 0;
+  const b = d[2] ?? 0;
+  const a = d[3] ?? 255;
+  return a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
 }
 
 function myParcelsToFeatures(parcels: FarmParcel[], colorBy: ColorByKey, year: number): FeatureCollection {
