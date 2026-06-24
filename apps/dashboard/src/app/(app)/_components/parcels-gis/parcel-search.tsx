@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent, type RefObject } from "react";
 import { Loader2, MapPin, Search } from "lucide-react";
 import { en } from "@/copy/en";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
 import type { GisMapHandle } from "./gis-map";
 
@@ -120,25 +121,25 @@ export function ParcelSearch({
 
   return (
     <div className="pointer-events-auto relative">
-      <form
-        onSubmit={onSubmit}
-        className="flex h-11 items-center gap-2 rounded-full bg-white px-4 text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-      >
-        {busy ? (
-          <Loader2 className="size-4 animate-spin text-on-surface-variant" />
-        ) : (
-          <Search className="size-4 text-on-surface-variant" strokeWidth={2} />
-        )}
-        <input
-          type="search"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setNote(null);
-          }}
-          placeholder={c.searchPlaceholder}
-          className="w-full bg-transparent text-[0.9rem] text-on-surface placeholder:text-on-surface-variant focus:outline-none"
-        />
+      <form onSubmit={onSubmit}>
+        <InputGroup className="h-11 rounded-full border-transparent bg-white text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <InputGroupAddon align="inline-start">
+            {busy ? (
+              <Loader2 className="size-4 animate-spin text-on-surface-variant" />
+            ) : (
+              <Search className="size-4 text-on-surface-variant" strokeWidth={2} />
+            )}
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setNote(null);
+            }}
+            placeholder={c.searchPlaceholder}
+          />
+        </InputGroup>
       </form>
 
       {(hits.length > 0 || note !== null) && (

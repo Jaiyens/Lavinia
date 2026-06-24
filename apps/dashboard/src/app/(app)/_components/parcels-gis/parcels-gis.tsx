@@ -1,9 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Home, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, Home, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ParcelDrawer } from "../parcel-drawer";
 import { COLOR_BYS, legendFor } from "@/lib/parcel/farm/color";
 import { summarize, type PortfolioSummary } from "@/lib/parcel/farm/portfolio";
@@ -255,21 +271,26 @@ function BlocksPanel({
       {activeTab === "blocks" ? (
         <>
           <div className="flex items-center gap-2 px-4 pt-3">
-            <label htmlFor="colorBy" className="text-[0.75rem] font-medium text-on-surface-variant">
+            <span className="text-[0.75rem] font-medium text-on-surface-variant">
               {c.blocks.colorByLabel}
-            </label>
-            <select
-              id="colorBy"
-              value={colorBy}
-              onChange={(e) => onColorBy(e.target.value as ColorByKey)}
-              className="flex-1 rounded-lg border border-outline-variant bg-white px-2 py-1.5 text-[0.82rem] text-on-surface focus:outline-none focus:ring-2 focus:ring-[#2fa84f]/40"
-            >
-              {COLOR_BYS.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 flex-1 justify-between">
+                  {COLOR_BYS.find((o) => o.key === colorBy)?.label ?? ""}
+                  <ChevronDown className="size-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[10rem]">
+                <DropdownMenuRadioGroup value={colorBy} onValueChange={(v) => onColorBy(v as ColorByKey)}>
+                  {COLOR_BYS.map((opt) => (
+                    <DropdownMenuRadioItem key={opt.key} value={opt.key}>
+                      {opt.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {legend.length > 0 && (
             <div className="flex flex-wrap gap-x-3 gap-y-1.5 px-4 pt-2">
@@ -338,15 +359,14 @@ function BlockCardView({
 }) {
   const leased = parcel.identity.tenure === "leased";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={selected ? "true" : undefined}
+    <Card
+      asChild
       className={cn(
-        "block w-full overflow-hidden rounded-xl border bg-white text-left shadow-[0_2px_8px_rgba(20,24,40,0.06)] transition hover:shadow-[0_10px_24px_rgba(20,24,40,0.12)]",
-        selected ? "border-[#2fa84f] ring-2 ring-[#2fa84f]/40" : "border-outline-variant",
+        "w-full cursor-pointer gap-0 rounded-xl p-0 text-left shadow-[0_2px_8px_rgba(20,24,40,0.06)] transition hover:shadow-[0_10px_24px_rgba(20,24,40,0.12)]",
+        selected && "ring-2 ring-primary",
       )}
     >
+      <button type="button" onClick={onClick} aria-current={selected ? "true" : undefined}>
       <div className="relative h-32 w-full" style={{ background: PHOTO_GRADIENTS[gradientIndex] }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -373,7 +393,8 @@ function BlockCardView({
         <span className="truncate text-[0.86rem] font-semibold text-on-surface">{parcel.name}</span>
         <span className="ml-2 shrink-0 text-[0.74rem] tabular-nums text-on-surface-variant">APN {parcel.apn}</span>
       </div>
-    </button>
+      </button>
+    </Card>
   );
 }
 
@@ -381,11 +402,11 @@ function BlockCardView({
 // open the real parcel's land record.
 function MarketCardView({ card, onClick }: { card: ListingCard; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block w-full overflow-hidden rounded-xl border border-outline-variant bg-white text-left shadow-[0_2px_8px_rgba(20,24,40,0.06)] transition hover:shadow-[0_10px_24px_rgba(20,24,40,0.12)]"
+    <Card
+      asChild
+      className="w-full cursor-pointer gap-0 rounded-xl p-0 text-left shadow-[0_2px_8px_rgba(20,24,40,0.06)] transition hover:shadow-[0_10px_24px_rgba(20,24,40,0.12)]"
     >
+      <button type="button" onClick={onClick}>
       <div className="relative h-28 w-full" style={{ background: PHOTO_GRADIENTS[card.imagePlaceholder] }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -405,7 +426,8 @@ function MarketCardView({ card, onClick }: { card: ListingCard; onClick: () => v
         </span>
       </div>
       <div className="px-3 py-2.5 text-[0.82rem] font-medium text-on-surface-variant">{card.county}</div>
-    </button>
+      </button>
+    </Card>
   );
 }
 
@@ -422,23 +444,27 @@ function FarmSummaryCard({
 }) {
   const sc = c.summaryCard;
   return (
-    <section className="pointer-events-auto overflow-hidden rounded-2xl bg-white text-on-surface shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
-      <div className="flex items-start justify-between px-4 pt-3.5">
-        <div className="min-w-0">
-          <h2 className="truncate text-[1.05rem] font-semibold">{farm.name}</h2>
-          <p className="text-[0.75rem] text-on-surface-variant">{sc.county(farm.county)}</p>
-        </div>
-        <button
-          type="button"
-          aria-label={sc.close}
-          onClick={onClose}
-          className="grid size-7 shrink-0 place-items-center rounded-full text-on-surface-variant transition hover:bg-surface-container-high"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+    <Card className="pointer-events-auto gap-0 rounded-2xl p-0 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
+      <CardHeader className="px-4 pb-0 pt-3.5">
+        <CardTitle className="truncate text-[1.05rem] font-semibold">{farm.name}</CardTitle>
+        <CardDescription className="text-[0.75rem] text-on-surface-variant">
+          {sc.county(farm.county)}
+        </CardDescription>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={sc.close}
+            onClick={onClose}
+            className="rounded-full text-on-surface-variant"
+          >
+            <X className="size-4" />
+          </Button>
+        </CardAction>
+      </CardHeader>
 
-      <div className="mt-3 grid grid-cols-2 gap-px bg-outline-variant/40">
+      <CardContent className="px-0 pt-3">
+      <div className="grid grid-cols-2 gap-px bg-outline-variant/40">
         <Stat label={sc.acres} value={summary.total_acres.toLocaleString()} />
         <Stat label={sc.blocks} value={String(summary.block_count)} />
         <Stat label={sc.leased} value={`${summary.pct_leased}%`} />
@@ -467,7 +493,8 @@ function FarmSummaryCard({
           </div>
         </div>
       )}
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -496,34 +523,37 @@ function MapControls({
   return (
     <div className="pointer-events-auto absolute bottom-28 right-4 flex flex-col items-end gap-2 lg:bottom-24">
       {/* Return to the farmer's own land. */}
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
         aria-label={c.controls.home}
         title={c.controls.home}
         onClick={onHome}
-        className="flex h-9 items-center gap-2 rounded-xl bg-white px-3 text-[0.82rem] font-semibold text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition hover:bg-surface-container-high"
+        className="h-9 gap-2 rounded-xl bg-white px-3 text-[0.82rem] font-semibold text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)] hover:bg-surface-container-high"
       >
-        <Home className="size-4 text-[#2fa84f]" />
+        <Home className="size-4 text-primary" />
         {c.controls.home}
-      </button>
+      </Button>
       <div className="flex flex-col overflow-hidden rounded-xl bg-white text-on-surface shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           aria-label={c.controls.zoomIn}
           onClick={onZoomIn}
-          className="grid size-9 place-items-center transition hover:bg-surface-container-high"
+          className="size-9 rounded-none hover:bg-surface-container-high"
         >
           <Plus className="size-4" />
-        </button>
+        </Button>
         <span className="h-px w-full bg-outline-variant" />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           aria-label={c.controls.zoomOut}
           onClick={onZoomOut}
-          className="grid size-9 place-items-center transition hover:bg-surface-container-high"
+          className="size-9 rounded-none hover:bg-surface-container-high"
         >
           <Minus className="size-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
