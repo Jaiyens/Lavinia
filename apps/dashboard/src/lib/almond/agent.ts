@@ -241,6 +241,10 @@ export async function createAlmondAgent(opts: {
     ),
     tools: aiSdk7Tools,
     stopWhen: isStepCount(24),
+    providerOptions: {
+      anthropic: { thinking: { type: "adaptive", display: "summarized" } },
+      openai: { reasoningEffort: "high", reasoningSummary: "detailed" },
+    },
   });
 }
 

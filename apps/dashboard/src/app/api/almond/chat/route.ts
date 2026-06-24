@@ -140,6 +140,7 @@ export async function POST(req: Request): Promise<Response> {
       uiMessages: messages,
       abortSignal: req.signal,
       timeout: { totalMs: 290_000 },
+      sendReasoning: true,
     });
 
     return withSandboxCleanup(response, sandbox);

@@ -14,9 +14,11 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import {
   ArrowUp,
+  Check,
   ChevronDown,
   Download,
   FileText,
+  ListChecks,
   Mic,
   Plus,
   RotateCcw,
@@ -47,6 +49,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
 import { cn } from "@/lib/cn";
 import { ALMOND_MODELS, DEFAULT_ALMOND_MODEL, type AlmondModelId } from "@/lib/almond/models";
 
@@ -225,37 +232,188 @@ function GeneratedFilesList({ files }: { files: GeneratedFile[] }) {
   );
 }
 
-function WriteFileCard({ part }: { part: ToolPart }) {
-  const path = isObject(part.input) && typeof part.input.path === "string" ? part.input.path : "";
-  const content = isObject(part.input) && typeof part.input.content === "string" ? part.input.content : null;
-  const filename = filenameFromPath(path);
-  const succeeded =
-    part.state === "output-available" && isObject(part.output) && part.output.success === true;
+function ReasoningBlock({
+  parts,
+  isActivelyStreaming,
+}: {
+  parts: ReasoningPart[];
+  isActivelyStreaming: boolean;
+}) {
+  if (parts.length === 0) return null;
+
+  const content = parts.map((part) => part.text).join("\n\n");
 
   return (
-    <Card className="min-w-0 gap-3 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-      <div className="flex items-center gap-2 text-xs font-medium text-on-surface">
-        <FileText size={16} aria-hidden className="shrink-0 text-primary" />
-        <span className="min-w-0 flex-1 truncate">{path || "writeFile"}</span>
-        <Badge variant="secondary" className="shrink-0 uppercase tracking-wide text-on-surface-variant">
-          {succeeded ? "created" : part.state.replace("-", " ")}
-        </Badge>
+    <Reasoning
+      className="mb-0 min-w-0 max-w-full overflow-hidden rounded-xl border border-outline-variant bg-surface-container-low p-3 shadow-none"
+      isStreaming={isActivelyStreaming}
+    >
+      <ReasoningTrigger className="cursor-pointer type-label-caps text-on-surface-variant hover:text-on-surface" />
+      <ReasoningContent className="mt-3 max-w-full overflow-hidden text-xs leading-relaxed text-on-surface-variant [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_pre]:max-w-full [&_pre]:overflow-x-auto">
+        {content}
+      </ReasoningContent>
+    </Reasoning>
+  );
+}
+
+function StepDot({ status }: { status: "complete" | "error" | "active" }) {
+  if (status === "active") {
+    return (
+      <span className="relative mt-1 flex size-3 items-center justify-center">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40" />
+        <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+      </span>
+    );
+  }
+  if (status === "error") return <span className="mt-1 size-2.5 rounded-full bg-risk" />;
+  return (
+    <span className="mt-1 flex size-3 items-center justify-center text-primary">
+      <Check size={10} strokeWidth={3} aria-hidden />
+    </span>
+  );
+}
+
+function stepStatus(state: ToolState): "complete" | "error" | "active" {
+  if (state === "output-available") return "complete";
+  if (state === "output-error") return "error";
+  return "active";
+}
+
+function ChainOfThoughtStep({ part, isLast }: { part: ToolPart; isLast: boolean }) {
+  const status = stepStatus(part.state);
+  const isWriteFile = part.type === "tool-writeFile";
+
+  if (isWriteFile) {
+    const filePath = isObject(part.input) && typeof part.input.path === "string" ? part.input.path : "";
+    const content = isObject(part.input) && typeof part.input.content === "string" ? part.input.content : null;
+    const filename = filenameFromPath(filePath);
+    const succeeded = status === "complete" && isObject(part.output) && part.output.success === true;
+
+    return (
+      <li className="relative flex gap-3">
+        <div className="flex shrink-0 flex-col items-center">
+          <StepDot status={status} />
+          {!isLast && <span className="mt-1 w-px flex-1 bg-outline-variant/60" />}
+        </div>
+        <div className={cn("min-w-0 flex-1", isLast ? "pb-0" : "pb-3")}>
+          <div className="flex items-center gap-2 text-xs">
+            <FileText size={13} aria-hidden className="shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate font-medium text-on-surface">{filePath || "writeFile"}</span>
+            <Badge variant="secondary" className="shrink-0 uppercase tracking-wide text-on-surface-variant">
+              {succeeded ? "created" : part.state.replace("-", " ")}
+            </Badge>
+          </div>
+          {succeeded && content !== null && (
+            <div className="mt-1.5">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => downloadBlob(content, filename, mimeForPath(filePath))}
+                className="h-auto min-w-0 max-w-full justify-start gap-1.5 py-1 text-primary"
+              >
+                <Download size={13} aria-hidden className="shrink-0" />
+                <span className="min-w-0 truncate text-xs">Download {filename}</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      </li>
+    );
+  }
+
+  const output = status !== "active" ? toolOutput(part) : "";
+  const generatedFiles = generatedFilesFromOutput(part.output);
+
+  return (
+    <li className="relative flex gap-3">
+      <div className="flex shrink-0 flex-col items-center">
+        <StepDot status={status} />
+        {!isLast && <span className="mt-1 w-px flex-1 bg-outline-variant/60" />}
       </div>
-      {succeeded && content !== null ? (
-        <GeneratedFilesList
-          files={[
-            {
-              path,
-              filename,
-              mimeType: mimeForPath(path),
-              size: new Blob([content]).size,
-              encoding: "utf8",
-              content,
-            },
-          ]}
-        />
-      ) : null}
-    </Card>
+      <Collapsible className={cn("min-w-0 flex-1", isLast ? "pb-0" : "pb-3")}>
+        <CollapsibleTrigger className="flex min-w-0 max-w-full cursor-pointer items-center gap-2 text-left text-xs [&[data-state=open]>svg:last-child]:rotate-180">
+          {part.type === "tool-bash" ? (
+            <Terminal size={13} aria-hidden className="shrink-0" />
+          ) : (
+            <FileText size={13} aria-hidden className="shrink-0" />
+          )}
+          <span className="min-w-0 flex-1 truncate font-medium text-on-surface">{toolTitle(part)}</span>
+          <Badge
+            variant={status === "error" ? "destructive" : "secondary"}
+            className="shrink-0 uppercase tracking-wide"
+          >
+            {part.state.replace("-", " ")}
+          </Badge>
+          {status !== "active" && <ChevronDown size={12} aria-hidden className="shrink-0 text-on-surface-variant transition-transform" />}
+        </CollapsibleTrigger>
+        <GeneratedFilesList files={generatedFiles} />
+        {output ? (
+          <CollapsibleContent>
+            <div className="mt-2 max-h-48 w-full overflow-y-auto overflow-x-hidden rounded-lg bg-paper">
+              <pre className="w-full whitespace-pre-wrap break-all p-2.5 text-[11px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
+                {output}
+              </pre>
+            </div>
+          </CollapsibleContent>
+        ) : null}
+      </Collapsible>
+    </li>
+  );
+}
+
+function ChainOfThought({ steps, isStreaming }: { steps: ToolPart[]; isStreaming: boolean }) {
+  const [open, setOpen] = useState(false);
+  const prevStreamingRef = useRef(false);
+  const openedRef = useRef(false);
+
+  const hasRunningTool = steps.some((s) => s.state === "input-streaming" || s.state === "input-available");
+
+  useEffect(() => {
+    if (hasRunningTool && !openedRef.current) {
+      setOpen(true);
+      openedRef.current = true;
+    }
+    if (!isStreaming && prevStreamingRef.current && openedRef.current) {
+      setOpen(false);
+      openedRef.current = false;
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, hasRunningTool]);
+
+  if (steps.length === 0) return null;
+
+  const doneCount = steps.filter((s) => s.state === "output-available" || s.state === "output-error").length;
+  const errorCount = steps.filter((s) => s.state === "output-error").length;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="min-w-0 max-w-full">
+      <Card className="min-w-0 gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
+        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 text-left type-label-caps text-on-surface-variant [&[data-state=open]>svg:last-child]:rotate-180">
+          {hasRunningTool ? (
+            <span className="relative flex size-3 items-center justify-center">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+            </span>
+          ) : (
+            <ListChecks size={14} aria-hidden className="shrink-0" />
+          )}
+          <span className="min-w-0 flex-1">
+            {hasRunningTool
+              ? `Working\u2026 ${doneCount}/${steps.length}`
+              : `Worked through ${steps.length} step${steps.length !== 1 ? "s" : ""}${errorCount > 0 ? ` (${errorCount} failed)` : ""}`}
+          </span>
+          <ChevronDown size={14} aria-hidden className="shrink-0 transition-transform" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ol className="mt-3 list-none space-y-0 pl-0">
+            {steps.map((step, i) => (
+              <ChainOfThoughtStep key={step.toolCallId} part={step} isLast={i === steps.length - 1} />
+            ))}
+          </ol>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -284,62 +442,8 @@ function MessagePart({
       </Streamdown>
     );
   }
-  if (part.type === "reasoning") {
-    return (
-      <Collapsible className="min-w-0 max-w-full">
-        <Card className="min-w-0 gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-          <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 text-left type-label-caps text-on-surface-variant [&[data-state=open]>svg]:rotate-180">
-            <span className="min-w-0 flex-1">Reasoning</span>
-            <ChevronDown size={14} aria-hidden className="shrink-0 transition-transform" />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <pre className="mt-2 max-w-full whitespace-pre-wrap break-words text-xs text-on-surface-variant">
-              {(part as ReasoningPart).text}
-            </pre>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-    );
-  }
-  if (isToolPart(part)) {
-    if (part.type === "tool-writeFile") {
-      return <WriteFileCard part={part} />;
-    }
-
-    const output = part.state === "output-available" || part.state === "output-error" ? toolOutput(part) : "";
-    const generatedFiles = generatedFilesFromOutput(part.output);
-    return (
-      <Collapsible defaultOpen={part.state !== "output-available"} className="w-full min-w-0 max-w-full overflow-hidden">
-        <Card className="w-full min-w-0 max-w-full gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-          <CollapsibleTrigger className="flex min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden text-left text-xs font-medium text-on-surface [&[data-state=open]>svg:last-child]:rotate-180">
-            {part.type === "tool-bash" ? (
-              <Terminal size={16} aria-hidden className="shrink-0" />
-            ) : (
-              <FileText size={16} aria-hidden className="shrink-0" />
-            )}
-            <span className="min-w-0 flex-1 truncate">{toolTitle(part)}</span>
-            <Badge
-              variant={part.state === "output-error" ? "destructive" : "secondary"}
-              className="shrink-0 uppercase tracking-wide"
-            >
-              {part.state.replace("-", " ")}
-            </Badge>
-            <ChevronDown size={14} aria-hidden className="shrink-0" />
-          </CollapsibleTrigger>
-          <GeneratedFilesList files={generatedFiles} />
-          <CollapsibleContent className="min-w-0 max-w-full overflow-hidden">
-            {output ? (
-              <div className="mt-3 h-72 w-full overflow-y-auto overflow-x-hidden rounded-lg bg-paper">
-                <pre className="w-full whitespace-pre-wrap break-all p-3 text-[11px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
-                  {output}
-                </pre>
-              </div>
-            ) : null}
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-    );
-  }
+  if (part.type === "reasoning") return null;
+  if (isToolPart(part)) return null;
   return null;
 }
 
@@ -370,9 +474,22 @@ function MessageTurn({
     );
   }
 
+  const reasoningParts = message.parts.filter(
+    (p): p is UIMessage["parts"][number] & ReasoningPart => p.type === "reasoning",
+  );
+  const toolParts = message.parts.filter(isToolPart) as unknown as ToolPart[];
+  const lastPart = message.parts.at(-1);
+  const isReasoningStreaming = isStreaming && lastPart?.type === "reasoning";
+
   return (
     <div className="flex w-full min-w-0 max-w-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden">
+        {reasoningParts.length > 0 && (
+          <ReasoningBlock parts={reasoningParts} isActivelyStreaming={isReasoningStreaming} />
+        )}
+        {toolParts.length > 0 && (
+          <ChainOfThought steps={toolParts} isStreaming={isStreaming} />
+        )}
         {message.parts.map((part, index) => (
           <MessagePart key={`${message.id}-${index}`} part={part} isUser={false} isStreaming={isStreaming} />
         ))}
