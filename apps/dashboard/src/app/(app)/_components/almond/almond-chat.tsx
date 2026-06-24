@@ -410,9 +410,11 @@ function GeneratedFilesList({ files }: { files: GeneratedFile[] }) {
 function ReasoningBlock({
   parts,
   isActivelyStreaming,
+  forceOpen,
 }: {
   parts: ReasoningPart[];
   isActivelyStreaming: boolean;
+  forceOpen?: boolean;
 }) {
   if (parts.length === 0) return null;
 
@@ -422,6 +424,7 @@ function ReasoningBlock({
     <Reasoning
       className="mb-0 min-w-0 max-w-full overflow-hidden"
       isStreaming={isActivelyStreaming}
+      open={forceOpen ? true : undefined}
     >
       <ReasoningTrigger className="cursor-pointer text-sm text-pretty text-on-surface-variant hover:text-on-surface" />
       <ReasoningContent className="mt-3 max-w-full overflow-hidden text-sm text-pretty text-on-surface-variant [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_pre]:max-w-full [&_pre]:overflow-x-auto">
@@ -506,31 +509,44 @@ function CurrentToolBlock({ parts }: { parts: ToolPart[] }) {
   );
 }
 
-function CurrentStreamingBlock({ block }: { block: AssistantRenderBlock | undefined }) {
-  if (!block) return null;
+function CurrentStreamingThread({ blocks }: { blocks: AssistantRenderBlock[] }) {
+  const latestBlock = blocks.at(-1);
+  if (!latestBlock) return null;
 
-  if (block.type === "reasoning") {
+  if (latestBlock.type === "part") {
     return (
-      <AnimatedBlock blockKey={`reasoning-${block.startIndex}`}>
-        <ReasoningBlock parts={block.parts} isActivelyStreaming />
+      <AnimatedBlock blockKey={`part-${latestBlock.startIndex}`}>
+        <MessagePart part={latestBlock.part} isUser={false} isStreaming />
       </AnimatedBlock>
     );
   }
 
-  if (block.type === "tools") {
-    const part = block.parts.at(-1);
-    if (!part) return null;
+  const latestReasoning =
+    latestBlock.type === "reasoning"
+      ? latestBlock
+      : blocks
+          .slice(0, -1)
+          .reverse()
+          .find((block): block is Extract<AssistantRenderBlock, { type: "reasoning" }> => block.type === "reasoning");
 
-    return (
-      <AnimatedBlock blockKey={`tool-${block.startIndex}-${block.parts.length - 1}`} layout={false}>
-        <CurrentToolBlock parts={block.parts} />
-      </AnimatedBlock>
-    );
-  }
+  const threadKey = latestReasoning ? `thread-${latestReasoning.startIndex}` : `thread-${latestBlock.startIndex}`;
 
   return (
-    <AnimatedBlock blockKey={`part-${block.startIndex}`}>
-      <MessagePart part={block.part} isUser={false} isStreaming />
+    <AnimatedBlock blockKey={threadKey} layout={false}>
+      <div className="flex min-w-0 flex-col gap-3 overflow-hidden">
+        {latestReasoning ? (
+          <ReasoningBlock
+            parts={latestReasoning.parts}
+            isActivelyStreaming={latestBlock.type === "reasoning"}
+            forceOpen={latestBlock.type === "reasoning"}
+          />
+        ) : null}
+        {latestBlock.type === "tools" ? (
+          <AnimatedBlock blockKey={`tool-${latestBlock.startIndex}-${latestBlock.parts.length - 1}`} layout={false}>
+            <CurrentToolBlock parts={latestBlock.parts} />
+          </AnimatedBlock>
+        ) : null}
+      </div>
     </AnimatedBlock>
   );
 }
@@ -641,13 +657,13 @@ function MessageTurn({
   return (
     <div className="flex w-full min-w-0 max-w-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden">
-        {isStreaming && !isFinalAnswerPhase ? <CurrentStreamingBlock block={latestBlock} /> : null}
+        {isStreaming && !isFinalAnswerPhase ? <CurrentStreamingThread blocks={renderBlocks} /> : null}
         {shouldShowTrace ? (
           <AnimatedMount>
             <CompletedTrace blocks={traceBlocks} />
           </AnimatedMount>
         ) : null}
-        {isStreaming && isFinalAnswerPhase ? <CurrentStreamingBlock block={latestBlock} /> : null}
+        {isStreaming && isFinalAnswerPhase ? <CurrentStreamingThread blocks={renderBlocks} /> : null}
         {!isStreaming &&
           textBlocks.map((block) => (
             <AnimatedMount key={`${message.id}-${block.type}-${block.startIndex}`}>
