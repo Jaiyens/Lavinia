@@ -235,7 +235,7 @@ function WriteFileCard({ part }: { part: ToolPart }) {
 
   return (
     <Card className="min-w-0 gap-3 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-      <div className="flex items-center gap-2 type-body-sm font-medium text-on-surface">
+      <div className="flex items-center gap-2 text-xs font-medium text-on-surface">
         <FileText size={16} aria-hidden className="shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate">{path || "writeFile"}</span>
         <Badge variant="secondary" className="shrink-0 uppercase tracking-wide text-on-surface-variant">
@@ -276,7 +276,7 @@ function MessagePart({
     }
     return (
       <Streamdown
-        className="min-w-0 max-w-full overflow-hidden type-body-md text-pretty [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_[data-streamdown='code-block']]:bg-surface-container-low [&_[data-streamdown='code-block']]:text-on-surface [&_[data-streamdown='inline-code']]:bg-surface-container [&_[data-streamdown='table-wrapper']]:max-w-full [&_[data-streamdown='table-wrapper']]:overflow-x-auto [&_[data-streamdown='table-wrapper']]:bg-surface-container-low [&_pre]:max-w-full [&_pre]:overflow-x-auto"
+        className="min-w-0 max-w-full overflow-hidden text-sm text-pretty [overflow-wrap:anywhere] [&_[data-streamdown='code-block']]:max-w-full [&_[data-streamdown='code-block']]:overflow-x-auto [&_[data-streamdown='code-block']]:bg-surface-container-low [&_[data-streamdown='code-block']]:text-on-surface [&_[data-streamdown='inline-code']]:bg-surface-container [&_[data-streamdown='table-wrapper']]:max-w-full [&_[data-streamdown='table-wrapper']]:overflow-x-auto [&_[data-streamdown='table-wrapper']]:bg-surface-container-low [&_pre]:max-w-full [&_pre]:overflow-x-auto"
         controls={STREAMDOWN_CONTROLS}
         lineNumbers={false}
         mode={isStreaming ? "streaming" : "static"}
@@ -294,7 +294,7 @@ function MessagePart({
             <ChevronDown size={14} aria-hidden className="shrink-0 transition-transform" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <pre className="mt-2 max-w-full whitespace-pre-wrap break-words type-body-sm text-on-surface-variant">
+            <pre className="mt-2 max-w-full whitespace-pre-wrap break-words text-xs text-on-surface-variant">
               {(part as ReasoningPart).text}
             </pre>
           </CollapsibleContent>
@@ -312,7 +312,7 @@ function MessagePart({
     return (
       <Collapsible defaultOpen={part.state !== "output-available"} className="w-full min-w-0 max-w-full overflow-hidden">
         <Card className="w-full min-w-0 max-w-full gap-0 overflow-hidden rounded-xl border-outline-variant bg-surface-container-low p-3 py-3 shadow-none">
-          <CollapsibleTrigger className="flex min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden text-left type-body-sm font-medium text-on-surface [&[data-state=open]>svg:last-child]:rotate-180">
+          <CollapsibleTrigger className="flex min-w-0 max-w-full cursor-pointer items-center gap-2 overflow-hidden text-left text-xs font-medium text-on-surface [&[data-state=open]>svg:last-child]:rotate-180">
             {part.type === "tool-bash" ? (
               <Terminal size={16} aria-hidden className="shrink-0" />
             ) : (
@@ -331,7 +331,7 @@ function MessagePart({
           <CollapsibleContent className="min-w-0 max-w-full overflow-hidden">
             {output ? (
               <div className="mt-3 h-72 w-full overflow-y-auto overflow-x-hidden rounded-lg bg-paper">
-                <pre className="w-full whitespace-pre-wrap break-all p-3 text-[12px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
+                <pre className="w-full whitespace-pre-wrap break-all p-3 text-[11px] leading-relaxed text-on-surface-variant [overflow-wrap:anywhere] [word-break:break-all]">
                   {output}
                 </pre>
               </div>
@@ -360,7 +360,7 @@ function MessageTurn({
   if (isUser) {
     return (
       <div className="flex min-w-0 justify-end">
-        <div className="min-w-0 max-w-[85%] rounded-3xl rounded-br-md bg-surface-container-high px-4 py-2.5 type-body-md text-on-surface">
+        <div className="min-w-0 max-w-[85%] rounded-3xl rounded-br-md bg-surface-container-high px-4 py-2.5 text-sm text-on-surface">
           {message.parts.map((part, index) =>
             part.type === "text" ? (
               <MessagePart key={`${message.id}-${index}`} part={part} isUser isStreaming={false} />
@@ -382,7 +382,7 @@ function MessageTurn({
             <button
               type="button"
               onClick={onRegenerate}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 type-caption text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
             >
               <RotateCcw size={13} aria-hidden />
               Regenerate
@@ -401,7 +401,7 @@ function EmptyState({ starters, onStarter }: { starters: readonly string[]; onSt
         <Sparkles size={28} />
       </span>
       <h2 className="type-display-lg mt-5 text-on-surface">Ask about this farm</h2>
-      <p className="type-body-md mt-2 max-w-md text-on-surface-variant">
+      <p className="text-sm mt-2 max-w-md text-on-surface-variant">
         Almond can inspect your meters, rates, and bills, then save notes you can download.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -410,7 +410,7 @@ function EmptyState({ starters, onStarter }: { starters: readonly string[]; onSt
             key={starter}
             type="button"
             onClick={() => onStarter(starter)}
-            className="rounded-full border border-outline-variant bg-surface-bright px-3.5 py-2 type-body-sm text-on-surface transition-colors hover:bg-surface-container-low"
+            className="rounded-full border border-outline-variant bg-surface-bright px-3.5 py-2 text-xs text-on-surface transition-colors hover:bg-surface-container-low"
           >
             {starter}
           </button>
@@ -566,7 +566,7 @@ function Composer({
             rows={1}
             placeholder="Ask Almond about this farm"
             aria-label="Message Almond"
-            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 type-body-md text-on-surface shadow-none placeholder:text-on-surface-variant/60 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0 md:text-[0.9375rem]"
+            className="max-h-44 min-h-9 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-on-surface shadow-none placeholder:text-on-surface-variant/60 focus-visible:border-0 focus-visible:shadow-none focus-visible:ring-0"
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
