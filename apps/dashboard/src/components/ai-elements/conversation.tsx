@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, MoveDown } from "lucide-react";
+import { ArrowDown, Download } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -97,7 +97,7 @@ export function ConversationScrollButton({ className, ...props }: ComponentProps
       aria-label="Scroll to latest message"
       {...props}
     >
-      <MoveDown size={16} aria-hidden />
+      <ArrowDown size={16} aria-hidden />
     </Button>
   );
 }
