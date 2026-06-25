@@ -18,9 +18,8 @@
 // over unchanged as demo flavor.
 //
 // Run:  npx tsx scripts/relocate-demo-parcels.ts
-// Writes fixtures/sundance-parcels.json (from batth-parcels.json) and rewrites
-// fixtures/representative-farm.json in place. Touches ONLY committed JSON fixtures + this script;
-// it does NOT touch the database / Supabase. Retune a location by editing a JOBS entry and re-running.
+// Rewrites fixtures/sundance-parcels.json and fixtures/representative-farm.json in place. Touches
+// ONLY committed JSON fixtures + this script; it does NOT touch the database / Supabase.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -47,7 +46,7 @@ type Job = {
 // target lands on a town, canal, or fallow ground.
 const JOBS: Job[] = [
   {
-    src: "batth-parcels.json",
+    src: "sundance-parcels.json",
     out: "sundance-parcels.json",
     name: "Sundance Valley Farms",
     target: { lat: 36.475, lng: -120.24 }, // Five Points / Cantua Creek farmland
