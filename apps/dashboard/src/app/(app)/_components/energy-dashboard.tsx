@@ -7,6 +7,8 @@ import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
+import { loadBatthFarm } from "@/lib/parcel/farm/seed";
+import { toParcelOverlay, type ParcelOverlay } from "@/lib/dashboard/parcel-overlay";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -95,6 +97,14 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
     verifications[meter.id] = verificationFor(meter, card);
   }
 
+  // Field-boundary underlay for the Map lens: the farm's parcels drawn beneath the meter pins.
+  // Only the farm that has committed parcel geometry today (Batth) gets it; every other farm is
+  // null, so the overlay + its toggle stay hidden. Geometry only (boundary + APN/name) crosses to
+  // the client here, never ops or financial data.
+  const batthFarm = loadBatthFarm(todayIso);
+  const parcels: ParcelOverlay | null =
+    farm.name === batthFarm.name ? toParcelOverlay(batthFarm.parcels) : null;
+
   return (
     <>
       {/* Energy keeps the persistent findings rail (now attached here, not the shell): a
@@ -146,7 +156,12 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
             </div>
 
             <div>
-              <LensRegion meters={meters} schedule={schedule} todayIso={todayIso} />
+              <LensRegion
+                meters={meters}
+                schedule={schedule}
+                todayIso={todayIso}
+                parcels={parcels}
+              />
             </div>
           </Reveal>
 
