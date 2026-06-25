@@ -48,13 +48,14 @@ export const loadRepresentativeFarm = cache((todayIso: string): Farm =>
 );
 
 /**
- * The Batth Farms demo operation: real Fresno County parcels around the Caruthers home ranch, baked
- * by scripts/seed-batth-parcels.ts. Falls back to the representative fixture if the Batth fixture
- * isn't present yet (so the app never hard-fails on a missing seed). Request-cached.
+ * The demo operation shown on the Parcels surface ("Sundance Valley Farms"): SYNTHETIC parcels in
+ * Fresno County, relocated to open farmland with synthetic APNs by scripts/relocate-demo-parcels.ts
+ * so the demo never displays a real grower's land or APN. Falls back to the representative fixture if
+ * the demo fixture isn't present (so the app never hard-fails on a missing seed). Request-cached.
  */
-export const loadBatthFarm = cache((todayIso: string): Farm => {
+export const loadDemoFarm = cache((todayIso: string): Farm => {
   try {
-    return buildFarm(readFixture("batth-parcels.json"), todayIso);
+    return buildFarm(readFixture("sundance-parcels.json"), todayIso);
   } catch {
     return loadRepresentativeFarm(todayIso);
   }
