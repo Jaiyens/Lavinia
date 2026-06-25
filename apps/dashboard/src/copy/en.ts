@@ -590,6 +590,8 @@ export const en = {
       body: "Enter the join code a teammate gave you. They approve you before you see the farm.",
       cta: "Join a farm",
     },
+    // Escape hatch back to the sign-in page (signs the current session out on the way).
+    backToLogin: "Back to login",
   },
   // Request-to-join (Phase 2), requester-facing: the /join code-entry page, the waiting screen, the
   // declined notice, and the email to admins. Plain operator English. No em dashes, no exclamations.

@@ -97,6 +97,17 @@ export default async function StartPage({
           <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.join.cta}</span>
         </Link>
       </div>
+      {/* Escape hatch: a native link (not next/link) to the /api/lock route handler, so it does a
+          full navigation that clears the session cookie server-side and returns to the login page -
+          the way out for anyone who landed here on a stale/leftover session. */}
+      <div className="mt-8 text-center">
+        <a
+          href="/api/lock"
+          className="type-body-sm text-on-surface-variant underline underline-offset-4 transition-colors hover:text-on-surface"
+        >
+          {t.backToLogin}
+        </a>
+      </div>
     </ForkShell>
   );
 }
