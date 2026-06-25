@@ -1,0 +1,272 @@
+{
+  "account": {
+    "number": "8922820273-8",
+    "printedTotalCents": 5557726
+  },
+  "reconciledCount": 4,
+  "escalatedCount": 0,
+  "pages": 10,
+  "bills": [
+    {
+      "saId": "8923940171",
+      "saIdDescriptor": "P114",
+      "meterNumber": "1010117036",
+      "growerPumpId": "P114",
+      "periods": [
+        {
+          "saId": "8923940171",
+          "start": "2026-04-30",
+          "close": "2026-05-31",
+          "cycleClose": null,
+          "tariff": "AGFB  Ag35+ kW Med Use Flex",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 32days@$0.91565",
+              "amountCents": 2930,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2930,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "8922820405",
+      "saIdDescriptor": "PUMP # 34",
+      "meterNumber": "1011474007",
+      "growerPumpId": "PUMP # 34",
+      "periods": [
+        {
+          "saId": "8922820405",
+          "start": "2026-04-30",
+          "close": "2026-05-31",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": 217.568,
+          "demandAmountCents": 542832,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 32days@$1.43343",
+              "amountCents": 4587,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 542832,
+              "quantity": 217.568,
+              "unit": "kW",
+              "rate": 24.95
+            }
+          ],
+          "printedTotalCents": 547419,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "8922791703",
+      "saIdDescriptor": "P145",
+      "meterNumber": "1009917192",
+      "growerPumpId": "P145",
+      "periods": [
+        {
+          "saId": "8922791703",
+          "start": "2026-04-30",
+          "close": "2026-05-31",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 3.447,
+              "amountCents": 64
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 47128.9365,
+              "amountCents": 753168
+            }
+          ],
+          "demandKw": 104.388,
+          "demandAmountCents": 260448,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 32days@$1.43343",
+              "amountCents": 4587,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 260448,
+              "quantity": 104.388,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 64,
+              "quantity": 3.447,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 753168,
+              "quantity": 47128.9365,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 1414,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1019681,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "8925240409",
+      "saIdDescriptor": "P107",
+      "meterNumber": "1009963318",
+      "growerPumpId": "P107",
+      "periods": [
+        {
+          "saId": "8925240409",
+          "start": "2026-04-30",
+          "close": "2026-05-31",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 0.59,
+              "amountCents": 11
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 4.2885,
+              "amountCents": 69
+            }
+          ],
+          "demandKw": 0.012,
+          "demandAmountCents": 30,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 32days@$1.43343",
+              "amountCents": 4587,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 30,
+              "quantity": 0.012,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 11,
+              "quantity": 0.59,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 69,
+              "quantity": 4.2885,
+              "unit": "kWh",
+              "rate": 0.15981
+            }
+          ],
+          "printedTotalCents": 4697,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "8922820405 PUMP # 34",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 2450497,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-12-30",
+          "netKwh": -1321,
+          "amountCents": -22312
+        },
+        {
+          "start": null,
+          "close": "2026-01-30",
+          "netKwh": -2280,
+          "amountCents": -36232
+        },
+        {
+          "start": null,
+          "close": "2026-03-03",
+          "netKwh": -3160,
+          "amountCents": -50189
+        },
+        {
+          "start": null,
+          "close": "2026-04-01",
+          "netKwh": -169,
+          "amountCents": -2886
+        },
+        {
+          "start": null,
+          "close": "2026-04-30",
+          "netKwh": 62806,
+          "amountCents": 1003285
+        },
+        {
+          "start": null,
+          "close": "2026-06-01",
+          "netKwh": 97581,
+          "amountCents": 1558831
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

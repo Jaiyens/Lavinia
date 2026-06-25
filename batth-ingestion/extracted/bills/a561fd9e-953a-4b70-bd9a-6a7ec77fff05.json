@@ -1,0 +1,85 @@
+{
+  "account": {
+    "number": "6119019619-8",
+    "printedTotalCents": 4882
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "6118948476",
+      "saIdDescriptor": null,
+      "meterNumber": "1011699460",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "6118948476",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "B1  Bus Low Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 20days@$0.82136",
+              "amountCents": 1643,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 9days@$0.82136",
+              "amountCents": 739,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "NEM Billing Fees",
+              "amountCents": 2500,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 4882,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "6118948476",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 36955,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-05-12",
+          "netKwh": 753,
+          "amountCents": 25535
+        },
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 322,
+          "amountCents": 11420
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

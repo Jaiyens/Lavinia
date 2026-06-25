@@ -1,0 +1,118 @@
+{
+  "account": {
+    "number": "8780138865-0",
+    "printedTotalCents": 96295
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 6,
+  "bills": [
+    {
+      "saId": "8782228927",
+      "saIdDescriptor": "CLOSED",
+      "meterNumber": "1009966006",
+      "growerPumpId": "CLOSED",
+      "periods": [
+        {
+          "saId": "8782228927",
+          "start": "2026-05-15",
+          "close": "2026-05-27",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 1.524,
+              "amountCents": 28
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 2614.6974,
+              "amountCents": 41785
+            }
+          ],
+          "demandKw": 47.496,
+          "demandAmountCents": 51351,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 13days@$1.43343",
+              "amountCents": 1863,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 51351,
+              "quantity": 47.496,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 28,
+              "quantity": 1.524,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 41785,
+              "quantity": 2614.6974,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 78,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 95105,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "8789207013",
+      "saIdDescriptor": "CLOSED",
+      "meterNumber": "1009995865",
+      "growerPumpId": "CLOSED",
+      "periods": [
+        {
+          "saId": "8789207013",
+          "start": "2026-05-15",
+          "close": "2026-05-27",
+          "cycleClose": null,
+          "tariff": "AGB  Ag35+ kW Med Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 13days@$0.91565",
+              "amountCents": 1190,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1190,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

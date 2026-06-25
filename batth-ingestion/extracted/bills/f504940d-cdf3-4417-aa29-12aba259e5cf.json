@@ -1,0 +1,87 @@
+{
+  "account": {
+    "number": "1664841929-5",
+    "printedTotalCents": 1477880
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 4,
+  "bills": [
+    {
+      "saId": "1666375919",
+      "saIdDescriptor": null,
+      "meterNumber": "1011501430",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "1666375919",
+          "start": "2026-04-24",
+          "close": "2026-05-25",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 144.072,
+              "amountCents": 2673
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 67002.28,
+              "amountCents": 1070763
+            }
+          ],
+          "demandKw": 159.456,
+          "demandAmountCents": 397843,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 32days@$1.43343",
+              "amountCents": 4587,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 397843,
+              "quantity": 159.456,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 2673,
+              "quantity": 144.072,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 1070763,
+              "quantity": 67002.28,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 2014,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1477880,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}
