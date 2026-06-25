@@ -7,7 +7,7 @@ import { verificationFor } from "@/lib/dashboard/drawer";
 import type { BillVerification } from "@/lib/energy/bill-verify";
 import { loadRateCard } from "@/lib/pge/rate-card";
 import { loadMeterReadSchedule } from "@/lib/pge/schedule-load";
-import { loadBatthFarm } from "@/lib/parcel/farm/seed";
+import { loadDemoFarm } from "@/lib/parcel/farm/seed";
 import { toParcelOverlay, type ParcelOverlay } from "@/lib/dashboard/parcel-overlay";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
@@ -98,12 +98,12 @@ export async function EnergyDashboard({ demoOnly = false }: { demoOnly?: boolean
   }
 
   // Field-boundary underlay for the Map lens: the farm's parcels drawn beneath the meter pins.
-  // Only the farm that has committed parcel geometry today (Batth) gets it; every other farm is
-  // null, so the overlay + its toggle stay hidden. Geometry only (boundary + APN/name) crosses to
-  // the client here, never ops or financial data.
-  const batthFarm = loadBatthFarm(todayIso);
+  // Only the farm that has committed parcel geometry today (the demo farm) gets it; every other
+  // farm is null, so the overlay + its toggle stay hidden. Geometry only (boundary + APN/name)
+  // crosses to the client here, never ops or financial data.
+  const demoFarm = loadDemoFarm(todayIso);
   const parcels: ParcelOverlay | null =
-    farm.name === batthFarm.name ? toParcelOverlay(batthFarm.parcels) : null;
+    farm.name === demoFarm.name ? toParcelOverlay(demoFarm.parcels) : null;
 
   return (
     <>
