@@ -1,0 +1,52 @@
+{
+  "account": {
+    "number": "5051864669-5",
+    "printedTotalCents": 4157
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 4,
+  "bills": [
+    {
+      "saId": "5054032730",
+      "saIdDescriptor": null,
+      "meterNumber": "1010915551",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "5054032730",
+          "start": "2026-05-11",
+          "close": "2026-06-08",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 21days@$1.43343",
+              "amountCents": 3010,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 8days@$1.43343",
+              "amountCents": 1147,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 4157,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

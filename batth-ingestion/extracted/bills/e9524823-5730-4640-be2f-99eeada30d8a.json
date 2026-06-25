@@ -1,0 +1,111 @@
+{
+  "account": {
+    "number": "5089901685-6",
+    "printedTotalCents": 249822
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "5089901108",
+      "saIdDescriptor": "P074",
+      "meterNumber": "1010127899",
+      "growerPumpId": "P074",
+      "periods": [
+        {
+          "saId": "5089901108",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "AGB  Ag35+ kW Med Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": 176.96,
+          "demandAmountCents": 76611,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 20days@$0.91565",
+              "amountCents": 1831,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 170556,
+              "quantity": 177.28,
+              "unit": "kW",
+              "rate": 13.95
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 9days@$0.91565",
+              "amountCents": 824,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 76611,
+              "quantity": 176.96,
+              "unit": "kW",
+              "rate": 13.95
+            }
+          ],
+          "printedTotalCents": 249822,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "5089901108 P074",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 3898274,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-02-11",
+          "netKwh": 3960,
+          "amountCents": 62829
+        },
+        {
+          "start": null,
+          "close": "2026-03-13",
+          "netKwh": 9949,
+          "amountCents": 158740
+        },
+        {
+          "start": null,
+          "close": "2026-04-13",
+          "netKwh": 34175,
+          "amountCents": 546896
+        },
+        {
+          "start": null,
+          "close": "2026-05-12",
+          "netKwh": 47458,
+          "amountCents": 1459623
+        },
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 52078,
+          "amountCents": 1670186
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

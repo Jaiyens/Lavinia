@@ -1,0 +1,934 @@
+{
+  "account": {
+    "number": "3616331323-6",
+    "printedTotalCents": 219311
+  },
+  "reconciledCount": 12,
+  "escalatedCount": 0,
+  "pages": 24,
+  "bills": [
+    {
+      "saId": "3610677776",
+      "saIdDescriptor": null,
+      "meterNumber": "1010874330",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3610677776",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": "2026-06-12",
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 18 days @$0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 187.200000 kWh @$0.32561",
+              "amountCents": 6095,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 472.792200 kWh @$0.40702",
+              "amountCents": 19244,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 20,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 11 days @$0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 194.700000 kWh @$0.32561",
+              "amountCents": 6340,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 06/01-06/11 331.204200 kWh @$0.40702",
+              "amountCents": 13481,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 16,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 47497,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3616331886",
+      "saIdDescriptor": null,
+      "meterNumber": "1009867927",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3616331886",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": "2026-06-12",
+          "tariff": "E1 RH Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 18 days @ $0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 11 days @ $0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2301,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3616129445",
+      "saIdDescriptor": null,
+      "meterNumber": "1010378298",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3616129445",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "EM RB Master-Metered Multifamily Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 176.400000 kWh @$0.37174",
+              "amountCents": 6557,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 30.671000 kWh @$0.46572",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 6,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 165.000000 kWh @$0.37174",
+              "amountCents": 6134,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 06/01-06/11 8.956000 kWh @$0.46572",
+              "amountCents": 417,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 5,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 14547,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3615347408",
+      "saIdDescriptor": null,
+      "meterNumber": "5000080375",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3615347408",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "EM RB Master-Metered Multifamily Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 441.000000 kWh @$0.37174",
+              "amountCents": 16394,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 83.889000 kWh @$0.46572",
+              "amountCents": 3907,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 16,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 412.500000 kWh @$0.37174",
+              "amountCents": 15334,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 06/01-06/11 2.624000 kWh @$0.46572",
+              "amountCents": 122,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 12,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 35785,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3613637326",
+      "saIdDescriptor": null,
+      "meterNumber": "1005966467",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3613637326",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 (18 days @$0.79343)",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 187.200000 kWh @$0.32561",
+              "amountCents": 6095,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 23.678000 kWh @$0.40702",
+              "amountCents": 964,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 6,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 (11 days @$0.79343)",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 127.963000 kWh @$0.32561",
+              "amountCents": 4167,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 4,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 13537,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3616585249",
+      "saIdDescriptor": null,
+      "meterNumber": "1005673883",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3616585249",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 18 days @$0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 187.200000 kWh @$0.32561",
+              "amountCents": 6095,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 289.546400 kWh @$0.40702",
+              "amountCents": 11785,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 14,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 11 days @$0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 194.700000 kWh @$0.32561",
+              "amountCents": 6340,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 06/01-06/11 203.005300 kWh @$0.40702",
+              "amountCents": 8263,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 12,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 34810,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3612438203",
+      "saIdDescriptor": "RES HOME BIG RANCH-T2",
+      "meterNumber": "1010106253",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3612438203",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": "2026-06-12",
+          "tariff": "E1 RH Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 18 days @ $0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 11 days @ $0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2301,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3619519565",
+      "saIdDescriptor": "MOBILE HOME",
+      "meterNumber": "1005908204",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3619519565",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 18 days @$0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 11 days @$0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2301,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3615595275",
+      "saIdDescriptor": null,
+      "meterNumber": "1005874743",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3615595275",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 (18 days @$0.79343)",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 169.760000 kWh @$0.32561",
+              "amountCents": 5528,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 5,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 (11 days @$0.79343)",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 162.911000 kWh @$0.32561",
+              "amountCents": 5305,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 5,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 13144,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3616059150",
+      "saIdDescriptor": "RES WTR SYS NEW RANCH",
+      "meterNumber": "1010982122",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3616059150",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 (18 days @$0.79343)",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 173.883000 kWh @$0.32561",
+              "amountCents": 5662,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 5,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 (11 days @$0.79343)",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 138.315000 kWh @$0.32561",
+              "amountCents": 4504,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 4,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 12476,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3611063340",
+      "saIdDescriptor": null,
+      "meterNumber": "1011467696",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3611063340",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": "2026-06-12",
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 18 days @$0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 187.200000 kWh @$0.32561",
+              "amountCents": 6095,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 05/14-05/31 305.664900 kWh @$0.40702",
+              "amountCents": 12441,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 15,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 11 days @$0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 194.700000 kWh @$0.32561",
+              "amountCents": 6340,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 06/01-06/11 144.863500 kWh @$0.40702",
+              "amountCents": 5896,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 10,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 33098,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "3618757072",
+      "saIdDescriptor": null,
+      "meterNumber": "1005827367",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3618757072",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 05/14-05/31 18 days @$0.79343",
+              "amountCents": 1428,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 05/14-05/31 93.248040 kWh @$0.32561",
+              "amountCents": 3036,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 05/14-05/31",
+              "amountCents": 3,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 06/01-06/11 11 days @$0.79343",
+              "amountCents": 873,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 06/01-06/11 66.704000 kWh @$0.32561",
+              "amountCents": 2172,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax 06/01-06/11",
+              "amountCents": 2,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 7514,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "3612438203 RES HOME BIG RANCH-T2",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 83693,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-05-13",
+          "netKwh": 905,
+          "amountCents": 30521
+        },
+        {
+          "start": null,
+          "close": "2026-06-11",
+          "netKwh": 1446,
+          "amountCents": 53172
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    {
+      "generatingSaId": "3616331886",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": -9473,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-06-11",
+          "netKwh": -291,
+          "amountCents": -9473
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    {
+      "generatingSaId": "3612438203",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": 4,
+      "trueUpDate": null,
+      "trueUpAmountCents": null,
+      "months": [
+        {
+          "start": "-",
+          "close": "2026-05-13",
+          "netKwh": 905,
+          "amountCents": 30548
+        },
+        {
+          "start": "-",
+          "close": "2026-06-11",
+          "netKwh": 1446,
+          "amountCents": 53216
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    {
+      "generatingSaId": "3612438203",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": null,
+      "months": [
+        {
+          "start": "2026-05-13",
+          "close": "2026-05-13",
+          "netKwh": 0,
+          "amountCents": 30521
+        },
+        {
+          "start": "2026-06-11",
+          "close": "2026-06-11",
+          "netKwh": 0,
+          "amountCents": 53172
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    {
+      "generatingSaId": "3612438203",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": 4,
+      "trueUpDate": null,
+      "trueUpAmountCents": null,
+      "months": [
+        {
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "netKwh": 1446.264,
+          "amountCents": 53216
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

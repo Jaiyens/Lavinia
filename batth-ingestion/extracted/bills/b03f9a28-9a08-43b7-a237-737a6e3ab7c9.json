@@ -1,0 +1,198 @@
+{
+  "account": {
+    "number": "0235921591-6",
+    "printedTotalCents": 198622
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 6,
+  "bills": [
+    {
+      "saId": "235921861",
+      "saIdDescriptor": null,
+      "meterNumber": "1004484958",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "0235921861",
+          "start": "2026-05-07",
+          "close": "2026-06-05",
+          "cycleClose": "2026-06-06",
+          "tariff": "Time-of-Use (Peak Pricing 4 - 9 p.m. Every Day)",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 837.7455,
+              "amountCents": 35401
+            },
+            {
+              "period": "Off-Peak",
+              "kWh": 3538.6652,
+              "amountCents": 132386
+            }
+          ],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 35401,
+              "quantity": 837.7455,
+              "unit": "kWh",
+              "rate": 0.39757
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off-Peak",
+              "amountCents": 132386,
+              "quantity": 3538.6652,
+              "unit": "kWh",
+              "rate": 0.36757
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 25 days @$0.79343",
+              "amountCents": 1984,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Baseline Credit 260.000000 kWh @-$0.08140 (05/07-05/31)",
+              "amountCents": -2116,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax (05/07-05/31)",
+              "amountCents": 104,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 5 days @$0.79343",
+              "amountCents": 397,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Baseline Credit 88.500000 kWh @-$0.08140 (06/01-06/05)",
+              "amountCents": -720,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax (06/01-06/05)",
+              "amountCents": 27,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 167463,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "0235921473",
+      "saIdDescriptor": null,
+      "meterNumber": "60363744",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "0235921473",
+          "start": "2026-05-07",
+          "close": "2026-06-05",
+          "cycleClose": null,
+          "tariff": "G1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 9.000000 Therms @ $2.28682 (05/07-05/31)",
+              "amountCents": 2058,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 79.478113 Therms @ $2.78994 (05/07-05/31)",
+              "amountCents": 22174,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Gas PPP Surcharge ($0.12103/Therm) (05/07-05/31)",
+              "amountCents": 1070,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Fresno Recovery Fee (05/07-05/31)",
+              "amountCents": 242,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 1.800000 Therms @ $2.38935 (06/01-06/05)",
+              "amountCents": 430,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 2 Usage 16.957801 Therms @ $2.89247 (06/01-06/05)",
+              "amountCents": 4905,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Gas PPP Surcharge ($0.12103/Therm) (06/01-06/05)",
+              "amountCents": 227,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Fresno Recovery Fee (06/01-06/05)",
+              "amountCents": 53,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 31159,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

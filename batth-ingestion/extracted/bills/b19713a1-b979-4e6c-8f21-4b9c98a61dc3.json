@@ -1,0 +1,277 @@
+{
+  "account": {
+    "number": "5658999696-8",
+    "printedTotalCents": 1484094
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 6,
+  "bills": [
+    {
+      "saId": "5658220082",
+      "saIdDescriptor": "P102",
+      "meterNumber": "1011498475",
+      "growerPumpId": "P102",
+      "periods": [
+        {
+          "saId": "5658220082",
+          "start": "2026-05-19",
+          "close": "2026-06-16",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 4.7216,
+              "amountCents": 88
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 18796.052,
+              "amountCents": 300380
+            },
+            {
+              "period": "Peak",
+              "kWh": 245.6184,
+              "amountCents": 5239
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 22626.2056,
+              "amountCents": 393357
+            }
+          ],
+          "demandKw": 82.208,
+          "demandAmountCents": 113164,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 13days@$1.43343",
+              "amountCents": 1863,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 95560,
+              "quantity": 85.44,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 88,
+              "quantity": 4.7216,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 300380,
+              "quantity": 18796.052,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 564,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 16days@$1.43343",
+              "amountCents": 2293,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Peak",
+              "amountCents": 133117,
+              "quantity": 80.64,
+              "unit": "kW",
+              "rate": 29.92
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 113164,
+              "quantity": 82.208,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 5239,
+              "quantity": 245.6184,
+              "unit": "kWh",
+              "rate": 0.21329
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 393357,
+              "quantity": 22626.2056,
+              "unit": "kWh",
+              "rate": 0.17385
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 686,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1046311,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "5650325696",
+      "saIdDescriptor": "P101",
+      "meterNumber": "1010253960",
+      "growerPumpId": "P101",
+      "periods": [
+        {
+          "saId": "5650325696",
+          "start": "2026-05-19",
+          "close": "2026-06-16",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 2.0455,
+              "amountCents": 38
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 8266.469,
+              "amountCents": 132106
+            },
+            {
+              "period": "Peak",
+              "kWh": 2.483,
+              "amountCents": 53
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 11154.201,
+              "amountCents": 193916
+            }
+          ],
+          "demandKw": 42.8,
+          "demandAmountCents": 58916,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 13days@$1.43343",
+              "amountCents": 1863,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 47923,
+              "quantity": 42.848,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 38,
+              "quantity": 2.0455,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 132106,
+              "quantity": 8266.469,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 248,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 16days@$1.43343",
+              "amountCents": 2293,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Peak",
+              "amountCents": 92,
+              "quantity": 0.056,
+              "unit": "kW",
+              "rate": 29.92
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 58916,
+              "quantity": 42.8,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 53,
+              "quantity": 2.483,
+              "unit": "kWh",
+              "rate": 0.21329
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 193916,
+              "quantity": 11154.201,
+              "unit": "kWh",
+              "rate": 0.17385
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 335,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 437783,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

@@ -1935,35 +1935,46 @@ export const en = {
       pinOpenNote: "Its detail is open",
       emptyView: "No meters in this view",
       legendLabel: "Pin colors",
-      // Pins colored by rate-schedule family; the legacy AG-4/AG-5 meters get a ring. Each color is
-      // paired with its label in the legend (never color-only).
-      rateLegendLabel: "Rate schedule",
-      rateFamily: {
-        agA: "AG-A",
-        agB: "AG-B",
-        agC: "AG-C",
-        legacy: "Legacy AG-4/AG-5",
-        nonAg: "Non-ag / other",
-      },
-      legacyRingNote: "Ringed = legacy AG-4/AG-5",
-      // Hover popup fields on a pin.
-      popup: {
-        rate: "Rate",
-        status: "Status",
-        annual: "Annual",
-        peak: "Peak",
-        gpm: "GPM",
-        annualValue: (usd: string): string => `${usd}/yr`,
-        peakValue: (kw: number): string => `${kw} kW`,
-        gpmValue: (n: string): string => `${n} gpm`,
-        none: "Not on file",
-      },
       // The base-map switch (satellite imagery vs a plain street map), mirroring the mockup.
       basemapLabel: "Base map",
       basemapSatellite: "Satellite",
       basemapStreets: "Map",
       // Screen-reader label for a pin that has a known latest bill floating above it.
       pinBillAria: (name: string, bill: string): string => `Meter ${name}, latest bill ${bill}`,
+      // The Energy map's "rate" encoding: pins colored by PG&E rate family, sized by annual spend,
+      // ringed when on a closed legacy schedule.
+      rateLegendLabel: "Rate schedule",
+      rateFamily: {
+        ag_a: "AG-A",
+        ag_b: "AG-B",
+        ag_c: "AG-C",
+        ag_other: "Other ag",
+        commercial: "Commercial",
+        legacy: "Legacy AG-4/AG-5",
+        unknown: "Unknown rate",
+      },
+      ringNote: "Ringed pins are on closed legacy rates",
+      sizeNote: "Bigger pins spend more per year",
+      // Screen-reader label for a pin in the rate encoding (the rate is the color, so it is spoken).
+      pinRateAria: (name: string, rate: string): string => `Open meter ${name}, rate ${rate}`,
+      rateUnknownAria: "unknown",
+      // The field-boundary underlay toggle on the Energy map.
+      fieldsLabel: "Fields",
+      fieldsToggleAria: (on: boolean): string =>
+        on ? "Hide field boundaries" : "Show field boundaries",
+      // Hover-popup field labels (a meter's facts on hover; each line is omitted when not on file).
+      popup: {
+        pumpId: "Pump ID",
+        rate: "Rate",
+        legacyTag: "legacy",
+        status: "Status",
+        annualSpend: "Annual spend",
+        latestBill: "Latest bill",
+        peak: "Peak demand",
+        flow: "Flow",
+        account: "Account",
+        ranch: "Ranch",
+      },
     },
     // The filter bar (Story 2.6): narrow the whole dashboard to an entity / ranch / rate.
     // A dimension with no values on this farm renders no control.

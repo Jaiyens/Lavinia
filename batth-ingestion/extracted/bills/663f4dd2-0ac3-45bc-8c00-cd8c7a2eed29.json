@@ -1,0 +1,292 @@
+{
+  "account": {
+    "number": "2405041276-6",
+    "printedTotalCents": 28395
+  },
+  "reconciledCount": 4,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "2408168253",
+      "saIdDescriptor": "well",
+      "meterNumber": "5000126795",
+      "growerPumpId": "well",
+      "periods": [
+        {
+          "saId": "2408168253",
+          "start": "2026-05-01",
+          "close": "2026-06-01",
+          "cycleClose": null,
+          "tariff": "E1 RH Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 31 days @$0.79343",
+              "amountCents": 2460,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 193.523600 kWh @$0.32561",
+              "amountCents": 6301,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 6,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 1 days @$0.79343",
+              "amountCents": 79,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 3.612300 kWh @$0.32561",
+              "amountCents": 118,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 8964,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "2408825240",
+      "saIdDescriptor": null,
+      "meterNumber": "1005279703",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "2408825240",
+          "start": "2026-05-01",
+          "close": "2026-06-01",
+          "cycleClose": null,
+          "tariff": "E1 RH Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 31 days @$0.79343",
+              "amountCents": 2460,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 110.131000 kWh @$0.32561",
+              "amountCents": 3586,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 3,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 1 days @$0.79343",
+              "amountCents": 79,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 4.776000 kWh @$0.32561",
+              "amountCents": 156,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 6284,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "2409954899",
+      "saIdDescriptor": null,
+      "meterNumber": "1005754610",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "2409954899",
+          "start": "2026-05-01",
+          "close": "2026-06-01",
+          "cycleClose": "2026-06-02",
+          "tariff": "Time-of-Use (Peak Pricing 4 - 9 p.m. Every Day)",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 11.9354,
+              "amountCents": 476
+            },
+            {
+              "period": "Off-Peak",
+              "kWh": 44.6729,
+              "amountCents": 1649
+            }
+          ],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 476,
+              "quantity": 11.9354,
+              "unit": "kWh",
+              "rate": 0.39757
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off-Peak",
+              "amountCents": 1649,
+              "quantity": 44.6729,
+              "unit": "kWh",
+              "rate": 0.36757
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 31 days @$0.79343",
+              "amountCents": 2460,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Baseline Credit 54.014200 kWh @-$0.08140 (05/01-05/31)",
+              "amountCents": -440,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 2,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 1 days @$0.79343",
+              "amountCents": 79,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Baseline Credit 2.594100 kWh @-$0.08140 (06/01)",
+              "amountCents": -21,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 4205,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "2406208365",
+      "saIdDescriptor": null,
+      "meterNumber": "1005962309",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "2406208365",
+          "start": "2026-05-01",
+          "close": "2026-06-01",
+          "cycleClose": null,
+          "tariff": "E1 RB Residential Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 31 days @$0.79343",
+              "amountCents": 2460,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 192.705000 kWh @$0.32561",
+              "amountCents": 6275,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 6,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 1 days @$0.79343",
+              "amountCents": 79,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Tier 1 Usage 3.744000 kWh @$0.32561",
+              "amountCents": 122,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 8942,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

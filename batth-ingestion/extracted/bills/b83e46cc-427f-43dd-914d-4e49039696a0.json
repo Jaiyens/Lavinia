@@ -1,0 +1,111 @@
+{
+  "account": {
+    "number": "9286085735-5",
+    "printedTotalCents": 4322
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 4,
+  "bills": [
+    {
+      "saId": "9285010095",
+      "saIdDescriptor": null,
+      "meterNumber": "1011353452",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "9285010095",
+          "start": "2026-05-04",
+          "close": "2026-06-02",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 0.12,
+              "amountCents": 2
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 0.296,
+              "amountCents": 5
+            }
+          ],
+          "demandKw": 0.032,
+          "demandAmountCents": 5,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 28days@$1.43343",
+              "amountCents": 4014,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 75,
+              "quantity": 0.032,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 2,
+              "quantity": 0.12,
+              "unit": "kWh",
+              "rate": 0.1855
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 5,
+              "quantity": 0.296,
+              "unit": "kWh",
+              "rate": 0.15981
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 2days@$1.43343",
+              "amountCents": 287,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Peak",
+              "amountCents": 6,
+              "quantity": 0.032,
+              "unit": "kW",
+              "rate": 29.92
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 5,
+              "quantity": 0.032,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "other",
+              "label": "Demand Charge Rate Limiter Adjustment",
+              "amountCents": -72,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 4322,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

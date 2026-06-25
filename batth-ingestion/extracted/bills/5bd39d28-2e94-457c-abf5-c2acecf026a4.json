@@ -1,0 +1,173 @@
+{
+  "account": {
+    "number": "1343554892-3",
+    "printedTotalCents": 73738
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 10,
+  "bills": [
+    {
+      "saId": "1345751427",
+      "saIdDescriptor": null,
+      "meterNumber": "1011105640",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "1345751427",
+          "start": "2026-04-22",
+          "close": "2026-05-20",
+          "cycleClose": null,
+          "tariff": "Time-of-Use (Peak Pricing 4 - 9 p.m. Every Day)",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 279.5265,
+              "amountCents": 11113
+            },
+            {
+              "period": "Off-Peak",
+              "kWh": 1748.361,
+              "amountCents": 64265
+            }
+          ],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 11113,
+              "quantity": 279.5265,
+              "unit": "kWh",
+              "rate": 0.39757
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off-Peak",
+              "amountCents": 64265,
+              "quantity": 1748.361,
+              "unit": "kWh",
+              "rate": 0.36757
+            },
+            {
+              "kind": "other",
+              "label": "Base Services Charge 29 days @$0.79343",
+              "amountCents": 2301,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Baseline Credit 774.300000 kWh @-$0.08140",
+              "amountCents": -6303,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 61,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 71437,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "1343554828",
+      "saIdDescriptor": null,
+      "meterNumber": "1009909116",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "1343554828",
+          "start": "2026-04-22",
+          "close": "2026-05-20",
+          "cycleClose": "2026-05-21",
+          "tariff": "Time-of-Use (Peak Pricing 4 - 9 p.m. Every Day)",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Base Services Charge 29 days @ $0.79343",
+              "amountCents": 2301,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2301,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "1343554828",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 949505,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-11-19",
+          "netKwh": 2827,
+          "amountCents": 128247
+        },
+        {
+          "start": null,
+          "close": "2025-12-21",
+          "netKwh": 3965,
+          "amountCents": 180909
+        },
+        {
+          "start": null,
+          "close": "2026-01-21",
+          "netKwh": 3492,
+          "amountCents": 153507
+        },
+        {
+          "start": null,
+          "close": "2026-02-22",
+          "netKwh": 3593,
+          "amountCents": 154703
+        },
+        {
+          "start": null,
+          "close": "2026-03-23",
+          "netKwh": 3041,
+          "amountCents": 115432
+        },
+        {
+          "start": null,
+          "close": "2026-04-21",
+          "netKwh": 3098,
+          "amountCents": 113358
+        },
+        {
+          "start": null,
+          "close": "2026-05-20",
+          "netKwh": 2821,
+          "amountCents": 103349
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}
