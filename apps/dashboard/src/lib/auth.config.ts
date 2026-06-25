@@ -114,11 +114,21 @@ export const authConfig: NextAuthConfig = {
     // Thread the user id onto the JWT so Story 5.2 can resolve User -> owned Farm without
     // a DB lookup in the session callback.
     jwt({ token, user }) {
-      if (user?.id) token.id = user.id;
+      if (user?.id) {
+        token.id = user.id;
+        // Stable sign-in time (epoch seconds), set ONCE at sign-in (the `user` arg is only
+        // present then; it persists across the rolling re-encode where `iat` does not). The
+        // client idle-lock reads it to tell a brand-new sign-in (never lock) from a tab
+        // reopened after stepping away (lock), so a fresh login can never bounce to /login.
+        token.loginAt = Math.floor(Date.now() / 1000);
+      }
       return token;
     },
     session({ session, token }) {
       if (typeof token.id === "string") session.user.id = token.id;
+      if (typeof token.loginAt === "number") {
+        (session as { loginAt?: number }).loginAt = token.loginAt;
+      }
       return session;
     },
   },

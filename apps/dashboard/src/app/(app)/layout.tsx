@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { IdleLock } from "./_components/idle-lock";
 
 // The (app) group is authed (Story 5.1, AC3). This layout enforces the SESSION gate for
 // every (app) route - the dashboard AND the onboarding flow - and nothing else. The farm
@@ -14,5 +15,14 @@ import { auth } from "@/lib/auth";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  return <>{children}</>;
+  // Sign-in time (epoch seconds) threaded onto the session in auth.config.ts, so the client
+  // idle-lock can exempt a brand-new sign-in from its first-load staleness check.
+  const loginAt = (session as { loginAt?: number }).loginAt;
+  const loginAtMs = typeof loginAt === "number" ? loginAt * 1000 : null;
+  return (
+    <>
+      <IdleLock loginAtMs={loginAtMs} />
+      {children}
+    </>
+  );
 }

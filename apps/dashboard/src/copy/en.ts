@@ -203,7 +203,7 @@ export const en = {
   // "Tour a sample" (Epic 5, Story 5.3): the public, badged representative dashboard a
   // prospect or investor can see with zero commitment. Plain operator English.
   tour: {
-    link: "Tour a sample",
+    link: "Tour demo",
     connectCta: "Connect your farm",
     connectNote: "This is representative data. Connect your own farm to see your numbers.",
   },
