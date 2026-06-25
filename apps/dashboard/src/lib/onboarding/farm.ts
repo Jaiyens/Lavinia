@@ -1885,7 +1885,11 @@ export async function accessibleFarms(
 ): Promise<{ id: string; name: string }[]> {
   if (!userId) return [];
   const memberships = await prisma.farmMembership.findMany({
-    where: { userId, status: "active", farm: { isDemo: false } },
+    // Members resolve EVERY farm they belong to, including the synthetic demo farm the two
+    // whitelisted founders are explicit owners of. Membership is the tenant gate; isDemo is no
+    // longer filtered here (only those founders are members of the demo farm), so the switcher
+    // lists it for them while the public /tour still resolves it via demoFarm.
+    where: { userId, status: "active" },
     orderBy: { createdAt: "desc" },
     select: { farm: { select: { id: true, name: true } } },
   });
@@ -1917,7 +1921,10 @@ export async function currentFarm(
 ) {
   if (!userId) return null;
   const base = {
-    isDemo: false,
+    // Resolve any farm the user is an active member of (membership is the tenant gate). The
+    // isDemo filter is intentionally dropped so the two whitelisted founders, added as owners of
+    // the synthetic demo farm, see it as their real working farm - while the public /tour still
+    // resolves it via demoFarm (isDemo stays true, only members can resolve it here).
     memberships: { some: { userId, status: "active" as const } },
     connections: { some: { type: PGE_SMD, status: "active" } },
   };
