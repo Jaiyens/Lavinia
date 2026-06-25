@@ -1,0 +1,87 @@
+{
+  "account": {
+    "number": "6431815493-3",
+    "printedTotalCents": 49980
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "6439420511",
+      "saIdDescriptor": null,
+      "meterNumber": "1010127903",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "6439420511",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "E19P  Medium General Demand-Metered TOU Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": 2.4,
+          "demandAmountCents": 7944,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 29days@$11.36882",
+              "amountCents": 32970,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "NEM Billing Fees",
+              "amountCents": 5500,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 7944,
+              "quantity": 2.4,
+              "unit": "kW",
+              "rate": 33.1
+            },
+            {
+              "kind": "demand",
+              "label": "Max Part Peak",
+              "amountCents": 3566,
+              "quantity": 2.4,
+              "unit": "kW",
+              "rate": 14.86
+            }
+          ],
+          "printedTotalCents": 49980,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "6439420511",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 2302,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 80,
+          "amountCents": 2302
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

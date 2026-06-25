@@ -1,0 +1,125 @@
+{
+  "account": {
+    "number": "3619074535-0",
+    "printedTotalCents": 6382
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "3615394927",
+      "saIdDescriptor": null,
+      "meterNumber": "1011499660",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "3615394927",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "A1X  Small General Time-of-Use Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 29days@$0.82136",
+              "amountCents": 2382,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "NEM Billing Fees",
+              "amountCents": 4000,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 6382,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "3615394927",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 102318,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-09-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-10-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-11-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-12-11",
+          "netKwh": 26,
+          "amountCents": 1079
+        },
+        {
+          "start": null,
+          "close": "2026-01-12",
+          "netKwh": 720,
+          "amountCents": 29340
+        },
+        {
+          "start": null,
+          "close": "2026-02-11",
+          "netKwh": 201,
+          "amountCents": 10152
+        },
+        {
+          "start": null,
+          "close": "2026-03-13",
+          "netKwh": 21,
+          "amountCents": 3604
+        },
+        {
+          "start": null,
+          "close": "2026-04-13",
+          "netKwh": 598,
+          "amountCents": 23294
+        },
+        {
+          "start": null,
+          "close": "2026-05-12",
+          "netKwh": 458,
+          "amountCents": 16263
+        },
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 507,
+          "amountCents": 18586
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

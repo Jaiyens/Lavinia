@@ -1,0 +1,74 @@
+{
+  "account": {
+    "number": "7526105246-0",
+    "printedTotalCents": 5307
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 4,
+  "bills": [
+    {
+      "saId": "7528166864",
+      "saIdDescriptor": "CLOSED",
+      "meterNumber": "1010915576",
+      "growerPumpId": "CLOSED",
+      "periods": [
+        {
+          "saId": "7528166864",
+          "start": "2026-02-19",
+          "close": "2026-02-25",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Off Peak",
+              "kWh": 0.048,
+              "amountCents": 1
+            }
+          ],
+          "demandKw": 0.064,
+          "demandAmountCents": 39,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 7days@$1.43343",
+              "amountCents": 1003,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 39,
+              "quantity": 0.064,
+              "unit": "kW",
+              "rate": 26.03
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 1,
+              "quantity": 0.048,
+              "unit": "kWh",
+              "rate": 0.15861
+            },
+            {
+              "kind": "other",
+              "label": "Demand Charge Rate Limiter Adjustment",
+              "amountCents": -38,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1005,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

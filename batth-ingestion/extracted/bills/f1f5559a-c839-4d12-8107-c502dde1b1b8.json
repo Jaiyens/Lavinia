@@ -1,0 +1,52 @@
+{
+  "account": {
+    "number": "0731904574-1",
+    "printedTotalCents": 1718
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 4,
+  "bills": [
+    {
+      "saId": "736862474",
+      "saIdDescriptor": null,
+      "meterNumber": null,
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "0736862474",
+          "start": "2026-05-02",
+          "close": "2026-06-02",
+          "cycleClose": null,
+          "tariff": "OL1 Outdoor Area Lighting Service",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "HPSV 120-V 70 Watt 1 Lamps @$17.16700",
+              "amountCents": 1717,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 1,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 1718,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [],
+  "needsReview": []
+}

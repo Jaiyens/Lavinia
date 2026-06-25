@@ -1,0 +1,95 @@
+{
+  "account": {
+    "number": "2700884486-5",
+    "printedTotalCents": 942529
+  },
+  "reconciledCount": 1,
+  "escalatedCount": 0,
+  "pages": 6,
+  "bills": [
+    {
+      "saId": "2707181864",
+      "saIdDescriptor": "P059",
+      "meterNumber": null,
+      "growerPumpId": "P059",
+      "periods": [
+        {
+          "saId": "2707181864",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "AGC  Ag35+ kW High Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": 142.56,
+          "demandAmountCents": 110386,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 20days@$1.43343",
+              "amountCents": 2867,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 218872,
+              "quantity": 127.2,
+              "unit": "kW",
+              "rate": 24.95
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 9days@$1.43343",
+              "amountCents": 1290,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "demand",
+              "label": "Max Peak",
+              "amountCents": 21840,
+              "quantity": 23.52,
+              "unit": "kW",
+              "rate": 29.92
+            },
+            {
+              "kind": "demand",
+              "label": "Max Demand",
+              "amountCents": 110386,
+              "quantity": 142.56,
+              "unit": "kW",
+              "rate": 24.95
+            }
+          ],
+          "printedTotalCents": 355255,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "2707181864 P059",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 586273,
+      "months": [
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 33364,
+          "amountCents": 586273
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

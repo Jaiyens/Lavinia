@@ -58,6 +58,10 @@ batth-ingestion/*
 !batth-ingestion/extracted/
 !batth-ingestion/dist/
 BatthData/_dupes/
+# Raw bill PDFs + payment-history blobs the extractor reads locally: too large/sensitive
+# for git. The reconciled JSON under batth-ingestion/extracted/bills/ is the committed
+# artifact; share the raw PDFs via a blob store, not the repo.
+BatthData/NewPDFS/
 
 # Local Postgres dumps of the Batth dataset (db:dump:batth output) - too large for git;
 # share via a blob store (Vercel Blob / Drive / S3), restore with db:restore:batth.

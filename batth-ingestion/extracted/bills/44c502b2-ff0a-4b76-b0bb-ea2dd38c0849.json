@@ -1,0 +1,220 @@
+{
+  "account": {
+    "number": "5090219363-5",
+    "printedTotalCents": 6928
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 12,
+  "bills": [
+    {
+      "saId": "5097806378",
+      "saIdDescriptor": "P035",
+      "meterNumber": "1009487917",
+      "growerPumpId": "P035",
+      "periods": [
+        {
+          "saId": "5097806378",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "AG5B  Large Time-of-Use Agricultural Power",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 29days@$1.19446",
+              "amountCents": 3464,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 3464,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "5090079335",
+      "saIdDescriptor": "PUMP #60",
+      "meterNumber": "1010127902",
+      "growerPumpId": "PUMP #60",
+      "periods": [
+        {
+          "saId": "5090079335",
+          "start": "2026-05-12",
+          "close": "2026-06-09",
+          "cycleClose": null,
+          "tariff": "AG5B  Large Time-of-Use Agricultural Power",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 29days@$1.19446",
+              "amountCents": 3464,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 3464,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "5097806378 P035",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 0,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-09-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-10-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-11-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-12-11",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-01-12",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-02-11",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-03-13",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-04-13",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-05-12",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 0,
+          "amountCents": 0
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    },
+    {
+      "generatingSaId": "5090079335 PUMP #60",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": 0,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-09-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-10-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-11-10",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2025-12-11",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-01-12",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-02-11",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-03-13",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-04-13",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-05-12",
+          "netKwh": 0,
+          "amountCents": 0
+        },
+        {
+          "start": null,
+          "close": "2026-06-10",
+          "netKwh": 0,
+          "amountCents": 0
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}

@@ -1,0 +1,287 @@
+{
+  "account": {
+    "number": "0730240888-0",
+    "printedTotalCents": -1465445
+  },
+  "reconciledCount": 2,
+  "escalatedCount": 0,
+  "pages": 8,
+  "bills": [
+    {
+      "saId": "730240595",
+      "saIdDescriptor": null,
+      "meterNumber": "1007066742",
+      "growerPumpId": null,
+      "periods": [
+        {
+          "saId": "730240595",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "B1  Bus Low Use",
+          "isLegacyTou": false,
+          "touSplit": [
+            {
+              "period": "Peak",
+              "kWh": 32.8677,
+              "amountCents": 1300
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 71.02188,
+              "amountCents": 2694
+            },
+            {
+              "period": "Super Off Peak",
+              "kWh": 34.71642,
+              "amountCents": 1260
+            },
+            {
+              "period": "Peak",
+              "kWh": 20.27464,
+              "amountCents": 955
+            },
+            {
+              "period": "Part Peak",
+              "kWh": 16.05992,
+              "amountCents": 677
+            },
+            {
+              "period": "Off Peak",
+              "kWh": 49.18644,
+              "amountCents": 1972
+            }
+          ],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 18days@$0.32854",
+              "amountCents": 591,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 1300,
+              "quantity": 32.8677,
+              "unit": "kWh",
+              "rate": 0.39545
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 2694,
+              "quantity": 71.02188,
+              "unit": "kWh",
+              "rate": 0.37933
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Super Off Peak",
+              "amountCents": 1260,
+              "quantity": 34.71642,
+              "unit": "kWh",
+              "rate": 0.36291
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 4,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 11days@$0.32854",
+              "amountCents": 361,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Peak",
+              "amountCents": 955,
+              "quantity": 20.27464,
+              "unit": "kWh",
+              "rate": 0.47087
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Part Peak",
+              "amountCents": 677,
+              "quantity": 16.05992,
+              "unit": "kWh",
+              "rate": 0.42164
+            },
+            {
+              "kind": "tou_energy",
+              "label": "Off Peak",
+              "amountCents": 1972,
+              "quantity": 49.18644,
+              "unit": "kWh",
+              "rate": 0.40083
+            },
+            {
+              "kind": "other",
+              "label": "Peak Usage Credits",
+              "amountCents": -122,
+              "quantity": 20.27464,
+              "unit": "kWh",
+              "rate": 0.06014
+            },
+            {
+              "kind": "other",
+              "label": "Part Peak Usage Credits",
+              "amountCents": -29,
+              "quantity": 16.05992,
+              "unit": "kWh",
+              "rate": 0.01787
+            },
+            {
+              "kind": "other",
+              "label": "Energy Commission Tax",
+              "amountCents": 3,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 9666,
+          "coverageState": "reconciled"
+        }
+      ]
+    },
+    {
+      "saId": "730240746",
+      "saIdDescriptor": "DEHYDRATOR",
+      "meterNumber": null,
+      "growerPumpId": "DEHYDRATOR",
+      "periods": [
+        {
+          "saId": "730240746",
+          "start": "2026-05-14",
+          "close": "2026-06-11",
+          "cycleClose": null,
+          "tariff": "B1  Bus Low Use",
+          "isLegacyTou": false,
+          "touSplit": [],
+          "demandKw": null,
+          "demandAmountCents": null,
+          "lineItems": [
+            {
+              "kind": "other",
+              "label": "Customer Charge 18days@$0.82136",
+              "amountCents": 1478,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            },
+            {
+              "kind": "other",
+              "label": "Customer Charge 11days@$0.82136",
+              "amountCents": 903,
+              "quantity": null,
+              "unit": null,
+              "rate": null
+            }
+          ],
+          "printedTotalCents": 2381,
+          "coverageState": "reconciled"
+        }
+      ]
+    }
+  ],
+  "nem": [
+    {
+      "generatingSaId": "0730240746 DEHYDRATOR",
+      "arrayId": null,
+      "arrayName": null,
+      "trueUpMonth": null,
+      "trueUpDate": null,
+      "trueUpAmountCents": -21413511,
+      "months": [
+        {
+          "start": null,
+          "close": "2025-07-06",
+          "netKwh": -90977,
+          "amountCents": -4152102
+        },
+        {
+          "start": null,
+          "close": "2025-08-04",
+          "netKwh": -69319,
+          "amountCents": -3163754
+        },
+        {
+          "start": null,
+          "close": "2025-09-12",
+          "netKwh": -52572,
+          "amountCents": -2379263
+        },
+        {
+          "start": null,
+          "close": "2025-10-14",
+          "netKwh": -36023,
+          "amountCents": -1529152
+        },
+        {
+          "start": null,
+          "close": "2025-11-13",
+          "netKwh": -18020,
+          "amountCents": -732462
+        },
+        {
+          "start": null,
+          "close": "2025-12-15",
+          "netKwh": -6244,
+          "amountCents": -252883
+        },
+        {
+          "start": null,
+          "close": "2026-01-14",
+          "netKwh": -20397,
+          "amountCents": -807662
+        },
+        {
+          "start": null,
+          "close": "2026-02-13",
+          "netKwh": -24122,
+          "amountCents": -932538
+        },
+        {
+          "start": null,
+          "close": "2026-03-17",
+          "netKwh": -49171,
+          "amountCents": -1854673
+        },
+        {
+          "start": null,
+          "close": "2026-04-15",
+          "netKwh": -54442,
+          "amountCents": -2021846
+        },
+        {
+          "start": null,
+          "close": "2026-05-14",
+          "netKwh": -46978,
+          "amountCents": -1747669
+        },
+        {
+          "start": null,
+          "close": "2026-06-12",
+          "netKwh": -47980,
+          "amountCents": -1839507
+        }
+      ],
+      "benefitingMeterSaIds": [],
+      "coverageState": "needs_review"
+    }
+  ],
+  "needsReview": []
+}
