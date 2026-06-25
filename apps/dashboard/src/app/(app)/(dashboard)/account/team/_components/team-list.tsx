@@ -6,7 +6,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { FarmRole } from "@prisma/client";
+import { Button } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { en } from "@/copy/en";
 import type { TeamActionResult } from "@/lib/auth/team";
 import { RolePill } from "@/app/(app)/_components/shell/role-pill";
@@ -87,56 +96,66 @@ export function TeamList({
                 ) : null}
               </div>
 
-              {/* Controls. Self -> Leave; others -> role select + remove (+ transfer for an owner). */}
+              {/* Controls. Self -> Leave; others -> role dropdown + remove (+ transfer for an owner). */}
               {m.isYou ? (
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   disabled={pending}
                   onClick={() => {
                     if (confirm(t.leaveConfirm)) run(() => leaveFarmAction(farmId));
                   }}
-                  className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
                 >
                   {t.leave}
-                </button>
+                </Button>
               ) : canActOn(m.role) ? (
                 <div className="flex items-center gap-2">
-                  <select
-                    aria-label={t.changeRole}
-                    value={m.role}
-                    disabled={pending}
-                    onChange={(e) => {
-                      const next = e.target.value as FarmRole;
-                      if (next !== m.role) run(() => changeRoleAction(m.membershipId, next));
-                    }}
-                    className="rounded-lg border border-outline-variant bg-surface-container-low px-2 py-1 type-body-sm text-on-surface"
-                  >
-                    {roleOptions.map((r) => (
-                      <option key={r} value={r}>
-                        {t.roles[r].label}
-                      </option>
-                    ))}
-                  </select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" disabled={pending} aria-label={t.changeRole}>
+                        {t.roles[m.role].label}
+                        <ChevronDown />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuRadioGroup
+                        value={m.role}
+                        onValueChange={(value) => {
+                          const next = value as FarmRole;
+                          if (next !== m.role) run(() => changeRoleAction(m.membershipId, next));
+                        }}
+                      >
+                        {roleOptions.map((r) => (
+                          <DropdownMenuRadioItem key={r} value={r}>
+                            {t.roles[r].label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {isOwnerViewer && m.role !== "owner" ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       disabled={pending}
                       onClick={() => run(() => transferOwnershipAction(m.membershipId))}
-                      className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline disabled:opacity-50"
                     >
                       {t.transfer}
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="sm"
                     disabled={pending}
                     onClick={() => {
                       if (confirm(t.removeConfirm(m.name))) run(() => removeMemberAction(m.membershipId));
                     }}
-                    className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
                   >
                     {t.remove}
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <RolePill role={m.role} />
@@ -161,22 +180,24 @@ export function TeamList({
                 </div>
                 <RolePill role={i.role} />
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={pending}
                     onClick={() => run(() => resendInviteAction(i.id))}
-                    className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline disabled:opacity-50"
                   >
                     {t.resend}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="sm"
                     disabled={pending}
                     onClick={() => run(() => revokeInviteAction(i.id))}
-                    className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
                   >
                     {t.cancelInvite}
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}

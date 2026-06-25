@@ -2,7 +2,16 @@
 
 import { useMemo } from "react";
 import { useQueryState } from "nuqs";
+import { ChevronDown } from "lucide-react";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterOptions } from "@/lib/dashboard/filters";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -35,28 +44,46 @@ function FilterSelect({
   value: string | null;
   onChange: (next: string | null) => void;
 }) {
-  // A stale deep-link value not among this farm's options still renders verbatim as the
-  // selected option, so the control never claims "All" while a filter is active.
+  // A stale deep-link value not among this farm's options still renders verbatim as a selected
+  // option, so the control never claims "All" while a filter is active.
   const stale = value !== null && value !== "" && !options.includes(value);
+  const current = isActiveFilterValue(value) ? value : allLabel;
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor={id} className="type-label-caps text-on-surface-variant">
+      <span id={`${id}-label`} className="type-label-caps text-on-surface-variant">
         {label}
-      </label>
-      <select
-        id={id}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-        className="min-h-[44px] w-full min-w-0 max-w-full rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3 type-body-md text-on-surface sm:w-auto sm:max-w-[18rem]"
-      >
-        <option value="">{allLabel}</option>
-        {stale && <option value={value}>{value}</option>}
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            id={id}
+            variant="outline"
+            size="lg"
+            aria-labelledby={`${id}-label ${id}`}
+            className="min-h-[44px] w-full min-w-[11rem] justify-between gap-2 whitespace-nowrap font-normal sm:w-auto sm:max-w-[20rem]"
+          >
+            <span className="min-w-0 truncate">{current}</span>
+            <ChevronDown className="shrink-0 opacity-60" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="max-h-[20rem] min-w-[12rem] overflow-y-auto"
+        >
+          <DropdownMenuRadioGroup
+            value={value ?? ""}
+            onValueChange={(next) => onChange(next === "" ? null : next)}
+          >
+            <DropdownMenuRadioItem value="">{allLabel}</DropdownMenuRadioItem>
+            {stale && <DropdownMenuRadioItem value={value}>{value}</DropdownMenuRadioItem>}
+            {options.map((opt) => (
+              <DropdownMenuRadioItem key={opt} value={opt}>
+                {opt}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -115,7 +142,7 @@ export function FilterBar({
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="flex flex-wrap items-end gap-5">
       {options.entities.length > 0 && (
         <FilterSelect
           id="filter-entity"
@@ -167,13 +194,9 @@ export function FilterBar({
         />
       )}
       {hasActiveFilter && (
-        <button
-          type="button"
-          onClick={clearAll}
-          className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
-        >
+        <Button type="button" variant="outline" size="lg" onClick={clearAll} className="min-h-[44px]">
           {t.clear}
-        </button>
+        </Button>
       )}
     </div>
   );

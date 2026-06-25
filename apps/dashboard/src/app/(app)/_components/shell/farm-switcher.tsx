@@ -34,12 +34,17 @@ export function FarmSwitcher({
   if (farms.length <= 1) {
     return (
       <div className="px-3 pb-4">
-        <p className="truncate type-body-sm font-semibold text-on-surface" title={active.name}>
+        {/* In the rail this sits on the dark-green sidebar, so the label reads in the sidebar
+            foreground (near-white), not the dark on-surface ink. */}
+        <p
+          className="truncate type-body-sm font-semibold text-sidebar-foreground"
+          title={active.name}
+        >
           {active.name}
         </p>
         <Link
           href="/start?add=1"
-          className="mt-1 inline-flex items-center gap-1 type-caption text-on-surface-variant transition-colors hover:text-on-surface"
+          className="mt-1 inline-flex items-center gap-1 type-caption text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
         >
           <Plus size={13} aria-hidden />
           {en.team.addFarm}

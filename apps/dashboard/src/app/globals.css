@@ -144,20 +144,28 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* On-brand chart palette: the aurora green leads, gold accents, then a calm sky, the
+     reserved clay, and a cool neutral. Recharts series read --chart-N via shadcn's chart
+     config, so these keep every chart in the Terra palette without per-chart hex. */
+  --chart-1: #2fa84f; /* green (primary spend/usage series) */
+  --chart-2: #f2c14e; /* gold (secondary series) */
+  --chart-3: #4a7fb5; /* sky (tertiary) */
+  --chart-4: #bd4b34; /* clay (alert-tinted series) */
+  --chart-5: #5b6470; /* cool neutral */
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* The dark-green left sidebar (Kamran's "make it dark green"). --ds-green-100 is the panel base;
+     the sidebar tokens the shadcn Sidebar reads are all re-themed onto it: light text, a slightly
+     lighter green hairline, a translucent-white hover, and the aurora green as the active accent. */
+  --ds-green-100: #14532d; /* deep forest green - the sidebar background */
+  --sidebar: var(--ds-green-100);
+  --sidebar-foreground: #eaf5ec; /* near-white, slight green cast */
+  --sidebar-primary: #2fa84f; /* aurora green - active accent */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in oklch, #ffffff 12%, transparent); /* hover overlay */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: color-mix(in oklch, #ffffff 16%, transparent);
+  --sidebar-ring: #2fa84f;
 }
 
 @theme inline {
@@ -173,6 +181,7 @@
   --color-green-deep: var(--green-deep);
   --color-green-hover: var(--green-hover);
   --color-green-tint: var(--green-tint);
+  --color-ds-green-100: var(--ds-green-100);
   --color-gold: var(--gold);
   --color-sky: var(--sky);
   --color-risk: var(--risk);
@@ -200,7 +209,7 @@
   --color-accent-ink: var(--surface-bright);
   --color-muted-foreground: var(--on-surface-variant);
   --color-primary-foreground: var(--on-primary);
-  --color-sidebar: var(--surface-container-low);
+  --color-sidebar: var(--sidebar); /* the dark-green panel (--sidebar -> --ds-green-100) */
 
   /* DESIGN.md design-system utilities (Epic 2). bg-paper / bg-surface-container-* /
      text-on-surface / text-on-surface-variant / border-outline-variant / bg-primary /
@@ -857,11 +866,14 @@ html {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* On-brand chart palette: the aurora green leads, gold accents, then a calm sky, the
+     reserved clay, and a cool neutral. Recharts series read --chart-N via shadcn's chart
+     config, so these keep every chart in the Terra palette without per-chart hex. */
+  --chart-1: #2fa84f; /* green (primary spend/usage series) */
+  --chart-2: #f2c14e; /* gold (secondary series) */
+  --chart-3: #4a7fb5; /* sky (tertiary) */
+  --chart-4: #bd4b34; /* clay (alert-tinted series) */
+  --chart-5: #5b6470; /* cool neutral */
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

@@ -2,8 +2,16 @@
 
 import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { useQueryState } from "nuqs";
-import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Button, Input } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { en, rateGloss } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import type { MeterView } from "@/lib/dashboard/load";
@@ -251,48 +259,58 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
         <Search
           size={16}
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+          className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-on-surface-variant"
         />
-        <input
+        <Input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.searchPlaceholder}
           aria-label={t.searchPlaceholder}
-          className="min-h-[44px] w-full rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest pl-9 pr-9 type-body-md text-on-surface"
+          className="min-h-[44px] pl-9 pr-9 [&::-webkit-search-cancel-button]:appearance-none"
         />
         {query !== "" && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setQuery("")}
             aria-label={t.searchClear}
-            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-surface-container-low"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant"
           >
             <X size={15} aria-hidden />
-          </button>
+          </Button>
         )}
       </div>
       <div className="flex items-center gap-2">
-        <label htmlFor="meter-sortby" className="type-label-caps shrink-0 text-on-surface-variant">
+        <span id="meter-sortby-label" className="type-label-caps shrink-0 text-on-surface-variant">
           {t.sortByLabel}
-        </label>
-        <select
-          id="meter-sortby"
-          value={currentSortId}
-          onChange={(e) => applySort(e.target.value)}
-          className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3 type-body-md text-on-surface"
-        >
-          {currentSortId === "" && (
-            <option value="" disabled hidden>
-              {t.sortByCustom}
-            </option>
-          )}
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {t.sortOptions[o.id]}
-            </option>
-          ))}
-        </select>
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              id="meter-sortby"
+              variant="outline"
+              size="lg"
+              aria-labelledby="meter-sortby-label meter-sortby"
+              className="min-h-[44px] justify-between gap-2 font-normal"
+            >
+              <span className="truncate">
+                {currentSortId === "" ? t.sortByCustom : t.sortOptions[currentSortId]}
+              </span>
+              <ChevronDown className="opacity-60" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup value={currentSortId} onValueChange={applySort}>
+              {SORT_OPTIONS.map((o) => (
+                <DropdownMenuRadioItem key={o.id} value={o.id}>
+                  {t.sortOptions[o.id]}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -314,13 +332,9 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
         <div className="flex min-h-[16rem] flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8">
           <p className="type-body-md text-on-surface-variant">{filteredOut ? t.noMatch : t.emptyFarm}</p>
           {filteredOut && (
-            <button
-              type="button"
-              onClick={clearAll}
-              className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
-            >
+            <Button type="button" variant="outline" size="lg" onClick={clearAll} className="min-h-[44px]">
               {en.shell.filter.clear}
-            </button>
+            </Button>
           )}
         </div>
       </section>
@@ -348,14 +362,16 @@ export function MeterTable({ meters }: { meters: MeterView[] }) {
       {controls}
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="type-caption text-on-surface-variant">{t.rowCount(rows.length)}</p>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="lg"
           onClick={exportCsv}
           aria-label={t.exportAria}
-          className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+          className="min-h-[44px]"
         >
           {t.export}
-        </button>
+        </Button>
       </div>
 
       {/* Mobile: a simplified card list. Ordering comes from the shared "Sort by" control above. */}

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { sessionUserId } from "@/lib/auth";
@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { resolveFarmAccess } from "@/lib/auth/access";
 import { accessibleFarms } from "@/lib/onboarding/farm";
 import { resolveActiveFarmId, resolveFarm } from "./_data";
+import { SidebarProvider } from "@/components/ui";
 import { AgentRail } from "../_components/shell/agent-rail";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
@@ -53,7 +54,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <NuqsAdapter>
       <TopoBackground />
-      <div className="flex min-h-dvh w-full text-on-surface">
+      {/* SidebarProvider renders the flex shell (sidebar + content). The rail is always-expanded and
+          desktop-only (collapsible="none" + hidden lg:flex); mobile keeps AgentTabBar. A narrower
+          width than the shadcn default keeps the green panel tight. */}
+      <SidebarProvider
+        style={{ "--sidebar-width": "14rem" } as CSSProperties}
+        className="min-h-dvh text-on-surface"
+      >
         <AgentRail
           farms={farms}
           activeFarmId={resolved.farm.id}
@@ -61,7 +68,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           pendingRequests={pendingRequests}
         />
         <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
-      </div>
+      </SidebarProvider>
       <AgentTabBar />
       <AlmondLauncher />
     </NuqsAdapter>

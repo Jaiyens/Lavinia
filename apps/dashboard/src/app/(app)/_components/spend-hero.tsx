@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Card } from "@/components/ui";
 import { formatUsdWhole } from "@/lib/format/money";
-import { AreaChart, chartXPct, chartYPct } from "@/components/charts/area-chart";
+import { SpendAreaChart } from "@/components/charts/spend-area-chart";
 
 // The Home spend hero (mirrors the reference's net-worth chart): a big latest-spend figure, the
 // vs-last-cycle delta, time-range pills, and a soft gradient area chart of monthly PG&E spend
@@ -37,29 +37,13 @@ export function SpendHero({
   const hasData = coverageLoaded > 0 && series.length >= 2;
   const months = RANGE_MONTHS[range];
   const sliced = months === null ? series : series.slice(-months);
+  // SpendAreaChart points: { label (short month), value (cents) }. The recharts tooltip owns the
+  // per-month hover readout, so the hero only needs the resting headline below.
   const points = sliced.map((p) => ({ value: p.cents, label: shortMonth(p.month) }));
   // The resting headline is the TOTAL spend across the selected range (All = all-time), so the big
   // figure reads as cumulative PG&E spend rather than a single cycle. Falls back to the latest cycle
-  // only when the range has no summed data. Hovering a month still shows that one month (below).
+  // only when the range has no summed data.
   const rangeTotalCents = sliced.reduce((sum, p) => sum + p.cents, 0) || latestCents;
-
-  // Cursor crosshair: as you drag along the chart the nearest month is "active", and the big
-  // figure + the bubble + a dot on the curve all track it. Resting (no hover) shows the latest.
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const activeIdx = hoverIdx !== null && hoverIdx >= 0 && hoverIdx < points.length ? hoverIdx : null;
-  const activePoint = activeIdx !== null ? points[activeIdx] : undefined;
-  const displayCents = activePoint ? activePoint.value : rangeTotalCents;
-  // At rest the bubble names the RANGE (e.g. "All"); on hover it names the month.
-  const displayLabel = activePoint?.label ?? t.ranges[range];
-  // The cursor dot rests on the latest point until you hover a month. The vertical range mirrors
-  // AreaChart (min clamps to 0, the area baseline), and chartXPct/chartYPct give percent positions
-  // that line up with the curve at any size - so the overlay tracks the chart as it scales with the
-  // card, with no fixed pixel height to drift out of sync.
-  const markerIdx = activeIdx ?? points.length - 1;
-  const markerPoint = points[markerIdx];
-  const vMax = Math.max(...points.map((p) => p.value), 1);
-  const vMin = Math.min(...points.map((p) => p.value), 0);
-  const vSpan = vMax - vMin || 1;
 
   return (
     <Card asChild className="flex h-full min-h-0 flex-col gap-0 overflow-hidden rounded-2xl p-6">
@@ -68,7 +52,7 @@ export function SpendHero({
         <div>
           <h2 className="type-label-caps text-on-surface-variant">{t.title}</h2>
           {hasData ? (
-            <p className="type-money-hero mt-1 tnum text-on-surface">{formatUsdWhole(displayCents)}</p>
+            <p className="type-money-hero mt-1 tnum text-on-surface">{formatUsdWhole(rangeTotalCents)}</p>
           ) : (
             <p className="type-headline mt-2 text-on-surface-variant">{t.empty}</p>
           )}
@@ -115,48 +99,17 @@ export function SpendHero({
       </div>
 
       {hasData && (
-        <div
-          className="relative mt-4 min-h-0 flex-1 cursor-crosshair"
-          onMouseMove={(e) => {
-            if (points.length < 2) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const i = Math.round(((e.clientX - rect.left) / rect.width) * (points.length - 1));
-            setHoverIdx(Math.max(0, Math.min(points.length - 1, i)));
-          }}
-          onMouseLeave={() => setHoverIdx(null)}
-        >
-          {/* The value bubble follows the cursor (or rests over the latest reading), kept clear of
-              the edges so it never spills past the card. */}
-          <div
-            className="pointer-events-none absolute top-0 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-outline-variant bg-surface-container-lowest px-3 py-1 shadow-[var(--shadow-elevated)]"
-            style={{ left: `${Math.min(85, Math.max(15, chartXPct(markerIdx, points.length)))}%` }}
-          >
-            <span className="type-caption text-on-surface-variant">{displayLabel} </span>
-            <span className="type-caption tnum font-semibold text-on-surface">
-              {formatUsdWhole(displayCents)}
-            </span>
-          </div>
-          {/* Crosshair line at the hovered month. */}
-          {activeIdx !== null && points.length > 1 && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute bottom-0 top-7 z-10 w-px bg-primary/40"
-              style={{ left: `${chartXPct(activeIdx, points.length)}%` }}
-            />
-          )}
-          {/* The marker dot rides the curve - on the latest point at rest, on the hovered month
-              while dragging. Positioned in percent so it stays on the curve as the chart scales. */}
-          {markerPoint && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute z-10 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/20"
-              style={{
-                left: `${chartXPct(markerIdx, points.length)}%`,
-                top: `${chartYPct(markerPoint.value, vMin, vSpan)}%`,
-              }}
-            />
-          )}
-          <AreaChart points={points} ariaLabel={t.title} />
+        // Fill the remaining tile height so the whole chart is visible inline (no clipping). Inline
+        // the bento tile gives a definite height so h-full resolves; in the enlarge modal the caller
+        // wraps SpendHero in a fixed-height box so the chart still has a height to fill.
+        <div className="mt-4 min-h-[140px] flex-1">
+          <SpendAreaChart
+            points={points}
+            seriesLabel={t.title}
+            ariaLabel={t.title}
+            valueFormatter={formatUsdWhole}
+            heightClass="h-full"
+          />
         </div>
       )}
       </section>

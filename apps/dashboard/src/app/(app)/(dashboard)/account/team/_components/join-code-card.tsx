@@ -5,6 +5,7 @@
 // access still requires an explicit approval. "Make a new code" rotates it, invalidating old links.
 
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui";
 import { en } from "@/copy/en";
 import { getOrCreateJoinCodeAction, rotateJoinCodeAction } from "../actions";
 
@@ -62,33 +63,19 @@ export function JoinCodeCard({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              type="button"
-              onClick={copyLink}
-              className="type-body-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline"
-            >
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={copyLink}>
               {copied ? t.copied : t.copyLink}
-            </button>
-            <button
-              type="button"
-              onClick={rotate}
-              disabled={pending}
-              className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline disabled:opacity-50"
-            >
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={rotate} disabled={pending}>
               {t.rotate}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={reveal}
-          disabled={pending}
-          className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-4 py-2 type-body-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" onClick={reveal} disabled={pending}>
           {t.show}
-        </button>
+        </Button>
       )}
       {error ? <p className="mt-3 type-body-sm text-alert">{error}</p> : null}
     </section>

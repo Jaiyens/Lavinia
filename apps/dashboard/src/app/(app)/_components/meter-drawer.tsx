@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useQueryState } from "nuqs";
 import { BadgeCheck, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { centsFromDollars, formatUsd, formatUsdWhole } from "@/lib/format/money";
 import type { MeterView } from "@/lib/dashboard/load";
 import type { FindingView } from "@/lib/dashboard/findings";
@@ -144,48 +152,11 @@ export function MeterDrawer({
   canAttach?: boolean;
 }) {
   const [meterId, setMeter] = useQueryState(SURFACE.meter);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const open = meterId !== null && meters.some((m) => m.id === meterId);
 
-  // Focus lands on the close button when the drawer opens or switches meter (the dialog
-  // announces its meter); Tab cycles within the dialog (aria-modal promises an inert
-  // background, so keep keyboard focus inside); Escape closes; body scroll is locked.
-  // Focus return on close is left to the browser default (minimal dialog semantics).
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        void setMeter(null);
-        return;
-      }
-      if (e.key === "Tab" && dialogRef.current !== null) {
-        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (first === undefined || last === undefined) return;
-        const active = document.activeElement;
-        if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, meterId, setMeter]);
-
+  // Open/close is the nuqs `meter` key; vaul owns focus trap, Escape, and scroll lock. Closing
+  // (scrim tap, Escape, the close button, or a drag-down dismiss) clears the key and returns to
+  // the lens it came from with the filter intact.
   if (!open) return null;
   const meter = meters.find((m) => m.id === meterId);
   if (meter === undefined) return null; // unreachable after the `open` gate; narrows the type
@@ -216,7 +187,6 @@ export function MeterDrawer({
   // derived from this meter's size (so the curve renders on every meter, labeled as an estimate).
   // Distinct from `peakKw` above, which feeds only the header chip and stays billed-only.
   const curve = derivePeakKw(meter);
-  const close = () => void setMeter(null);
 
   // Demand visuals (Features A + B), reconciled meters only. The spike detail is the latest
   // material-demand cycle's analysis (curve + cause + fix); it is null for a meter with no
@@ -235,27 +205,26 @@ export function MeterDrawer({
   const refundFinding = d.isCovered && card !== null ? refundFindingForMeter(meter, card) : null;
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Scrim: click closes. The close button is the accessible path. */}
-      <div aria-hidden onClick={close} className="absolute inset-0 bg-on-surface/25" />
-
-      <div
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) void setMeter(null);
+      }}
+    >
+      <DrawerContent
         key={meter.id}
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         aria-label={t.dialogLabel(meter.name)}
-        className="drawer-in absolute inset-0 flex flex-col overflow-y-auto bg-surface-container-lowest shadow-[var(--shadow-elevated)] md:inset-y-0 md:left-auto md:right-0 md:w-[26rem] md:max-w-full md:rounded-l-[var(--radius-lg)] md:border-l md:border-outline-variant"
+        className="max-h-[88vh] bg-surface-container-lowest"
       >
-        <header className="flex items-start justify-between gap-3 border-b border-outline-variant px-5 pb-4 pt-5">
+        <DrawerHeader className="flex flex-row items-start justify-between gap-3 border-b border-outline-variant px-5 pb-4 pt-2 text-left">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h2 className="type-title min-w-0 max-w-full truncate text-on-surface">
+              <DrawerTitle className="type-title min-w-0 max-w-full truncate text-on-surface">
                 {meter.name}
-              </h2>
+              </DrawerTitle>
               <CoveragePill state={meter.coverageState} />
             </div>
-            <p className="type-caption mt-1 text-on-surface-variant">
+            <DrawerDescription className="type-caption mt-1 text-on-surface-variant">
               {rateShown !== null && rateShown !== "" ? (
                 <>
                   {t.rate}: {rateShown}
@@ -270,20 +239,22 @@ export function MeterDrawer({
                   {t.rate}: {t.notOnFile}
                 </>
               )}
-            </p>
+            </DrawerDescription>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={close}
-            aria-label={t.closeAria}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
-          >
-            <X size={18} aria-hidden />
-          </button>
-        </header>
+          <DrawerClose asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t.closeAria}
+              className="size-11 shrink-0 text-on-surface-variant"
+            >
+              <X size={18} aria-hidden />
+            </Button>
+          </DrawerClose>
+        </DrawerHeader>
 
-        <div className="flex-1 px-5 pb-8">
+        <div className="flex-1 overflow-y-auto px-5 pb-8">
           {/* Identity rows. */}
           <dl className="mt-4">
             <FieldRow label={t.pumpId} value={meter.growerPumpId} />
@@ -725,7 +696,7 @@ export function MeterDrawer({
             </ul>
           )}
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

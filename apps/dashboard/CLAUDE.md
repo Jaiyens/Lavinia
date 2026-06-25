@@ -58,21 +58,21 @@ Integrate Share My Data (Green Button / ESPI), but do NOT require a live account
 - Table (Excel-style): meters down, months across, charges/peak/usage in cells, one-click CSV export. The bridge for Excel-brained growers. Auto-filled, never stale. Filter by entity/ranch/rate so 180+ meters stay usable.
 - Chart: trends, peak history, year-over-year. Behind a tap.
 
-## Frontend aesthetics (Magic UI is the bible)
+## Frontend aesthetics (shadcn/ui is the bible)
 
-The current UI is not good enough. We are leveling it up by adopting **Magic UI (https://magicui.design/docs/components) as the primary component and animation vocabulary for the whole app.** When you need a component or a moment of motion, reach for a Magic UI component FIRST and compose from it; only hand-roll when Magic UI has nothing that fits. Animated, polished, modern is the goal now, not restraint. Earlier versions of this file demoted effects (no gradients, one motion moment, etc.); that guidance is retired. Use Magic UI freely: animated text (Text Animate, Typing Animation, Animated Shiny Text), special effects (Border Beam, Shine Border, Magic Card, Animated Beam, Particles), buttons (Shimmer, Shiny, Ripple, Interactive Hover), backgrounds (Dot Pattern, Grid Pattern, Light Rays, Warp), Dock, Animated List, Bento Grid, and the rest of the catalog.
+**shadcn/ui (the `radix-nova` registry) is the primary component vocabulary for the whole app.** When you need a component, reach for a shadcn primitive FIRST and compose from it; only hand-roll when shadcn has nothing that fits. The repo is already configured: `components.json` (style `radix-nova`, Tailwind v4, `cn` at `@/lib/cn`), primitives under `src/components/ui/` (Button, Card, DropdownMenu, Input, Select, Tabs, Calendar, Drawer, Chart, Sidebar, Sheet, Tooltip, ...). Add more with the CLI: `npx shadcn@latest add <name>`. Charts are recharts via the shadcn `chart` wrapper; the meter drawer is the shadcn `drawer` (bottom); the left nav is the shadcn `sidebar` (dark-green themed). Note: the CLI sometimes overwrites already-customized primitives (e.g. `button.tsx`'s `primary` variant + `ButtonProps`, `input.tsx`'s `label` prop) - re-check `git diff` after `add` and restore those.
 
-Install Magic UI components via the shadcn CLI (the repo is already configured: `components.json` present, Tailwind v4, `cn` at `@/lib/cn`). Components land under `src/components/magicui/`. Example: `npx shadcn@latest add "https://magicui.design/r/border-beam.json"`.
+Magic UI is NO LONGER the default (this reverses earlier guidance). Existing Magic UI flourishes already in the tree (Border Beam, Shine Border, Dot Pattern, etc. under `src/components/ui/` + `ai-elements/`) may stay where they live, but new work should be shadcn-first; do not reach for Magic UI by default.
 
-What still holds (these COMPOSE with Magic UI, they do not fight it):
+What still holds:
 - Typography: Inter throughout (loaded via next/font). Hierarchy from weight + size.
-- Color: green #2fa84f is the dominant brand color, on a cool light-grey paper background (#eef1f5, never pure white) with near-black charcoal text (#16181d) and a gold #f2c14e accent. (Kamran's 2026-06-18 Home-redesign reskin replaced the earlier warm-cream palette; DESIGN.md `colors:` and `src/app/globals.css` are the source of truth.) Magic UI effects should be tinted into this palette (e.g. beams/gradients in greens/golds), not left as their default neon. Tokens live in `src/app/globals.css`.
+- Color: green #2fa84f is the dominant brand color, on a cool light-grey paper background (#eef1f5, never pure white) with near-black charcoal text (#16181d) and a gold #f2c14e accent. The left sidebar is a dark forest green (`--ds-green-100`). DESIGN.md `colors:` and `src/app/globals.css` are the source of truth; tokens live in `src/app/globals.css`. Tint any effect into this palette (greens/golds), not default neon.
 - Money/usage values use tabular figures. Money is the story, not a lone screaming hero number; the data hero (chart, table, map) leads (north star: the farm, known at a glance).
 - Mobile-first. The farmer is on a phone in a truck.
 - Voice: plain operator English. No exclamation marks. Confident, never salesy.
-- Honor prefers-reduced-motion (Magic UI components largely respect it; verify).
+- Honor prefers-reduced-motion (verify any animated component).
 
-Taste bar: modern, animated, alive (Magic UI showcase, Linear, Vercel), tuned to the warm farm palette. Beat Wexus on polish and price.
+Taste bar: modern, clean, alive (shadcn showcase, Linear, Vercel), tuned to the farm palette. Beat Wexus on polish and price.
 
 ## Conventions
 - TS strict, no `any`. Calculations are pure, tested functions in /lib/energy.

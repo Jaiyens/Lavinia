@@ -7,7 +7,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { FarmRole } from "@prisma/client";
+import { Button } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { en } from "@/copy/en";
 import type { TeamActionResult } from "@/lib/auth/team";
 import { approveJoinRequestAction, denyJoinRequestAction } from "../actions";
@@ -69,35 +78,44 @@ export function JoinRequests({
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
-                <select
-                  aria-label={t.requestRoleLabel}
-                  value={chosen}
-                  disabled={pending}
-                  onChange={(e) => setRoles((s) => ({ ...s, [r.id]: e.target.value as FarmRole }))}
-                  className="rounded-lg border border-outline-variant bg-surface-container-low px-2 py-1 type-body-sm text-on-surface"
-                >
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {t.roles[role].label}
-                    </option>
-                  ))}
-                </select>
-                <button
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" disabled={pending} aria-label={t.requestRoleLabel}>
+                      {t.roles[chosen].label}
+                      <ChevronDown />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup
+                      value={chosen}
+                      onValueChange={(value) => setRoles((s) => ({ ...s, [r.id]: value as FarmRole }))}
+                    >
+                      {roleOptions.map((role) => (
+                        <DropdownMenuRadioItem key={role} value={role}>
+                          {t.roles[role].label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   disabled={pending}
                   onClick={() => run(() => approveJoinRequestAction(r.id, chosen))}
-                  className="type-body-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline disabled:opacity-50"
                 >
                   {t.requestApprove}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   disabled={pending}
                   onClick={() => run(() => denyJoinRequestAction(r.id))}
-                  className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
                 >
                   {t.requestDeny}
-                </button>
+                </Button>
               </div>
             </li>
           );

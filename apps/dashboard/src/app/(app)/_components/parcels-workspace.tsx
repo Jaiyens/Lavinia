@@ -42,7 +42,7 @@ export function ParcelsWorkspace({ farm, year, demo }: { farm: Farm; year: numbe
   };
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-16 z-10 overflow-hidden bg-paper lg:bottom-0 lg:left-48">
+    <div className="fixed inset-x-0 top-0 bottom-16 z-10 overflow-hidden bg-paper lg:bottom-0 lg:left-[var(--sidebar-width)]">
       <FarmMap
         parcels={parcels}
         colorBy={colorBy}

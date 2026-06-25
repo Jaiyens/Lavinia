@@ -6,8 +6,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { FarmRole } from "@prisma/client";
 import { Button } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { en } from "@/copy/en";
 import { parseEmailList } from "@/lib/auth/team";
 import { inviteMembersAction } from "../actions";
@@ -73,20 +81,26 @@ export function AddPeople({ farmId, canGrantOwner }: { farmId: string; canGrantO
           />
           <p className="mt-1.5 type-caption text-on-surface-variant">{t.addHelper}</p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <span className="type-label-caps text-on-surface-variant">{t.roleLabel}</span>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as FarmRole)}
-                className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2 type-body-md text-on-surface"
-              >
-                {roleOptions.map((r) => (
-                  <option key={r} value={r}>
-                    {t.roles[r].label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" aria-label={t.roleLabel}>
+                    {t.roles[role].label}
+                    <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuRadioGroup value={role} onValueChange={(value) => setRole(value as FarmRole)}>
+                    {roleOptions.map((r) => (
+                      <DropdownMenuRadioItem key={r} value={r}>
+                        {t.roles[r].label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <Button type="button" variant="primary" onClick={review} disabled={pending}>
               {t.reviewCta}
             </Button>

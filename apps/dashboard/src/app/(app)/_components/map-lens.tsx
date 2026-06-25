@@ -4,6 +4,13 @@ import { useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { ChevronDown } from "lucide-react";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { MeterView } from "@/lib/dashboard/load";
 import { filterMeters } from "@/lib/dashboard/table";
 import { toMapPins } from "@/lib/dashboard/map";
@@ -49,13 +56,9 @@ export function MapLens({ meters }: { meters: MeterView[] }) {
           {meters.length === 0 ? en.shell.table.emptyFarm : t.emptyView}
         </p>
         {meters.length > 0 && hasActiveFilter && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
-          >
+          <Button type="button" variant="outline" size="lg" onClick={clearAll} className="min-h-[44px]">
             {en.shell.filter.clear}
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -93,30 +96,30 @@ export function MapLens({ meters }: { meters: MeterView[] }) {
 
       {/* The honest tray: every meter without a resolvable location, opener included. */}
       {unlocated.length > 0 && (
-        <details className="group mt-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
-          <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 type-body-md text-on-surface">
-            <span>{t.traySummary(unlocated.length)}</span>
-            <ChevronDown
-              size={18}
-              aria-hidden
-              className="shrink-0 text-on-surface-variant transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <ul className="border-t border-outline-variant">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="mt-3 min-h-[44px] w-full justify-between gap-3 font-normal"
+            >
+              <span>{t.traySummary(unlocated.length)}</span>
+              <ChevronDown className="shrink-0 opacity-60" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-[20rem] w-(--radix-dropdown-menu-trigger-width) overflow-y-auto">
             {unlocated.map((u) => (
-              <li key={u.meterId} className="border-t border-outline-variant first:border-t-0">
-                <button
-                  type="button"
-                  onClick={() => void setMeter(u.meterId)}
-                  aria-label={en.shell.table.openMeter(u.name)}
-                  className="flex min-h-[44px] w-full items-center px-4 py-2 text-left type-body-md text-on-surface hover:bg-surface-container-low"
-                >
-                  {u.name}
-                </button>
-              </li>
+              <DropdownMenuItem
+                key={u.meterId}
+                onSelect={() => void setMeter(u.meterId)}
+                aria-label={en.shell.table.openMeter(u.name)}
+              >
+                {u.name}
+              </DropdownMenuItem>
             ))}
-          </ul>
-        </details>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </section>
   );

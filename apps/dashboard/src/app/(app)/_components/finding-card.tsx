@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { Card, SeverityBadge } from "@/components/ui";
+import { Button, Card, SeverityBadge } from "@/components/ui";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
 import { isSolarBillingFinding, type FindingView } from "@/lib/dashboard/findings";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -148,22 +148,26 @@ export function FindingCard({
           const secondaryLabel = mode === "todo" ? en.todos.remove : t.respondDismiss;
           return (
             <div className="mt-3 flex items-center gap-2 border-t border-outline-variant pt-3">
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="lg"
                 disabled={isPending}
                 onClick={() => respond(primaryResponse)}
-                className="press min-h-[44px] flex-1 whitespace-nowrap rounded-[var(--radius-control)] bg-primary px-2.5 type-body-md font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60"
+                className="min-h-[44px] flex-1 whitespace-nowrap"
               >
                 {isPending && pendingResponse === primaryResponse ? t.saving : primaryLabel}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="lg"
                 disabled={isPending}
                 onClick={() => respond("dismissed")}
-                className="press min-h-[44px] flex-1 whitespace-nowrap rounded-[var(--radius-control)] px-2.5 type-body-md text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-60"
+                className="min-h-[44px] flex-1 whitespace-nowrap text-on-surface-variant"
               >
                 {isPending && pendingResponse === "dismissed" ? t.saving : secondaryLabel}
-              </button>
+              </Button>
             </div>
           );
         })()}

@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
 import { Download, FileSpreadsheet } from "lucide-react";
+import { Card } from "@/components/ui";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { activeFarmId } from "@/lib/auth/active-farm";
@@ -64,30 +67,41 @@ export default async function ReportsPage() {
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
             <li key={item.id}>
-              {/* A plain anchor, not next/link: the target is the owner-scoped download ROUTE
-                  (Story 8.6), which returns the file as a Content-Disposition attachment. A real
-                  document navigation lets the browser take the attachment as a download instead of
-                  the client router trying to render a non-page route. */}
-              <a
-                href={item.downloadHref}
-                aria-label={t.downloadAria(item.title)}
-                className="flex min-h-[44px] items-center gap-4 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-4 transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              {/* A shadcn Card rendered AS a plain anchor (asChild), not next/link: the target is the
+                  owner-scoped download ROUTE (Story 8.6), which returns the file as a
+                  Content-Disposition attachment. A real document navigation lets the browser take the
+                  attachment as a download instead of the client router trying to render a non-page
+                  route. asChild keeps a single interactive/focusable element while giving it the Card
+                  surface. */}
+              <Card
+                asChild
+                className="min-h-[44px] flex-row items-center gap-4 px-4 transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                <FileSpreadsheet size={24} className="shrink-0 text-primary" aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <p className="type-body-md truncate font-medium text-on-surface">{item.title}</p>
-                  <p className="type-body-sm mt-0.5 text-on-surface-variant">
-                    {item.kindLabel} · {t.madeOnLabel} {item.madeOn}
-                  </p>
-                  <p className="type-body-sm mt-1 truncate text-on-surface-variant/80">
-                    {t.requestLabel}: {item.requestText}
-                  </p>
-                </div>
-                <span className="inline-flex shrink-0 items-center gap-1.5 type-label-caps text-primary">
-                  <Download size={16} aria-hidden />
-                  <span className="hidden sm:inline">{t.download}</span>
-                </span>
-              </a>
+                <a href={item.downloadHref} aria-label={t.downloadAria(item.title)}>
+                  <FileSpreadsheet size={24} className="shrink-0 text-primary" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="type-body-md truncate font-medium text-on-surface">{item.title}</p>
+                    <p className="type-body-sm mt-0.5 text-on-surface-variant">
+                      {item.kindLabel} · {t.madeOnLabel} {item.madeOn}
+                    </p>
+                    <p className="type-body-sm mt-1 truncate text-on-surface-variant/80">
+                      {t.requestLabel}: {item.requestText}
+                    </p>
+                  </div>
+                  {/* The download affordance carries the shadcn Button look via buttonVariants - a
+                      styled span, not a nested <button>, since it already lives inside the row anchor
+                      (no nested interactive). The anchor's click streams the file. */}
+                  <span
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "pointer-events-none shrink-0",
+                    )}
+                  >
+                    <Download size={16} aria-hidden />
+                    <span className="hidden sm:inline">{t.download}</span>
+                  </span>
+                </a>
+              </Card>
             </li>
           ))}
         </ul>

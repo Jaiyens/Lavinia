@@ -3,6 +3,7 @@
 import type { StyleSpecification } from "maplibre-gl";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui";
 
 // Shared MapLibre basemap config + the satellite/streets toggle, used by BOTH the meter map and
 // the parcel map so the heavy tile wiring lives once. Tiles are keyless by default (Esri World
@@ -106,18 +107,20 @@ function BasemapButton({
   label: string;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "min-h-[36px] px-3 type-body-sm font-semibold transition-colors",
+        "min-h-[36px] rounded-none font-semibold",
         active
-          ? "bg-primary-container text-on-primary-container"
-          : "text-on-surface-variant hover:bg-surface-container-low",
+          ? "bg-primary-container text-on-primary-container hover:bg-primary-container"
+          : "text-on-surface-variant",
       )}
     >
       {label}
-    </button>
+    </Button>
   );
 }

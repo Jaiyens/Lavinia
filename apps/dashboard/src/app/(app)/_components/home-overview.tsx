@@ -151,12 +151,16 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
           label={en.home.spendHero.title}
           className="h-full overflow-auto"
           modal={
-            <SpendHero
-              series={series}
-              latestCents={spend.cents}
-              foundToCutCents={savingsCents}
-              coverageLoaded={spend.coverage.loaded}
-            />
+            // A definite height in the enlarge modal so the chart's ResponsiveContainer has a height
+            // to fill (the modal itself is auto-height, where h-full would collapse to 0).
+            <div className="h-[60vh] min-h-[340px]">
+              <SpendHero
+                series={series}
+                latestCents={spend.cents}
+                foundToCutCents={savingsCents}
+                coverageLoaded={spend.coverage.loaded}
+              />
+            </div>
           }
         >
           <SpendHero
@@ -387,9 +391,10 @@ function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energ
         <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
           {findings.map((f) => (
             <li key={f.id}>
+              <Card asChild size="sm">
               <Link
                 href={f.meterId ? `${energyHref}?meter=${f.meterId}` : energyHref}
-                className="flex items-start justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 transition-colors hover:bg-surface-container"
+                className="flex flex-row items-start justify-between gap-3 bg-surface-container-low px-4 py-3 transition-colors hover:bg-surface-container"
               >
                 <div className="min-w-0">
                   <div className="mb-1 flex items-center gap-2">
@@ -406,6 +411,7 @@ function FindingsCard({ findings, energyHref }: { findings: FindingView[]; energ
                   </span>
                 )}
               </Link>
+              </Card>
             </li>
           ))}
         </ul>

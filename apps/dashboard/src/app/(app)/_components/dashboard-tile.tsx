@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Maximize2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Card } from "@/components/ui";
 
 // A bento dashboard tile: a compact square showing a summary at a glance. Click (or Enter) to
 // ENLARGE it into a modal with the full detail. The home is a grid of these so the farmer sees
@@ -34,22 +35,29 @@ export function DashboardTile({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={`${label}. Tap to enlarge`}
+      <Card
+        asChild
         className={cn(
-          "group relative flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] bg-surface-container-lowest p-4 text-left shadow-[var(--shadow-e2,0_8px_24px_rgba(20,24,40,0.08))] transition-shadow hover:shadow-[var(--shadow-e3,0_16px_40px_rgba(20,24,40,0.10))]",
+          "group relative min-h-0 justify-start gap-0 p-4 transition-shadow hover:shadow-[var(--shadow-e3,0_16px_40px_rgba(20,24,40,0.10))]",
           className,
         )}
       >
-        <span className="type-label-caps text-on-surface-variant">{label}</span>
-        <div className="mt-1 flex min-h-0 flex-1 flex-col justify-center overflow-hidden">{children}</div>
-        <Maximize2
-          aria-hidden
-          className="absolute right-3 top-3 h-3.5 w-3.5 text-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100"
-        />
-      </button>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={`${label}. Tap to enlarge`}
+          className="text-left"
+        >
+          <span className="type-label-caps text-on-surface-variant">{label}</span>
+          <div className="mt-1 flex min-h-0 flex-1 flex-col justify-center overflow-hidden">
+            {children}
+          </div>
+          <Maximize2
+            aria-hidden
+            className="absolute right-3 top-3 h-3.5 w-3.5 text-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100"
+          />
+        </button>
+      </Card>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { Button } from "@/components/ui";
 import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
@@ -100,13 +101,12 @@ export default async function AccountPage() {
           </ul>
         )}
         {farm && canManageData ? (
-          <Link
-            href={`/onboarding/connect?farm=${farm.id}&add=1`}
-            className="mt-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-4 py-2 type-body-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
-          >
-            <Plus size={16} aria-hidden />
-            {t.connectMore}
-          </Link>
+          <Button asChild variant="outline" size="lg" className="mt-4">
+            <Link href={`/onboarding/connect?farm=${farm.id}&add=1`}>
+              <Plus size={16} aria-hidden />
+              {t.connectMore}
+            </Link>
+          </Button>
         ) : farm ? (
           <p className="mt-4 type-body-sm text-on-surface-variant">{t.connectMoreHint}</p>
         ) : null}
@@ -114,21 +114,19 @@ export default async function AccountPage() {
 
       {/* Whole-new-farm entry: start or join ANOTHER farm (distinct from adding sources above).
           /start?add=1 always shows the Create-vs-Join fork even for a user who already has a farm. */}
-      <Link
-        href="/start?add=1"
-        className="mb-6 inline-flex items-center gap-2 type-body-sm font-semibold text-primary underline-offset-4 hover:underline"
-      >
-        <Plus size={16} aria-hidden />
-        {t.addFarm}
-      </Link>
+      <div className="mb-6">
+        <Button asChild variant="outline" size="lg">
+          <Link href="/start?add=1">
+            <Plus size={16} aria-hidden />
+            {t.addFarm}
+          </Link>
+        </Button>
+      </div>
 
       <form action={signOutAction}>
-        <button
-          type="submit"
-          className="type-body-md text-on-surface-variant underline-offset-4 hover:underline"
-        >
+        <Button type="submit" variant="ghost" size="lg" className="text-on-surface-variant">
           {t.signOut}
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AgentRail } from "@/app/(app)/_components/shell/agent-rail";
 import { AgentTabBar } from "@/app/(app)/_components/shell/agent-tabbar";
 import { AlmondLauncher } from "@/app/(app)/_components/almond/almond-launcher";
 import { TopoBackground } from "@/app/(app)/_components/topo-background";
-import { Button } from "@/components/ui";
+import { Button, SidebarProvider } from "@/components/ui";
 import { en } from "@/copy/en";
 
 // The public Tour now renders the SAME three-zone OS shell as the signed-in app (agent rail -
@@ -21,7 +21,10 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
   return (
     <NuqsAdapter>
       <TopoBackground />
-      <div className="flex min-h-dvh w-full text-on-surface">
+      <SidebarProvider
+        style={{ "--sidebar-width": "14rem" } as CSSProperties}
+        className="min-h-dvh text-on-surface"
+      >
         <AgentRail demo />
         <main className="min-w-0 flex-1 pb-32 lg:pb-12">
           {/* Representative-data banner with a connect CTA, on every tour screen. Padded to the
@@ -36,7 +39,7 @@ export default async function TourLayout({ children }: { children: ReactNode }) 
           </div>
           {children}
         </main>
-      </div>
+      </SidebarProvider>
       <AgentTabBar demo />
       <AlmondLauncher />
     </NuqsAdapter>

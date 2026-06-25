@@ -1,5 +1,11 @@
 "use client";
 
+// The motion component is created ONCE per element type and memoized at module level
+// (motionComponentCache below), not on each render, so it keeps a stable identity. The
+// static-components rule can't see through the cache and false-positives on the resolved
+// lookup + its JSX use, so it is disabled for this file.
+/* eslint-disable react-hooks/static-components */
+
 import { cn } from "@/lib/cn";
 import type { MotionProps } from "motion/react";
 import { motion } from "motion/react";
@@ -38,9 +44,7 @@ const ShimmerComponent = ({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
-  const MotionComponent = getMotionComponent(
-    Component as keyof JSX.IntrinsicElements
-  );
+  const MotionComponent = getMotionComponent(Component as keyof JSX.IntrinsicElements);
 
   const dynamicSpread = useMemo(
     () => (children?.length ?? 0) * spread,

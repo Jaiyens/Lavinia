@@ -41,6 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui";
+import { AlmondMascot } from "./almond-mascot";
 import {
   ChainOfThought,
   ChainOfThoughtContent,
@@ -695,9 +696,8 @@ function MessageTurn({
 function EmptyState({ starters, onStarter }: { starters: readonly string[]; onStarter: (text: string) => void }) {
   return (
     <div className="flex min-h-[55vh] flex-col items-center justify-center px-2 text-center">
-      <span aria-hidden className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-        <Sparkles size={28} />
-      </span>
+      {/* Almond mascot in place of the old sparkle icon: its eyes follow the cursor. */}
+      <AlmondMascot className="h-24 w-auto drop-shadow-[0_8px_16px_rgba(20,25,15,0.12)]" />
       <h2 className="type-display-lg mt-5 text-on-surface">Ask about this farm</h2>
       <p className="text-sm mt-2 max-w-md text-on-surface-variant">
         Almond can inspect your meters, rates, and bills, then save notes you can download.

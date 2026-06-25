@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { AlertTriangle, Check, Copy, ExternalLink, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { en, usd } from "@/copy/en";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
@@ -112,18 +113,17 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="type-num tnum text-on-surface-variant">APN {p.apn}</span>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => void copyApn()}
             aria-label={t.copyApn}
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-[var(--radius-control)] border border-outline-variant px-2 type-label-caps transition-colors hover:bg-surface-container-low",
-              copied ? "text-primary" : "text-on-surface-variant",
-            )}
+            className={cn("type-label-caps", copied ? "text-primary" : "text-on-surface-variant")}
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             <span>{copied ? t.copied : t.copyApn}</span>
-          </button>
+          </Button>
           <span className="type-body-sm text-on-surface-variant">
             {t.acres(p.identity.gross_acres)} &middot; {p.county}
           </span>
