@@ -48,10 +48,11 @@ export const loadRepresentativeFarm = cache((todayIso: string): Farm =>
 );
 
 /**
- * The demo operation shown on the Parcels surface ("Sundance Valley Farms"): SYNTHETIC parcels in
- * Fresno County, relocated to open farmland with synthetic APNs by scripts/relocate-demo-parcels.ts
- * so the demo never displays a real grower's land or APN. Falls back to the representative fixture if
- * the demo fixture isn't present (so the app never hard-fails on a missing seed). Request-cached.
+ * The demo operation shown on the Parcels surface and the Home "Your parcels" tile ("Sundance Valley
+ * Farms"): REAL Fresno County assessor parcels near Easton/Fowler, baked by scripts/seed-sundance-
+ * farm.ts. Real outlines (so they trace the fields on the satellite basemap), real APNs, real acreage,
+ * deliberately away from the real Batth grower's land. Falls back to the representative fixture if the
+ * demo fixture isn't present (so the app never hard-fails on a missing seed). Request-cached.
  */
 export const loadDemoFarm = cache((todayIso: string): Farm => {
   try {

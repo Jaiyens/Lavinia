@@ -16,7 +16,7 @@ import { closeDateShort } from "@/lib/format/date";
 import { scanBills } from "@/lib/dashboard/bills";
 import { computeKpiStrip, spendByMonth } from "@/lib/dashboard/kpi";
 import type { FindingView } from "@/lib/dashboard/findings";
-import { loadRepresentativeFarm } from "@/lib/parcel/farm/seed";
+import { loadDemoFarm } from "@/lib/parcel/farm/seed";
 import { colorForParcel } from "@/lib/parcel/farm/color";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
 import { resolveActiveFarmId, resolveFarm, resolveFindings, resolveMeters } from "../(dashboard)/_data";
@@ -114,9 +114,9 @@ export async function HomeOverview({ demoOnly = false }: { demoOnly?: boolean } 
   const energyHref = demoOnly ? "/tour/energy" : "/energy";
   const parcelsHref = demoOnly ? "/tour/parcels" : "/parcels";
   // The Home "Your parcels" tile: a satellite preview of the operation's land that links to the
-  // full Parcels surface. Built from the seeded representative farm (same source as /parcels), so
-  // the preview shows the grower's actual blocks, not a static image.
-  const parcelsPreview = buildParcelsPreview(loadRepresentativeFarm(todayIso).parcels);
+  // full Parcels surface. Built from the same demo farm fixture as /parcels (loadDemoFarm), so the
+  // preview matches the full map it opens, with real parcel outlines, not a static image.
+  const parcelsPreview = buildParcelsPreview(loadDemoFarm(todayIso).parcels);
 
   // The bento widgets, in default order. The BentoGrid lets the grower drag them into any order
   // (saved per browser); spans/sizes are fixed here so the one-screen layout always holds.

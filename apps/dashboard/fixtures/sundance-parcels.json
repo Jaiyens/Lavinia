@@ -1,323 +1,340 @@
 {
-  "generatedAt": "2026-06-25T18:08:43.348Z",
+  "generatedAt": "2026-06-25T18:44:03.980Z",
   "name": "Sundance Valley Farms",
   "county": "Fresno",
   "center": {
-    "lat": 36.475,
-    "lng": -120.24
+    "lat": 36.62,
+    "lng": -119.74
   },
   "parcels": [
     {
       "base": {
-        "apn": "90000001S",
+        "apn": "33511010",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.2379143886437,
-                36.482584689307586
+                -119.736952737403,
+                36.6208920604165
               ],
               [
-                -120.23794911126106,
-                36.47547509534139
+                -119.736945888428,
+                36.6200857965321
               ],
               [
-                -120.2556321721967,
-                36.47537842338929
+                -119.737858252781,
+                36.6200842483198
               ],
               [
-                -120.25559920360507,
-                36.48249900226178
+                -119.741368027431,
+                36.6200778274904
               ],
               [
-                -120.2379143886437,
-                36.482584689307586
+                -119.741356777732,
+                36.6217071226458
+              ],
+              [
+                -119.736959781092,
+                36.6217212292938
+              ],
+              [
+                -119.736952737403,
+                36.6208920604165
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4789846,
-        "centroid_lon": -120.246776,
+        "centroid_lat": 36.6208973,
+        "centroid_lon": -119.7391562,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 309.2
+        "gross_acres": 17.7
       },
       "enrichment": {
-        "gsa_name": {
-          "value": "McMullin Area GSA",
-          "source": "DWR SGMA GSA boundaries"
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
-          "value": "Raisin City Water District",
+          "value": "Fresno Irrigation District",
           "source": "DWR Water Districts"
         },
         "soil_class": {
-          "value": "Calhi loamy sand",
+          "value": "Delhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
         },
         "slope_pct": {
           "value": 2,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 535,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E15",
-            "year": 2022,
-            "records": 21,
-            "total_lbs": 2694.8,
-            "top_chemicals": [
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 1018.4
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 539.8
-              },
-              {
-                "name": "Paraquat Dichloride",
-                "lbs": 528.5
-              },
-              {
-                "name": "Sulfur",
-                "lbs": 384
-              },
-              {
-                "name": "Copper Oxychloride",
-                "lbs": 95.2
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 87
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        },
-        "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
         }
       }
     },
     {
       "base": {
-        "apn": "90001000S",
+        "apn": "33514021",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.25585711464315,
-                36.47512399520499
+                -119.744187272009,
+                36.6198104100327
               ],
               [
-                -120.24962221620804,
-                36.47516151471569
+                -119.736983546523,
+                36.6198414203559
               ],
               [
-                -120.2496132531559,
-                36.474384380156884
+                -119.736981659581,
+                36.6171411415676
               ],
               [
-                -120.24886106538828,
-                36.47440521844979
+                -119.742191750239,
+                36.6171198096095
               ],
               [
-                -120.24884862833649,
-                36.47516614789399
+                -119.74570828654,
+                36.6171033603951
               ],
               [
-                -120.24681329750585,
-                36.475178311355684
+                -119.745714157096,
+                36.6191251093908
               ],
               [
-                -120.24682131209792,
-                36.47469202547848
+                -119.7441843334,
+                36.6191511502878
               ],
               [
-                -120.24543343000892,
-                36.47468317853369
-              ],
-              [
-                -120.24542540672127,
-                36.47516946521898
-              ],
-              [
-                -120.24003108081784,
-                36.475201423438286
-              ],
-              [
-                -120.24003236955345,
-                36.473525719350384
-              ],
-              [
-                -120.23788285371059,
-                36.47353892276909
-              ],
-              [
-                -120.2378953234822,
-                36.47164611892319
-              ],
-              [
-                -120.24681661351225,
-                36.47162086764298
-              ],
-              [
-                -120.24686306608997,
-                36.46796969952189
-              ],
-              [
-                -120.25581062542553,
-                36.467899621978184
-              ],
-              [
-                -120.25586203240783,
-                36.46969030634049
-              ],
-              [
-                -120.25585711464315,
-                36.47512399520499
+                -119.744187272009,
+                36.6198104100327
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4720352,
-        "centroid_lon": -120.2487752,
+        "centroid_lat": 36.6184276,
+        "centroid_lon": -119.7411837,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 226.1
+        "gross_acres": 55.3
       },
       "enrichment": {
         "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "McMullin Area GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
-          "value": "Raisin City Water District",
+          "value": "Consolidated Irrigation District",
           "source": "DWR Water Districts"
         },
         "soil_class": {
-          "value": "Calhi loamy sand",
+          "value": "Hanford sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 1,
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33511009",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.736954738841,
+                36.6235437421438
+              ],
+              [
+                -119.736959781092,
+                36.6217212292938
+              ],
+              [
+                -119.741356777732,
+                36.6217071226458
+              ],
+              [
+                -119.741378835991,
+                36.6226078594282
+              ],
+              [
+                -119.741356780589,
+                36.6235062615385
+              ],
+              [
+                -119.736954738841,
+                36.6235437421438
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6226198,
+        "centroid_lon": -119.7391578,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 19.6
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "water_district": {
+          "value": "Fresno Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Delhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
         },
         "slope_pct": {
           "value": 2,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 400,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E22",
-            "year": 2022,
-            "records": 11,
-            "total_lbs": 1321.4,
-            "top_chemicals": [
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 644.8
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 350
-              },
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 254
-              },
-              {
-                "name": "Flumioxazin",
-                "lbs": 34.5
-              },
-              {
-                "name": "Oxyfluorfen",
-                "lbs": 22.5
-              },
-              {
-                "name": "Chlorantraniliprole",
-                "lbs": 15.8
-              }
-            ],
-            "top_crops": [
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90002001S",
+        "apn": "33511048",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.23750558573147,
-                36.48253277768379
+                -119.741368027431,
+                36.6200778274904
               ],
               [
-                -120.23341691236413,
-                36.48255475533458
+                -119.745057101045,
+                36.6200643016645
               ],
               [
-                -120.23314479311719,
-                36.48255676146319
+                -119.745058227827,
+                36.6201928807848
               ],
               [
-                -120.23314885920928,
-                36.48231499217299
+                -119.7452013427,
+                36.6201919857118
               ],
               [
-                -120.23319554817229,
-                36.478927550582185
+                -119.74563555177,
+                36.6203197702814
               ],
               [
-                -120.23321405954304,
-                36.475455156597285
+                -119.745699067929,
+                36.6203193727509
               ],
               [
-                -120.23757470109595,
-                36.47545314704499
+                -119.745748677758,
+                36.62118925835
               ],
               [
-                -120.23750558573147,
-                36.48253277768379
+                -119.745745230456,
+                36.6216909425357
+              ],
+              [
+                -119.741356777732,
+                36.6217071226458
+              ],
+              [
+                -119.741368027431,
+                36.6200778274904
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4789993,
-        "centroid_lon": -120.2353626,
+        "centroid_lat": 36.6208991,
+        "centroid_lon": -119.7435129,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 75.8
+        "gross_acres": 17.2
+      },
+      "enrichment": {
+        "water_district": {
+          "value": "Fresno Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hanford sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 1,
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33514025S",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.736981659581,
+                36.6171411415676
+              ],
+              [
+                -119.736994935223,
+                36.6158115994775
+              ],
+              [
+                -119.737010881065,
+                36.6158117739005
+              ],
+              [
+                -119.738031053085,
+                36.6158108737419
+              ],
+              [
+                -119.73804730163,
+                36.6153712548817
+              ],
+              [
+                -119.737010537235,
+                36.615374965132
+              ],
+              [
+                -119.736994591474,
+                36.6153747898078
+              ],
+              [
+                -119.73700237633,
+                36.6144243195165
+              ],
+              [
+                -119.741358240309,
+                36.6144192083342
+              ],
+              [
+                -119.742203283232,
+                36.6144166971286
+              ],
+              [
+                -119.742191750239,
+                36.6171198096095
+              ],
+              [
+                -119.736981659581,
+                36.6171411415676
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6157823,
+        "centroid_lon": -119.7396625,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 33.5
       },
       "enrichment": {
         "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
           "value": "Consolidated Irrigation District",
@@ -330,209 +347,250 @@
         "slope_pct": {
           "value": 0,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 440,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E14",
-            "year": 2022,
-            "records": 282,
-            "total_lbs": 16036.2,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7537.3
-              },
-              {
-                "name": "1,3-Dichloropropene",
-                "lbs": 3133.2
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 2586.2
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 802.7
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 396
-              },
-              {
-                "name": "Potassium Phosphite",
-                "lbs": 239.5
-              }
-            ],
-            "top_crops": [
-              "Grape",
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90003000S",
+        "apn": "33511008",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.2378953234822,
-                36.47164611892319
+                -119.741384574671,
+                36.625338329663
               ],
               [
-                -120.23795185712682,
-                36.46077564824969
+                -119.738411375221,
+                36.6253493596577
               ],
               [
-                -120.24686849239082,
-                36.46075042363179
+                -119.736981579793,
+                36.625354636978
               ],
               [
-                -120.24686306608997,
-                36.46796969952189
+                -119.736954738841,
+                36.6235437421438
               ],
               [
-                -120.24681661351225,
-                36.47162086764298
+                -119.741356780589,
+                36.6235062615385
               ],
               [
-                -120.2378953234822,
-                36.47164611892319
+                -119.741384574671,
+                36.625338329663
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4661997,
-        "centroid_lon": -120.2423903,
+        "centroid_lat": 36.6244358,
+        "centroid_lon": -119.7391737,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 238.7
+        "gross_acres": 19.7
       },
       "enrichment": {
         "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "McMullin Area GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
-          "value": "Raisin City Water District",
+          "value": "Fresno Irrigation District",
           "source": "DWR Water Districts"
         },
         "soil_class": {
-          "value": "Calhi loamy sand",
+          "value": "Delhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
         },
         "slope_pct": {
-          "value": 6,
+          "value": 2,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 138,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E22",
-            "year": 2022,
-            "records": 11,
-            "total_lbs": 1321.4,
-            "top_chemicals": [
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 644.8
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 350
-              },
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 254
-              },
-              {
-                "name": "Flumioxazin",
-                "lbs": 34.5
-              },
-              {
-                "name": "Oxyfluorfen",
-                "lbs": 22.5
-              },
-              {
-                "name": "Chlorantraniliprole",
-                "lbs": 15.8
-              }
-            ],
-            "top_crops": [
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90004000S",
+        "apn": "33511005S",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.23561006910758,
-                36.47168226447999
+                -119.742516073615,
+                36.6253422767606
               ],
               [
-                -120.23330703058377,
-                36.47164982063339
+                -119.741384574671,
+                36.625338329663
               ],
               [
-                -120.2332591716364,
-                36.469826138118286
+                -119.741356780589,
+                36.6235062615385
               ],
               [
-                -120.23764988571317,
-                36.46980467277969
+                -119.7457460653,
+                36.6234926246116
               ],
               [
-                -120.2376439312766,
-                36.471672705835985
+                -119.745743293752,
+                36.6253248836775
               ],
               [
-                -120.23661339653643,
-                36.47167758974538
+                -119.743606439152,
+                36.6253217466727
               ],
               [
-                -120.23561006910758,
-                36.47168226447999
+                -119.742516073615,
+                36.6253422767606
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4707415,
-        "centroid_lon": -120.2354739,
+        "centroid_lat": 36.6244136,
+        "centroid_lon": -119.7435558,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 19.9
+        "gross_acres": 19.6
       },
       "enrichment": {
         "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
+        "water_district": {
+          "value": "Fresno Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hesperia sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 0,
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33514010",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.74570828654,
+                36.6171033603951
+              ],
+              [
+                -119.742191750239,
+                36.6171198096095
+              ],
+              [
+                -119.742203283232,
+                36.6144166971286
+              ],
+              [
+                -119.745706066669,
+                36.6144003328871
+              ],
+              [
+                -119.745706988792,
+                36.6152024494188
+              ],
+              [
+                -119.744807498004,
+                36.6152135666092
+              ],
+              [
+                -119.744806630901,
+                36.6154772829235
+              ],
+              [
+                -119.745706124762,
+                36.6154661666414
+              ],
+              [
+                -119.74570828654,
+                36.6171033603951
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6157717,
+        "centroid_lon": -119.7439188,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 22.7
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hanford sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 1,
+          "source": "USDA SSURGO (Soil Data Access)"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "34506012",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.736722502132,
+                36.6217714194006
+              ],
+              [
+                -119.731597000664,
+                36.621761774747
+              ],
+              [
+                -119.731590420091,
+                36.6200053084216
+              ],
+              [
+                -119.731590301985,
+                36.6199735267318
+              ],
+              [
+                -119.736726037117,
+                36.6199968431609
+              ],
+              [
+                -119.736726002426,
+                36.6200145793869
+              ],
+              [
+                -119.736722502132,
+                36.6217714194006
+              ]
+            ]
+          ]
+        },
+        "centroid_lat": 36.6208756,
+        "centroid_lon": -119.7341557,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 22.4
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
           "value": "Consolidated Irrigation District",
@@ -545,555 +603,61 @@
         "slope_pct": {
           "value": 0,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 203,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E23",
-            "year": 2022,
-            "records": 191,
-            "total_lbs": 15143.9,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7716
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 5109.3
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 331.7
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 267.6
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 264.3
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 251.2
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90005000S",
+        "apn": "34508009",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.25559920360507,
-                36.48249900226178
+                -119.731732041695,
+                36.6198270669335
               ],
               [
-                -120.25559341189226,
-                36.489616620555786
+                -119.731740837583,
+                36.61895621736
               ],
               [
-                -120.23787965852888,
-                36.48969427519429
+                -119.73175319405,
+                36.6188215397675
               ],
               [
-                -120.2379143886437,
-                36.482584689307586
+                -119.73177997064,
+                36.6162501934227
               ],
               [
-                -120.25559920360507,
-                36.48249900226178
+                -119.732743885459,
+                36.6162546804865
+              ],
+              [
+                -119.736813393648,
+                36.6162906145093
+              ],
+              [
+                -119.736751962727,
+                36.6198565863732
+              ],
+              [
+                -119.731732041695,
+                36.6198270669335
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4860999,
-        "centroid_lon": -120.2467484,
+        "centroid_lat": 36.6180546,
+        "centroid_lon": -119.7342691,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 309.4
+        "gross_acres": 44
       },
       "enrichment": {
         "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "McMullin Area GSA",
-          "source": "DWR SGMA GSA boundaries"
-        },
-        "water_district": {
-          "value": "Raisin City Water District",
-          "source": "DWR Water Districts"
-        },
-        "soil_class": {
-          "value": "Calhi loamy sand",
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "slope_pct": {
-          "value": 2,
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 535,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E15",
-            "year": 2022,
-            "records": 21,
-            "total_lbs": 2694.8,
-            "top_chemicals": [
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 1018.4
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 539.8
-              },
-              {
-                "name": "Paraquat Dichloride",
-                "lbs": 528.5
-              },
-              {
-                "name": "Sulfur",
-                "lbs": 384
-              },
-              {
-                "name": "Copper Oxychloride",
-                "lbs": 95.2
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 87
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        }
-      }
-    },
-    {
-      "base": {
-        "apn": "90006000S",
-        "county": "Fresno",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [
-            [
-              [
-                -120.23559943547004,
-                36.475239760822184
-              ],
-              [
-                -120.22893621955829,
-                36.475258612844485
-              ],
-              [
-                -120.22894366650587,
-                36.471692899969185
-              ],
-              [
-                -120.23330703058377,
-                36.47164982063339
-              ],
-              [
-                -120.23561006910758,
-                36.47168226447999
-              ],
-              [
-                -120.23559943547004,
-                36.475239760822184
-              ]
-            ]
-          ]
-        },
-        "centroid_lat": 36.4734592,
-        "centroid_lon": -120.2322728,
-        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 58.6
-      },
-      "enrichment": {
-        "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
-        },
-        "water_district": {
-          "value": "Consolidated Irrigation District",
-          "source": "DWR Water Districts"
-        },
-        "soil_class": {
-          "value": "Calhi loamy sand",
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "slope_pct": {
-          "value": 2,
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 203,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E23",
-            "year": 2022,
-            "records": 191,
-            "total_lbs": 15143.9,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7716
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 5109.3
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 331.7
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 267.6
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 264.3
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 251.2
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        }
-      }
-    },
-    {
-      "base": {
-        "apn": "90007000S",
-        "county": "Fresno",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [
-            [
-              [
-                -120.2332591716364,
-                36.469826138118286
-              ],
-              [
-                -120.23326622732013,
-                36.468046002112985
-              ],
-              [
-                -120.23327959152374,
-                36.46441980735698
-              ],
-              [
-                -120.23766637813097,
-                36.464379140029486
-              ],
-              [
-                -120.2376699567553,
-                36.46708495224939
-              ],
-              [
-                -120.23715983657634,
-                36.467088730585886
-              ],
-              [
-                -120.23717332672588,
-                36.467975925722385
-              ],
-              [
-                -120.23764604319685,
-                36.467972423652185
-              ],
-              [
-                -120.23765553844169,
-                36.46850802686328
-              ],
-              [
-                -120.2371050739659,
-                36.46851164331969
-              ],
-              [
-                -120.23711241611792,
-                36.46908319416219
-              ],
-              [
-                -120.2376518373189,
-                36.46907943963328
-              ],
-              [
-                -120.23764988571317,
-                36.46980467277969
-              ],
-              [
-                -120.2332591716364,
-                36.469826138118286
-              ]
-            ]
-          ]
-        },
-        "centroid_lat": 36.4670764,
-        "centroid_lon": -120.2354038,
-        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 56.6
-      },
-      "enrichment": {
-        "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
-        },
-        "water_district": {
-          "value": "Consolidated Irrigation District",
-          "source": "DWR Water Districts"
-        },
-        "soil_class": {
-          "value": "Calhi loamy sand",
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "slope_pct": {
-          "value": 2,
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 203,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E23",
-            "year": 2022,
-            "records": 191,
-            "total_lbs": 15143.9,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7716
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 5109.3
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 331.7
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 267.6
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 264.3
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 251.2
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        }
-      }
-    },
-    {
-      "base": {
-        "apn": "90008000S",
-        "county": "Fresno",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [
-            [
-              [
-                -120.23309375387211,
-                36.48616124874559
-              ],
-              [
-                -120.23314479311719,
-                36.48255676146319
-              ],
-              [
-                -120.23341691236413,
-                36.48255475533458
-              ],
-              [
-                -120.23750558573147,
-                36.48253277768379
-              ],
-              [
-                -120.23747906063399,
-                36.48618103854969
-              ],
-              [
-                -120.23309375387211,
-                36.48616124874559
-              ]
-            ]
-          ]
-        },
-        "centroid_lat": 36.4843596,
-        "centroid_lon": -120.2353102,
-        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 39
-      },
-      "enrichment": {
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
-        },
-        "water_district": {
-          "value": "Consolidated Irrigation District",
-          "source": "DWR Water Districts"
-        },
-        "soil_class": {
-          "value": "Calhi loamy sand",
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "slope_pct": {
-          "value": 2,
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 440,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E14",
-            "year": 2022,
-            "records": 282,
-            "total_lbs": 16036.2,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7537.3
-              },
-              {
-                "name": "1,3-Dichloropropene",
-                "lbs": 3133.2
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 2586.2
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 802.7
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 396
-              },
-              {
-                "name": "Potassium Phosphite",
-                "lbs": 239.5
-              }
-            ],
-            "top_crops": [
-              "Grape",
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        },
-        "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        }
-      }
-    },
-    {
-      "base": {
-        "apn": "90009000S",
-        "county": "Fresno",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [
-            [
-              [
-                -120.23319554817229,
-                36.478927550582185
-              ],
-              [
-                -120.22982785032,
-                36.47892897519618
-              ],
-              [
-                -120.22883811228634,
-                36.47892937538298
-              ],
-              [
-                -120.22885366604184,
-                36.47547898111399
-              ],
-              [
-                -120.23321405954304,
-                36.475455156597285
-              ],
-              [
-                -120.23319554817229,
-                36.478927550582185
-              ]
-            ]
-          ]
-        },
-        "centroid_lat": 36.4771976,
-        "centroid_lon": -120.2310276,
-        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 37.1
-      },
-      "enrichment": {
-        "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
           "value": "Consolidated Irrigation District",
@@ -1106,96 +670,49 @@
         "slope_pct": {
           "value": 0,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 440,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E14",
-            "year": 2022,
-            "records": 282,
-            "total_lbs": 16036.2,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7537.3
-              },
-              {
-                "name": "1,3-Dichloropropene",
-                "lbs": 3133.2
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 2586.2
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 802.7
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 396
-              },
-              {
-                "name": "Potassium Phosphite",
-                "lbs": 239.5
-              }
-            ],
-            "top_crops": [
-              "Grape",
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90010000S",
+        "apn": "34506013",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.22894366650587,
-                36.471692899969185
+                -119.736732702146,
+                36.6235568987542
               ],
               [
-                -120.22892311922868,
-                36.469869015184386
+                -119.731566293384,
+                36.6235584917593
               ],
               [
-                -120.2332591716364,
-                36.469826138118286
+                -119.731597000664,
+                36.621761774747
               ],
               [
-                -120.23330703058377,
-                36.47164982063339
+                -119.736722502132,
+                36.6217714194006
               ],
               [
-                -120.22894366650587,
-                36.471692899969185
+                -119.736732702146,
+                36.6235568987542
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4707605,
-        "centroid_lon": -120.2311083,
+        "centroid_lat": 36.6226634,
+        "centroid_lon": -119.7341519,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 19.5
+        "gross_acres": 22.6
       },
       "enrichment": {
         "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
           "value": "Consolidated Irrigation District",
@@ -1208,222 +725,57 @@
         "slope_pct": {
           "value": 0,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 203,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E23",
-            "year": 2022,
-            "records": 191,
-            "total_lbs": 15143.9,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7716
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 5109.3
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 331.7
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 267.6
-              },
-              {
-                "name": "Copper Hydroxide",
-                "lbs": 264.3
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 251.2
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape",
-              "Grape, Wine"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90011000S",
+        "apn": "33514023S",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.25581062542553,
-                36.467899621978184
+                -119.741358240309,
+                36.6144192083342
               ],
               [
-                -120.24686306608997,
-                36.46796969952189
+                -119.73700237633,
+                36.6144243195165
               ],
               [
-                -120.24686849239082,
-                36.46075042363179
+                -119.736999744466,
+                36.6142866553712
               ],
               [
-                -120.25587305559249,
-                36.46068265965299
+                -119.737005526336,
+                36.6126468829735
               ],
               [
-                -120.25585347337211,
-                36.46426770423299
+                -119.737013648496,
+                36.6126468282181
               ],
               [
-                -120.25584722556336,
-                36.46607256055398
+                -119.741340962695,
+                36.6126172885214
               ],
               [
-                -120.25581062542553,
-                36.467899621978184
+                -119.741358240309,
+                36.6144192083342
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4643225,
-        "centroid_lon": -120.2513583,
+        "centroid_lat": 36.6135277,
+        "centroid_lon": -119.739181,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 159.4
+        "gross_acres": 19.1
       },
       "enrichment": {
         "crop": {
-          "value": "Almonds",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "North Fork Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
-        },
-        "water_district": {
-          "value": "Liberty Water District",
-          "source": "DWR Water Districts"
-        },
-        "soil_class": {
-          "value": "Calhi loamy sand",
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "slope_pct": {
-          "value": 2,
-          "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 138,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E22",
-            "year": 2022,
-            "records": 11,
-            "total_lbs": 1321.4,
-            "top_chemicals": [
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 644.8
-              },
-              {
-                "name": "Pendimethalin",
-                "lbs": 350
-              },
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 254
-              },
-              {
-                "name": "Flumioxazin",
-                "lbs": 34.5
-              },
-              {
-                "name": "Oxyfluorfen",
-                "lbs": 22.5
-              },
-              {
-                "name": "Chlorantraniliprole",
-                "lbs": 15.8
-              }
-            ],
-            "top_crops": [
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
-        }
-      }
-    },
-    {
-      "base": {
-        "apn": "90012000S",
-        "county": "Fresno",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [
-            [
-              [
-                -120.22882325215525,
-                36.47964402264368
-              ],
-              [
-                -120.22983575024581,
-                36.479636900774885
-              ],
-              [
-                -120.22982785032,
-                36.47892897519618
-              ],
-              [
-                -120.23319554817229,
-                36.478927550582185
-              ],
-              [
-                -120.23314885920928,
-                36.48231499217299
-              ],
-              [
-                -120.23314479311719,
-                36.48255676146319
-              ],
-              [
-                -120.23003218812767,
-                36.48255768811858
-              ],
-              [
-                -120.22876309506843,
-                36.482536785866884
-              ],
-              [
-                -120.22882325215525,
-                36.47964402264368
-              ]
-            ]
-          ]
-        },
-        "centroid_lat": 36.4808117,
-        "centroid_lon": -120.231065,
-        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 37.2
-      },
-      "enrichment": {
-        "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "Central Kings GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
           "value": "Consolidated Irrigation District",
@@ -1436,167 +788,120 @@
         "slope_pct": {
           "value": 0,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 200,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E14",
-            "year": 2022,
-            "records": 282,
-            "total_lbs": 16036.2,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 7537.3
-              },
-              {
-                "name": "1,3-Dichloropropene",
-                "lbs": 3133.2
-              },
-              {
-                "name": "Mineral Oil",
-                "lbs": 2586.2
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 802.7
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 396
-              },
-              {
-                "name": "Potassium Phosphite",
-                "lbs": 239.5
-              }
-            ],
-            "top_crops": [
-              "Grape",
-              "Almond"
-            ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
         }
       }
     },
     {
       "base": {
-        "apn": "90013001S",
+        "apn": "34506014",
         "county": "Fresno",
         "geometry": {
           "type": "Polygon",
           "coordinates": [
             [
               [
-                -120.25592526657464,
-                36.48245533096899
+                -119.736739625613,
+                36.6253561324181
               ],
               [
-                -120.25598926202083,
-                36.47537297588609
+                -119.731549137726,
+                36.6253468851659
               ],
               [
-                -120.25788739637116,
-                36.475383327007584
+                -119.731566293384,
+                36.6235584917593
               ],
               [
-                -120.25788222106482,
-                36.47639977172849
+                -119.736732702146,
+                36.6235568987542
               ],
               [
-                -120.25788033200686,
-                36.47711401743169
-              ],
-              [
-                -120.25787079296938,
-                36.47892438992939
-              ],
-              [
-                -120.25792521391632,
-                36.478923977431585
-              ],
-              [
-                -120.25790857954841,
-                36.48246229094038
-              ],
-              [
-                -120.25592526657464,
-                36.48245533096899
+                -119.736739625613,
+                36.6253561324181
               ]
             ]
           ]
         },
-        "centroid_lat": 36.4789525,
-        "centroid_lon": -120.2569276,
+        "centroid_lat": 36.6244553,
+        "centroid_lon": -119.7341495,
         "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
-        "gross_acres": 33.8
+        "gross_acres": 22.8
       },
       "enrichment": {
         "crop": {
-          "value": "Grapes",
-          "source": "USDA CDL 2023"
-        },
-        "gsa_name": {
-          "value": "McMullin Area GSA",
-          "source": "DWR SGMA GSA boundaries"
+          "value": "Deciduous orchard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
         },
         "water_district": {
-          "value": "Raisin City Water District",
+          "value": "Consolidated Irrigation District",
           "source": "DWR Water Districts"
         },
         "soil_class": {
-          "value": "Calhi loamy sand",
+          "value": "Delhi loamy sand",
           "source": "USDA SSURGO (Soil Data Access)"
         },
         "slope_pct": {
           "value": 2,
           "source": "USDA SSURGO (Soil Data Access)"
-        },
-        "well_depth_ft": {
-          "value": 560,
-          "source": "DWR OSWCR (nearest well, reported at drilling)"
-        },
-        "spray_section": {
-          "value": {
-            "comtrs": "10M16S19E16",
-            "year": 2022,
-            "records": 89,
-            "total_lbs": 7383.5,
-            "top_chemicals": [
-              {
-                "name": "Sulfur",
-                "lbs": 6538.4
-              },
-              {
-                "name": "Glufosinate-Ammonium",
-                "lbs": 197.8
-              },
-              {
-                "name": "Potassium Bicarbonate",
-                "lbs": 163.8
-              },
-              {
-                "name": "Cryolite",
-                "lbs": 115.2
-              },
-              {
-                "name": "Glyphosate, Potassium Salt",
-                "lbs": 110.4
-              },
-              {
-                "name": "Glyphosate, Isopropylamine Salt",
-                "lbs": 106.7
-              }
-            ],
-            "top_crops": [
-              "Almond",
-              "Grape"
+        }
+      }
+    },
+    {
+      "base": {
+        "apn": "33514009S",
+        "county": "Fresno",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.745706066669,
+                36.6144003328871
+              ],
+              [
+                -119.742203283232,
+                36.6144166971286
+              ],
+              [
+                -119.741358240309,
+                36.6144192083342
+              ],
+              [
+                -119.741340962695,
+                36.6126172885214
+              ],
+              [
+                -119.745719352333,
+                36.6125982217517
+              ],
+              [
+                -119.745706066669,
+                36.6144003328871
+              ]
             ]
-          },
-          "source": "CA DPR PUR (this 1-sq-mi section, 2022)"
+          ]
+        },
+        "centroid_lat": 36.613508,
+        "centroid_lon": -119.743531,
+        "source_url": "https://services6.arcgis.com/Gs01XZPFhKUG8tKU/arcgis/rest/services/Fresno_County_Parcels/FeatureServer/0",
+        "gross_acres": 19.3
+      },
+      "enrichment": {
+        "crop": {
+          "value": "Vineyard",
+          "source": "DWR Crop Mapping 2022 (land-use class)"
+        },
+        "water_district": {
+          "value": "Consolidated Irrigation District",
+          "source": "DWR Water Districts"
+        },
+        "soil_class": {
+          "value": "Hanford sandy loam",
+          "source": "USDA SSURGO (Soil Data Access)"
+        },
+        "slope_pct": {
+          "value": 1,
+          "source": "USDA SSURGO (Soil Data Access)"
         }
       }
     }
