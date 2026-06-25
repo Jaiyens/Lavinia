@@ -13,6 +13,9 @@
 // until Epic 3. No DB, no UI.
 
 import type { MeterView } from "./load";
+import { meterPeakKw } from "./table";
+
+const RECONCILED = "reconciled";
 
 export type MapPin = {
   meterId: string;
@@ -21,6 +24,26 @@ export type MapPin = {
   longitude: number;
   /** needs_review coverage or BAD status: the pin earns clay; calm pins are green. */
   attention: boolean;
+  /** PG&E rate schedule, verbatim; drives the pin color in the Energy map's "rate" encoding. */
+  rateSchedule: string | null;
+  /** Legacy AG-4/AG-5 flag straight off the meter (the importer's flag; the map ALSO derives
+   *  legacy from the rate string, since the flag is not always set in the data). */
+  isLegacy: boolean;
+  /** Sum of this meter's RECONCILED printed bills in integer cents (AR-15: reconciled only), or
+   *  null when nothing is proven. Drives the pin SIZE in the "rate" encoding. */
+  annualSpendCents: number | null;
+  /** Pump health read verbatim from the master sheet; null when unknown. */
+  status: string | null;
+  /** Pump capacity in gallons per minute; null when not on file. */
+  gpm: number | null;
+  /** Latest billed 15-min peak demand kW (table.ts's meterPeakKw); null when no period carries one. */
+  peakKw: number | null;
+  /** PG&E account number; null when not on file. */
+  accountNumber: string | null;
+  /** Ranch/property rollup name; null when not on file. */
+  ranchName: string | null;
+  /** The grower's "P0xx" Pump ID from the master sheet; null until loaded. */
+  growerPumpId: string | null;
   /**
    * An OPTIONAL, additive "true-up soon" signal, set only by surfaces that carry it (the solar Map
    * lens, FR35). When true the marker draws a quiet ring around the status dot - a third encoded
@@ -48,6 +71,17 @@ export type MapData = {
   unlocated: UnlocatedMeter[];
 };
 
+/** Sum a meter's RECONCILED printed bills (AR-15: only proven money counts); null when the meter
+ *  is not reconciled or carries no printed total. Mirrors kpi.ts's reconciled-only spend gate. */
+function reconciledSpendCents(meter: MeterView): number | null {
+  if (meter.coverageState !== RECONCILED) return null;
+  let cents: number | null = null;
+  for (const p of meter.periods) {
+    if (p.printedTotalCents != null) cents = (cents ?? 0) + p.printedTotalCents;
+  }
+  return cents;
+}
+
 export function toMapPins(meters: readonly MeterView[]): MapData {
   const pins: MapPin[] = [];
   const unlocated: UnlocatedMeter[] = [];
@@ -68,16 +102,24 @@ export function toMapPins(meters: readonly MeterView[]): MapData {
       // Latest printed bill, gated on `reconciled` (AR-15): the newest period's printed total,
       // shown only when the meter's coverage is proven; otherwise null (status dot, no number).
       const latest = meter.periods[meter.periods.length - 1];
+      const reconciled = meter.coverageState === RECONCILED;
       const latestBillCents =
-        meter.coverageState === "reconciled" && latest?.printedTotalCents != null
-          ? latest.printedTotalCents
-          : null;
+        reconciled && latest?.printedTotalCents != null ? latest.printedTotalCents : null;
       pins.push({
         meterId: meter.id,
         name: meter.name,
         latitude,
         longitude,
         attention: meter.coverageState === "needs_review" || meter.status === "BAD",
+        rateSchedule: meter.rateSchedule,
+        isLegacy: meter.isLegacy,
+        annualSpendCents: reconciledSpendCents(meter),
+        status: meter.status,
+        gpm: meter.gpm,
+        peakKw: meterPeakKw(meter),
+        accountNumber: meter.accountNumber,
+        ranchName: meter.ranchName,
+        growerPumpId: meter.growerPumpId,
         latestBillCents,
       });
     } else {
