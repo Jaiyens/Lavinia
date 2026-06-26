@@ -28,6 +28,7 @@ Both founders work this single repo in parallel; keep `main` green.
 - Per-app commands: scope with `-w @lavinia/dashboard` (or `@lavinia/web`).
 
 ## Conventions
+- **shadcn/ui is the bible.** It (the `radix-nova` registry) is the default component vocabulary across the repo. Reach for a shadcn primitive FIRST and compose from it; only hand-roll when shadcn has nothing that fits. Magic UI is no longer the default - existing flourishes may stay, but new work is shadcn-first. See `apps/dashboard/CLAUDE.md` for the configured setup (`components.json`, `src/components/ui/`, the CLI).
 - TypeScript strict, no `any`. Pure tested logic in `apps/dashboard/src/lib`.
 - User-facing copy in `src/copy` (localization-ready). No em dashes in user-facing copy.
 - Never commit a grower's utility credentials or any secret.
