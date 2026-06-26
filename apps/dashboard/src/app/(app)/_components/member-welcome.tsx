@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { dismissMemberWelcomeAction } from "../actions";
 
@@ -28,14 +29,16 @@ export function MemberWelcome({ show, farmName }: { show: boolean; farmName: str
         <p className="type-body-md font-semibold text-on-surface">{t.title(farmName)}</p>
         <p className="mt-1 type-body-sm text-on-surface-variant">{t.body}</p>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={dismiss}
         aria-label={t.dismiss}
-        className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
+        className="-mr-1 -mt-1 size-auto shrink-0 rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
       >
         <X size={16} aria-hidden />
-      </button>
+      </Button>
     </div>
   );
 }

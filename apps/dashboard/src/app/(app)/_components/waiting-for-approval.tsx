@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { cancelJoinRequestAction } from "../join/actions";
 import { signOutAction } from "../actions";
@@ -44,21 +45,23 @@ export function WaitingForApproval({
       </div>
       {error ? <p className="type-body-sm text-alert">{error}</p> : null}
       <div className="flex flex-wrap items-center gap-5">
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={cancel}
           disabled={pending}
-          className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
+          className="h-auto p-0 type-body-sm font-normal text-on-surface-variant underline-offset-4 transition-colors hover:text-alert hover:underline disabled:opacity-50"
         >
           {t.cancel}
-        </button>
+        </Button>
         <form action={signOutAction}>
-          <button
+          <Button
             type="submit"
-            className="type-body-sm text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline"
+            variant="link"
+            className="h-auto p-0 type-body-sm font-normal text-on-surface-variant underline-offset-4 transition-colors hover:text-on-surface hover:underline"
           >
             {t.signOut}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

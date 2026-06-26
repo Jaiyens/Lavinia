@@ -5,6 +5,7 @@ import { useQueryState } from "nuqs";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Card as UiCard } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
@@ -59,11 +60,17 @@ function KpiCard({
   children: ReactNode;
 }) {
   return (
-    <UiCard asChild className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
-      <button type="button" onClick={onClick} aria-label={ariaLabel}>
-      <span className="type-label-caps text-on-surface-variant">{label}</span>
-      {children}
-      </button>
+    <UiCard asChild>
+      <Button
+        asChild
+        variant="ghost"
+        className="flex min-h-[6rem] w-full flex-col items-stretch justify-start gap-0 rounded-[var(--radius-control)] p-4 text-left"
+      >
+        <button type="button" onClick={onClick} aria-label={ariaLabel}>
+          <span className="type-label-caps text-on-surface-variant">{label}</span>
+          {children}
+        </button>
+      </Button>
     </UiCard>
   );
 }

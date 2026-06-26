@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
 import {
   connectSampleAction,
   uploadBillAction,
@@ -93,13 +94,14 @@ export function SourcePicker({
             />
           </>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setShowMore(true)}
-            className="press inline-flex items-center justify-center gap-1.5 self-center rounded-full px-4 py-2 type-caption font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
+            className="press h-auto gap-1.5 self-center rounded-full px-4 py-2 type-caption font-semibold text-on-surface-variant transition-colors hover:bg-transparent hover:text-on-surface"
           >
             {t.moreWays} <ChevronIcon />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -113,32 +115,33 @@ export function SourcePicker({
           {status}
         </p>
         {canContinue ? (
-          <Link
-            href={`/onboarding/confirm?farm=${farmId}`}
-            className="press inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          <Button
+            asChild
+            className="press h-11 w-full rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
           >
-            {t.continue}
-          </Link>
+            <Link href={`/onboarding/confirm?farm=${farmId}`}>{t.continue}</Link>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
             disabled
-            className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center rounded-[var(--radius-control)] bg-primary/40 px-6 font-semibold text-on-primary"
+            className="h-11 w-full cursor-not-allowed rounded-[var(--radius-control)] bg-primary/40 px-6 font-semibold text-on-primary disabled:opacity-100"
           >
             {t.continue}
-          </button>
+          </Button>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           {/* Quiet demo path so a grower with nothing handy can still walk the flow. */}
           <form action={connectSampleAction}>
             <input type="hidden" name="farmId" value={farmId} />
-            <button
+            <Button
               type="submit"
-              className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+              variant="link"
+              className="h-auto p-0 type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
             >
               {t.sampleCta}
-            </button>
+            </Button>
           </form>
           <Link
             href="/onboarding?new=1"

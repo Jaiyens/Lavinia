@@ -7,6 +7,7 @@
 // Client-only (sessionStorage), rendered after a successful pull, never blocks the flow.
 
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function PartialConnectNote({ farmId }: { farmId: string }) {
   const [note, setNote] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export function PartialConnectNote({ farmId }: { farmId: string }) {
   if (!note) return null;
 
   return (
-    <div
+    <Alert
       role="status"
       className="mb-6 flex items-start gap-2.5 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container px-4 py-3"
     >
@@ -44,7 +45,7 @@ export function PartialConnectNote({ farmId }: { farmId: string }) {
           <path d="M12 16h.01" />
         </svg>
       </span>
-      <p className="type-body-sm text-on-surface-variant">{note}</p>
-    </div>
+      <AlertDescription className="type-body-sm text-on-surface-variant">{note}</AlertDescription>
+    </Alert>
   );
 }

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
 import { finishPgeConnectAction, pgeRevealAction } from "../actions";
 import type { RevealCounts } from "@/lib/onboarding/farm";
 
@@ -205,13 +206,13 @@ export function PgeConnecting({ farmId }: { farmId: string }) {
 
       <div className="flex w-full flex-col items-center gap-3">
         {landed && !finishing ? (
-          <button
+          <Button
             type="button"
             onClick={() => void finish(true)}
-            className="press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+            className="press h-11 w-full max-w-xs rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
           >
             {t.continueReady}
-          </button>
+          </Button>
         ) : null}
 
         {reopenUrl && !finishing ? (
@@ -273,27 +274,27 @@ function ConnectError({
 
       <div className="flex w-full flex-col items-center gap-3">
         {showContinue ? (
-          <button
+          <Button
             type="button"
             onClick={onContinue}
-            className="press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+            className="press h-11 w-full max-w-xs rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90"
           >
             {t.continueReady}
-          </button>
+          </Button>
         ) : null}
 
-        <button
+        <Button
           type="button"
           onClick={onRetry}
           className={cn(
-            "press inline-flex h-11 w-full max-w-xs items-center justify-center rounded-[var(--radius-control)] px-6 font-semibold transition-colors",
+            "press h-11 w-full max-w-xs rounded-[var(--radius-control)] px-6 font-semibold transition-colors",
             showContinue
               ? "border border-outline-variant text-on-surface hover:bg-surface-container"
               : "bg-primary text-on-primary hover:bg-primary/90",
           )}
         >
           {kind === "timeout" ? errorCopy.keepWaiting : errorCopy.retry}
-        </button>
+        </Button>
 
         {reopenUrl ? (
           <a

@@ -15,6 +15,7 @@
 import { useState, useTransition } from "react";
 import { FileText, Check, X, Download } from "lucide-react";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui";
 import {
   approveAndPrepareDisputeAction,
@@ -97,13 +98,16 @@ export function BillDisputeCard({
         <>
           <p className="type-body-md text-on-surface-variant">{t.readyBody}</p>
           {downloadHref !== null && (
-            <a
-              href={downloadHref}
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            <Button
+              asChild
+              variant="primary"
+              className="min-h-[44px] w-full gap-2 rounded-[var(--radius-control)] px-4 type-body-md font-semibold"
             >
-              <Download size={16} aria-hidden />
-              {t.download}
-            </a>
+              <a href={downloadHref}>
+                <Download size={16} aria-hidden />
+                {t.download}
+              </a>
+            </Button>
           )}
         </>
       ) : isSkipped ? (
@@ -115,26 +119,28 @@ export function BillDisputeCard({
             <p className="type-body-sm text-on-surface-variant">{t.readOnlyNote}</p>
           ) : (
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button
+              <Button
                 type="button"
+                variant="primary"
                 disabled={pending}
                 onClick={onApprove}
                 aria-label={t.approveAria(view.pumpName, view.month)}
-                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="min-h-[44px] flex-1 gap-2 rounded-[var(--radius-control)] px-4 type-body-md font-semibold"
               >
                 <Check size={16} aria-hidden />
                 {t.approve}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={pending}
                 onClick={onSkip}
                 aria-label={t.rejectAria(view.pumpName, view.month)}
-                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="min-h-[44px] gap-2 rounded-[var(--radius-control)] border-outline-variant px-4 type-body-md text-on-surface hover:bg-surface-container-low"
               >
                 <X size={16} aria-hidden />
                 {t.reject}
-              </button>
+              </Button>
             </div>
           )}
         </>

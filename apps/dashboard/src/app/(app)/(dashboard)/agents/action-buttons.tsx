@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { approveAgentActionAction, rejectAgentActionAction } from "./actions";
 
@@ -32,26 +33,28 @@ export function AgentActionButtons({
   return (
     <div className="mt-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant="primary"
           disabled={pending}
           onClick={() => run(approveAgentActionAction)}
           aria-label={en.agents.approveAria(summary)}
-          className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="min-h-[44px] flex-1 gap-2 rounded-[var(--radius-control)] px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90"
         >
           <Check size={16} aria-hidden />
           {en.agents.approve}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           disabled={pending}
           onClick={() => run(rejectAgentActionAction)}
           aria-label={en.agents.rejectAria(summary)}
-          className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="min-h-[44px] flex-1 gap-2 rounded-[var(--radius-control)] border-outline-variant bg-transparent px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
         >
           <X size={16} aria-hidden />
           {en.agents.reject}
-        </button>
+        </Button>
       </div>
       {error !== null && (
         <p role="alert" className="type-body-sm text-alert">

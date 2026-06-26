@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ArrowRightLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { requestRateSwitchAction } from "./actions";
 
@@ -44,16 +45,17 @@ export function RequestRateSwitchButton({
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      <button
+      <Button
         type="button"
+        variant="primary"
         disabled={pending}
         onClick={onClick}
         aria-label={en.agents.rateAgent.requestAria(summary)}
-        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="min-h-[44px] gap-2 rounded-[var(--radius-control)] px-4 type-body-md font-semibold text-on-primary transition-opacity hover:opacity-90"
       >
         <ArrowRightLeft size={16} aria-hidden />
         {en.agents.rateAgent.request}
-      </button>
+      </Button>
       {error !== null && (
         <p role="alert" className="type-body-sm text-alert">
           {error}

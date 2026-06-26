@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { centsFromDollars, formatUsdWhole } from "@/lib/format/money";
@@ -145,22 +146,24 @@ export function RateFixCard({
 
           {!readOnly && (
             <div className="mt-4 flex items-center gap-3 border-t border-outline-variant pt-4">
-              <button
+              <Button
                 type="button"
+                variant="primary"
                 disabled={isPending}
                 onClick={() => respond("done")}
-                className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] bg-primary px-4 type-body-md font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60"
+                className="press min-h-[44px] flex-1 rounded-[var(--radius-control)] px-4 type-body-md font-semibold hover:bg-primary/90 disabled:opacity-60"
               >
                 {isPending ? t.saving : t.done}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="link"
                 disabled={isPending}
                 onClick={() => respond("dismissed")}
-                className="min-h-[44px] px-2 type-body-sm text-on-surface-variant transition-colors hover:text-on-surface disabled:opacity-60"
+                className="h-auto min-h-[44px] px-2 type-body-sm text-on-surface-variant no-underline transition-colors hover:text-on-surface hover:no-underline disabled:opacity-60"
               >
                 {t.notNow}
-              </button>
+              </Button>
             </div>
           )}
           {!readOnly && failed && (

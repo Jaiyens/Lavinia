@@ -10,6 +10,7 @@ import { useActionState, useRef, useState, type ReactNode } from "react";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import type { ConnectState } from "../actions";
 
 const t = en.connect.picker;
@@ -79,12 +80,13 @@ export function UploadCard({
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => inputRef.current?.click()}
           disabled={pending}
           className={cn(
-            "press inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-outline-variant px-4 text-[0.9375rem] font-semibold text-on-surface transition-colors",
+            "press h-10 gap-2 rounded-[var(--radius-control)] border border-outline-variant px-4 text-[0.9375rem] font-semibold text-on-surface transition-colors",
             "hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60",
           )}
         >
@@ -97,7 +99,7 @@ export function UploadCard({
               <UploadIcon /> {cta}
             </>
           )}
-        </button>
+        </Button>
         {chosen && !pending ? (
           <span className="type-caption text-on-surface-variant">{t.chosen(chosen)}</span>
         ) : null}

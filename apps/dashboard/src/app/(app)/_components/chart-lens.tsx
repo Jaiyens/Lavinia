@@ -16,6 +16,7 @@ import {
 } from "@/lib/dashboard/chart";
 import { SURFACE } from "@/lib/dashboard/surface";
 import { SpendBarChart, type BarSeries } from "@/components/charts/spend-bar-chart";
+import { Button } from "@/components/ui/button";
 import { isActiveFilterValue } from "./filter-bar";
 
 // The Chart lens (Story 2.8): the default hero face. One TOU-stacked bar per reconciled
@@ -111,13 +112,14 @@ export function ChartLens({ meters }: { meters: MeterView[] }) {
           {meters.length === 0 ? en.shell.table.emptyFarm : t.emptyView}
         </p>
         {meters.length > 0 && hasActiveFilter && (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={clearAll}
-            className="min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+            className="min-h-[44px] rounded-[var(--radius-control)] border-outline-variant px-4 type-body-md text-on-surface hover:bg-surface-container-low"
           >
             {en.shell.filter.clear}
-          </button>
+          </Button>
         )}
       </div>
     );

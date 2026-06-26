@@ -9,6 +9,8 @@
 
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
+
 export default function GlobalError({
   error,
   reset,
@@ -45,8 +47,13 @@ export default function GlobalError({
             We ran into a problem. Your data is safe. You can try again.
           </p>
           <div>
-            <button
+            {/* Inline styles (not utility classes) are kept on purpose: this boundary exists
+                to survive global CSS failing to load, so the button must render correctly with
+                zero stylesheet. The shadcn Button passes `style` through to the underlying
+                element, so we keep the inline look while adopting the component. */}
+            <Button
               type="button"
+              variant="primary"
               onClick={reset}
               style={{
                 appearance: "none",
@@ -62,7 +69,7 @@ export default function GlobalError({
               }}
             >
               Try again
-            </button>
+            </Button>
           </div>
         </div>
       </body>

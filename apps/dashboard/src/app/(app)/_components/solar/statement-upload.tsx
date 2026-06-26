@@ -12,6 +12,7 @@
 // prefers-reduced-motion (no entrance animation; the settle highlight is the page-level flip).
 
 import { useActionState, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import { uploadTrueUpStatementAction, type StatementUploadState } from "../../actions";
@@ -53,12 +54,13 @@ export function StatementUpload({
   );
 
   const button = (
-    <button
+    <Button
       type="button"
+      variant="outline"
       onClick={() => inputRef.current?.click()}
       disabled={pending}
       className={cn(
-        "press inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-outline-variant px-4 text-[0.9375rem] font-semibold text-on-surface transition-colors",
+        "press h-10 gap-2 rounded-[var(--radius-control)] border-outline-variant px-4 text-[0.9375rem] font-semibold text-on-surface",
         "hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60",
       )}
     >
@@ -71,7 +73,7 @@ export function StatementUpload({
           <UploadIcon /> {t.cta}
         </>
       )}
-    </button>
+    </Button>
   );
 
   // The settled / needs-review / chosen feedback line, read as content by assistive tech (aria-live)

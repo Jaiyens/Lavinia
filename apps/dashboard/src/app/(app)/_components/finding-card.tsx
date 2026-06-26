@@ -129,14 +129,15 @@ export function FindingCard({
       )}
 
       {showTrace && finding.meterId !== null && finding.meterName !== null && (
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => void setMeter(finding.meterId)}
           aria-label={t.traceAria(finding.meterName)}
-          className="mt-2 min-h-[44px] type-body-md text-primary transition-colors hover:text-on-surface"
+          className="mt-2 h-auto justify-start self-start px-0 min-h-[44px] type-body-md text-primary no-underline transition-colors hover:text-on-surface hover:no-underline"
         >
           {t.trace(finding.meterName)}
-        </button>
+        </Button>
       )}
 
       {!readOnly &&

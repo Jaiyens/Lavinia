@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -45,10 +46,16 @@ function Tile({
   );
   if (onClick) {
     return (
-      <Card asChild className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
-        <button type="button" onClick={onClick} aria-label={ariaLabel}>
-        {body}
-        </button>
+      <Card asChild>
+        <Button
+          asChild
+          variant="ghost"
+          className="flex min-h-[6rem] w-full flex-col items-stretch justify-start gap-0 rounded-[var(--radius-control)] p-4 text-left"
+        >
+          <button type="button" onClick={onClick} aria-label={ariaLabel}>
+            {body}
+          </button>
+        </Button>
       </Card>
     );
   }

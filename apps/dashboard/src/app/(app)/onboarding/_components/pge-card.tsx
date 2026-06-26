@@ -12,6 +12,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
 import { startPgeConnectAction } from "../actions";
 
 const t = en.connect.picker;
@@ -81,11 +82,11 @@ export function PgeCard({ farmId }: { farmId: string }) {
         </div>
       </div>
 
-      <button
+      <Button
         type="button"
         onClick={connect}
         disabled={pending}
-        className="press mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+        className="press mt-4 h-11 w-full gap-2 rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {pending ? (
           <>
@@ -96,7 +97,7 @@ export function PgeCard({ farmId }: { farmId: string }) {
             {t.pgeCta} <ArrowIcon />
           </>
         )}
-      </button>
+      </Button>
 
       <p className="type-caption mt-3 flex items-start gap-1.5 text-on-surface-variant">
         <LockIcon /> <span>{t.pgeSecure}</span>
@@ -108,15 +109,19 @@ export function PgeCard({ farmId }: { farmId: string }) {
             Your browser blocked the PG&amp;E sign-in window. Tap below to open it, then come back
             here.
           </p>
-          <a
-            href={blockedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => router.push(`/onboarding/connecting?farm=${farmId}`)}
-            className="press inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-5 font-semibold text-on-primary transition-colors hover:bg-primary/90"
+          <Button
+            asChild
+            className="press h-10 w-full gap-2 rounded-[var(--radius-control)] bg-primary px-5 font-semibold text-on-primary transition-colors hover:bg-primary/90"
           >
-            Open PG&amp;E sign in <ArrowIcon />
-          </a>
+            <a
+              href={blockedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => router.push(`/onboarding/connecting?farm=${farmId}`)}
+            >
+              Open PG&amp;E sign in <ArrowIcon />
+            </a>
+          </Button>
         </div>
       ) : null}
 

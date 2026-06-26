@@ -129,13 +129,14 @@ export default async function LoginPage({
             <>
               <form action={signInWithGoogle}>
                 <input type="hidden" name="callbackUrl" value={callbackUrl} />
-                <button
+                <Button
                   type="submit"
-                  className="lift inline-flex h-11 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-outline-variant bg-surface-bright px-5 font-semibold text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+                  variant="outline"
+                  className="lift h-11 w-full gap-3 rounded-[var(--radius-control)] border-outline-variant bg-surface-bright px-5 font-semibold text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
                 >
                   <GoogleG />
                   <span>{t.google}</span>
-                </button>
+                </Button>
               </form>
 
               <div className="flex items-center gap-3 text-on-surface-variant">
@@ -212,19 +213,21 @@ function CodeStep({ email, callbackUrl }: { email: string; callbackUrl: string }
         <form action={requestCode}>
           <input type="hidden" name="email" value={email} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
-          <button
+          <Button
             type="submit"
-            className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+            variant="link"
+            className="h-auto rounded-none p-0 type-caption font-normal text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
           >
             {t.code.resend}
-          </button>
+          </Button>
         </form>
-        <Link
-          href="/login"
-          className="type-caption text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+        <Button
+          asChild
+          variant="link"
+          className="h-auto rounded-none p-0 type-caption font-normal text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
         >
-          {t.code.differentEmail}
-        </Link>
+          <Link href="/login">{t.code.differentEmail}</Link>
+        </Button>
       </div>
     </div>
   );
