@@ -4,7 +4,6 @@ import { type ReactNode } from "react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui";
-import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -45,22 +44,24 @@ function Tile({
     </>
   );
   if (onClick) {
+    // A clickable content tile, not a button control: keep it a Card. Button's whitespace-nowrap +
+    // fixed height would clip the wrapping caption; overflow-visible lets the tile grow to its
+    // content instead of being clipped by the Card's default overflow-hidden.
     return (
-      <Card asChild>
-        <Button
-          asChild
-          variant="ghost"
-          className="flex min-h-[6rem] w-full flex-col items-stretch justify-start gap-0 rounded-[var(--radius-control)] p-4 text-left"
+      <Card asChild className="min-h-[6rem] justify-start gap-0 overflow-visible rounded-[var(--radius-control)] p-4 text-left">
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={ariaLabel}
+          className="cursor-pointer transition-shadow hover:shadow-[var(--shadow-e2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <button type="button" onClick={onClick} aria-label={ariaLabel}>
-            {body}
-          </button>
-        </Button>
+          {body}
+        </button>
       </Card>
     );
   }
   return (
-    <Card className="flex min-h-[6rem] flex-col gap-0 rounded-[var(--radius-control)] p-4 text-left">
+    <Card className="min-h-[6rem] justify-start gap-0 rounded-[var(--radius-control)] p-4 text-left">
       {body}
     </Card>
   );

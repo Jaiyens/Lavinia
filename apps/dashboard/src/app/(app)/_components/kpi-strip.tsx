@@ -5,7 +5,6 @@ import { useQueryState } from "nuqs";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Card as UiCard } from "@/components/ui";
-import { Button } from "@/components/ui/button";
 import { en } from "@/copy/en";
 import { formatUsd } from "@/lib/format/money";
 import { computeKpiStrip } from "@/lib/dashboard/kpi";
@@ -60,17 +59,20 @@ function KpiCard({
   children: ReactNode;
 }) {
   return (
-    <UiCard asChild>
-      <Button
-        asChild
-        variant="ghost"
-        className="flex min-h-[6rem] w-full flex-col items-stretch justify-start gap-0 rounded-[var(--radius-control)] p-4 text-left"
+    // A clickable content tile, not a button control: keep it a Card (Button's whitespace-nowrap +
+    // fixed height would clip the wrapping caption and the sparkline). cursor-pointer + the focus
+    // ring keep it operable; overflow-visible lets a two-line caption grow the tile instead of
+    // being clipped by the Card's default overflow-hidden.
+    <UiCard asChild className="min-h-[6rem] justify-start gap-0 overflow-visible rounded-[var(--radius-control)] p-4 text-left">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        className="cursor-pointer transition-shadow hover:shadow-[var(--shadow-e2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <button type="button" onClick={onClick} aria-label={ariaLabel}>
-          <span className="type-label-caps text-on-surface-variant">{label}</span>
-          {children}
-        </button>
-      </Button>
+        <span className="type-label-caps text-on-surface-variant">{label}</span>
+        {children}
+      </button>
     </UiCard>
   );
 }
