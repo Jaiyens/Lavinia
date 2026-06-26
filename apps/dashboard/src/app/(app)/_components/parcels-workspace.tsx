@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en, num } from "@/copy/en";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { COLOR_BYS, legendFor, type LegendItem } from "@/lib/parcel/farm/color";
 import { summarize, type PortfolioSummary } from "@/lib/parcel/farm/portfolio";
 import type { ColorByKey, Farm, FarmParcel } from "@/lib/parcel/farm/types";
@@ -188,24 +189,19 @@ function ColorByControl({
   return (
     <Card className="gap-0 p-3.5">
       <p className="type-label-caps text-on-surface-variant">{t.colorBy}</p>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {COLOR_BYS.map((cb) => (
-          <button
-            key={cb.key}
-            type="button"
-            aria-pressed={colorBy === cb.key}
-            onClick={() => onChange(cb.key)}
-            className={cn(
-              "rounded-full px-2.5 py-1 type-label-caps transition-colors",
-              colorBy === cb.key
-                ? "bg-primary text-on-primary"
-                : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-low",
-            )}
-          >
-            {cb.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={colorBy} onValueChange={(value) => onChange(value as ColorByKey)} className="mt-1.5">
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1.5 bg-transparent p-0">
+          {COLOR_BYS.map((cb) => (
+            <TabsTrigger
+              key={cb.key}
+              value={cb.key}
+              className="flex-none rounded-full border border-outline-variant px-2.5 py-1 type-label-caps text-on-surface-variant hover:bg-surface-container-low data-active:border-primary data-active:bg-primary data-active:text-on-primary data-active:shadow-none"
+            >
+              {cb.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       <div className="mt-3 flex flex-col gap-1">
         {legend.map((item) => (
           <div key={item.key} className="flex items-center gap-2">

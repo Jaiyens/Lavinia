@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
 
 // The demoted lookup, tucked in a corner: enter an APN (what a farmer knows) or a coordinate and
@@ -60,17 +60,14 @@ export function AddParcelTool({ onAdded }: { onAdded: (block: FarmParcel) => voi
 
   if (!open) {
     return (
-      <button
+      <Button
         type="button"
         onClick={() => setOpen(true)}
-        className={cn(
-          "pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 type-body-md font-semibold text-on-primary shadow-e2 transition-colors hover:bg-primary/90",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        )}
+        className="pointer-events-auto h-11 gap-2 rounded-full bg-primary px-4 type-body-md font-semibold text-on-primary shadow-e2 hover:bg-primary/90"
       >
         <Plus className="h-4 w-4" />
         {t.addParcel}
-      </button>
+      </Button>
     );
   }
 
@@ -81,21 +78,35 @@ export function AddParcelTool({ onAdded }: { onAdded: (block: FarmParcel) => voi
           <p className="type-label-caps text-primary">{t.addParcel}</p>
           <h3 className="type-title mt-0.5 text-on-surface">{t.addTitle}</h3>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setOpen(false)}
           aria-label={t.close}
-          className="-mr-1.5 -mt-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant hover:bg-surface-container-low"
+          className="-mr-1.5 -mt-1 size-8 text-on-surface-variant"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       <p className="mt-1 type-body-sm text-on-surface-variant">{t.addHint}</p>
 
-      <div role="tablist" className="mt-3 flex gap-1 rounded-[var(--radius-control)] bg-surface-container p-1">
-        <ModeButton active={mode === "apn"} onClick={() => setMode("apn")} label={t.addByApn} />
-        <ModeButton active={mode === "coord"} onClick={() => setMode("coord")} label={t.addByCoord} />
-      </div>
+      <Tabs value={mode} onValueChange={(value) => setMode(value as Mode)} className="mt-3">
+        <TabsList className="w-full bg-surface-container">
+          <TabsTrigger
+            value="apn"
+            className="type-label-caps data-active:bg-surface-container-lowest data-active:text-primary data-active:shadow-e1"
+          >
+            {t.addByApn}
+          </TabsTrigger>
+          <TabsTrigger
+            value="coord"
+            className="type-label-caps data-active:bg-surface-container-lowest data-active:text-primary data-active:shadow-e1"
+          >
+            {t.addByCoord}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="mt-3">
         {mode === "apn" ? (
@@ -121,23 +132,6 @@ export function AddParcelTool({ onAdded }: { onAdded: (block: FarmParcel) => voi
       </Button>
       <p className="mt-2 type-label-caps text-on-surface-variant/70">{t.addNote}</p>
     </Card>
-  );
-}
-
-function ModeButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "flex-1 rounded-[calc(var(--radius-control)-2px)] px-2 py-1.5 type-label-caps transition-colors",
-        active ? "bg-surface-container-lowest text-primary shadow-e1" : "text-on-surface-variant hover:text-on-surface",
-      )}
-    >
-      {label}
-    </button>
   );
 }
 

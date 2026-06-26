@@ -1,8 +1,8 @@
 "use client";
 
 import { useQueryState } from "nuqs";
-import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { SURFACE } from "@/lib/dashboard/surface";
 import {
   SOLAR_LENSES,
@@ -26,32 +26,24 @@ export function SolarLensToggle() {
   const active = parseSolarLens(raw);
 
   return (
-    <div
-      role="tablist"
+    <Tabs
+      value={active}
+      onValueChange={(value) => void setLens(value)}
       aria-label={en.solar.lensLabel}
-      className={cn(
-        "flex items-center gap-1 overflow-x-auto border-b border-outline-variant",
-      )}
     >
-      {SOLAR_LENSES.map(({ key, available }) => {
-        const isActive = available && key === active;
-        return (
-          <button
+      {/* `line` variant: a clean underline tab row, recolored to the brand green. Mirrors the Energy
+          LensToggle. The lens CONTENT is rendered by the page from the same nuqs key, so this owns
+          only the tab row (no TabsContent here). */}
+      <TabsList
+        variant="line"
+        className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-outline-variant bg-transparent p-0"
+      >
+        {SOLAR_LENSES.map(({ key, available }) => (
+          <TabsTrigger
             key={key}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-disabled={available ? undefined : "true"}
+            value={key}
             disabled={!available}
-            onClick={() => available && void setLens(key)}
-            className={cn(
-              "-mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-3 type-label-caps transition-colors duration-[var(--dur-base)]",
-              isActive && "border-primary font-semibold text-primary",
-              !isActive &&
-                available &&
-                "border-transparent text-on-surface-variant hover:text-on-surface",
-              !available && "border-transparent text-on-surface-variant/45",
-            )}
+            className="h-11 flex-none gap-1.5 px-3 type-label-caps text-on-surface-variant transition-colors duration-[var(--dur-base)] data-active:font-semibold data-active:text-primary [&::after]:bottom-[-1px] [&::after]:bg-primary"
           >
             <span>{en.solar.lens[key]}</span>
             {!available && (
@@ -59,9 +51,9 @@ export function SolarLensToggle() {
                 {en.shell.comingTag}
               </span>
             )}
-          </button>
-        );
-      })}
-    </div>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

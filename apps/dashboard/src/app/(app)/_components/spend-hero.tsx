@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
-import { Card } from "@/components/ui";
+import { Card, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { formatUsdWhole } from "@/lib/format/money";
 import { SpendAreaChart } from "@/components/charts/spend-area-chart";
 
@@ -73,28 +72,19 @@ export function SpendHero({
         </div>
 
         {hasData && (
-          <div
-            role="group"
-            aria-label={t.title}
-            className="flex overflow-hidden rounded-[var(--radius-control)] border border-outline-variant"
-          >
-            {RANGE_ORDER.map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setRange(key)}
-                aria-pressed={range === key}
-                className={cn(
-                  "min-h-[36px] px-3 type-body-sm font-semibold transition-colors",
-                  range === key
-                    ? "bg-primary-container text-on-primary-container"
-                    : "text-on-surface-variant hover:bg-surface-container-low",
-                )}
-              >
-                {t.ranges[key]}
-              </button>
-            ))}
-          </div>
+          <Tabs value={range} onValueChange={(value) => setRange(value as RangeKey)} aria-label={t.title}>
+            <TabsList className="h-auto rounded-[var(--radius-control)] border border-outline-variant bg-transparent p-0">
+              {RANGE_ORDER.map((key) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="min-h-[36px] rounded-none px-3 type-body-sm font-semibold text-on-surface-variant data-active:bg-primary-container data-active:text-on-primary-container data-active:shadow-none"
+                >
+                  {t.ranges[key]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         )}
       </div>
 

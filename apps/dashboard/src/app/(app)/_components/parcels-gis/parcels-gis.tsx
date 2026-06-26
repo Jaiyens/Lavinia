@@ -20,6 +20,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ParcelDrawer } from "../parcel-drawer";
 import { COLOR_BYS, legendFor } from "@/lib/parcel/farm/color";
 import { summarize, type PortfolioSummary } from "@/lib/parcel/farm/portfolio";
@@ -264,10 +265,29 @@ function BlocksPanel({
       </div>
       <p className="px-4 pt-1 text-[0.75rem] text-on-surface-variant">{c.listings.breadcrumb}</p>
 
-      <div className="mt-2 flex gap-5 border-b border-outline-variant px-4">
-        <TabButton label={c.blocks.tabBlocks} active={activeTab === "blocks"} onClick={() => onTab("blocks")} />
-        <TabButton label={c.blocks.tabMarket} active={activeTab === "market"} onClick={() => onTab("market")} />
-      </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => onTab(value as "blocks" | "market")}
+        className="mt-2"
+      >
+        <TabsList
+          variant="line"
+          className="h-auto w-full justify-start gap-5 rounded-none border-b border-outline-variant bg-transparent p-0 px-4"
+        >
+          {([
+            ["blocks", c.blocks.tabBlocks],
+            ["market", c.blocks.tabMarket],
+          ] as const).map(([value, label]) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="h-auto flex-none rounded-none px-0 pt-1 pb-2 text-[0.85rem] font-medium text-on-surface-variant data-active:text-on-surface [&::after]:bottom-[-1px] [&::after]:h-[2.5px] [&::after]:rounded-full [&::after]:bg-[#2fa84f]"
+            >
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {activeTab === "blocks" ? (
         <>
@@ -326,22 +346,6 @@ function BlocksPanel({
         </div>
       )}
     </section>
-  );
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative -mb-px pb-2 pt-1 text-[0.85rem] font-medium transition-colors",
-        active ? "text-on-surface" : "text-on-surface-variant hover:text-on-surface",
-      )}
-    >
-      {label}
-      {active && <span className="absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-[#2fa84f]" />}
-    </button>
   );
 }
 
