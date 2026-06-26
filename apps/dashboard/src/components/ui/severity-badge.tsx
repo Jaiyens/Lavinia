@@ -1,6 +1,7 @@
 import type { Severity } from "@/lib/recommendations/types";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
+import { Badge } from "@/components/ui/badge";
 
 export type SeverityBadgeProps = {
   severity: Severity;
@@ -19,14 +20,15 @@ const STYLES: Record<Severity, string> = {
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
   return (
-    <span
+    <Badge
+      variant="secondary"
       className={cn(
-        "type-label-caps inline-flex items-center rounded-[var(--radius-control)] px-2 py-0.5",
+        "type-label-caps h-auto rounded-[var(--radius-control)] px-2 py-0.5",
         STYLES[severity],
         className,
       )}
     >
       {en.ui.severity[severity]}
-    </span>
+    </Badge>
   );
 }

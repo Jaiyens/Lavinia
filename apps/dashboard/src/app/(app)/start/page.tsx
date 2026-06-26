@@ -4,6 +4,7 @@ import { Sprout, Users } from "lucide-react";
 import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
+import { Alert, AlertDescription, AlertTitle, Card } from "@/components/ui";
 import { activeFarmId } from "@/lib/auth/active-farm";
 import { resolveLanding } from "@/lib/onboarding/landing";
 import { claimInvitesForUser } from "@/lib/auth/invite";
@@ -59,15 +60,17 @@ export default async function StartPage({
   return (
     <ForkShell>
       {declinedFarm ? (
-        <div
+        <Alert
           role="status"
-          className="mb-6 rounded-2xl border border-outline-variant bg-surface-container px-5 py-4"
+          className="mb-6 rounded-2xl border-outline-variant bg-surface-container px-5 py-4"
         >
-          <p className="type-body-md font-semibold text-on-surface">{en.join.declined.title}</p>
-          <p className="mt-1 type-body-sm text-on-surface-variant">
+          <AlertTitle className="type-body-md font-semibold text-on-surface">
+            {en.join.declined.title}
+          </AlertTitle>
+          <AlertDescription className="mt-1 type-body-sm text-on-surface-variant">
             {en.join.declined.body(declinedFarm)}
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
       <div className="mb-8 flex flex-col gap-2">
         <span className="type-label-caps text-on-surface-variant">{t.eyebrow}</span>
@@ -77,25 +80,29 @@ export default async function StartPage({
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Create a farm -> the existing onboarding identify step. Not ?new=1, so an interrupted
             onboarding still resumes rather than spawning a duplicate farm. */}
-        <Link
-          href="/onboarding"
-          className="group flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low"
+        <Card
+          asChild
+          className="gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] ring-0 transition-colors hover:bg-surface-container-low"
         >
-          <Sprout size={24} aria-hidden className="text-primary" />
-          <h2 className="type-title text-on-surface">{t.create.title}</h2>
-          <p className="type-body-sm text-on-surface-variant">{t.create.body}</p>
-          <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.create.cta}</span>
-        </Link>
+          <Link href="/onboarding">
+            <Sprout size={24} aria-hidden className="text-primary" />
+            <h2 className="type-title text-on-surface">{t.create.title}</h2>
+            <p className="type-body-sm text-on-surface-variant">{t.create.body}</p>
+            <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.create.cta}</span>
+          </Link>
+        </Card>
         {/* Join a farm -> the /join code-entry page (request-to-join). */}
-        <Link
-          href="/join"
-          className="group flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low"
+        <Card
+          asChild
+          className="gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-[var(--shadow-soft)] ring-0 transition-colors hover:bg-surface-container-low"
         >
-          <Users size={24} aria-hidden className="text-on-surface-variant" />
-          <h2 className="type-title text-on-surface">{t.join.title}</h2>
-          <p className="type-body-sm text-on-surface-variant">{t.join.body}</p>
-          <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.join.cta}</span>
-        </Link>
+          <Link href="/join">
+            <Users size={24} aria-hidden className="text-on-surface-variant" />
+            <h2 className="type-title text-on-surface">{t.join.title}</h2>
+            <p className="type-body-sm text-on-surface-variant">{t.join.body}</p>
+            <span className="mt-auto pt-2 type-body-sm font-semibold text-primary">{t.join.cta}</span>
+          </Link>
+        </Card>
       </div>
       {/* Escape hatch: a native link (not next/link) to the /api/lock route handler, so it does a
           full navigation that clears the session cookie server-side and returns to the login page -

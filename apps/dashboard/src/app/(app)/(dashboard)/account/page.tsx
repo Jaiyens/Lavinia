@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { auth, sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { en } from "@/copy/en";
@@ -161,14 +161,15 @@ function labelForType(type: string): string {
 function StatusPill({ status }: { status: string }) {
   const active = status === "active";
   return (
-    <span
+    <Badge
+      variant="secondary"
       className={
         active
-          ? "rounded-full bg-primary-container px-2.5 py-0.5 type-label-caps text-on-primary-container"
-          : "rounded-full bg-surface-container px-2.5 py-0.5 type-label-caps text-on-surface-variant"
+          ? "h-auto rounded-full bg-primary-container px-2.5 py-0.5 type-label-caps text-on-primary-container"
+          : "h-auto rounded-full bg-surface-container px-2.5 py-0.5 type-label-caps text-on-surface-variant"
       }
     >
       {status}
-    </span>
+    </Badge>
   );
 }

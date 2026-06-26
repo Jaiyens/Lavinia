@@ -1,5 +1,7 @@
 import type { FarmRole } from "@prisma/client";
 import { en } from "@/copy/en";
+import { cn } from "@/lib/cn";
+import { Badge } from "@/components/ui/badge";
 
 // The role badge shown next to a person or a farm name (Owner / Manager / View only). Owner gets
 // the brand-container tone; manager and viewer stay quiet. The text label (not color alone) is the
@@ -13,8 +15,8 @@ export function RolePill({ role, className = "" }: { role: FarmRole; className?:
       ? "bg-primary-container text-on-primary-container"
       : "bg-surface-container text-on-surface-variant";
   return (
-    <span className={`rounded-full px-2.5 py-0.5 type-label-caps ${tone} ${className}`.trim()}>
+    <Badge variant="secondary" className={cn("h-auto rounded-full px-2.5 py-0.5 type-label-caps", tone, className)}>
       {label}
-    </span>
+    </Badge>
   );
 }

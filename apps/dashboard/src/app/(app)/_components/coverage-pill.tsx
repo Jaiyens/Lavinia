@@ -1,6 +1,7 @@
 import type { CoverageState } from "@/lib/recommendations/types";
 import { en } from "@/copy/en";
 import { cn } from "@/lib/cn";
+import { Badge } from "@/components/ui/badge";
 
 // The one render treatment for the coverage union (AR-15), reused by the table cell (2.4), the
 // meter drawer (2.5), and - as the label only - the CSV (2.7) and map pin (2.9). needs_review
@@ -21,14 +22,15 @@ export function coverageLabel(state: CoverageState): string {
 
 export function CoveragePill({ state, className }: { state: CoverageState; className?: string }) {
   return (
-    <span
+    <Badge
+      variant="secondary"
       className={cn(
-        "type-label-caps inline-flex items-center rounded-[var(--radius-control)] px-2 py-0.5",
+        "type-label-caps h-auto rounded-[var(--radius-control)] px-2 py-0.5",
         COVERAGE_STYLES[state],
         className,
       )}
     >
       {coverageLabel(state)}
-    </span>
+    </Badge>
   );
 }
