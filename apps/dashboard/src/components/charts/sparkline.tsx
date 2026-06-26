@@ -1,6 +1,17 @@
-// A tiny inline-SVG trend line. Server component, no dependency. Used on drill summaries
-// where a full chart would crowd the row. Pure presentation: it does no math beyond
-// normalizing the points it is handed into the viewbox.
+"use client";
+
+import { Line, LineChart } from "recharts";
+
+import { cn } from "@/lib/cn";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+
+// A tiny trend line on the shadcn/recharts wrapper. Used on drill summaries where a full chart
+// would crowd the row. Stroke is currentColor, tinted by strokeClassName. Renders an empty
+// placeholder of the same footprint for fewer than two points.
+
+const config = {
+  value: { label: "Trend" },
+} satisfies ChartConfig;
 
 export function Sparkline({
   points,
@@ -20,32 +31,27 @@ export function Sparkline({
   if (points.length < 2) {
     return <div className={className} style={{ width, height }} aria-hidden />;
   }
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const span = max - min || 1;
-  const stepX = width / (points.length - 1);
-  const pad = 3;
-  const h = height - pad * 2;
-  const coords = points.map((p, i) => {
-    const x = i * stepX;
-    const y = pad + h - ((p - min) / span) * h;
-    return [x, y] as const;
-  });
-  const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
-  const last = coords[coords.length - 1]!;
+  const data = points.map((v, i) => ({ i, value: v }));
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className={className}
-      role="img"
+    <ChartContainer
+      config={config}
       aria-label={ariaLabel}
-      fill="none"
+      className={cn("aspect-auto", strokeClassName, className)}
+      style={{ width, height }}
     >
-      <path d={d} className={strokeClassName} stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r={2.4} className={strokeClassName} fill="currentColor" />
-    </svg>
+      <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+        <Line
+          dataKey="value"
+          type="monotone"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ChartContainer>
   );
 }
