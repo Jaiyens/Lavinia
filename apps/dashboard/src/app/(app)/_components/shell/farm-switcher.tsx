@@ -5,12 +5,22 @@
 // setActiveFarmAction and the shell re-renders. With a single farm it is just a static label (no
 // dropdown), so the common case stays quiet.
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { ChevronsUpDown, Plus } from "lucide-react";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { setActiveFarmAction } from "../../actions";
 
 type FarmOption = { id: string; name: string };
@@ -23,7 +33,6 @@ export function FarmSwitcher({
   activeFarmId: string | null;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const active = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
@@ -54,7 +63,6 @@ export function FarmSwitcher({
   }
 
   function select(id: string) {
-    setOpen(false);
     if (id === active?.id) return;
     startTransition(async () => {
       await setActiveFarmAction(id);
@@ -63,73 +71,50 @@ export function FarmSwitcher({
   }
 
   return (
-    <div className="relative px-2.5 pb-4">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        disabled={pending}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-left shadow-[var(--shadow-soft)] transition-colors hover:bg-surface-container-low disabled:opacity-60"
-      >
-        <span
-          className="min-w-0 flex-1 truncate type-body-sm font-semibold text-on-surface"
-          title={active.name}
-        >
-          {active.name}
-        </span>
-        <ChevronsUpDown size={15} aria-hidden className="shrink-0 text-on-surface-variant" />
-      </button>
-      {open ? (
-        <>
-          {/* Click-away scrim (transparent) so an outside click closes the menu. */}
-          <button
+    <div className="px-2.5 pb-4">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
             type="button"
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-10 cursor-default"
-          />
-          <div
-            role="listbox"
-            className="absolute left-2.5 right-2.5 z-20 mt-1 max-h-72 overflow-auto rounded-xl border border-outline-variant bg-surface-container-lowest py-1 shadow-[var(--shadow-soft)]"
+            variant="outline"
+            disabled={pending}
+            className="h-auto w-full justify-between gap-2 rounded-xl border-outline-variant bg-surface-container-lowest px-3 py-2 text-left shadow-[var(--shadow-soft)] hover:bg-surface-container-low"
           >
-            <p className="px-3 py-1.5 type-label-caps text-on-surface-variant/70">
-              {en.team.switcherHeading}
-            </p>
+            <span
+              className="min-w-0 flex-1 truncate type-body-sm font-semibold text-on-surface"
+              title={active.name}
+            >
+              {active.name}
+            </span>
+            <ChevronsUpDown size={15} aria-hidden className="shrink-0 text-on-surface-variant" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 overflow-auto"
+        >
+          <DropdownMenuLabel className="type-label-caps text-on-surface-variant/70">
+            {en.team.switcherHeading}
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={active.id} onValueChange={select}>
             {farms.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                role="option"
-                aria-selected={f.id === active.id}
-                onClick={() => select(f.id)}
-                className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2 text-left type-body-sm transition-colors hover:bg-surface-container-low",
-                  f.id === active.id ? "font-semibold text-primary" : "text-on-surface",
-                )}
-              >
+              <DropdownMenuRadioItem key={f.id} value={f.id} className="type-body-sm">
                 <span className="min-w-0 flex-1 truncate" title={f.name}>
                   {f.name}
                 </span>
-                {f.id === active.id ? (
-                  <Check size={15} aria-hidden className="shrink-0 text-primary" />
-                ) : null}
-              </button>
+              </DropdownMenuRadioItem>
             ))}
-            {/* Start or join ANOTHER farm. /start?add=1 always shows the Create-vs-Join fork. */}
-            <div className="my-1 h-px bg-outline-variant" />
-            <Link
-              href="/start?add=1"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left type-body-sm text-on-surface-variant transition-colors hover:bg-surface-container-low"
-            >
+          </DropdownMenuRadioGroup>
+          {/* Start or join ANOTHER farm. /start?add=1 always shows the Create-vs-Join fork. */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/start?add=1" className="type-body-sm text-on-surface-variant">
               <Plus size={15} aria-hidden className="shrink-0" />
               <span>{en.team.addFarm}</span>
             </Link>
-          </div>
-        </>
-      ) : null}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

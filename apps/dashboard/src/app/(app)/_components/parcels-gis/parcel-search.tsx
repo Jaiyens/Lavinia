@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent, type RefObject } from "react";
 import { Loader2, MapPin, Search } from "lucide-react";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
 import type { GisMapHandle } from "./gis-map";
@@ -146,15 +147,16 @@ export function ParcelSearch({
         <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] overflow-hidden rounded-xl bg-white text-on-surface shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
           {note !== null && <p className="px-4 py-3 text-[0.82rem] text-on-surface-variant">{note}</p>}
           {hits.map((hit, i) => (
-            <button
+            <Button
               key={`${hit.lat},${hit.lng},${i}`}
               type="button"
+              variant="ghost"
               onClick={() => void pickHit(hit)}
-              className="flex w-full items-start gap-2 px-4 py-2.5 text-left text-[0.85rem] transition hover:bg-surface-container-high"
+              className="h-auto w-full justify-start gap-2 rounded-none px-4 py-2.5 text-left text-[0.85rem] hover:bg-surface-container-high"
             >
               <MapPin className="mt-0.5 size-4 shrink-0 text-[#2fa84f]" />
-              <span className="line-clamp-2">{hit.name}</span>
-            </button>
+              <span className="line-clamp-2 whitespace-normal">{hit.name}</span>
+            </Button>
           ))}
         </div>
       )}

@@ -5,6 +5,14 @@ import { useQueryState } from "nuqs";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { MeterView } from "@/lib/dashboard/load";
 import { solarMetersCsv } from "@/lib/dashboard/csv";
 import { SURFACE } from "@/lib/dashboard/surface";
@@ -204,45 +212,54 @@ export function SolarTableLens({ meters }: { meters: MeterView[] }) {
     <section id="solar-lens" aria-label={t.caption} className="scroll-mt-6">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="type-caption text-on-surface-variant">{t.rowCount(rows.length)}</p>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={exportCsv}
           aria-label={t.exportAria}
-          className="press min-h-[44px] rounded-[var(--radius-control)] border border-outline-variant px-4 type-body-md text-on-surface transition-colors hover:bg-surface-container-low"
+          className="min-h-[44px] px-4 type-body-md text-on-surface"
         >
           {t.export}
-        </button>
+        </Button>
       </div>
 
       {/* Mobile: a simplified sortable card list (no clickable headers, so a sort control). */}
       <div className="md:hidden">
         <div className="mb-3 flex items-center gap-2">
-          <label htmlFor="solar-sort" className="type-label-caps text-on-surface-variant">
+          <span id="solar-sort-label" className="type-label-caps text-on-surface-variant">
             {t.sortLabel}
-          </label>
-          <select
-            id="solar-sort"
+          </span>
+          <Select
             value={sort.key}
-            onChange={(e) => {
-              const key = e.target.value as SolarSortKey;
+            onValueChange={(value) => {
+              const key = value as SolarSortKey;
               setSort({ key, dir: defaultDir(key) });
             }}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-control)] border border-outline-variant bg-surface-container-lowest px-3 type-body-md text-on-surface"
           >
-            {SORTABLE.map((key) => (
-              <option key={key} value={key}>
-                {t.columns[key]}
-              </option>
-            ))}
-          </select>
-          <button
+            <SelectTrigger
+              aria-labelledby="solar-sort-label"
+              className="min-h-[44px] flex-1 bg-surface-container-lowest type-body-md text-on-surface"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORTABLE.map((key) => (
+                <SelectItem key={key} value={key}>
+                  {t.columns[key]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             onClick={() => setSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
             aria-label={t.toggleDirection}
-            className="press flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            className="size-11 text-on-surface-variant"
           >
             {sort.dir === "asc" ? <ArrowUp size={18} aria-hidden /> : <ArrowDown size={18} aria-hidden />}
-          </button>
+          </Button>
         </div>
         <ul className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest shadow-e1">
           {rows.map((m) => (

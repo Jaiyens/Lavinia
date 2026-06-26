@@ -4,6 +4,11 @@ import { useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { ChevronDown } from "lucide-react";
 import { en } from "@/copy/en";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { MeterView } from "@/lib/dashboard/load";
 import { toMapPins } from "@/lib/dashboard/map";
 import { isTrueUpSoon } from "@/lib/dashboard/solar";
@@ -124,15 +129,16 @@ export function SolarMapLens({ meters, nowMonth }: { meters: MeterView[]; nowMon
           few months, so the ring on the map is also present as words (color/outline is never the only
           signal). Located OR not, every true-up-soon solar meter is named here. */}
       {trueUpSoonMeters.length > 0 && (
-        <details className="group mt-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
-          <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 type-body-md text-on-surface">
+        <Collapsible className="group mt-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
+          <CollapsibleTrigger className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 type-body-md text-on-surface">
             <span>{t.trueUpSoonSummary(trueUpSoonMeters.length)}</span>
             <ChevronDown
               size={18}
               aria-hidden
-              className="shrink-0 text-on-surface-variant transition-transform group-open:rotate-180"
+              className="shrink-0 text-on-surface-variant transition-transform group-data-[state=open]:rotate-180"
             />
-          </summary>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <ul className="border-t border-outline-variant">
             {trueUpSoonMeters.map((m) => (
               <li key={m.id} className="border-t border-outline-variant first:border-t-0">
@@ -147,20 +153,22 @@ export function SolarMapLens({ meters, nowMonth }: { meters: MeterView[]; nowMon
               </li>
             ))}
           </ul>
-        </details>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* The honest tray: every solar meter without a resolvable location, listed not placed. */}
       {unlocated.length > 0 && (
-        <details className="group mt-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
-          <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 type-body-md text-on-surface">
+        <Collapsible className="group mt-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
+          <CollapsibleTrigger className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 type-body-md text-on-surface">
             <span>{t.traySummary(unlocated.length)}</span>
             <ChevronDown
               size={18}
               aria-hidden
-              className="shrink-0 text-on-surface-variant transition-transform group-open:rotate-180"
+              className="shrink-0 text-on-surface-variant transition-transform group-data-[state=open]:rotate-180"
             />
-          </summary>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
           <ul className="border-t border-outline-variant">
             {unlocated.map((u) => (
               <li key={u.meterId} className="border-t border-outline-variant first:border-t-0">
@@ -175,7 +183,8 @@ export function SolarMapLens({ meters, nowMonth }: { meters: MeterView[]; nowMon
               </li>
             ))}
           </ul>
-        </details>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </section>
   );
