@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Check, Copy, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
 import { en, usd } from "@/copy/en";
 import type { FarmParcel } from "@/lib/parcel/farm/types";
@@ -22,42 +23,9 @@ function fmtDate(iso: string, withDay = true): string {
 
 export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const asideRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    if (!parcel) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [parcel, onClose]);
-
-  // Move focus into the drawer on open (it remounts per parcel via its key), so keyboard / screen
-  // reader users land on the panel rather than the canvas behind it. Mirrors meter-drawer.tsx.
-  useEffect(() => {
-    asideRef.current?.focus();
-  }, []);
-
-  // Keep Tab within the drawer while it is open.
-  const trapTab = (e: ReactKeyboardEvent<HTMLElement>) => {
-    if (e.key !== "Tab") return;
-    const root = asideRef.current;
-    if (!root) return;
-    const focusable = root.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
-    );
-    if (focusable.length === 0) return;
-    const first = focusable[0]!;
-    const last = focusable[focusable.length - 1]!;
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+  // Focus management, the Escape key, and the Tab focus-trap are all handled by the shadcn Sheet
+  // (Radix Dialog) below, so this component no longer wires them by hand.
 
   useEffect(() => {
     if (!copied) return;
@@ -86,30 +54,32 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
   };
 
   return (
-    <aside
-      ref={asideRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${p.name} detail`}
-      tabIndex={-1}
-      onKeyDown={trapTab}
-      className="drawer-in absolute inset-y-0 right-0 z-30 flex w-full flex-col bg-surface-container-lowest shadow-e4 outline-none sm:w-[420px]"
-    >
+    <Sheet open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        aria-describedby={undefined}
+        aria-label={`${p.name} detail`}
+        className="w-full gap-0 border-l border-outline-variant bg-surface-container-lowest p-0 sm:w-[420px] sm:max-w-[420px]"
+      >
       {/* Header */}
       <div className="shrink-0 border-b border-outline-variant px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="type-label-caps text-primary">{p.planting.crop}</p>
-            <h2 className="type-title mt-0.5 truncate text-on-surface">{p.name}</h2>
+            <SheetTitle className="type-title mt-0.5 truncate text-on-surface">{p.name}</SheetTitle>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.close}
-            className="-mr-1.5 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-on-surface-variant transition-colors hover:bg-surface-container-low"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <SheetClose asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t.close}
+              className="-mr-1.5 -mt-1 size-9 shrink-0 text-on-surface-variant"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </SheetClose>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="type-num tnum text-on-surface-variant">APN {p.apn}</span>
@@ -340,7 +310,8 @@ export function ParcelDrawer({ parcel, onClose }: { parcel: FarmParcel | null; o
           {en.parcel.sourceLink}
         </a>
       </div>
-    </aside>
+      </SheetContent>
+    </Sheet>
   );
 }
 

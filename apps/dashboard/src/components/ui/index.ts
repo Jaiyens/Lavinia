@@ -15,6 +15,18 @@ export { Skeleton } from "./skeleton";
 export { Alert, AlertDescription, AlertTitle } from "./alert";
 export { Badge, badgeVariants } from "./badge";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./collapsible";
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog";
 export { ScrollArea, ScrollBar } from "./scroll-area";
 export { Separator } from "./separator";
 export {

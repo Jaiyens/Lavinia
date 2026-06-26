@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronUp } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { en } from "@/copy/en";
 import { centsFromDollars, formatUsdCompact } from "@/lib/format/money";
 import { findingsAtRiskUsd, type FindingView } from "@/lib/dashboard/findings";
 import { FindingCard } from "../finding-card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Mobile findings collapse to a peeking bottom sheet: the count + rough dollars at
 // stake ("3 findings · ~$34k up"), tapping open to the rail's cards (Story 3.1).
@@ -20,7 +19,6 @@ export function FindingsSheet({
   // The public Tour is read-only (no session): hide the one-tap responses on each card.
   readOnly?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   // Gate the segment on rounded CENTS so a sub-cent positive sum cannot render "~$0 up".
   const atRiskCents = centsFromDollars(findingsAtRiskUsd(findings));
   const summary = en.shell.findingsSummary(
@@ -29,13 +27,10 @@ export function FindingsSheet({
   );
   return (
     <div className="fixed inset-x-0 bottom-16 z-30 lg:hidden">
-      <div className="mx-3 rounded-t-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
+      <Collapsible className="mx-3 rounded-t-[var(--radius-lg)] border border-outline-variant bg-paper shadow-[var(--shadow-elevated)]">
+        <CollapsibleTrigger
           aria-label={en.shell.findingsLabel}
-          className="flex h-12 w-full items-center gap-2 px-4"
+          className="group flex h-12 w-full items-center gap-2 px-4"
         >
           <span className="type-label-caps text-on-surface-variant">
             {en.shell.findingsLabel}
@@ -44,25 +39,23 @@ export function FindingsSheet({
           <ChevronUp
             size={18}
             aria-hidden
-            className={cn("transition-transform", open && "rotate-180")}
+            className="transition-transform group-data-[state=open]:rotate-180"
           />
-        </button>
-        {open && (
-          <div className="max-h-[50dvh] overflow-y-auto px-4 pb-4">
-            {findings.length === 0 ? (
-              <p className="type-body-md text-on-surface-variant">{en.shell.findingsEmpty}</p>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {findings.map((finding) => (
-                  <li key={finding.id}>
-                    <FindingCard finding={finding} readOnly={readOnly} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="max-h-[50dvh] overflow-y-auto px-4 pb-4">
+          {findings.length === 0 ? (
+            <p className="type-body-md text-on-surface-variant">{en.shell.findingsEmpty}</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {findings.map((finding) => (
+                <li key={finding.id}>
+                  <FindingCard finding={finding} readOnly={readOnly} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
