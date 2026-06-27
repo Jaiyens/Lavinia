@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terra portability probe</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --warm: #7a5a36;
+        --ok: #2f6b3a;
+        --wall: #9a3b2f;
+      }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        margin: 0;
+        padding: 16px;
+        width: 280px;
+        background: #faf7f2;
+        color: #2b2b2b;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 4px;
+        color: var(--warm);
+      }
+      p.sub {
+        font-size: 11px;
+        margin: 0 0 12px;
+        color: #6b6b6b;
+      }
+      button#scrape {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        background: var(--warm);
+        color: #fff;
+        cursor: pointer;
+      }
+      button#scrape:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 13px;
+        min-height: 18px;
+      }
+      #status.ok {
+        color: var(--ok);
+        font-weight: 600;
+      }
+      #status.wall {
+        color: var(--wall);
+        font-weight: 600;
+      }
+      a.options {
+        display: inline-block;
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--warm);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Terra portability probe</h1>
+    <p class="sub">One-time check. Does your Almond Logic session travel?</p>
+    <button id="scrape" type="button">Scrape this page</button>
+    <div id="status" aria-live="polite"></div>
+    <a class="options" id="open-options" href="#">Settings</a>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

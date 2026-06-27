@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terra portability probe — settings</title>
+    <style>
+      :root { color-scheme: light; --warm: #7a5a36; }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        margin: 0;
+        padding: 24px;
+        max-width: 520px;
+        background: #faf7f2;
+        color: #2b2b2b;
+      }
+      h1 { font-size: 18px; color: var(--warm); margin: 0 0 4px; }
+      p.sub { font-size: 12px; color: #6b6b6b; margin: 0 0 20px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 16px 0 4px; }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid #d8cfc2;
+        border-radius: 6px;
+        background: #fff;
+      }
+      small.hint { display: block; font-size: 11px; color: #8a8378; margin-top: 4px; }
+      button#save {
+        margin-top: 20px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        background: var(--warm);
+        color: #fff;
+        cursor: pointer;
+      }
+      #saved { font-size: 12px; color: #2f6b3a; margin-left: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>Terra portability probe — settings</h1>
+    <p class="sub">
+      Stored locally in this browser only (chrome.storage.local). Never synced,
+      never sent anywhere except to Firecrawl at probe time.
+    </p>
+
+    <label for="host">Almond Logic host</label>
+    <input id="host" type="text" placeholder="app.almondlogic.example" autocomplete="off" />
+    <small class="hint">Bare host, no https:// and no path.</small>
+
+    <label for="key">Firecrawl API key</label>
+    <input id="key" type="password" placeholder="fc-…" autocomplete="off" />
+    <small class="hint">Used as a Bearer header at probe time, then dropped. Never logged.</small>
+
+    <div>
+      <button id="save" type="button">Save</button>
+      <span id="saved" aria-live="polite"></span>
+    </div>
+
+    <script type="module" src="./options.js"></script>
+  </body>
+</html>
