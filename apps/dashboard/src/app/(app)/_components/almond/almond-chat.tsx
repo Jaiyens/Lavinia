@@ -60,6 +60,7 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { cn } from "@/lib/cn";
 import { ALMOND_MODELS, DEFAULT_ALMOND_MODEL, type AlmondModelId } from "@/lib/almond/models";
+import { isCropToolPartType, renderCropToolResult } from "./results";
 
 type ToolState = "input-streaming" | "input-available" | "output-available" | "output-error";
 type ToolPart = {
@@ -139,6 +140,37 @@ function toolOutput(part: ToolPart): string {
 
 function isToolPart(part: UIMessage["parts"][number]): part is UIMessage["parts"][number] & ToolPart {
   return typeof part.type === "string" && part.type.startsWith("tool-");
+}
+
+// Crop generative-UI results (Phase 7): the read-only crop tools (showPosition / showPackerTable /
+// showYoyChart / findReport) render as components, not just trace steps. We pull every completed crop
+// tool part out of the message and render its typed result component (the dispatcher in ./results).
+// Every number in those components comes from the tool OUTPUT — never the model's prose. The existing
+// bash tools (bash/readFile/writeFile) are untouched: they are not crop tool types, so this is inert
+// for the document agent.
+type CropToolResultPart = { type: string; toolCallId: string; output: unknown };
+
+function cropToolResults(parts: UIMessage["parts"]): CropToolResultPart[] {
+  const results: CropToolResultPart[] = [];
+  parts.forEach((part) => {
+    if (!isToolPart(part) || !isCropToolPartType(part.type)) return;
+    if (part.state !== "output-available") return;
+    results.push({ type: part.type, toolCallId: part.toolCallId, output: part.output });
+  });
+  return results;
+}
+
+function CropResults({ results }: { results: CropToolResultPart[] }) {
+  if (results.length === 0) return null;
+  return (
+    <>
+      {results.map((result) => (
+        <AnimatedMount key={`crop-${result.toolCallId}`}>
+          {renderCropToolResult(result.type, result.output)}
+        </AnimatedMount>
+      ))}
+    </>
+  );
 }
 
 function assistantRenderBlocks(parts: UIMessage["parts"]): AssistantRenderBlock[] {
@@ -654,6 +686,8 @@ function MessageTurn({
   const isFinalAnswerPhase = latestBlock?.type === "part";
   const shouldShowTrace = traceBlocks.length > 0 && (!isStreaming || isFinalAnswerPhase);
   const downloadableFiles = downloadableFilesFromTraceBlocks(traceBlocks);
+  // Crop generative-UI results: render each completed crop tool as its typed component.
+  const cropResults = cropToolResults(message.parts);
 
   return (
     <div className="flex w-full min-w-0 max-w-full overflow-hidden">
@@ -664,6 +698,7 @@ function MessageTurn({
             <CompletedTrace blocks={traceBlocks} />
           </AnimatedMount>
         ) : null}
+        <CropResults results={cropResults} />
         {isStreaming && isFinalAnswerPhase ? <CurrentStreamingThread blocks={renderBlocks} /> : null}
         {!isStreaming &&
           textBlocks.map((block) => (
