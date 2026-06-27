@@ -15,7 +15,8 @@ export type AgentRunKind =
   | "bill_dispute"
   | "rate_switch"
   | "solar_watch"
-  | "rebate";
+  | "rebate"
+  | "crop_scrape";
 
 /**
  * The lifecycle of a run. Opens "running"; closes "succeeded" when the agent's work

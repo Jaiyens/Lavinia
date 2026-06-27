@@ -12,3 +12,4 @@ import "./rebate";
 import "./solar-watch";
 import "./rate-opt";
 import "./bill-audit/run";
+import "./crop-scrape/run";
