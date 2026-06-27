@@ -55,6 +55,19 @@ export function gallons(value: number): string {
   return `${num(value)} gal`;
 }
 
+/**
+ * Whole pounds, abbreviated to "M lb" above a million so a fleet crop total stays readable,
+ * e.g. "248,500 lb" / "1.2M lb". Tabular figures. Pounds come ONLY from the position; this just
+ * formats. A negative (oversold) value keeps its sign, never clamped.
+ */
+export function lbs(value: number): string {
+  if (Math.abs(value) >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `${millions.toLocaleString("en-US", { maximumFractionDigits: 1 })}M lb`;
+  }
+  return `${num(value)} lb`;
+}
+
 const MONTHS = [
   "January",
   "February",
@@ -1068,6 +1081,7 @@ export const en = {
       assistant: "Assistant",
       todos: "To-do",
       solar: "Solar",
+      crops: "Crops",
       meters: "Meters",
       parcels: "Parcels",
       water: "Water",
@@ -3503,6 +3517,91 @@ export const en = {
     rule:
       "Under PG&E Rule 17.1 a billing-class error can be corrected for past cycles, capped at 36 months.",
     upTo: (amount: string): string => `Up to ${amount}`,
+  },
+
+  // The Crop production tab (Phase 6): produced / committed / pool / unsold by variety and crop
+  // year, plus the by-packer table, the year-over-year chart, and the reconciliation queue. Every
+  // pound comes from the position (recomputePositions) or a direct query; this copy only labels.
+  // No em dashes, no exclamation marks. An ALMOND_LOGIC estimate is never read as a settled final.
+  crops: {
+    eyebrow: "Crop production",
+    title: "Crop position",
+    // The header reads the crop year the KPI cards summarize, so the operator always knows which
+    // season the totals belong to.
+    yearLabel: (cropYear: number): string => `${cropYear} season`,
+    // Honest empty state: no ledger rows for this farm yet, never a fabricated zero position.
+    empty: "No crop records for this farm yet. Production, commitments, and pool deliveries show here once they are entered.",
+    noFarm: "Connect a farm to see its crop position.",
+
+    // The four KPI tiles. Each figure is a single position field, labeled with its crop year.
+    kpi: {
+      producedLabel: "Produced",
+      committedLabel: "Committed",
+      poolLabel: "In pool",
+      unsoldLabel: "Unsold",
+      // The provenance line under the Produced tile: settled (a packer statement is in) vs estimate.
+      settled: "Packer settled",
+      estimate: "Almond Logic estimate",
+      // The gap the settlement moved the estimate by, signed. Always shown when a settlement landed.
+      gap: (amount: string): string => `Settlement moved the estimate by ${amount}`,
+      // Unsold can be negative (oversold). Surfaced honestly, never clamped.
+      oversold: "Oversold against production",
+    },
+
+    // The pounds-by-packer table. Rows are commitments grouped by buyer for a crop year + variety,
+    // each tagged with its source so an estimate is never read as a final.
+    table: {
+      caption: "Pounds by packer",
+      rowCount: (n: number): string => (n === 1 ? "1 commitment" : `${n} commitments`),
+      empty: "No commitments recorded yet.",
+      columns: {
+        buyer: "Packer",
+        year: "Crop year",
+        variety: "Variety",
+        pounds: "Pounds",
+        source: "Source",
+        gap: "Estimate to settled",
+      },
+      // Source tags, paired with every figure so provenance is never lost.
+      sourceSettled: "Packer settled",
+      sourceEstimate: "Almond Logic estimate",
+      // The gap cell when no settlement has moved this cell's estimate yet.
+      gapNone: "No settlement yet",
+      export: "Export CSV",
+      exportAria: "Export the pounds by packer table as a CSV file",
+      sortBy: (column: string): string => `Sort by ${column}`,
+    },
+
+    // The year-over-year chart: produced, committed, pool, and unsold pounds per crop year.
+    chart: {
+      caption: "Pounds by crop year",
+      empty: "Not enough seasons to compare yet.",
+      producedLabel: "Produced",
+      committedLabel: "Committed",
+      poolLabel: "In pool",
+      unsoldLabel: "Unsold",
+    },
+
+    // The reconciliation queue: rows the pound-gate could not certify, with a manual resolve.
+    review: {
+      title: "Reconciliation queue",
+      subtitle: "Records that could not be certified against a control total. Resolve clears the review flag; it does not change any pounds.",
+      empty: "Nothing to reconcile. Every record is certified.",
+      // The kind of record on a queue row.
+      kindProduction: "Production",
+      kindCommitment: "Commitment",
+      kindPool: "Pool",
+      // A row line, e.g. "2026 Nonpareil, 248,500 lb".
+      line: (cropYear: number, variety: string, pounds: string): string =>
+        `${cropYear} ${variety}, ${pounds}`,
+      // Who the row is with (the buyer for a commitment, the pool for a pool row), when present.
+      party: (name: string): string => `with ${name}`,
+      resolve: "Mark reconciled",
+      resolveAria: (cropYear: number, variety: string): string =>
+        `Mark the ${cropYear} ${variety} record reconciled`,
+      resolving: "Resolving",
+      resolveError: "Could not resolve that record. Refresh and try again.",
+    },
   },
 } as const;
 

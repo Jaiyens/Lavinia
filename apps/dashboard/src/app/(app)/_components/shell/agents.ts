@@ -4,6 +4,7 @@ import {
   Zap,
   Sparkles,
   Sun,
+  Sprout,
   MapPin,
   ListChecks,
   Bot,
@@ -24,6 +25,7 @@ export type AgentKey =
   | "almond"
   | "todos"
   | "parcels"
+  | "crops"
   | "water"
   | "solar"
   | "agents"
@@ -59,6 +61,8 @@ const OPERATIONS: readonly AgentItem[] = [
   { key: "home", label: en.shell.agents.dashboard, href: "/", icon: LayoutGrid, live: true, tourHref: "/tour" },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true, tourHref: "/tour/energy" },
   { key: "parcels", label: en.shell.agents.parcels, href: "/parcels", icon: MapPin, live: true, tourHref: "/tour/parcels" },
+  // Crops: the crop production position (produced/committed/pool/unsold). App-only for now.
+  { key: "crops", label: en.shell.agents.crops, href: "/crops", icon: Sprout, live: true, appOnly: true },
   // To-do: findings the grower parked from the Energy rail. App-only (no public-tour route).
   { key: "todos", label: en.shell.agents.todos, href: "/todos", icon: ListChecks, live: true, appOnly: true },
   { key: "solar", label: en.shell.agents.solar, href: null, icon: Sun, live: false, tag: "beta" },

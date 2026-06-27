@@ -8,6 +8,9 @@ import {
   loadBillDisputeCards,
   type BillDisputeCardView,
 } from "@/lib/agents/agents/bill-audit/load";
+import { loadCropLedger } from "@/lib/crops/load";
+import { recomputePositions, type Positions } from "@/lib/crops/positions";
+import { loadCropReviewQueue, type CropReviewRow } from "@/lib/crops/review";
 
 // Request-scoped read cache for the dashboard shell. The (dashboard) LAYOUT and the PAGE
 // it wraps (Home or Energy) both need the same farm + findings on every navigation, and the
@@ -52,4 +55,20 @@ export const resolveMeters = cache(
  *  resolved once per request so Home can place a dispute card beside its bill-audit finding. */
 export const resolveBillDisputeCards = cache(
   (farmId: string): Promise<BillDisputeCardView[]> => loadBillDisputeCards(prisma, farmId),
+);
+
+/**
+ * The farm's crop position, resolved once per request (the Crops tab, Phase 6). Loads the
+ * append-only ledger (RLS-scoped via withFarmTenant inside loadCropLedger) and runs it through
+ * recomputePositions — the ONLY thing that produces a pound total. No figure is computed here or
+ * downstream; the page just formats the returned Positions.
+ */
+export const resolveCropPosition = cache(
+  async (farmId: string): Promise<Positions> => recomputePositions(await loadCropLedger(prisma, farmId)),
+);
+
+/** The farm's reconciliation queue (records the pound-gate could not certify), resolved once per
+ *  request so the Crops tab can render and act on them. RLS-scoped inside loadCropReviewQueue. */
+export const resolveCropReviewQueue = cache(
+  (farmId: string): Promise<CropReviewRow[]> => loadCropReviewQueue(prisma, farmId),
 );
