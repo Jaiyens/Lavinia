@@ -68,6 +68,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS "FarmInvite_farmId_invitedEmail_pending_key"
 Until these exist on prod, the team-invite concurrency guard (`team-ops.ts`) and the
 case-insensitive email-uniqueness guard are unenforced there.
 
+### Also enable crop-ledger Row Level Security on prod (one-time)
+
+`20260626120000_crop_ledger_rls/migration.sql` ends with an RLS block (`ENABLE`/`FORCE ROW LEVEL
+SECURITY` + `CREATE POLICY`) on `ProductionRecord` / `CommitmentRecord` / `PoolRecord`. Like the
+functional indexes above, **`db push` does NOT emit it**, so after the columns reach prod via push,
+apply that block once against the direct (unpooled) endpoint. The app sets `app.current_farm_id`
+per transaction via `withFarmTenant` (`src/lib/crops/tenant-db.ts`); confirm the app's DB role is
+NOT a superuser and lacks `BYPASSRLS` (else the policy is silently bypassed). Until applied, these
+tables fall back to the same application-level `farmId` scoping the rest of the app uses, so there
+is no regression. Verified by `src/lib/crops/crop-rls.db.test.ts`.
+
 ## Going forward
 
 - **New schema change:** edit `schema.prisma`, then either keep using `db push` (current norm) or
