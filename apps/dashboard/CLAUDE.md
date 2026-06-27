@@ -10,7 +10,7 @@ This app lives in the **Lavinia monorepo** (`/Users/panda/Lavinia`, github `Jaiy
 - **Deploy:** push `Lavinia` `main` -> the `lavinia` Vercel project builds `apps/dashboard` -> **app.tryterra.ai**. CI (`.github/workflows/ci.yml`) runs typecheck + lint + build on every push/PR.
 - **Run locally:** `npm install` at the monorepo root, then `npm run dev` (both apps) or `npm run dev:dashboard` (this app on **port 3001**). Copy `.env.example` -> `.env.local`.
 - **Database:** Postgres (Neon in prod/dev; local Postgres for tests). NOT SQLite anymore.
-- **Auth:** passwordless - Google SSO + emailed magic link. Sign-in is required **each browser session** (the session cookie is cleared on browser close + a 4h JWT cap; see `src/lib/auth.config.ts`). No email allowlist yet (gate is route-based).
+- **Auth:** passwordless - Google SSO + emailed magic link. Sign-in is required **each browser session** (the session cookie is cleared on browser close + a 4h JWT cap; see `src/lib/auth.config.ts`). An **email allowlist** gates sign-in: `ACCESS_ALLOWLIST` (comma-separated emails; `*` opens fully), enforced once in the `signIn` callback in `src/lib/auth.ts` (fail-closed in prod, OR an invited teammate). The route gate (which paths require a session) lives in `src/lib/auth.config.ts`.
 - **Live PG&E connect is REAL:** the onboarding "Connect PG&E" opens a UtilityAPI hosted authorization (`UTILITYAPI_TOKEN`, set on the lavinia Vercel project). See the onboarding note in Layout below.
 
 ## Who uses it

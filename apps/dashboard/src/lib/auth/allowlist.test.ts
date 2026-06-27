@@ -49,4 +49,13 @@ describe("allowlist (pre-launch lockdown)", () => {
     expect(isStaticallyAllowed("stranger@evil.com", raw)).toBe(false);
     expect(isStaticallyAllowed(null, raw)).toBe(false);
   });
+
+  it('treats "*" as a wildcard that opens sign-in to everyone (public launch)', () => {
+    // Even in production the wildcard grants access to any email.
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(isLockdownOn("*")).toBe(true);
+    expect(isStaticallyAllowed("anyone@anywhere.com", "*")).toBe(true);
+    // Order- and whitespace-insensitive when mixed with explicit entries.
+    expect(isStaticallyAllowed("anyone@anywhere.com", " owner@batth.com , * ")).toBe(true);
+  });
 });

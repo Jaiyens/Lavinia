@@ -8,6 +8,9 @@
 // anyone may sign in, so a missing env var locks the door instead of leaving it wide open.
 // Turning the lockdown on/off is still a one-line env change, never a code deploy.
 //
+// WILDCARD. Set `ACCESS_ALLOWLIST="*"` to open sign-in to every email (the eventual public
+// launch). Until then, list the specific emails that may sign in.
+//
 // This module stays DB-free and edge-safe so it is trivially unit-testable. Phase 3 layers the
 // "OR an invited teammate" rule (an active FarmMembership / pending FarmInvite) on top, in the
 // signIn callback where prisma is available - it is NOT done here.
@@ -19,6 +22,9 @@ import { normalizeEmail } from "@/lib/email-normalize";
 function isProduction(): boolean {
   return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
 }
+
+/** The wildcard entry that opens sign-in to every email. Set ACCESS_ALLOWLIST="*" to use it. */
+const WILDCARD = "*";
 
 /** Parse `ACCESS_ALLOWLIST` (a comma-separated email list) into a normalized Set. */
 export function parseAllowlist(raw: string | undefined): Set<string> {
@@ -51,6 +57,7 @@ export function isLockdownOn(raw: string | undefined = process.env.ACCESS_ALLOWL
  *   never grants open sign-in just because the env var is missing)
  * - no allowlist configured, in dev/test   -> true (open sign-in so local dev + CI are not
  *   locked out)
+ * - allowlist is "*"     -> true for everyone (a deliberate public launch)
  * - allowlist configured -> true only if the normalized email is on the list
  *
  * The signIn callback ORs this with the DB membership/invite check (Phase 3) before denying,
@@ -64,6 +71,8 @@ export function isStaticallyAllowed(
   const allowlist = parseAllowlist(raw);
   // No allowlist configured: fail closed in production, stay open in dev/test.
   if (allowlist.size === 0) return !isProduction();
+  // Wildcard opens sign-in to everyone (a deliberate public launch).
+  if (allowlist.has(WILDCARD)) return true;
   if (!email) return false;
   return allowlist.has(normalizeEmail(email));
 }
