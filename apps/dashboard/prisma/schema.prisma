@@ -75,6 +75,7 @@ model Farm {
   productionRecords   ProductionRecord[]
   commitmentRecords   CommitmentRecord[]
   poolRecords         PoolRecord[]
+  rawReportChunks     RawReportChunk[]
 
   @@index([userId])
 }
@@ -1045,4 +1046,42 @@ model PoolRecord {
   @@index([farmId, createdAt])
   @@index([farmId, cropYear, variety])
   @@index([supersedesId])
+}
+
+// --- Crop report retrieval (Phase 7, Track E) ----------------------------------------------------
+// One embedded chunk of a grower's raw crop document (a packer statement / pool true-up the grower
+// uploaded to R2), for the Almond crop responder's `find-report` retrieval tool. This is GROWER
+// DATA: chunks are embedded only via the ZDR path (src/lib/crops/retrieve/embed.ts), never the
+// Gateway, and the retrieval tool is capability-gated (no key / no pgvector extension -> an explicit
+// "retrieval unavailable" tool result, never a fabricated citation). Additive, farmId-scoped, and
+// RLS-eligible exactly like the three ledger tables.
+//
+// `embedding` is the pgvector column. Prisma has no native vector type, so it is modeled as
+// `Unsupported("vector(1536)")?`: Prisma manages the row but never reads/writes the embedding
+// through the typed client — embeddings are written and the nearest-neighbour search is run via raw
+// SQL ($queryRaw / $executeRaw) so the `vector` ops + the hnsw index are used. Nullable so a chunk
+// can be inserted before its embedding lands (or when no ZDR key is configured at ingest).
+model RawReportChunk {
+  id     String @id @default(cuid())
+  farmId String // the tenant gate (non-nullable), FK Farm Cascade, RLS-eligible
+
+  // Where the source document lives in object storage (the grower's uploaded statement in R2). The
+  // chunk's content is a slice of that document's extracted text.
+  r2Key   String
+  content String
+
+  // The crop year this chunk is about, when known from the document (lets the responder scope a
+  // retrieval to a season). Null when the document spans years or the year is not yet parsed.
+  cropYear Int?
+
+  // pgvector embedding (1536-dim, the ZDR embed model's width). See the model comment: managed by
+  // Prisma as Unsupported, read/written only via raw SQL. `db push` will NOT emit the vector type or
+  // the hnsw index — the raw-SQL migration does (documented like the RLS block in migrations/README).
+  embedding Unsupported("vector(1536)")?
+
+  createdAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, createdAt])
 }
