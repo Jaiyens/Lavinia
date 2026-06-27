@@ -17,8 +17,18 @@ import Google from "next-auth/providers/google";
 // the magic-link path still proves the gate. Env names use the AUTH_ prefix Auth.js
 // reads automatically (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET). Google needs no adapter, so
 // it is edge-safe here; the email provider (which needs the adapter) is added in auth.ts.
+//
+// allowDangerousEmailAccountLinking: link Google to an EXISTING user that has the same
+// email but no linked OAuth account. Without it, a user who first signed in via the email
+// code gets `OAuthAccountNotLinked` when they later try Google (Auth.js refuses to auto-
+// link by default). That guard exists for providers that DON'T verify email; it is safe to
+// relax here because the signIn callback in auth.ts already REQUIRES `email_verified === true`
+// for Google, and Terra's whole identity model is "a verified email IS the person" - so the
+// Google identity and the email-code identity are by definition the same human.
 const googleProvider: Provider[] =
-  process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET ? [Google] : [];
+  process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+    ? [Google({ allowDangerousEmailAccountLinking: true })]
+    : [];
 
 // "Log in every time" (PG&E-style, because this is the grower's private utility data).
 // We make the session-token cookie a BROWSER-SESSION cookie (see `cookies` below): it
