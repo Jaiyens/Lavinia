@@ -76,6 +76,8 @@ model Farm {
   commitmentRecords   CommitmentRecord[]
   poolRecords         PoolRecord[]
   rawReportChunks     RawReportChunk[]
+  cropDeliveries      CropDelivery[]
+  almondSnapshots     AlmondSnapshot[]
 
   @@index([userId])
 }
@@ -1084,4 +1086,50 @@ model RawReportChunk {
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
   @@index([farmId, createdAt])
+}
+
+// Full per-delivery rows scraped from Almond Logic (the operational detail behind the rolled-up
+// position). farmId-scoped. Integer pounds. This is structured operational data (not raw files),
+// so it lives in Postgres; it powers the Terra-themed "Deliveries" replica view.
+model CropDelivery {
+  id           String    @id @default(cuid())
+  farmId       String
+  hullerId     Int
+  huller       String
+  cropYear     Int
+  loadId       String
+  fieldTicket  String?
+  field        String?
+  variety      String
+  grossLb      Int       @default(0)
+  tareLb       Int       @default(0)
+  netLb        Int       @default(0)
+  deliveryDate DateTime?
+  mediaId      String?
+  source       String    @default("ALMOND_LOGIC")
+  createdAt    DateTime  @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, hullerId, cropYear, loadId])
+  @@index([farmId, cropYear])
+  @@index([farmId, hullerId, cropYear])
+}
+
+// Raw Almond Logic API snapshots — the portal's own JSON responses, captured through the grower's
+// session and stored verbatim (farmId-scoped) so the Terra-themed 1:1 portal replica renders the
+// real data. One row per (endpoint, paramsKey); re-import overwrites. Private grower data lives in
+// Postgres (the destination), never in git.
+model AlmondSnapshot {
+  id        String   @id @default(cuid())
+  farmId    String
+  endpoint  String // e.g. "getDeliveries.php"
+  paramsKey String // stable serialization of the query params, "" for none
+  payload   Json
+  fetchedAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, endpoint, paramsKey])
+  @@index([farmId, endpoint])
 }

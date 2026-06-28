@@ -1082,6 +1082,7 @@ export const en = {
       todos: "To-do",
       solar: "Solar",
       crops: "Crops",
+      almondLogic: "Almond Logic",
       meters: "Meters",
       parcels: "Parcels",
       water: "Water",

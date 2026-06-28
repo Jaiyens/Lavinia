@@ -63,11 +63,21 @@ async function runProbe(): Promise<ScrapeResultMessage> {
   }
 
   // --- 3. Collect the logged-in session cookies for that host -----------
-  // Held in a local const, forwarded as a header, never logged.
-  const cookies = await chrome.cookies.getAll({ domain: host });
-  const cookieHeader = buildCookieHeader(
-    cookies.map((c: chrome.cookies.Cookie) => ({ name: c.name, value: c.value })),
-  );
+  // Held in local consts, forwarded as a header, never logged. Query BOTH by the
+  // live tab URL (returns every cookie that would be sent on a request to it,
+  // including parent-domain ".almondlogic.com" session cookies like PHPSESSID)
+  // AND by the configured host, then de-dupe by name. Robust to leading-dot /
+  // subdomain cookies that a bare {domain} filter can miss.
+  const byUrl = await chrome.cookies.getAll({ url: currentUrl });
+  const byDomain = await chrome.cookies.getAll({ domain: host });
+  const seen = new Set<string>();
+  const merged: { name: string; value: string }[] = [];
+  for (const c of [...byUrl, ...byDomain] as chrome.cookies.Cookie[]) {
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    merged.push({ name: c.name, value: c.value });
+  }
+  const cookieHeader = buildCookieHeader(merged);
   if (!cookieHeader) {
     return {
       ok: false,

@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
 import { resolveFarmAccess } from "@/lib/auth/access";
@@ -71,12 +73,20 @@ export async function CropDashboard() {
       />
 
       <Reveal>
-        <header className="mb-8">
-          <p className="type-label-caps text-primary">{en.crops.eyebrow}</p>
-          <h1 className="type-display-lg mt-1 text-on-surface">{en.crops.title}</h1>
-          {year !== null && (
-            <p className="mt-1 type-body-md text-on-surface-variant">{en.crops.yearLabel(year)}</p>
-          )}
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="type-label-caps text-primary">{en.crops.eyebrow}</p>
+            <h1 className="type-display-lg mt-1 text-on-surface">{en.crops.title}</h1>
+            {year !== null && (
+              <p className="mt-1 type-body-md text-on-surface-variant">{en.crops.yearLabel(year)}</p>
+            )}
+          </div>
+          <Link
+            href="/crops/deliveries"
+            className="type-label-caps inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+          >
+            View all deliveries <ArrowRight size={14} aria-hidden />
+          </Link>
         </header>
 
         {empty ? (

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "One-time portability probe + manual backfill for Almond Logic. Checks whether a logged-in session travels via cookie-forward stealth. Not the production scraper.",
   "permissions": ["cookies", "activeTab", "storage"],
-  "host_permissions": ["https://app.almondlogic.example/*"],
+  "host_permissions": ["https://almondlogic.com/*", "https://*.almondlogic.com/*"],
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"

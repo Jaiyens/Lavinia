@@ -29,7 +29,10 @@
     "db:import-fixture": "tsx scripts/persist-demo-fixture.ts",
     "levers:run": "tsx scripts/run-levers.ts",
     "extract:bills": "tsx scripts/extract-bills-batch.ts",
-    "verify:reconciliation": "tsx scripts/verify-reconciliation.ts"
+    "verify:reconciliation": "tsx scripts/verify-reconciliation.ts",
+    "almond:scrape": "tsx scripts/scrape-almond-logic.ts",
+    "almond:load": "tsx --env-file=.env.local scripts/load-almond.ts",
+    "almond:sync": "npm run almond:scrape && npm run almond:load"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -98,6 +101,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.7",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "playwright": "^1.60.0",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
