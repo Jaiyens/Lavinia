@@ -68,6 +68,15 @@ export function lbs(value: number): string {
   return `${num(value)} lb`;
 }
 
+/**
+ * Cost per pound, from integer cents-per-pound, to two decimals: "$0.42 / lb". The differentiator
+ * number (energy cost / yield). Null cents (no honest ratio, e.g. zero yield) renders a dash.
+ */
+export function usdPerLb(centsPerLb: number | null): string {
+  if (centsPerLb === null) return "-";
+  return `$${(centsPerLb / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / lb`;
+}
+
 const MONTHS = [
   "January",
   "February",

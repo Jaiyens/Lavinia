@@ -78,6 +78,7 @@ model Farm {
   rawReportChunks     RawReportChunk[]
   cropDeliveries      CropDelivery[]
   almondSnapshots     AlmondSnapshot[]
+  cropFieldBlocks     CropFieldBlock[]
 
   @@index([userId])
 }
@@ -261,6 +262,7 @@ model Block {
   productionRecords ProductionRecord[]
   commitmentRecords CommitmentRecord[]
   poolRecords       PoolRecord[]
+  cropFieldBlocks   CropFieldBlock[]
 
   @@index([farmId])
 }
@@ -995,6 +997,14 @@ model CommitmentRecord {
   priceCentsPerPound Int?
   source             String
 
+  // Production -> sale -> COLLECTION lifecycle. status advances committed -> settled -> collected
+  // via SUPERSEDE (a new row supersedes the prior, append-only; never mutate). settledPrice is the
+  // final $/lb once the settlement lands; collectedCents is integer cents actually received.
+  status                    String    @default("committed") // committed | settled | collected
+  settledPriceCentsPerPound Int?
+  collectedCents            Int?
+  collectedAt               DateTime?
+
   supersedesId       String?
   supersededReason   String?
   controlTotalPounds Int?
@@ -1132,4 +1142,23 @@ model AlmondSnapshot {
 
   @@unique([farmId, endpoint, paramsKey])
   @@index([farmId, endpoint])
+}
+
+// Maps an Almond Logic "field" string (e.g. "10", "22") to a Terra Block, so block-scoped yield
+// (CropDelivery.netLb by field) can be joined to block-scoped energy cost (meters serving the block)
+// to produce cost-per-pound by block. One block per field; re-mapping is an update. farmId-scoped.
+model CropFieldBlock {
+  id        String   @id @default(cuid())
+  farmId    String
+  field     String // the Almond Logic field string, verbatim (matches CropDelivery.field)
+  blockId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  block Block @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, field])
+  @@index([farmId])
+  @@index([blockId])
 }
