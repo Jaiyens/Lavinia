@@ -12,16 +12,36 @@
 import { z } from "zod";
 
 /** Whole integer pounds, non-negative. The reconciliation surface (mirror of integer-cents Cents). */
-const Pounds = z
+export const Pounds = z
   .number()
   .int()
   .min(0)
   .describe("whole pounds as a non-negative integer, e.g. 120000 = 120,000 lb");
 
-/** One weight line as printed on a packer statement: a variety and its delivered/settled pounds. */
+/**
+ * Integer cents PER POUND, non-negative. The money surface (money law: integer cents, never float
+ * dollars). e.g. $2.15/lb -> 215. Settlements and commitments both price in cents/lb.
+ */
+export const CentsPerPound = z
+  .number()
+  .int()
+  .min(0)
+  .describe("price as whole cents per pound, e.g. 215 = $2.15/lb");
+
+/**
+ * One weight line as printed on a packer statement: a variety, its settled pounds, and (optionally)
+ * the settled price in cents/lb. The price RIDES ALONG with the gated pounds — it is never the
+ * reconciliation surface (the pound-gate certifies POUNDS only). A statement that prints no per-row
+ * price leaves `settledPriceCentsPerPound` null.
+ */
 export const PoundRowSchema = z.object({
   variety: z.string().min(1).describe("almond variety as printed, e.g. Nonpareil, Monterey"),
   pounds: Pounds,
+  settledPriceCentsPerPound: CentsPerPound.nullable()
+    .optional()
+    .describe(
+      "the settled price for this variety in whole cents per pound, if the statement prints one; null/omitted otherwise. Rides along with the gated pounds; never gated itself",
+    ),
 });
 export type PoundRow = z.infer<typeof PoundRowSchema>;
 
