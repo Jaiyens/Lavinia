@@ -11,12 +11,23 @@ import type {
   PoolEntry,
   ProductionEntry,
 } from "./types";
-import { isProductionSource, type ProductionSource } from "./types";
+import {
+  isCommitmentStatus,
+  isProductionSource,
+  type CommitmentStatus,
+  type ProductionSource,
+} from "./types";
 
 // A row's stored `source` is a free String column; coerce to the union, defaulting an unknown value
 // to ALMOND_LOGIC (the safe "estimate" reading — an unrecognized tag must never read as a final).
 function asSource(value: string): ProductionSource {
   return isProductionSource(value) ? value : "ALMOND_LOGIC";
+}
+
+// `status` is a free String column too; coerce to the union, defaulting an unknown value to the
+// safest reading "committed" (an unrecognized tag must never read as already collected cash).
+function asStatus(value: string): CommitmentStatus {
+  return isCommitmentStatus(value) ? value : "committed";
 }
 
 /** Load the full ledger for a farm (within the tenant transaction). */
@@ -55,6 +66,11 @@ export async function loadCropLedgerTx(
         buyer: r.buyer,
         source: asSource(r.source),
         supersedesId: r.supersedesId,
+        status: asStatus(r.status),
+        priceCentsPerPound: r.priceCentsPerPound,
+        settledPriceCentsPerPound: r.settledPriceCentsPerPound,
+        collectedCents: r.collectedCents,
+        collectedAt: r.collectedAt ? r.collectedAt.toISOString() : null,
       }),
     ),
     pools: pools.map(

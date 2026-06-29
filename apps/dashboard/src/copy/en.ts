@@ -3687,6 +3687,81 @@ export const en = {
         readOnly: "Only a manager or owner can map fields to blocks.",
       },
     },
+    // The pound-gate reconciliation view: the grower's field weight beside the packer's settled
+    // weight, per crop year and variety, with the gap between them. A gap near 10 percent is normal
+    // almond shrink; this surfaces it instead of hiding it.
+    reconcile: {
+      eyebrow: "Crop production",
+      title: "Pound gate",
+      subtitle: "Field weight against settled weight. A gap near ten percent is normal shrink, surfaced so you can see it.",
+      back: "Crop position",
+      // Honest empty state: no deliveries or position to compare yet.
+      empty: "No field or settled weights to compare yet. Deliveries and packer settlements show here once they are entered.",
+      noFarm: "Connect a farm to see its pound gate.",
+      table: {
+        caption: "Field against settled",
+        rowCount: (n: number): string => (n === 1 ? "1 variety" : `${n} varieties`),
+        empty: "No varieties to reconcile yet.",
+        columns: {
+          year: "Crop year",
+          variety: "Variety",
+          field: "Field lb",
+          settled: "Settled lb",
+          gap: "Gap lb",
+          gapPct: "Gap %",
+        },
+        // The settled / gap cells when no packer settlement has landed for the cell yet.
+        settledNone: "No settlement yet",
+        gapNone: "No settlement yet",
+        // The gap-percent cell, signed, one decimal, e.g. "-10.0%".
+        gapPctValue: (pct: number): string => `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`,
+        // The badge on a row whose gap is in the ~10 percent band.
+        flag: "Check this",
+        sortBy: (column: string): string => `Sort by ${column}`,
+      },
+    },
+
+    // The commitment ledger lifecycle: each contract walks production -> sale -> COLLECTION. The cash
+    // strip totals committed, collected, and outstanding dollars; each row shows its stage and cash.
+    ledger: {
+      // The cash KPI strip on the reconcile page.
+      cash: {
+        committedLabel: "Committed",
+        collectedLabel: "Collected",
+        outstandingLabel: "Outstanding",
+        // Outstanding can go negative (a buyer overpaid). Surfaced honestly, never clamped.
+        overpaid: "Overpaid against contracts",
+      },
+      // The lifecycle columns added to the by-packer table.
+      columns: {
+        price: "$/lb",
+        status: "Status",
+        expected: "Expected",
+        collected: "Collected",
+        outstanding: "Outstanding",
+      },
+      // Status badge labels, one per lifecycle stage.
+      statusCommitted: "Committed",
+      statusSettled: "Settled",
+      statusCollected: "Collected",
+      // The cell value when no price is set on the contract yet (price TBD at pool true-up).
+      priceNone: "Price TBD",
+      // The expected / outstanding cells when no price means no honest dollar figure.
+      cashNone: "Price TBD",
+      // The "record collection" action (manager and above only).
+      collect: "Record collection",
+      collectAria: (buyer: string, cropYear: number, variety: string): string =>
+        `Record a collection for the ${cropYear} ${variety} commitment with ${buyer}`,
+      // The amount prompt in the inline collection form.
+      collectAmountLabel: "Amount collected (dollars)",
+      collectSave: "Save collection",
+      collectSaving: "Saving",
+      collectCancel: "Cancel",
+      collecting: "Recording",
+      collectError: "Could not record that collection. Refresh and try again.",
+      // Shown on a row already at the collected stage (no further action).
+      collected: "Cash received",
+    },
   },
 } as const;
 

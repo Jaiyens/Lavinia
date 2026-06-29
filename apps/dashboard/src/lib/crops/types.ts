@@ -17,6 +17,25 @@ export function isProductionSource(value: string): value is ProductionSource {
 }
 
 /**
+ * Where a commitment sits in the production -> sale -> collection lifecycle. The status advances by
+ * SUPERSEDE (a new append-only row carries the next status; the prior row physically remains for
+ * audit), never by mutation, so the lifecycle is rebuildable from the ledger:
+ * "committed" — pounds are under contract to a named buyer (the contract is in, price may be TBD).
+ * "settled"   — the packer settlement landed; the final $/lb is known.
+ * "collected" — the cash was received; collectedCents records the integer cents actually in hand.
+ */
+export type CommitmentStatus = "committed" | "settled" | "collected";
+export const COMMITMENT_STATUSES: readonly CommitmentStatus[] = [
+  "committed",
+  "settled",
+  "collected",
+];
+
+export function isCommitmentStatus(value: string): value is CommitmentStatus {
+  return (COMMITMENT_STATUSES as readonly string[]).includes(value);
+}
+
+/**
  * One document's reconciliation verdict (the pound-gate output). Mirrors energy CoverageState.
  * "no_doc"       — no source document / control total exists yet (a hand-entered row).
  * "reconciled"   — line items summed to within tolerance of the stated control total: real.
@@ -47,6 +66,16 @@ export type CommitmentEntry = {
   buyer: string;
   source: ProductionSource;
   supersedesId: string | null;
+  /** Lifecycle stage of the LIVE row for this commitment (committed -> settled -> collected). */
+  status: CommitmentStatus;
+  /** Contracted price as integer cents per pound; null when the contract is pounds-only (price TBD). */
+  priceCentsPerPound: number | null;
+  /** The final $/lb (integer cents per pound) once a settlement lands; null before settled. */
+  settledPriceCentsPerPound: number | null;
+  /** Integer cents actually received once collected; null until cash is in hand. */
+  collectedCents: number | null;
+  /** ISO timestamp the collection was recorded; null until collected. */
+  collectedAt: string | null;
 };
 
 export type PoolEntry = {

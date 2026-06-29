@@ -102,6 +102,11 @@ function makeLedger(seed: ExistingProductionRow[]) {
       buyer: c.buyer,
       source: "ALMOND_LOGIC",
       supersedesId: null,
+      status: "committed",
+      priceCentsPerPound: null,
+      settledPriceCentsPerPound: null,
+      collectedCents: null,
+      collectedAt: null,
     }));
     return Promise.resolve({ production: prod, commitments: comm, pools: [] });
   };
