@@ -3612,6 +3612,81 @@ export const en = {
       resolving: "Resolving",
       resolveError: "Could not resolve that record. Refresh and try again.",
     },
+
+    // Cost per pound by block (WS1): the number only Terra can produce, reconciled PG&E energy cost
+    // divided by mapped almond yield. Plain operator English, no em dashes, no exclamation marks.
+    // Money and pounds are integers computed in the engine; the UI only formats them.
+    cost: {
+      eyebrow: "Cost per pound",
+      title: "Cost per pound by block",
+      // Sub-line on the page header, reads the crop year and the coverage the energy figure is built
+      // from, e.g. "2026 season, energy from 12 of 14 reconciled meters".
+      yearLabel: (cropYear: number): string => `${cropYear} season`,
+      coverage: (reconciled: number, total: number): string =>
+        `Energy from ${reconciled} of ${total} reconciled meters`,
+      // The headline tile (on this page and on the Crops tab): farm-wide energy cost per pound.
+      farmLabel: "Farm energy cost per pound",
+      // Shown under the headline so the figure is never read as more than it is.
+      farmCaveat: "Reconciled PG&E energy divided by delivered pounds. Solar and unreconciled meters are left out.",
+      // The link to this page from the Crops tab.
+      viewLink: "Cost per pound by block",
+      // The link to the reconciliation page (built separately) from the Crops tab.
+      reconcileLink: "Reconcile crop records",
+      // Honest empty / not-yet-computable states.
+      noEnergy: "No reconciled PG&E bills for this season yet. Cost per pound shows here once a bill is reconciled.",
+      noFarmRatio: "Not enough yet to show a cost per pound. It needs both reconciled energy and delivered pounds.",
+
+      // The per-block table: one row per block with allocated energy, mapped yield, and the ratio.
+      table: {
+        caption: "Cost per pound by block",
+        rowCount: (n: number): string => (n === 1 ? "1 block" : `${n} blocks`),
+        empty: "No blocks with energy or yield this season yet.",
+        columns: {
+          block: "Block",
+          acreage: "Acres",
+          energy: "Energy cost",
+          yield: "Yield",
+          costPerLb: "Cost per pound",
+        },
+        // A block with no mapped yield has no honest ratio; the cell reads this instead of a number.
+        noRatio: "No yield mapped",
+        export: "Export CSV",
+        exportAria: "Export the cost per pound by block table as a CSV file",
+        sortBy: (column: string): string => `Sort by ${column}`,
+      },
+
+      // The residual lines: pounds and dollars that could not be attributed, surfaced honestly so
+      // nothing is silently dropped or spread behind the grower's back.
+      residual: {
+        title: "Not yet attributed",
+        // Yield from deliveries whose field is not mapped to a block.
+        unmappedYield: (pounds: string): string => `${pounds} delivered from fields not mapped to a block`,
+        // Energy from meters serving blocks with no acreage on file (cannot be split honestly).
+        unallocatableEnergy: (amount: string): string => `${amount} of energy on blocks with no acreage on file`,
+        // Both clean: nothing is sitting unattributed.
+        allAttributed: "Every delivered pound and reconciled dollar is attributed to a block.",
+        // Nudge to the mapping UI below when there is unmapped yield.
+        mapHint: "Map the fields below to attribute their pounds.",
+      },
+
+      // The field -> block mapping UI: one row per distinct delivery field, a block dropdown each.
+      map: {
+        title: "Map fields to blocks",
+        subtitle: "Each Almond Logic field becomes a Terra block so its pounds join the block's energy cost. Unmapped fields stay in the residual line above.",
+        empty: "No delivery fields to map yet.",
+        // The per-field row: shows the field's total delivered pounds.
+        fieldLabel: (field: string): string => `Field ${field}`,
+        fieldWeight: (pounds: string): string => `${pounds} delivered`,
+        // The dropdown's "no block" option and placeholder.
+        unmapped: "Unmapped",
+        selectPlaceholder: "Choose a block",
+        selectAria: (field: string): string => `Block for field ${field}`,
+        saving: "Saving",
+        saveError: "Could not save that mapping. Refresh and try again.",
+        // The read-only note for a viewer (mapping is a write, manager or owner only).
+        readOnly: "Only a manager or owner can map fields to blocks.",
+      },
+    },
   },
 } as const;
 

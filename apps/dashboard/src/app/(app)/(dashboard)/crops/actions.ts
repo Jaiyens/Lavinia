@@ -17,6 +17,7 @@ import { requireRole } from "@/lib/auth/access";
 import { activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm } from "@/lib/onboarding/farm";
 import { isCropReviewKind, resolveCropReviewRow, type CropReviewKind } from "@/lib/crops/review";
+import { withFarmTenant } from "@/lib/crops/tenant-db";
 import { en } from "@/copy/en";
 import type { ActionResult } from "../../actions";
 
@@ -54,6 +55,62 @@ export async function resolveCropReviewAction(
   // resolveCropReviewRow, so two clicks cannot both certify and the first write wins.
   await resolveCropReviewRow(prisma, resolved.farm.id, kind, id);
   // Revalidate the layout so the Crops tab re-renders without the resolved row.
+  revalidatePath("/", "layout");
+  return { ok: true, data: null };
+}
+
+/**
+ * Map (or unmap) an Almond Logic delivery field to a Terra block (WS1, cost per pound). `field` and
+ * `blockId` arrive from the client, so neither is trusted: a malformed payload returns the calm
+ * error instead of throwing into Prisma. Membership-scoped on the signed-in operator's active farm
+ * so a mapping can never be written on another grower's farm; writer-gated (manager or owner)
+ * because viewers are read-only. A non-null `blockId` upserts the (farm, field) mapping; a null
+ * `blockId` deletes it (the field returns to the unmapped residual line). The write runs inside
+ * withFarmTenant so Postgres RLS is in force on the CropFieldBlock table.
+ */
+export async function mapFieldToBlockAction(
+  field: string,
+  blockId: string | null,
+): Promise<ActionResult<null>> {
+  const session = await auth();
+  if (!session?.user) {
+    return { ok: false, error: en.crops.cost.map.saveError };
+  }
+  if (typeof field !== "string" || field === "") {
+    return { ok: false, error: en.crops.cost.map.saveError };
+  }
+  if (blockId !== null && (typeof blockId !== "string" || blockId === "")) {
+    return { ok: false, error: en.crops.cost.map.saveError };
+  }
+  const userId = session.user.id;
+  const activeId = await activeFarmId(userId);
+  const resolved = await dashboardFarm(prisma, userId, activeId);
+  if (resolved === null) {
+    return { ok: false, error: en.crops.cost.map.saveError };
+  }
+  // Mapping is a WRITE: viewers are read-only, so require manager or owner.
+  if (!(await requireRole(prisma, resolved.farm.id, userId, "manager"))) {
+    return { ok: false, error: en.crops.cost.map.saveError };
+  }
+
+  const farmId = resolved.farm.id;
+  await withFarmTenant(prisma, farmId, async (tx) => {
+    if (blockId === null) {
+      // Unmap: the field returns to the residual line. A no-op delete (never mapped) is fine.
+      await tx.cropFieldBlock.deleteMany({ where: { farmId, field } });
+      return;
+    }
+    // Guard: the target block must belong to this farm, so a foreign blockId can never be linked.
+    const block = await tx.block.findFirst({ where: { id: blockId, farmId }, select: { id: true } });
+    if (block === null) return;
+    // One block per field; re-mapping is an update (the @@unique([farmId, field]) anchors the upsert).
+    await tx.cropFieldBlock.upsert({
+      where: { farmId_field: { farmId, field } },
+      create: { farmId, field, blockId },
+      update: { blockId },
+    });
+  });
+  // Revalidate the layout so the cost page + the Crops headline re-render with the new attribution.
   revalidatePath("/", "layout");
   return { ok: true, data: null };
 }

@@ -4,8 +4,9 @@ import { prisma } from "@/lib/db";
 import { sessionUserId } from "@/lib/auth";
 import { resolveFarmAccess } from "@/lib/auth/access";
 import { cn } from "@/lib/cn";
-import { en } from "@/copy/en";
+import { en, usdPerLb } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
+import { Card } from "@/components/ui/card";
 import {
   cropYearBars,
   cropYearSummary,
@@ -13,7 +14,13 @@ import {
   packerRows,
 } from "@/lib/crops/views";
 import { loadCropLedger } from "@/lib/crops/load";
-import { resolveActiveFarmId, resolveFarm, resolveCropPosition, resolveCropReviewQueue } from "../(dashboard)/_data";
+import {
+  resolveActiveFarmId,
+  resolveFarm,
+  resolveCropPosition,
+  resolveCropReviewQueue,
+  resolveCostPerPound,
+} from "../(dashboard)/_data";
 import { Reveal } from "./shell/reveal";
 import { CropKpis } from "./crop-kpis";
 import { CropPackerTable } from "./crop-packer-table";
@@ -58,6 +65,12 @@ export async function CropDashboard() {
   const rows = packerRows(ledger, positions);
   const bars = cropYearBars(positions);
 
+  // The farm-wide cost-per-pound headline (WS1): reconciled PG&E energy / delivered pounds for the
+  // latest season (falls back to the current year so a connected farm with no position still tries).
+  // Every figure is produced by the pure engine inside resolveCostPerPound; the tile only formats.
+  const costYear = year ?? new Date().getFullYear();
+  const cost = await resolveCostPerPound(farm.id, costYear);
+
   const empty = positions.length === 0;
 
   return (
@@ -81,13 +94,47 @@ export async function CropDashboard() {
               <p className="mt-1 type-body-md text-on-surface-variant">{en.crops.yearLabel(year)}</p>
             )}
           </div>
-          <Link
-            href="/crops/deliveries"
-            className="type-label-caps inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
-          >
-            View all deliveries <ArrowRight size={14} aria-hidden />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/crops/cost"
+              className="type-label-caps inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+            >
+              {en.crops.cost.viewLink} <ArrowRight size={14} aria-hidden />
+            </Link>
+            <Link
+              href="/crops/reconcile"
+              className="type-label-caps inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+            >
+              {en.crops.cost.reconcileLink} <ArrowRight size={14} aria-hidden />
+            </Link>
+            <Link
+              href="/crops/deliveries"
+              className="type-label-caps inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-on-surface shadow-e1 transition-colors hover:bg-surface-container-low"
+            >
+              View all deliveries <ArrowRight size={14} aria-hidden />
+            </Link>
+          </div>
         </header>
+
+        {/* The farm-wide cost-per-pound headline tile (WS1): the differentiator number, with its
+            caveat so it is never overread. Links to the full per-block breakdown. */}
+        <Link href="/crops/cost" className="mb-8 block">
+          <Card className="min-h-[6rem] justify-start gap-0 rounded-[var(--radius-control)] p-5 transition-colors hover:bg-surface-container-low">
+            <span className="type-label-caps text-on-surface-variant">{en.crops.cost.farmLabel}</span>
+            {cost.farm.energyCents === 0 || cost.farm.centsPerLb === null ? (
+              <p className="mt-2 type-body-md text-on-surface-variant">{en.crops.cost.noFarmRatio}</p>
+            ) : (
+              <>
+                <span className="type-headline mt-1 tnum text-on-surface">
+                  {usdPerLb(cost.farm.centsPerLb)}
+                </span>
+                <span className="mt-2 type-caption text-on-surface-variant">
+                  {en.crops.cost.farmCaveat}
+                </span>
+              </>
+            )}
+          </Card>
+        </Link>
 
         {empty ? (
           <div className="flex min-h-[16rem] flex-col items-center justify-center rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8">
