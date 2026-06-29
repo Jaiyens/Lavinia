@@ -1,8 +1,8 @@
 /*
- * Local Almond Logic crawler (v2 — direct API, human-paced).
+ * Local Almond Logic crawler (v2 - direct API, human-paced).
  *
  * Runs on YOUR machine, reuses YOUR logged-in session (persistent profile), and calls the portal's
- * own JSON API the same way the site does when you click around — sequentially, one request at a
+ * own JSON API the same way the site does when you click around - sequentially, one request at a
  * time, with randomized human-like pauses. Same cookies / User-Agent / IP as your real browser, so
  * it reads as normal account usage, NOT a bot. Tiny volume (~40 calls). Nothing leaves your machine.
  *
@@ -12,6 +12,23 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium, type BrowserContext, type Page } from "playwright";
+import { readSyncStatus, writeSyncStatus } from "../src/lib/almond/sync-store";
+
+// Tracked-run progress. The in-app sync button spawns this script with ALMOND_SYNC_STATUS set so the
+// UI can poll a status file; a plain `npm run almond:scrape` from the terminal leaves it UNSET, in
+// which case every status write below is a no-op (the crawler behaves exactly as before). We never
+// write a credential or cookie into the status: only a phase, counts, and curated operator copy.
+const TRACKED = Boolean(process.env.ALMOND_SYNC_STATUS);
+
+/** Bound the login wait so a tracked run does not hang forever waiting for a human to sign in. */
+const LOGIN_WAIT_MS = 90_000;
+
+/** Patch the tracked status file (no-op when not tracked). Reads-merges-writes so a field set by the
+ *  runner (e.g. an earlier phase) is preserved. */
+function trackStatus(patch: Partial<ReturnType<typeof readSyncStatus>>): void {
+  if (!TRACKED) return;
+  writeSyncStatus({ ...readSyncStatus(), ...patch });
+}
 
 const PORTAL = "https://almondlogic.com/portals/grower/index.html";
 const API = "https://almondlogic.com/portals/grower/api";
@@ -27,7 +44,7 @@ function humanDelay(i: number): number {
   const spread = 2600;
   // pseudo-jitter from the index (no Math.random dependency needed for "human enough")
   const j = ((i * 9301 + 49297) % 233280) / 233280;
-  return Math.round(base + j * spread); // ~1.8s–4.4s
+  return Math.round(base + j * spread); // ~1.8s-4.4s
 }
 
 type Hub = { id: number; name: string; cropYears: number[] };
@@ -71,8 +88,24 @@ async function main(): Promise<void> {
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(PORTAL, { waitUntil: "domcontentloaded" });
 
-  // Session should already be present from the first run; if a login is needed, wait for it.
-  await page.waitForSelector("text=My Hullers", { timeout: 0 });
+  // Tracked runs flip to "scraping" as soon as the page is up so the UI leaves the "starting" state.
+  trackStatus({ phase: "scraping", message: null });
+
+  // Session should already be present from the first run; if a login is needed, wait for it. Bounded
+  // for a tracked run (the headed window is open for a human to sign in): on timeout we record a calm
+  // login_required status and exit non-zero so the runner stops and the button shows "log in again".
+  // An untracked terminal run keeps the original behavior (wait indefinitely).
+  try {
+    await page.waitForSelector("text=My Hullers", { timeout: TRACKED ? LOGIN_WAIT_MS : 0 });
+  } catch {
+    trackStatus({
+      phase: "error",
+      errorKind: "login_required",
+      message: "Log in to Almond Logic in the open window, then sync again.",
+    });
+    await context.close();
+    process.exit(1);
+  }
   await page.waitForTimeout(1500);
 
   const growerId = /growerId=(\d+)/.exec(page.url())?.[1] ?? "23";
@@ -87,6 +120,8 @@ async function main(): Promise<void> {
     const ok = res.status === 200 && !(res.json as { error?: string })?.error;
     console.log(`  [${ok ? "ok " : "!! "}] ${endpoint} ${tag} (HTTP ${res.status})`);
     writeFileSync(`${OUT_DIR}/api-results.json`, JSON.stringify({ growerId, results }, null, 2));
+    // Tracked progress: count each completed call so the UI shows apiCallsDone / apiCallsTotal.
+    trackStatus({ apiCallsDone: results.length });
     await page.waitForTimeout(humanDelay(i++));
   };
 
@@ -99,6 +134,12 @@ async function main(): Promise<void> {
 
   const hullers = (results.find((r) => r.endpoint === "getHullers.php")?.json as Hub[]) ?? [];
   const handlers = (results.find((r) => r.endpoint === "getHandlers.php")?.json as Hub[]) ?? [];
+
+  // Now that the hullers/handlers are enumerated we know the full call count: the 5 account-level
+  // calls already made, + 2 per (huller, cropYear) [deliveries + runs], + 1 per (handler, cropYear).
+  const hullerCalls = hullers.reduce((sum, h) => sum + h.cropYears.length * 2, 0);
+  const handlerCalls = handlers.reduce((sum, ha) => sum + ha.cropYears.length, 0);
+  trackStatus({ apiCallsTotal: results.length + hullerCalls + handlerCalls });
 
   // Deliveries + runs per huller per crop year (the bulk of the production data).
   for (const h of hullers) {

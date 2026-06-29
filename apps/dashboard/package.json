@@ -32,7 +32,8 @@
     "verify:reconciliation": "tsx scripts/verify-reconciliation.ts",
     "almond:scrape": "tsx scripts/scrape-almond-logic.ts",
     "almond:load": "tsx --env-file=.env.local scripts/load-almond.ts",
-    "almond:sync": "npm run almond:scrape && npm run almond:load"
+    "almond:sync": "npm run almond:scrape && npm run almond:load",
+    "almond:sync:tracked": "tsx scripts/almond-sync-runner.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
