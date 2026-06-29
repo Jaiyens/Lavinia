@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { cn } from "@/lib/cn";
 import type { HandlerInfo, HullerInfo } from "@/lib/almond-portal/data";
@@ -19,6 +20,7 @@ export function PortalSidebar({
   defaultHullerId?: number | null;
   defaultCropYear?: number | null;
 }) {
+  const router = useRouter();
   const [hullerId, setHullerId] = useQueryState("hullerId", parseAsInteger);
   const [cropYear, setCropYear] = useQueryState("cropYear", parseAsInteger);
 
@@ -48,7 +50,15 @@ export function PortalSidebar({
         activeId={active?.id ?? null}
         onSelect={(e) => selectHuller(e as HullerInfo)}
       />
-      <EntityGroup title="My Handlers" entities={handlers} activeId={null} onSelect={() => {}} />
+      {/* Handlers are the marketers/buyers. We have no handler-scoped delivery/run screen, so a click
+          opens the Reconcile view (the commitment ledger, where each handler's committed pounds and
+          cash live). */}
+      <EntityGroup
+        title="My Handlers"
+        entities={handlers}
+        activeId={null}
+        onSelect={() => router.push("/almondlogic/reconcile")}
+      />
 
       {years.length > 0 && (
         <div>

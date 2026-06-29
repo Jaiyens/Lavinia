@@ -88,7 +88,7 @@ export default async function AlmondReportsPage({
           <ReportList reports={REPORT_LIST} />
         </section>
 
-        <section className="mb-10">
+        <section id="report-turnout" className="mb-10 scroll-mt-24">
           <h3 className="type-title mb-3 text-on-surface">Turnout by Grower/Field/Variety</h3>
           <p className="type-caption mb-3 text-on-surface-variant">
             Average turnout and run count per field and variety, from validated runs.
