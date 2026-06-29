@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { en, lbs } from "@/copy/en";
-import { mapFieldToBlockAction } from "../(dashboard)/crops/actions";
+import { mapFieldToBlockAction } from "../(dashboard)/almondlogic/crop-actions";
 
 // The field -> block mapping UI (WS1): one row per distinct Almond Logic delivery field, each with
 // the field's total delivered pounds and a shadcn Select of the farm's blocks (plus "Unmapped"). A

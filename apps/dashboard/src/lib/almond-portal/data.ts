@@ -31,6 +31,11 @@ export type ActivityInfo = {
   grower: string | null;
   field: string | null;
   label: string | null;
+  /** Deep-link target: the activity's huller + crop year + run, so "View" lands on the right data
+   *  (the Runs screen scoped to this huller/year) instead of the default huller. */
+  hullerId: number | null;
+  cropYear: number | null;
+  runNumber: string | null;
 };
 
 /** The grower-report list shown in the Almond Logic Reports panel (the portal exposes these as
@@ -125,13 +130,19 @@ export async function loadRuns(
 }
 
 export async function loadRecentActivity(prisma: PrismaClient, farmId: string): Promise<ActivityInfo[]> {
-  return asArray(await snapshot(prisma, farmId, "getRecentActivity.php")).map((a) => ({
-    date: str(a.date ?? a.runDate ?? a.validationDTS),
-    huller: str(a.huller ?? a.hullerName),
-    grower: str(a.grower ?? a.growerName),
-    field: str(a.field),
-    label: str(a.label ?? a.description ?? (a.runId ? `Run ${a.runId} Validated` : null)),
-  }));
+  return asArray(await snapshot(prisma, farmId, "getRecentActivity.php")).map((a) => {
+    const runNumber = str(a.runNumber ?? a.runId);
+    return {
+      date: str(a.date ?? a.runDate ?? a.validationDTS),
+      huller: str(a.huller ?? a.hullerName),
+      grower: str(a.grower ?? a.growerName),
+      field: str(a.field),
+      label: str(a.label ?? a.description ?? (runNumber ? `Run ${runNumber} Validated` : null)),
+      hullerId: num(a.hullerId),
+      cropYear: num(a.cropYear),
+      runNumber,
+    };
+  });
 }
 
 /** The grower's external id, read from a deliveries snapshot's paramsKey (best-effort, defaults 23). */

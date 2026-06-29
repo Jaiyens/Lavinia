@@ -4,7 +4,7 @@ import { en } from "@/copy/en";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { loadHullers, loadRuns } from "@/lib/almond-portal/data";
 import { Reveal } from "../../../_components/shell/reveal";
-import { resolveAlmondFarm, resolveContext } from "../_data";
+import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
 import { RunsTable } from "../_components/runs/runs-table";
 
 // The Almond Logic RUNS / TURNOUT screen, rebuilt 1:1 inside Terra (re-skinned in our palette/fonts).
@@ -34,7 +34,7 @@ export default async function AlmondRunsPage({
   const { farm } = resolved;
   const sp = await searchParams;
   const hullers = await loadHullers(prisma, farm.id);
-  const ctx = resolveContext(sp, hullers);
+  const ctx = resolveContext(sp, hullers, await resolveDefaultContext(farm.id));
   const runs = await loadRuns(prisma, farm.id, ctx.hullerId ?? 0, ctx.cropYear ?? 0);
 
   const activeHuller = hullers.find((h) => h.id === ctx.hullerId) ?? hullers[0] ?? null;

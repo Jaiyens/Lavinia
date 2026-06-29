@@ -3,6 +3,8 @@ import { sessionUserId } from "@/lib/auth";
 import { en } from "@/copy/en";
 import { loadGrower, loadHullers, loadHandlers } from "@/lib/almond-portal/data";
 import { resolveActiveFarmId, resolveFarm } from "../_data";
+import { resolveDefaultContext } from "./_data";
+import { PortalBody } from "./_components/portal-body";
 import { PortalNav } from "./_components/portal-nav";
 import { PortalSidebar } from "./_components/portal-sidebar";
 import { SyncButton } from "./_components/sync-button";
@@ -27,10 +29,11 @@ export default async function AlmondPortalLayout({ children }: { children: React
   }
 
   const { farm } = resolved;
-  const [grower, hullers, handlers] = await Promise.all([
+  const [grower, hullers, handlers, def] = await Promise.all([
     loadGrower(prisma, farm.id),
     loadHullers(prisma, farm.id),
     loadHandlers(prisma, farm.id),
+    resolveDefaultContext(farm.id),
   ]);
 
   return (
@@ -49,10 +52,18 @@ export default async function AlmondPortalLayout({ children }: { children: React
 
       <PortalNav />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
-        <PortalSidebar hullers={hullers} handlers={handlers} />
-        <main className="min-w-0">{children}</main>
-      </div>
+      <PortalBody
+        sidebar={
+          <PortalSidebar
+            hullers={hullers}
+            handlers={handlers}
+            defaultHullerId={def.hullerId}
+            defaultCropYear={def.cropYear}
+          />
+        }
+      >
+        {children}
+      </PortalBody>
     </div>
   );
 }

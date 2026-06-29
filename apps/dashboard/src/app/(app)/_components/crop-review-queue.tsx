@@ -6,7 +6,7 @@ import { Badge, Button } from "@/components/ui";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { en, lbs } from "@/copy/en";
 import type { CropReviewKind, CropReviewRow } from "@/lib/crops/review";
-import { resolveCropReviewAction } from "../(dashboard)/crops/actions";
+import { resolveCropReviewAction } from "../(dashboard)/almondlogic/crop-actions";
 
 // The reconciliation queue (Phase 6): the records the pound-gate could not certify (a mismatch, a
 // missing control total). Each row shows its kind, its (year, variety, pounds) line carrying the

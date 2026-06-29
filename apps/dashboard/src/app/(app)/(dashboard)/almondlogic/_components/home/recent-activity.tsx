@@ -31,6 +31,15 @@ function contextLine(activity: ActivityInfo): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+// Deep-link "View" to the Runs screen scoped to THIS activity's huller + crop year (and the run, via
+// a hash anchor), so it lands on the data instead of the portal's default huller. Falls back to the
+// bare Runs route only when the activity carries no huller/year.
+function runsHref(activity: ActivityInfo): string {
+  if (activity.hullerId === null || activity.cropYear === null) return "/almondlogic/runs";
+  const base = `/almondlogic/runs?hullerId=${activity.hullerId}&cropYear=${activity.cropYear}`;
+  return activity.runNumber ? `${base}#run-${activity.runNumber}` : base;
+}
+
 // The "Recent Activity" rail of the Almond Logic home, re-skinned in Terra. One card per synced
 // activity (date, grower/field/huller, and the label, e.g. "Run 772 Validated") with a View
 // affordance into the Runs screen. Empty state stays faithful to the portal and gives the operator a
@@ -73,7 +82,7 @@ export function RecentActivity({ activity }: { activity: ActivityInfo[] }) {
                       ) : null}
                     </div>
                     <Link
-                      href="/almondlogic/runs"
+                      href={runsHref(item)}
                       aria-label={`View ${item.label ?? "activity"}`}
                       className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "shrink-0")}
                     >

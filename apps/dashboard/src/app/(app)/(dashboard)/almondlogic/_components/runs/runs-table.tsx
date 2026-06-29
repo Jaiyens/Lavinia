@@ -133,7 +133,8 @@ export function RunsTable({ runs }: { runs: RunInfo[] }) {
           {sorted.map((run) => (
             <tr
               key={run.runId}
-              className="border-t border-outline-variant first:border-t-0 hover:bg-surface-container-low/40"
+              id={`run-${run.runId}`}
+              className="scroll-mt-24 border-t border-outline-variant first:border-t-0 hover:bg-surface-container-low/40 target:bg-primary/10"
             >
               <td className="px-3 py-2.5 type-num tnum font-medium text-on-surface">{run.runId}</td>
               <td className="px-3 py-2.5 type-num text-on-surface-variant">{dateLabel(run.validatedAt)}</td>

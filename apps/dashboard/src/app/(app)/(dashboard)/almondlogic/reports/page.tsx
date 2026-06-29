@@ -5,7 +5,7 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { loadHullers, loadRuns, REPORT_LIST, type RunInfo } from "@/lib/almond-portal/data";
 import { loadCropDeliveries } from "@/lib/crops/deliveries";
 import { Reveal } from "@/app/(app)/_components/shell/reveal";
-import { resolveAlmondFarm, resolveContext } from "../_data";
+import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
 import { ReportList } from "../_components/reports/report-list";
 import {
   TurnoutReportTable,
@@ -42,7 +42,7 @@ export default async function AlmondReportsPage({
   const { farm } = resolved;
   const sp = await searchParams;
   const hullers = await loadHullers(prisma, farm.id);
-  const ctx = resolveContext(sp, hullers);
+  const ctx = resolveContext(sp, hullers, await resolveDefaultContext(farm.id));
 
   // The turnout report needs a concrete huller + crop year; deliveries are scoped after loading.
   const [runs, deliveries] = await Promise.all([

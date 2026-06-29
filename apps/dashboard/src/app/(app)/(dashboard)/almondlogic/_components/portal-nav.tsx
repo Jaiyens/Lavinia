@@ -12,6 +12,9 @@ const TABS = [
   { href: "/almondlogic/grower", label: "Grower Details" },
   { href: "/almondlogic/runs", label: "Runs" },
   { href: "/almondlogic/reports", label: "Reports" },
+  { href: "/almondlogic/deliveries", label: "Deliveries" },
+  { href: "/almondlogic/cost", label: "Cost / lb" },
+  { href: "/almondlogic/reconcile", label: "Reconcile" },
 ] as const;
 
 export function PortalNav() {

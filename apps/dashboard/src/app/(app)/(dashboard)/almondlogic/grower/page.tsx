@@ -7,7 +7,7 @@ import { loadCropDeliveries, varietyWeights, totalNet } from "@/lib/crops/delive
 import { Reveal } from "../../../_components/shell/reveal";
 import { CropDeliveriesTable } from "../../../_components/crop-deliveries-table";
 import { CropVarietyPie } from "../../../_components/crop-variety-pie";
-import { resolveAlmondFarm, resolveContext } from "../_data";
+import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
 import { ReportsPanel } from "../_components/grower/reports-panel";
 
 // The Almond Logic GROWER DETAILS screen, rebuilt 1:1 inside Terra (re-skinned in our palette/fonts).
@@ -36,7 +36,7 @@ export default async function AlmondGrowerPage({
   const { farm } = resolved;
   const sp = await searchParams;
   const hullers = await loadHullers(prisma, farm.id);
-  const ctx = resolveContext(sp, hullers);
+  const ctx = resolveContext(sp, hullers, await resolveDefaultContext(farm.id));
 
   const all = await loadCropDeliveries(prisma, farm.id);
   const rows = all.filter((r) => r.hullerId === ctx.hullerId && r.cropYear === ctx.cropYear);

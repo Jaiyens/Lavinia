@@ -4,7 +4,6 @@ import {
   Zap,
   Sparkles,
   Sun,
-  Sprout,
   Boxes,
   MapPin,
   ListChecks,
@@ -26,7 +25,6 @@ export type AgentKey =
   | "almond"
   | "todos"
   | "parcels"
-  | "crops"
   | "almondlogic"
   | "water"
   | "solar"
@@ -63,9 +61,8 @@ const OPERATIONS: readonly AgentItem[] = [
   { key: "home", label: en.shell.agents.dashboard, href: "/", icon: LayoutGrid, live: true, tourHref: "/tour" },
   { key: "energy", label: en.shell.agents.energy, href: "/energy", icon: Zap, live: true, tourHref: "/tour/energy" },
   { key: "parcels", label: en.shell.agents.parcels, href: "/parcels", icon: MapPin, live: true, tourHref: "/tour/parcels" },
-  // Crops: the crop production position (produced/committed/pool/unsold). App-only for now.
-  { key: "crops", label: en.shell.agents.crops, href: "/crops", icon: Sprout, live: true, appOnly: true },
-  // Almond Logic: the grower portal rebuilt 1:1 inside Terra (deliveries, runs, reports). App-only.
+  // Almond Logic: the grower portal rebuilt 1:1 inside Terra, plus the crop analytics (deliveries,
+  // runs, reports, cost per pound, reconciliation + commitment ledger). The single crop hub. App-only.
   { key: "almondlogic", label: en.shell.agents.almondLogic, href: "/almondlogic", icon: Boxes, live: true, appOnly: true },
   // To-do: findings the grower parked from the Energy rail. App-only (no public-tour route).
   { key: "todos", label: en.shell.agents.todos, href: "/todos", icon: ListChecks, live: true, appOnly: true },

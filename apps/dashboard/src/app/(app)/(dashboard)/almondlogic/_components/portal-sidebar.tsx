@@ -10,16 +10,29 @@ import type { HandlerInfo, HullerInfo } from "@/lib/almond-portal/data";
 export function PortalSidebar({
   hullers,
   handlers,
+  defaultHullerId = null,
+  defaultCropYear = null,
 }: {
   hullers: HullerInfo[];
   handlers: HandlerInfo[];
+  /** The data-bearing huller/year to highlight when the URL has no explicit selection. */
+  defaultHullerId?: number | null;
+  defaultCropYear?: number | null;
 }) {
   const [hullerId, setHullerId] = useQueryState("hullerId", parseAsInteger);
   const [cropYear, setCropYear] = useQueryState("cropYear", parseAsInteger);
 
-  const active = hullers.find((h) => h.id === hullerId) ?? hullers[0] ?? null;
+  const active =
+    hullers.find((h) => h.id === hullerId) ??
+    hullers.find((h) => h.id === defaultHullerId) ??
+    hullers[0] ??
+    null;
   const years = active?.cropYears ?? [];
-  const activeYear = cropYear ?? years[0] ?? null;
+  const defaultYear =
+    active?.id === defaultHullerId && defaultCropYear != null && years.includes(defaultCropYear)
+      ? defaultCropYear
+      : years[0] ?? null;
+  const activeYear = cropYear ?? defaultYear;
 
   const selectHuller = (h: HullerInfo) => {
     void setHullerId(h.id);
