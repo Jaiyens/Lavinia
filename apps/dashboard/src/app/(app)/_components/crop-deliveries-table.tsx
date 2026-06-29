@@ -36,11 +36,11 @@ const NUMERIC = new Set(["grossLb", "tareLb", "netLb"]);
 const ALL = "__all__";
 
 function dateLabel(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return format(parseISO(iso), "MMM d, yyyy");
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -82,13 +82,13 @@ export function CropDeliveriesTable({ rows }: { rows: DeliveryRow[] }) {
         accessorKey: "fieldTicket",
         header: "Field Ticket",
         cell: ({ row }) => (
-          <span className="type-num tnum text-on-surface-variant">{row.original.fieldTicket ?? "—"}</span>
+          <span className="type-num tnum text-on-surface-variant">{row.original.fieldTicket ?? "-"}</span>
         ),
       },
       {
         accessorKey: "field",
         header: "Field",
-        cell: ({ row }) => <span className="type-num text-on-surface">{row.original.field ?? "—"}</span>,
+        cell: ({ row }) => <span className="type-num text-on-surface">{row.original.field ?? "-"}</span>,
       },
       {
         accessorKey: "variety",

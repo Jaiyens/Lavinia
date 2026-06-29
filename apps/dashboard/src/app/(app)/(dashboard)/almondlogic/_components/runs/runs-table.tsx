@@ -41,24 +41,24 @@ const COLUMNS: readonly Column[] = [
 ];
 
 function dateLabel(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return format(parseISO(iso), "MMM d, yyyy");
   } catch {
-    return "—";
+    return "-";
   }
 }
 
 function weightLabel(value: number | null): string {
-  return value == null ? "—" : lbs(value);
+  return value == null ? "-" : lbs(value);
 }
 
 function binsLabel(value: number | null): string {
-  return value == null ? "—" : value.toLocaleString("en-US");
+  return value == null ? "-" : value.toLocaleString("en-US");
 }
 
 function turnoutLabel(value: number | null): string {
-  return value == null ? "—" : `${value}%`;
+  return value == null ? "-" : `${value}%`;
 }
 
 // Nulls sort last regardless of direction; otherwise compare by the typed value.
@@ -137,8 +137,8 @@ export function RunsTable({ runs }: { runs: RunInfo[] }) {
             >
               <td className="px-3 py-2.5 type-num tnum font-medium text-on-surface">{run.runId}</td>
               <td className="px-3 py-2.5 type-num text-on-surface-variant">{dateLabel(run.validatedAt)}</td>
-              <td className="px-3 py-2.5 type-num text-on-surface">{run.field ?? "—"}</td>
-              <td className="px-3 py-2.5 type-num text-on-surface">{run.variety || "—"}</td>
+              <td className="px-3 py-2.5 type-num text-on-surface">{run.field ?? "-"}</td>
+              <td className="px-3 py-2.5 type-num text-on-surface">{run.variety || "-"}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{binsLabel(run.totalBins)}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{weightLabel(run.loadWeight)}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{weightLabel(run.binWeight)}</td>
