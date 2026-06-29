@@ -19,7 +19,20 @@ function prod(
   return { id, cropYear, variety, pounds, source, supersedesId };
 }
 function commit(id: string, cropYear: number, variety: string, pounds: number): CommitmentEntry {
-  return { id, cropYear, variety, pounds, buyer: "Packer Co", source: "ALMOND_LOGIC", supersedesId: null };
+  return {
+    id,
+    cropYear,
+    variety,
+    pounds,
+    buyer: "Packer Co",
+    source: "ALMOND_LOGIC",
+    supersedesId: null,
+    status: "committed",
+    priceCentsPerPound: null,
+    settledPriceCentsPerPound: null,
+    collectedCents: null,
+    collectedAt: null,
+  };
 }
 function pool(id: string, cropYear: number, variety: string, pounds: number): PoolEntry {
   return { id, cropYear, variety, pounds, pool: "Blue Diamond", source: "ALMOND_LOGIC", supersedesId: null };

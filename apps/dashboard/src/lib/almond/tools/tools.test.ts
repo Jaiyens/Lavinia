@@ -34,7 +34,20 @@ function commit(
   pounds: number,
   buyer = "Packer Co",
 ): CommitmentEntry {
-  return { id, cropYear, variety, pounds, buyer, source: "ALMOND_LOGIC", supersedesId: null };
+  return {
+    id,
+    cropYear,
+    variety,
+    pounds,
+    buyer,
+    source: "ALMOND_LOGIC",
+    supersedesId: null,
+    status: "committed",
+    priceCentsPerPound: null,
+    settledPriceCentsPerPound: null,
+    collectedCents: null,
+    collectedAt: null,
+  };
 }
 function pool(id: string, cropYear: number, variety: string, pounds: number): PoolEntry {
   return { id, cropYear, variety, pounds, pool: "Blue Diamond", source: "ALMOND_LOGIC", supersedesId: null };
