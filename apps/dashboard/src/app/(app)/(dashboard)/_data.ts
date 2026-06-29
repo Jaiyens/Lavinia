@@ -11,6 +11,8 @@ import {
 import { loadCropLedger } from "@/lib/crops/load";
 import { recomputePositions, type Positions } from "@/lib/crops/positions";
 import { loadCropReviewQueue, type CropReviewRow } from "@/lib/crops/review";
+import { loadCostPerPound } from "@/lib/crops/cost-load";
+import type { CostPerPound } from "@/lib/crops/cost";
 
 // Request-scoped read cache for the dashboard shell. The (dashboard) LAYOUT and the PAGE
 // it wraps (Home or Energy) both need the same farm + findings on every navigation, and the
@@ -71,4 +73,15 @@ export const resolveCropPosition = cache(
  *  request so the Crops tab can render and act on them. RLS-scoped inside loadCropReviewQueue. */
 export const resolveCropReviewQueue = cache(
   (farmId: string): Promise<CropReviewRow[]> => loadCropReviewQueue(prisma, farmId),
+);
+
+/**
+ * The farm's cost-per-pound by block for a crop year, resolved once per request (the cost page and
+ * the Crops tab headline tile share it). Every figure is produced by the pure engine inside
+ * loadCostPerPound from reconciled PG&E energy and mapped yield; this just memoizes the load. Keyed
+ * on (farmId, cropYear) so each season resolves independently.
+ */
+export const resolveCostPerPound = cache(
+  (farmId: string, cropYear: number): Promise<CostPerPound> =>
+    loadCostPerPound(prisma, farmId, cropYear),
 );
