@@ -62,8 +62,13 @@ describe("runExtraction routes every document through the pound-gate", () => {
   it("a corrupted row -> needs_review (the sum no longer matches the printed total)", async () => {
     const result = await runExtraction(fixedReader(CORRUPTED), PAGE);
     expect(result.coverage).toBe("needs_review");
-    // The bad figure is still surfaced for a human to fix — it is just never certified as real.
-    expect(result.rows).toContainEqual({ variety: "Monterey", pounds: 124_000 });
+    // The bad figure is still surfaced for a human to fix — it is just never certified as real. The
+    // per-row settled price rides along (null when the fixture prints none).
+    expect(result.rows).toContainEqual({
+      variety: "Monterey",
+      pounds: 124_000,
+      settledPriceCentsPerPound: null,
+    });
   });
 
   it("no printed control total -> needs_review (the gate never self-checks the rows)", async () => {

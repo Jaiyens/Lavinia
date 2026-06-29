@@ -1,21 +1,31 @@
-// The grower-extraction reader: the AI boundary for packer-statement pounds, injected exactly like
+// The grower SETTLEMENT reader: the AI boundary for packer-statement pounds, injected exactly like
 // the bill engine's PageReader so the pipeline runs with ZERO external calls in dev/CI (no key ->
 // `stubPoundReader`). The LIVE reader is built ONLY on `createZdrModel` (the direct Anthropic
 // zero-data-retention endpoint) — it MUST import from `@/lib/ai/zdr`, and MUST NOT import
 // `@/lib/ai/gateway`. The import-guard test enforces that rule 6 can never be broken by a later edit.
 //
-// The cascade (Crops rule 6 floor): Sonnet 4.6 first -> escalate to Opus 4.8 when the model's
-// confidence is low OR the rows are a pound-gate NEAR-MISS (they nearly reconcile, suggesting one
-// mis-read digit Opus can fix). The bill engine's FLOOR is a zero-retention Gemini pass; here there
-// is NO zero-retention non-Anthropic path, so the floor is to DEGRADE TO needs_review rather than
-// route grower data through any non-ZDR provider. Withholding a figure is always safe; leaking
-// grower data to a retaining provider is not.
+// The cascade (Crops rule 6 floor) is shared with the commitment reader via `./cascade`: Sonnet 4.6
+// first -> escalate to Opus 4.8 when the model's confidence is low OR the rows are a pound-gate
+// NEAR-MISS (they nearly reconcile, suggesting one mis-read digit Opus can fix). The bill engine's
+// FLOOR is a zero-retention Gemini pass; here there is NO zero-retention non-Anthropic path, so the
+// floor is to DEGRADE TO needs_review rather than route grower data through any non-ZDR provider.
+// Withholding a figure is always safe; leaking grower data to a retaining provider is not.
 
-import { generateObject } from "ai";
-import { createZdrModel } from "@/lib/ai/zdr";
+import {
+  ESCALATE_BELOW_CONFIDENCE,
+  NEAR_MISS_POUNDS,
+  OPUS_MODEL,
+  SONNET_MODEL,
+  runCascade,
+  shouldEscalate as cascadeShouldEscalate,
+  type GateableExtraction,
+} from "./cascade";
 import { reconcileDocument, type PoundLineItem } from "@/lib/crops/pound-gate";
 import type { PoundCoverage } from "@/lib/crops/types";
 import { PoundExtraction, PoundExtractionSchema } from "./schema";
+
+// Re-export the cascade tier vocabulary so existing importers of these names keep working.
+export { ESCALATE_BELOW_CONFIDENCE, NEAR_MISS_POUNDS, OPUS_MODEL, SONNET_MODEL };
 
 /** A single packet-statement page as raw text/markdown (the OCR/text layer fed to the reader). */
 export type RawPage = string;
@@ -25,31 +35,14 @@ export interface PoundReader {
   extract(page: RawPage): Promise<PoundExtraction>;
 }
 
-/** The reader's tier vocabulary. Sonnet first, Opus on escalation — both over the ZDR endpoint. */
-export const SONNET_MODEL = "claude-sonnet-4-6";
-export const OPUS_MODEL = "claude-opus-4-8";
-
-/**
- * Below this self-rated confidence we escalate Sonnet -> Opus. Advisory only: confidence never
- * certifies a figure (the pound-gate does), it only decides whether a second, stronger pass is worth
- * the cost.
- */
-export const ESCALATE_BELOW_CONFIDENCE = 0.85;
-
-/**
- * A "near-miss" is a non-reconciling extraction whose row sum lands within this many pounds of the
- * stated control total — the signature of a single mis-read digit Opus may correct. A wider gap is a
- * structural miss (a dropped row); re-running rarely helps, so we do not escalate on it. The gate
- * tolerance itself stays 0 (see pound-gate.ts) — this window only gates ESCALATION, never certifies.
- */
-export const NEAR_MISS_POUNDS = 2_000;
-
 const EXTRACT_PROMPT =
-  "You are reading ONE packer settlement statement for an almond grower. Extract two things " +
+  "You are reading ONE packer settlement statement for an almond grower. Extract three things " +
   "SEPARATELY:\n" +
-  "1) `rows`: every printed variety weight line, each as { variety, pounds } where pounds is a " +
-  "WHOLE integer pound figure (e.g. 120,000 lb -> 120000). Capture the variety name exactly as " +
-  "printed.\n" +
+  "1) `rows`: every printed variety weight line, each as { variety, pounds, settledPriceCentsPerPound } " +
+  "where pounds is a WHOLE integer pound figure (e.g. 120,000 lb -> 120000) and " +
+  "settledPriceCentsPerPound is the settled price for that line in WHOLE cents per pound " +
+  "(e.g. $2.15/lb -> 215) or null if the statement prints no per-line price. Capture the variety " +
+  "name exactly as printed.\n" +
   "2) `controlTotalPounds`: the statement's PRINTED grand total in whole pounds. Read this from the " +
   "document's own total line. DO NOT add up the rows yourself — report the printed total verbatim. " +
   "If the page prints no grand total, return null.\n" +
@@ -68,56 +61,37 @@ export const stubPoundReader: PoundReader = {
   },
 };
 
-/** One generateObject pass over a ZDR-backed model. Centralizes the prompt + schema for both tiers. */
-async function extractWith(modelId: string, page: RawPage): Promise<PoundExtraction> {
-  const { object } = await generateObject({
-    model: createZdrModel(modelId),
-    schema: PoundExtractionSchema,
-    schemaName: "PoundExtraction",
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: EXTRACT_PROMPT },
-          { type: "text", text: page },
-        ],
-      },
-    ],
-  });
-  return object;
-}
-
 /**
  * The LIVE reader over the direct Anthropic ZERO-DATA-RETENTION endpoint. Sonnet first; escalate to
- * Opus when confidence is low or the result is a pound-gate near-miss. Only constructed on the
- * server import path where `hasZdrKey()` is true. This is the ONLY place the two ZDR tiers are wired.
+ * Opus when confidence is low or the result is a pound-gate near-miss (the shared cascade decides).
+ * Only constructed on the server import path where `hasZdrKey()` is true.
  */
 export function createZdrPoundReader(): PoundReader {
   return {
-    async extract(page) {
-      const first = await extractWith(SONNET_MODEL, page);
-      if (!shouldEscalate(first)) return first;
-      // Stronger second pass. Opus output still faces the same gate downstream — escalation buys a
-      // better extraction, never a bypass of reconciliation.
-      return extractWith(OPUS_MODEL, page);
+    extract(page) {
+      return runCascade<PoundExtraction>({
+        schema: PoundExtractionSchema,
+        schemaName: "PoundExtraction",
+        prompt: EXTRACT_PROMPT,
+        page,
+        gate: toGateable,
+      });
     },
   };
 }
 
-/** Whether a Sonnet pass warrants the costlier Opus pass: low confidence OR a gate near-miss. */
-export function shouldEscalate(extraction: PoundExtraction): boolean {
-  if (extraction.confidence < ESCALATE_BELOW_CONFIDENCE) return true;
-  return isNearMiss(extraction);
+/** Project a settlement extraction onto the cascade's escalation surface (variety + pounds only). */
+function toGateable(extraction: PoundExtraction): GateableExtraction {
+  return {
+    rows: toLineItems(extraction.rows),
+    controlTotalPounds: extraction.controlTotalPounds,
+    confidence: extraction.confidence,
+  };
 }
 
-/** A near-miss: rows do not reconcile, but their sum is within NEAR_MISS_POUNDS of the stated total. */
-function isNearMiss(extraction: PoundExtraction): boolean {
-  const { controlTotalPounds } = extraction;
-  if (controlTotalPounds === null) return false;
-  const rows = toLineItems(extraction.rows);
-  if (reconcileDocument(rows, controlTotalPounds) === "reconciled") return false;
-  const sum = rows.reduce((acc, r) => acc + r.pounds, 0);
-  return Math.abs(sum - controlTotalPounds) <= NEAR_MISS_POUNDS;
+/** Whether a Sonnet pass warrants the costlier Opus pass. Kept for the existing reader.test.ts. */
+export function shouldEscalate(extraction: PoundExtraction): boolean {
+  return cascadeShouldEscalate(toGateable(extraction));
 }
 
 /** Map the Zod rows to the gate's PoundLineItem shape (the gate owns the pound arithmetic). */
@@ -125,9 +99,12 @@ function toLineItems(rows: readonly PoundExtraction["rows"][number][]): PoundLin
   return rows.map((r) => ({ variety: r.variety, pounds: r.pounds }));
 }
 
-/** What one extraction yields: the captured rows, the SEPARATE stated total, and the gate's verdict. */
+/** One settled price row: the gated pound surface plus the price that rides along (cents/lb, nullable). */
+export type SettledPriceRow = PoundLineItem & { settledPriceCentsPerPound: number | null };
+
+/** What one extraction yields: the captured rows (with prices), the SEPARATE total, and the verdict. */
 export type ExtractionResult = {
-  rows: PoundLineItem[];
+  rows: SettledPriceRow[];
   controlTotalPounds: number | null;
   coverage: PoundCoverage;
 };
@@ -137,7 +114,8 @@ export type ExtractionResult = {
  * independently-stated control total to the pound-gate. `coverage` is the gate's verdict, NOTHING
  * the model said — no model number becomes "real" except through `reconcileDocument`. On any reader
  * failure the document degrades to needs_review (never a thrown error or a fabricated figure), the
- * same fail-safe as the bill pipeline and the ZDR floor.
+ * same fail-safe as the bill pipeline and the ZDR floor. The per-row settled price RIDES ALONG with
+ * the gated pounds (the gate certifies pounds only; price is never gated).
  */
 export async function runExtraction(
   reader: PoundReader,
@@ -149,7 +127,11 @@ export async function runExtraction(
   } catch {
     return { rows: [], controlTotalPounds: null, coverage: "needs_review" };
   }
-  const rows = toLineItems(extraction.rows);
+  const rows: SettledPriceRow[] = extraction.rows.map((r) => ({
+    variety: r.variety,
+    pounds: r.pounds,
+    settledPriceCentsPerPound: r.settledPriceCentsPerPound ?? null,
+  }));
   const controlTotalPounds = extraction.controlTotalPounds;
   return {
     rows,
