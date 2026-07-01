@@ -5,6 +5,7 @@
 // getUserInfo — never email/address/phone (not shown on the cloned screens, and PII).
 
 import type { PrismaClient } from "@prisma/client";
+import { withFarmTenant } from "@/lib/crops/tenant-db";
 
 export type HullerInfo = { id: number; name: string; logoPath: string | null; cropYears: number[] };
 export type HandlerInfo = {
@@ -60,15 +61,20 @@ export function paramsKey(p: Record<string, string | number>): string {
     .join("&");
 }
 
+// Every AlmondSnapshot read goes through here (and growerId below), wrapped in withFarmTenant so the
+// per-transaction `app.current_farm_id` GUC is pinned — which makes these reads survive Row Level
+// Security on AlmondSnapshot. Callers pass the full PrismaClient (withFarmTenant needs $transaction).
 async function snapshot(
   prisma: PrismaClient,
   farmId: string,
   endpoint: string,
   params: Record<string, string | number> = {},
 ): Promise<unknown> {
-  const row = await prisma.almondSnapshot.findUnique({
-    where: { farmId_endpoint_paramsKey: { farmId, endpoint, paramsKey: paramsKey(params) } },
-  });
+  const row = await withFarmTenant(prisma, farmId, (tx) =>
+    tx.almondSnapshot.findUnique({
+      where: { farmId_endpoint_paramsKey: { farmId, endpoint, paramsKey: paramsKey(params) } },
+    }),
+  );
   return row?.payload ?? null;
 }
 
@@ -145,12 +151,15 @@ export async function loadRecentActivity(prisma: PrismaClient, farmId: string): 
   });
 }
 
-/** The grower's external id, read from a deliveries snapshot's paramsKey (best-effort, defaults 23). */
+/** The grower's external id, read from a deliveries snapshot's paramsKey (best-effort, defaults 23).
+ *  Wrapped in withFarmTenant so it survives RLS on AlmondSnapshot. */
 async function growerId(prisma: PrismaClient, farmId: string): Promise<number> {
-  const row = await prisma.almondSnapshot.findFirst({
-    where: { farmId, endpoint: "getRuns.php" },
-    orderBy: { fetchedAt: "desc" },
-  });
+  const row = await withFarmTenant(prisma, farmId, (tx) =>
+    tx.almondSnapshot.findFirst({
+      where: { farmId, endpoint: "getRuns.php" },
+      orderBy: { fetchedAt: "desc" },
+    }),
+  );
   const m = /growerId=(\d+)/.exec(row?.paramsKey ?? "");
   return m ? Number(m[1]) : 23;
 }
