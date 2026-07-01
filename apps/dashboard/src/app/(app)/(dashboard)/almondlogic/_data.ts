@@ -8,6 +8,7 @@ import { cache } from "react";
 import { sessionUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadRecentActivity, type HullerInfo } from "@/lib/almond-portal/data";
+import { withFarmTenant } from "@/lib/crops/tenant-db";
 import { resolveActiveFarmId, resolveFarm } from "../_data";
 
 /** The signed-in operator's own farm, or null. */
@@ -25,11 +26,14 @@ export type AlmondContext = { hullerId: number | null; cropYear: number | null }
  * recent activity's context; else null. Cached per request.
  */
 export const resolveDefaultContext = cache(async (farmId: string): Promise<AlmondContext> => {
-  const groups = await prisma.cropDelivery.groupBy({
-    by: ["hullerId", "cropYear"],
-    where: { farmId },
-    _count: { _all: true },
-  });
+  // Wrapped in withFarmTenant so this CropDelivery read survives RLS on CropDelivery.
+  const groups = await withFarmTenant(prisma, farmId, (tx) =>
+    tx.cropDelivery.groupBy({
+      by: ["hullerId", "cropYear"],
+      where: { farmId },
+      _count: { _all: true },
+    }),
+  );
   if (groups.length > 0) {
     const top = [...groups].sort((a, b) => b._count._all - a._count._all)[0];
     if (top) return { hullerId: top.hullerId, cropYear: top.cropYear };
