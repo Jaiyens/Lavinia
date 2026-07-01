@@ -19,6 +19,7 @@ import type { ObjectStore } from "@/lib/storage/object-store";
 import { r2Configured, rawPageKey } from "@/lib/storage/r2";
 import { selectScrapeBranch, type ScrapeAuthState, type ScrapeBranch } from "./branch";
 import { reconcilingFixturePages } from "./fixtures";
+import { pageTransport, walkPortal, type PortalPage } from "./portal-walk";
 import type { RawPage, ScrapeResult, ScrapeTarget } from "./types";
 
 /** An encrypted credential blob as stored for a grower. The plaintext is NEVER held outside use. */
@@ -161,29 +162,55 @@ async function storePages(
   return keys;
 }
 
+/** Parse the growerId from the portal page URL (?growerId=NN), mirroring the local crawler. Defaults
+ *  to "23" (the known grower) when absent, exactly as the local crawler does. */
+export function growerIdFromUrl(url: string): string {
+  return /growerId=(\d+)/.exec(url)?.[1] ?? "23";
+}
+
 /**
- * Inside the Sandbox: decrypt the credential at moment of use (headless_login branch), drive the
- * headless browser, and return raw page bytes. The browser/network is the single STUBBED piece — a
- * real implementation launches Chromium in `sandbox`, replays the cookie or performs the login with
- * the decrypted credential, and captures the rendered pages. We deliberately do NOT log the
- * credential or the sandbox id-with-token.
+ * Acquire an AUTHENTICATED portal page inside the hosted browser — the ONE piece that needs the live
+ * environment (a hosted Chromium reached over CDP, e.g. Browserbase, driven from the Sandbox) and so
+ * cannot be exercised offline. For headless_login it decrypts the credential at the MOMENT OF USE
+ * (never logged, never returned) to drive the login; for cookie_forward it replays the session cookie.
+ * Everything DOWNSTREAM of the returned page (the portal-API walk, SVH filter, health guard, capture)
+ * is implemented and unit-tested in portal-walk.ts. Throws until the hosted-browser transport is wired.
  */
-async function fetchPagesInSandbox(
+async function openAuthenticatedPortalPage(
   _sandbox: Sandbox,
   branch: Exclude<ScrapeBranch, "unavailable">,
   auth: ScrapeAuth,
-): Promise<RawPage[]> {
+): Promise<PortalPage> {
   if (branch === "headless_login") {
     const blob = auth.encryptedCredential;
     if (!blob) throw new Error("headless_login branch without an encrypted credential");
     // Decrypt at the moment of use; `credential` stays local and is never logged or returned.
     const credential = decryptCredential(blob);
-    void credential; // used by the (stubbed) headless login below
+    void credential; // used by the (not-yet-wired) headless login below
   }
-  // TODO(live): launch Chromium in `_sandbox`, replay cookie (cookie_forward) or log in
-  // (headless_login) with `credential`, fetch the grower's yield pages, return the captured bytes.
-  // Until that lands, the live branch surfaces explicitly rather than silently returning fixtures.
-  throw new Error(`live scrape not yet implemented for branch ${branch}`);
+  // TODO(live): from inside `_sandbox`, connect to the hosted Chromium over CDP, replay the cookie
+  // (cookie_forward) or perform the login (headless_login) with `credential`, navigate to the portal,
+  // and return the authenticated Page (which satisfies PortalPage). walkPortal drives it from there.
+  throw new Error(`hosted browser transport not yet wired for branch ${branch}`);
+}
+
+/**
+ * Inside the Sandbox: open an authenticated portal page (the live-only seam above), then run the
+ * deterministic, unit-tested portal-API walk over it — account enumeration, Sierra-Valley-Holding
+ * filter + source-changed health guard, deliveries/runs for SVH at the target year, per-handler
+ * assignments — and return the captured raw JSON pages (which sandbox-scrape then writes to R2).
+ */
+async function fetchPagesInSandbox(
+  sandbox: Sandbox,
+  branch: Exclude<ScrapeBranch, "unavailable">,
+  auth: ScrapeAuth,
+  target: ScrapeTarget,
+): Promise<RawPage[]> {
+  const page = await openAuthenticatedPortalPage(sandbox, branch, auth);
+  const growerId = growerIdFromUrl(page.url());
+  const transport = pageTransport(page);
+  const result = await walkPortal(transport, { growerId, cropYear: target.cropYear });
+  return result.pages;
 }
 
 /**
@@ -208,7 +235,7 @@ export async function scrape(target: ScrapeTarget, deps: ScrapeDeps): Promise<Sc
   const auth = deps.auth;
   const pages = await withSandboxCleanupAsync(
     await createSandbox(),
-    (sandbox) => fetchPagesInSandbox(sandbox, branch, auth),
+    (sandbox) => fetchPagesInSandbox(sandbox, branch, auth, target),
   );
   const storedKeys = await storePages(deps.objectStore, target, pages);
   return { branch, pages, storedKeys };
