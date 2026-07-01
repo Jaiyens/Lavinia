@@ -3543,6 +3543,59 @@ export const en = {
     empty: "No crop records for this farm yet. Production, commitments, and pool deliveries show here once they are entered.",
     noFarm: "Connect a farm to see its crop position.",
 
+    // Gagan's production worksheet: the module's front door. The grower's own master sheet recreated
+    // on top of the scraped data, grouped Entity -> Block -> Variety for one crop year. Every pound
+    // here is computed by the tested engine; the AI never emits one. Plain operator English, no em
+    // dashes, no exclamation marks.
+    worksheet: {
+      eyebrow: "Production worksheet",
+      title: "Crop position",
+      // Header sub-line: which season, and where the structure came from.
+      subtitle: "Your blocks and varieties, with field weight, turnout, good meats, and loss for the season. Field and huller weights come from Almond Logic; good meats come from your statements.",
+      yearLabel: (cropYear: number): string => `${cropYear} season`,
+      // The season switcher label.
+      seasonPicker: "Season",
+      empty: "No blocks to show for this season yet. Once deliveries, huller runs, or good meats are loaded they group here by block and variety.",
+      noFarm: "Connect a farm to see its production worksheet.",
+      // The reconciled vs pending badge on a row.
+      reconciled: "Settled",
+      pending: "Almond Logic only",
+      reconciledAria: "Good meats settled against a statement",
+      pendingAria: "Almond Logic estimate, no statement yet",
+      // The flag when the two Almond Logic weight sources (delivery net vs run load weight) disagree.
+      sourceMismatch: "Check weights",
+      sourceMismatchAria: "Delivery weight and huller load weight disagree for this row",
+      table: {
+        caption: "Blocks by entity",
+        // Column headers. Plain operator words, not jargon.
+        columns: {
+          block: "Block",
+          variety: "Variety",
+          acres: "Acres",
+          fieldWeight: "Field lb",
+          turnout: "Turnout",
+          hullerWeight: "Huller lb",
+          yoy: "vs last year",
+          tgm: "Good meats",
+          loss: "Loss lb",
+          sellable: "Sellable",
+        },
+        // A cell with no honest number yet reads this instead of a fabricated zero.
+        insufficient: "Insufficient data",
+        // The subtotal row label for an entity group and the farm total.
+        entityTotal: (entity: string): string => `${entity} total`,
+        farmTotal: "Farm total",
+        // The year-over-year cell, signed percent, e.g. "+28%".
+        yoyValue: (ratio: number): string => `${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)}%`,
+      },
+      // The residual line: delivery pounds whose field is not mapped to a block, surfaced honestly.
+      residual: (pounds: string): string => `${pounds} delivered from fields not mapped to a block`,
+      residualHint: "Map those fields on the Cost per pound tab to attribute their pounds.",
+      // The link down to the underlying Almond Logic portal screens.
+      sourceData: "Source data",
+      sourceDataHint: "The raw Almond Logic screens this worksheet is built from.",
+    },
+
     // The four KPI tiles. Each figure is a single position field, labeled with its crop year.
     kpi: {
       producedLabel: "Produced",

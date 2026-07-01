@@ -1,64 +1,114 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { prisma } from "@/lib/db";
-import { en, usdPerLb } from "@/copy/en";
+import { cn } from "@/lib/cn";
+import { en, num } from "@/copy/en";
+import { DotPattern } from "@/components/ui/dot-pattern";
 import { Card } from "@/components/ui/card";
-import { loadRecentActivity } from "@/lib/almond-portal/data";
+import { prisma } from "@/lib/db";
+import { groupByEntity, subtotal } from "@/lib/crops/worksheet";
+import { loadWorksheet, worksheetSeasons } from "@/lib/crops/worksheet-load";
 import { Reveal } from "../../_components/shell/reveal";
-import { resolveCostPerPound } from "../_data";
-import { resolveAlmondFarm, resolveDefaultContext } from "./_data";
-import { PortalNews } from "./_components/home/portal-news";
-import { RecentActivity } from "./_components/home/recent-activity";
+import { resolveAlmondFarm } from "./_data";
+import { WorksheetTable } from "./_components/worksheet-table";
+import { WorksheetSeason } from "./_components/worksheet-season";
 
-// The Almond Logic portal HOME, rebuilt 1:1 inside Terra. The portal shell (layout.tsx) renders the
-// grower header, the screen sub-nav, and the hullers/handlers sidebar; this page renders the main
-// content: the farm cost-per-pound headline (the differentiator number, links to the full Cost view),
-// then the two-column "Grower Portal News" + "Recent Activity" home. Server Component, farmId-scoped;
-// every figure comes from the pure cost engine via resolveCostPerPound and is only formatted here.
-export default async function AlmondHomePage() {
+// Gagan's production worksheet — the module's FRONT DOOR (/almondlogic). The grower's own master sheet
+// recreated on top of the scraped Almond Logic data, grouped Entity -> Block -> Variety for one crop
+// year. Server Component: resolves the operator's OWN farm, picks the season (?cropYear, else the
+// latest with data), loads the worksheet through the pure engine (loadWorksheet -> worksheetRows), and
+// formats it. Every pound and percent here is computed by the tested engine; nothing is computed in
+// the UI. The portal-mirror screens (Home / Grower / Runs / Reports / Deliveries) are demoted to a
+// "Source data" drill-down linked at the foot of this page.
+const t = en.crops.worksheet;
+
+export default async function WorksheetLandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cropYear?: string }>;
+}) {
   const resolved = await resolveAlmondFarm();
 
   if (!resolved) {
     return (
       <div className="mx-auto max-w-md py-24 text-center">
         <h1 className="type-headline text-on-surface">{en.shell.noFarmTitle}</h1>
-        <p className="type-body-md mt-3 text-on-surface-variant">{en.crops.noFarm}</p>
+        <p className="type-body-md mt-3 text-on-surface-variant">{t.noFarm}</p>
       </div>
     );
   }
 
   const { farm } = resolved;
-  const def = await resolveDefaultContext(farm.id);
-  const costYear = def.cropYear ?? new Date().getFullYear();
-  const [activity, cost] = await Promise.all([
-    loadRecentActivity(prisma, farm.id),
-    resolveCostPerPound(farm.id, costYear),
-  ]);
+  const sp = await searchParams;
+  const seasons = await worksheetSeasons(prisma, farm.id);
+
+  // Active season: the URL wins when it names a season we have data for; else the latest with data,
+  // else the current calendar year (a brand-new farm still renders an honest empty state).
+  const fromUrl = sp.cropYear ? Number(sp.cropYear) : null;
+  const cropYear =
+    fromUrl != null && seasons.includes(fromUrl) ? fromUrl : seasons[0] ?? new Date().getFullYear();
+
+  const { rows, unmappedFieldWeightLb } = await loadWorksheet(prisma, farm.id, cropYear);
+  const groups = groupByEntity(rows);
+  const farmTotal = subtotal(rows);
 
   return (
-    <Reveal>
-      {/* The farm-wide cost-per-pound headline: the number only Terra can produce (PG&E energy /
-          delivered pounds), with its caveat so it is never overread. Links to the per-block breakdown. */}
-      <Link href="/almondlogic/cost" className="mb-6 block">
-        <Card className="min-h-[6rem] justify-start gap-0 rounded-[var(--radius-control)] p-5 transition-colors hover:bg-surface-container-low">
-          <span className="type-label-caps inline-flex items-center gap-1.5 text-on-surface-variant">
-            {en.crops.cost.farmLabel} <ArrowRight size={14} aria-hidden />
-          </span>
-          {cost.farm.energyCents === 0 || cost.farm.centsPerLb === null ? (
-            <p className="mt-2 type-body-md text-on-surface-variant">{en.crops.cost.noFarmRatio}</p>
-          ) : (
-            <>
-              <span className="type-headline mt-1 tnum text-on-surface">{usdPerLb(cost.farm.centsPerLb)}</span>
-              <span className="mt-2 type-caption text-on-surface-variant">{en.crops.cost.farmCaveat}</span>
-            </>
-          )}
-        </Card>
-      </Link>
+    <div className="relative min-w-0 flex-1">
+      <DotPattern
+        width={22}
+        height={22}
+        cr={1}
+        className={cn(
+          "pointer-events-none absolute inset-0 -z-10 h-[320px] text-primary/15",
+          "[mask-image:radial-gradient(360px_circle_at_top,white,transparent)]",
+        )}
+      />
+      <Reveal>
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="type-label-caps text-primary">{t.eyebrow}</p>
+            <h1 className="type-display-lg mt-1 text-on-surface">{t.title}</h1>
+            <p className="mt-2 max-w-2xl type-body-md text-on-surface-variant">{t.subtitle}</p>
+          </div>
+          {seasons.length > 0 ? <WorksheetSeason seasons={seasons} active={cropYear} /> : null}
+        </header>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <PortalNews />
-        <RecentActivity activity={activity} />
-      </div>
-    </Reveal>
+        {rows.length === 0 ? (
+          <Card className="rounded-[var(--radius-control)] p-8 text-center">
+            <p className="type-body-md text-on-surface-variant">{t.empty}</p>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <section aria-label={t.table.caption}>
+              <WorksheetTable groups={groups} farmTotal={farmTotal} />
+            </section>
+
+            {unmappedFieldWeightLb > 0 ? (
+              <Card className="gap-1 rounded-[var(--radius-control)] p-4">
+                <p className="type-body-md text-on-surface">{t.residual(num(unmappedFieldWeightLb))}</p>
+                <p className="type-caption text-on-surface-variant">{t.residualHint}</p>
+              </Card>
+            ) : null}
+          </div>
+        )}
+
+        {/* Source data: the raw Almond Logic screens this worksheet is built from, demoted to a
+            drill-down now that the worksheet is the front door. */}
+        <section aria-label={t.sourceData} className="mt-10 border-t border-outline-variant pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="type-label-caps text-on-surface-variant">{t.sourceData}</h2>
+              <p className="mt-1 type-caption text-on-surface-variant">{t.sourceDataHint}</p>
+            </div>
+            <Link
+              href="/almondlogic/home"
+              className="type-label-caps inline-flex items-center gap-1 text-primary transition-colors hover:text-primary/80"
+            >
+              {t.sourceData}
+              <ArrowRight size={14} aria-hidden />
+            </Link>
+          </div>
+        </section>
+      </Reveal>
+    </div>
   );
 }
