@@ -3652,6 +3652,64 @@ export const en = {
         blockPlaceholder: "Choose a block",
         varietyPlaceholder: "e.g. Nonpareil",
       },
+
+      // Good-meats inventory: on-hand pounds by stage (raw -> stockpile -> meats), with an append-only
+      // add/remove ledger. Plain operator English, no em dashes, no exclamation marks.
+      inventory: {
+        eyebrow: "Inventory",
+        title: "Good meats on hand",
+        subtitle: "What is on hand by stage, packer, block, and variety. Each change is a dated entry with a reason; nothing is overwritten.",
+        link: "Inventory",
+        empty: "No inventory recorded yet. Add what is on hand to start the ledger.",
+        noFarm: "Connect a farm to see its inventory.",
+        // Stage names + their tile labels.
+        stageRaw: "Raw",
+        stageStockpile: "Stockpile",
+        stageMeats: "Meats",
+        stageTotalLabel: (stage: string): string => `${stage} on hand`,
+        // The positions table.
+        table: {
+          caption: "On hand by packer and block",
+          columns: {
+            packer: "Packer",
+            block: "Block",
+            variety: "Variety",
+            stage: "Stage",
+            onHand: "On hand lb",
+          },
+          empty: "Nothing on hand for this filter.",
+          unassigned: "Unassigned",
+          noPacker: "No packer",
+        },
+        // Filters.
+        filterPacker: "Packer",
+        filterVariety: "Variety",
+        filterStage: "Stage",
+        filterAll: "All",
+        // The add/remove entry form.
+        addTitle: "Record inventory",
+        addSubtitle: "Add or remove on-hand good meats. A reason is required so the ledger stays auditable.",
+        season: "Season",
+        block: "Block",
+        variety: "Variety",
+        packer: "Packer",
+        stage: "Stage",
+        amount: "Good meats lb",
+        direction: "Change",
+        directionAdd: "Add",
+        directionRemove: "Remove",
+        reason: "Reason",
+        reasonPlaceholder: "e.g. hulled and moved to meats",
+        save: "Save entry",
+        saving: "Saving",
+        saved: "Inventory entry saved.",
+        blockPlaceholder: "Choose a block",
+        packerPlaceholder: "e.g. Blue Diamond",
+        varietyPlaceholder: "e.g. Nonpareil",
+        error: "Could not save that. Refresh and try again.",
+        invalid: "Check the season, variety, stage, amount, and reason, then try again.",
+        readOnly: "Only a manager or owner can record inventory.",
+      },
     },
 
     // The four KPI tiles. Each figure is a single position field, labeled with its crop year.

@@ -83,6 +83,7 @@ model Farm {
   blockPlantings      BlockPlanting[]
   cropRuns            CropRun[]
   tgmRecords          TgmRecord[]
+  inventoryItems      InventoryItem[]
 
   @@index([userId])
 }
@@ -274,6 +275,7 @@ model Block {
   cropFieldBlocks   CropFieldBlock[]
   blockPlantings    BlockPlanting[]
   tgmRecords        TgmRecord[]
+  inventoryItems    InventoryItem[]
 
   @@index([farmId])
   @@index([entityId])
@@ -1301,4 +1303,31 @@ model TgmRecord {
   @@index([farmId, cropYear, variety])
   @@index([blockId])
   @@index([supersedesId])
+}
+
+// Good-meats inventory: append-only signed adjustments to on-hand pounds, bucketed by processing
+// stage (RAW in-hull/shell, STOCKPILE hulled awaiting, MEATS final good meats). One row is one
+// adjustment with a REQUIRED reason (audit trail); the position for a (packer, block, variety, stage)
+// is the SUM of its adjustments. Never mutated — a correction is a new offsetting row. Source is
+// customer-sourced (MANUAL_ENTRY today; TGM_DERIVED reserved for a future auto-seed from TgmRecord); a
+// DB check constraint forbids anything else, mirroring the TGM discipline.
+model InventoryItem {
+  id              String   @id @default(cuid())
+  farmId          String
+  cropYear        Int
+  blockId         String?
+  variety         String // canonical (normalizeVariety)
+  packer          String? // buyer/handler holding it, when known
+  stage           String // RAW | STOCKPILE | MEATS
+  netGoodMeatsLbs Int // SIGNED: positive adds, negative removes
+  source          String // MANUAL_ENTRY | TGM_DERIVED
+  reason          String // required audit reason for this adjustment
+  createdAt       DateTime @default(now())
+
+  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  block Block? @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@index([farmId, cropYear])
+  @@index([farmId, stage])
+  @@index([blockId])
 }
