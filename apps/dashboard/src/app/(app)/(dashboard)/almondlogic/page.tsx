@@ -69,7 +69,15 @@ export default async function WorksheetLandingPage({
             <h1 className="type-display-lg mt-1 text-on-surface">{t.title}</h1>
             <p className="mt-2 max-w-2xl type-body-md text-on-surface-variant">{t.subtitle}</p>
           </div>
-          {seasons.length > 0 ? <WorksheetSeason seasons={seasons} active={cropYear} /> : null}
+          <div className="flex items-center gap-4">
+            <Link
+              href="/almondlogic/tgm"
+              className="type-label-caps whitespace-nowrap text-primary transition-colors hover:text-primary/80"
+            >
+              {t.tgmForm.addLink}
+            </Link>
+            {seasons.length > 0 ? <WorksheetSeason seasons={seasons} active={cropYear} /> : null}
+          </div>
         </header>
 
         {rows.length === 0 ? (

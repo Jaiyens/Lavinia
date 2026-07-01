@@ -3594,6 +3594,45 @@ export const en = {
       // The link down to the underlying Almond Logic portal screens.
       sourceData: "Source data",
       sourceDataHint: "The raw Almond Logic screens this worksheet is built from.",
+
+      // Good-meats (TGM) ingestion: the two customer-sourced entry paths. Plain operator English, no
+      // em dashes, no exclamation marks. TGM is the payable good-meats figure; it comes from a Blue
+      // Diamond statement or a manual entry, never from Almond Logic.
+      tgmForm: {
+        title: "Good meats",
+        subtitle: "The payable good meats for a block and variety, from your Blue Diamond statement or entered by hand. Field and huller weights stay from Almond Logic; good meats come from you.",
+        addLink: "Add good meats",
+        // The manual entry card.
+        manualTitle: "Enter by hand",
+        manualSubtitle: "A settled good-meats figure you stand behind for one block and variety.",
+        season: "Season",
+        block: "Block",
+        variety: "Variety",
+        pounds: "Good meats lb",
+        gradeRate: "Grade deduction",
+        save: "Save good meats",
+        saving: "Saving",
+        saved: "Good meats saved.",
+        // The statement paste card.
+        statementTitle: "From a Blue Diamond statement",
+        statementSubtitle: "Paste the statement text. Terra reads the variety weights and checks them against the statement's own printed total before saving anything.",
+        statementPlaceholder: "Paste the settlement statement text here",
+        statementBlockHint: "Which block this statement is for.",
+        extract: "Read and check",
+        extracting: "Reading",
+        // Outcome messages after a statement run.
+        reconciled: (n: number): string =>
+          n === 1 ? "Saved 1 settled good-meats row." : `Saved ${n} settled good-meats rows.`,
+        needsReview: (n: number): string =>
+          `Saved ${n}, flagged for review. The variety weights did not match the statement's printed total, so they are not settled.`,
+        noRows: "No variety weights were found in that text.",
+        zdrUnavailable: "Statement reading is not available right now. Enter the good meats by hand instead.",
+        // Generic + validation errors.
+        error: "Could not save that. Refresh and try again.",
+        invalid: "Check the season, block, variety, and pounds, then try again.",
+        blockPlaceholder: "Choose a block",
+        varietyPlaceholder: "e.g. Nonpareil",
+      },
     },
 
     // The four KPI tiles. Each figure is a single position field, labeled with its crop year.
