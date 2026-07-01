@@ -3613,6 +3613,22 @@ export const en = {
       resolveError: "Could not resolve that record. Refresh and try again.",
     },
 
+    // Grower portal credential capture (Phase 2 live scrape): a one-time form for the grower to store
+    // their Almond Logic login so Terra can sync yield data on its own. Plain operator English, no em
+    // dashes, no exclamation marks. The copy never implies the login is visible to anyone.
+    credential: {
+      eyebrow: "Almond Logic sync",
+      title: "Connect your Almond Logic login",
+      subtitle:
+        "Enter your Almond Logic username and password once. Terra encrypts them and uses them only to read your yield data. We never show or share them.",
+      username: "Almond Logic username",
+      password: "Almond Logic password",
+      save: "Save login",
+      saving: "Saving",
+      saved: "Login saved. Terra can now sync your Almond Logic data.",
+      saveError: "Could not save that login. Refresh and try again.",
+    },
+
     // Cost per pound by block (WS1): the number only Terra can produce, reconciled PG&E energy cost
     // divided by mapped almond yield. Plain operator English, no em dashes, no exclamation marks.
     // Money and pounds are integers computed in the engine; the UI only formats them.

@@ -79,6 +79,7 @@ model Farm {
   cropDeliveries      CropDelivery[]
   almondSnapshots     AlmondSnapshot[]
   cropFieldBlocks     CropFieldBlock[]
+  portalCredentials   GrowerPortalCredential[]
 
   @@index([userId])
 }
@@ -1161,4 +1162,42 @@ model CropFieldBlock {
   @@unique([farmId, field])
   @@index([farmId])
   @@index([blockId])
+}
+
+// A grower's login-gated portal credential (Phase 2 live-scrape store). ONE row per (farm, portal):
+// Batth's single Almond Logic login enumerates all their hullers/handlers, so the credential is
+// farm-level, not per-entity. NEVER holds a plaintext secret:
+//   - encryptedCredential: the AES-256-GCM blob { ciphertext, iv, authTag } of { username, password }
+//     encrypted with CROP_CRED_ENC_KEY. Decrypted ONLY inside the Vercel Sandbox at the moment of a
+//     headless login (decryptCredential), never in a normal function, never logged.
+//   - sessionCookie / sessionCookieExpiresAt: a reusable portal session cookie captured after a prior
+//     login, preferred over a fresh login while still valid (the cookie_forward branch). Also secret
+//     in the sense that it authenticates the session, so it is never logged either.
+// At least one of the two is present for the row to be usable; the branch selector decides which is
+// reachable at run time. farmId-scoped + RLS (db push does NOT emit the RLS block — see the migration).
+model GrowerPortalCredential {
+  id     String @id @default(cuid())
+  farmId String
+
+  // The portal this credential is for. A literal today ("ALMOND_LOGIC"); String (repo union
+  // convention) so a second portal (a packer's grower site) slots in without a schema change.
+  portal String @default("ALMOND_LOGIC")
+
+  // The encrypted { username, password } blob (ciphertext/iv/authTag base64). Json, not separate
+  // columns, so the EncryptedCredential shape is stored/loaded as one unit. Null when the row holds
+  // only a forwarded session cookie (no stored password).
+  encryptedCredential Json?
+
+  // A reusable portal session cookie captured on a prior successful login, and its expiry. Null
+  // until a login lands / after it is cleared. Preferred over a fresh login while unexpired.
+  sessionCookie          String?
+  sessionCookieExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, portal])
+  @@index([farmId])
 }

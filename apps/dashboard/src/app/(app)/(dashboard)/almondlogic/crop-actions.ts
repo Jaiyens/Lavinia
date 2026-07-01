@@ -18,6 +18,7 @@ import { activeFarmId } from "@/lib/auth/active-farm";
 import { dashboardFarm } from "@/lib/onboarding/farm";
 import { isCropReviewKind, resolveCropReviewRow, type CropReviewKind } from "@/lib/crops/review";
 import { withFarmTenant } from "@/lib/crops/tenant-db";
+import { saveGrowerPortalCredential } from "@/lib/crops/scrape/credential-store";
 import { en } from "@/copy/en";
 import type { ActionResult } from "../../actions";
 
@@ -112,5 +113,40 @@ export async function mapFieldToBlockAction(
   });
   // Revalidate the layout so the cost page + the Crops headline re-render with the new attribution.
   revalidatePath("/", "layout");
+  return { ok: true, data: null };
+}
+
+/**
+ * Capture a grower's Almond Logic login for backend sync (Phase 2 live scrape). `username` and
+ * `password` arrive from the client, so both are validated (non-empty strings) before use. The
+ * plaintext is encrypted (AES-256-GCM, CROP_CRED_ENC_KEY) inside saveGrowerPortalCredential and is
+ * NEVER logged, returned, or persisted in the clear. Membership-scoped on the signed-in operator's
+ * own farm (a login can never be stored on another grower's farm); writer-gated (manager or owner)
+ * because storing a credential is a privileged write. The store runs inside withFarmTenant so RLS is
+ * in force on GrowerPortalCredential. Storing a NEW credential clears any stale session cookie.
+ */
+export async function saveAlmondLogicCredentialAction(
+  username: string,
+  password: string,
+): Promise<ActionResult<null>> {
+  const session = await auth();
+  if (!session?.user) {
+    return { ok: false, error: en.crops.credential.saveError };
+  }
+  if (typeof username !== "string" || username === "" || typeof password !== "string" || password === "") {
+    return { ok: false, error: en.crops.credential.saveError };
+  }
+  const userId = session.user.id;
+  const activeId = await activeFarmId(userId);
+  const resolved = await dashboardFarm(prisma, userId, activeId);
+  if (resolved === null) {
+    return { ok: false, error: en.crops.credential.saveError };
+  }
+  // Storing a credential is a privileged WRITE: viewers are read-only, so require manager or owner.
+  if (!(await requireRole(prisma, resolved.farm.id, userId, "manager"))) {
+    return { ok: false, error: en.crops.credential.saveError };
+  }
+
+  await saveGrowerPortalCredential(prisma, resolved.farm.id, { username, password });
   return { ok: true, data: null };
 }

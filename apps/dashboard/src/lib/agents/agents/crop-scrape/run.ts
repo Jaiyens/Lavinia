@@ -16,10 +16,8 @@
 // dispatcher's sweep over the other farms continues.
 
 import type { PrismaClient } from "@prisma/client";
-import {
-  canRunLiveScrape,
-  type ScrapeAuth,
-} from "@/lib/crops/scrape/sandbox-scrape";
+import { canRunLiveScrape } from "@/lib/crops/scrape/sandbox-scrape";
+import { resolveScrapeAuth } from "@/lib/crops/scrape/credential-store";
 import { R2ObjectStore, r2Configured } from "@/lib/storage/r2";
 import { ingestCropYear } from "@/workflows/ingest-crop-year";
 import { prismaLoadLedger } from "@/workflows/steps/recompute-positions";
@@ -32,19 +30,6 @@ import { completeAgentRun, startAgentRun } from "../../run";
  *  pure deterministic core, which never reads the clock). */
 function currentCropYear(): number {
   return new Date().getFullYear();
-}
-
-/**
- * Resolve the grower auth for one entity's scrape. SEAM: the encrypted-credential store is part of
- * the live-scrape work (Phase 4 wiring) and does not exist yet, so this returns null today and the
- * entity is skipped. When the store lands, load the EncryptedCredential / forwarded session cookie
- * here (decryption happens later, inside the Sandbox, at the moment of use — never here, never logged).
- */
-async function resolveScrapeAuth(
-  _prisma: PrismaClient,
-  _entityId: string,
-): Promise<ScrapeAuth | null> {
-  return null; // TODO(live): load the grower's encrypted credential / session cookie for this entity
 }
 
 /** A redacted, secret-free note for the run ledger. */
@@ -72,6 +57,18 @@ async function runCropScrape(prisma: PrismaClient, farmId: string): Promise<void
       return;
     }
 
+    // ONE grower login covers the whole account (it enumerates all the farm's hullers/handlers), so
+    // resolve the farm's credential ONCE. No credential captured yet -> a clean no-op run; never stub
+    // the committed fixtures onto a real farm.
+    const auth = await resolveScrapeAuth(prisma, farmId);
+    if (!auth) {
+      await completeAgentRun(prisma, runId, {
+        status: "succeeded",
+        note: "crop scrape: no grower credential captured for this farm; skipped",
+      });
+      return;
+    }
+
     const entities = await prisma.entity.findMany({ where: { farmId }, select: { id: true } });
     const cropYear = currentCropYear();
     const objectStore = new R2ObjectStore();
@@ -80,8 +77,6 @@ async function runCropScrape(prisma: PrismaClient, farmId: string): Promise<void
 
     let ingested = 0;
     for (const entity of entities) {
-      const auth = await resolveScrapeAuth(prisma, entity.id);
-      if (!auth) continue; // no credential for this entity yet -> skip, never stub onto a real farm
       await ingestCropYear(entity.id, cropYear, {
         farmId,
         runInTenant,

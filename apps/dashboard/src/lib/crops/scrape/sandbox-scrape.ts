@@ -12,7 +12,7 @@
 // importable and runnable everywhere; everything around it (gating, branch selection, decrypt
 // shape, R2 write) is real.
 
-import { createHash, createDecipheriv } from "node:crypto";
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import type { Sandbox } from "@vercel/sandbox";
 import { createSandbox, hasSandboxCredentials, withSandboxCleanupAsync } from "@/lib/sandbox/client";
 import type { ObjectStore } from "@/lib/storage/object-store";
@@ -60,20 +60,52 @@ export function sha256Hex(bytes: Uint8Array): string {
 }
 
 /**
+ * Read + validate the 32-byte AES key from env CROP_CRED_ENC_KEY (base64). Shared by encrypt and
+ * decrypt so they can never disagree on key handling. Throws (never returns a partial key) if the
+ * env var is absent or the wrong length. The key value itself is never logged or returned to a log.
+ */
+function credentialKey(): Buffer {
+  const keyB64 = process.env.CROP_CRED_ENC_KEY;
+  if (!keyB64) {
+    throw new Error("CROP_CRED_ENC_KEY not set: cannot use a grower credential");
+  }
+  const key = Buffer.from(keyB64, "base64");
+  if (key.byteLength !== 32) {
+    throw new Error("CROP_CRED_ENC_KEY must be 32 bytes (base64)");
+  }
+  return key;
+}
+
+/**
+ * Encrypt a grower credential for at-rest storage. AES-256-GCM with the key from CROP_CRED_ENC_KEY
+ * and a fresh random 12-byte IV per call (so the same login encrypts to a different blob each time).
+ * Returns the { ciphertext, iv, authTag } blob to persist in GrowerPortalCredential. The PLAINTEXT
+ * credential passed in is never logged; it exists only long enough to encrypt. Inverse of
+ * decryptCredential — a round-trip returns the original { username, password }.
+ */
+export function encryptCredential(credential: GrowerCredential): EncryptedCredential {
+  const key = credentialKey();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(Buffer.from(JSON.stringify(credential), "utf8")),
+    cipher.final(),
+  ]);
+  return {
+    ciphertext: ciphertext.toString("base64"),
+    iv: iv.toString("base64"),
+    authTag: cipher.getAuthTag().toString("base64"),
+  };
+}
+
+/**
  * Decrypt a grower credential at the MOMENT OF USE. AES-256-GCM with the key from env
  * CROP_CRED_ENC_KEY (32 bytes, base64). Throws if the key is absent or the blob is tampered (GCM
  * auth fails). The plaintext is returned to the immediate caller and must never be logged or stored;
  * callers use it for one login then let it go out of scope. The key value is never logged.
  */
 export function decryptCredential(blob: EncryptedCredential): GrowerCredential {
-  const keyB64 = process.env.CROP_CRED_ENC_KEY;
-  if (!keyB64) {
-    throw new Error("CROP_CRED_ENC_KEY not set: cannot decrypt grower credential");
-  }
-  const key = Buffer.from(keyB64, "base64");
-  if (key.byteLength !== 32) {
-    throw new Error("CROP_CRED_ENC_KEY must be 32 bytes (base64)");
-  }
+  const key = credentialKey();
   const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(blob.iv, "base64"));
   decipher.setAuthTag(Buffer.from(blob.authTag, "base64"));
   const plaintext = Buffer.concat([
