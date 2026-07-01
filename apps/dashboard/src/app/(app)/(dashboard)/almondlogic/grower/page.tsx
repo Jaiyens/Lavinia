@@ -6,6 +6,7 @@ import { loadHullers } from "@/lib/almond-portal/data";
 import { loadCropDeliveries, totalNet } from "@/lib/crops/deliveries";
 import { Reveal } from "../../../_components/shell/reveal";
 import { CropDeliveriesTable } from "../../../_components/crop-deliveries-table";
+import { AlmondCredentialForm } from "../_components/almond-credential-form";
 import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
 
 // The Almond Logic GROWER DETAILS screen, rebuilt 1:1 inside Terra (re-skinned in our palette/fonts).
@@ -73,6 +74,10 @@ export default async function AlmondGrowerPage({
           ) : (
             <CropDeliveriesTable rows={rows} />
           )}
+        </section>
+
+        <section aria-label={en.crops.credential.title} className="mt-8 min-w-0">
+          <AlmondCredentialForm />
         </section>
       </Reveal>
     </div>
