@@ -1,12 +1,13 @@
+import Link from "next/link";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui";
 
 // The Almond Logic Reports index, re-skinned: every grower report the portal exposes, as a grid of
-// cards. The data-driven ones we render on this screen are real anchor links that scroll to their
-// table; the rest are the portal's printable PDFs that need the report-PDF sync to be enabled, so
-// they are shown as honest "not synced yet" cards (deliberately NOT clickable) rather than dead
-// buttons that look clickable but do nothing.
+// cards. The status of each card is DATA-DRIVEN (passed in `views`), not hardcoded: a report is either
+// rendered on this screen (an anchor to its table), viewable on another synced tab (a link, e.g.
+// "Field Ticket Deliveries" -> the Deliveries tab), or genuinely not synced yet. This fixes the old
+// bug where a synced report (backed by real data on another tab) was mislabeled "Not synced yet".
 
 const DESCRIPTIONS: Record<string, string> = {
   "Turnout by Grower/Field/Variety": "Average turnout by field and variety",
@@ -21,17 +22,30 @@ const DESCRIPTIONS: Record<string, string> = {
   "UnCommitted Product": "Product not yet committed",
 };
 
-// Reports we actually render on this screen -> the anchor id of their section. Clicking scrolls there.
-const ON_SCREEN: Record<string, string> = {
-  "Turnout by Grower/Field/Variety": "report-turnout",
-};
+/** How a report can be viewed: rendered on this screen (anchor), or on another synced tab (link). */
+export type ReportView =
+  | { kind: "anchor"; anchor: string }
+  | { kind: "link"; href: string; label: string };
 
-export function ReportList({ reports }: { reports: readonly string[] }) {
+export function ReportList({
+  reports,
+  views,
+}: {
+  reports: readonly string[];
+  views: Record<string, ReportView | undefined>;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {reports.map((name) => {
-        const anchor = ON_SCREEN[name];
+        const view = views[name];
         const description = DESCRIPTIONS[name] ?? "Grower report";
+        const active = view != null;
+        const status =
+          view == null
+            ? "Not synced yet"
+            : view.kind === "anchor"
+              ? "View on this screen"
+              : view.label;
 
         const inner = (
           <CardHeader>
@@ -39,7 +53,7 @@ export function ReportList({ reports }: { reports: readonly string[] }) {
               <span
                 className={cn(
                   "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-md)]",
-                  anchor ? "bg-primary/10 text-primary" : "bg-surface-container-high text-on-surface-variant",
+                  active ? "bg-primary/10 text-primary" : "bg-surface-container-high text-on-surface-variant",
                 )}
               >
                 <FileText size={16} aria-hidden />
@@ -50,28 +64,43 @@ export function ReportList({ reports }: { reports: readonly string[] }) {
                 <p
                   className={cn(
                     "type-label-caps mt-2",
-                    anchor ? "text-primary" : "text-on-surface-variant/70",
+                    active ? "text-primary" : "text-on-surface-variant/70",
                   )}
                 >
-                  {anchor ? "View on this screen" : "Not synced yet"}
+                  {status}
                 </p>
               </div>
             </div>
           </CardHeader>
         );
 
-        // Rendered reports are real anchor links (native scroll to the table). The rest are inert
-        // cards (no role=button, no pointer) so they never read as a dead click.
-        return anchor ? (
-          <a
-            key={name}
-            href={`#${anchor}`}
-            aria-label={`View ${name} on this screen`}
-            className="rounded-[var(--radius-lg)] outline-none transition-shadow hover:shadow-e1 focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Card className="cursor-pointer hover:ring-primary/30">{inner}</Card>
-          </a>
-        ) : (
+        // Rendered report -> anchor (native scroll). Synced-elsewhere -> Link to that tab. Neither ->
+        // inert card (no role=button, no pointer) so it never reads as a dead click.
+        if (view?.kind === "anchor") {
+          return (
+            <a
+              key={name}
+              href={`#${view.anchor}`}
+              aria-label={`View ${name} on this screen`}
+              className="rounded-[var(--radius-lg)] outline-none transition-shadow hover:shadow-e1 focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Card className="cursor-pointer hover:ring-primary/30">{inner}</Card>
+            </a>
+          );
+        }
+        if (view?.kind === "link") {
+          return (
+            <Link
+              key={name}
+              href={view.href}
+              aria-label={`${name}: ${view.label}`}
+              className="rounded-[var(--radius-lg)] outline-none transition-shadow hover:shadow-e1 focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Card className="cursor-pointer hover:ring-primary/30">{inner}</Card>
+            </Link>
+          );
+        }
+        return (
           <Card key={name} aria-label={`${name} (not synced yet)`} className="opacity-70">
             {inner}
           </Card>

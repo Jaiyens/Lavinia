@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/cn";
 import { en, lbs } from "@/copy/en";
@@ -5,8 +6,9 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { loadHullers } from "@/lib/almond-portal/data";
 import { loadCropDeliveries, totalNet } from "@/lib/crops/deliveries";
 import { Reveal } from "../../../_components/shell/reveal";
-import { CropDeliveriesTable } from "../../../_components/crop-deliveries-table";
 import { AlmondCredentialForm } from "../_components/almond-credential-form";
+import { DeliverySummaryTable } from "../_components/reports/report-tables";
+import { deliverySummaryByVariety, deliverySummaryTotal } from "../_components/reports/aggregate";
 import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
 
 // The Almond Logic GROWER DETAILS screen, rebuilt 1:1 inside Terra (re-skinned in our palette/fonts).
@@ -42,6 +44,10 @@ export default async function AlmondGrowerPage({
 
   const hullerName = hullers.find((h) => h.id === ctx.hullerId)?.name ?? "Huller";
   const net = totalNet(rows);
+  // Grower Details is a scoped SUMMARY (by variety) for the active huller + year; the full per-load
+  // table lives once on the Deliveries tab (no duplicate raw table across two screens).
+  const summary = deliverySummaryByVariety(rows);
+  const summaryTotal = deliverySummaryTotal(summary);
 
   return (
     <div className="relative min-w-0">
@@ -64,7 +70,7 @@ export default async function AlmondGrowerPage({
           </p>
         </header>
 
-        <section aria-label="Deliveries" className="min-w-0">
+        <section aria-label="Deliveries by variety" className="min-w-0">
           {rows.length === 0 ? (
             <div className="flex min-h-[14rem] flex-col items-center justify-center rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-8 shadow-e1">
               <p className="type-body-md text-on-surface-variant">
@@ -72,7 +78,15 @@ export default async function AlmondGrowerPage({
               </p>
             </div>
           ) : (
-            <CropDeliveriesTable rows={rows} />
+            <div className="space-y-3">
+              <DeliverySummaryTable rows={summary} total={summaryTotal} />
+              <Link
+                href="/almondlogic/deliveries"
+                className="type-label-caps inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                View all loads in Deliveries
+              </Link>
+            </div>
           )}
         </section>
 

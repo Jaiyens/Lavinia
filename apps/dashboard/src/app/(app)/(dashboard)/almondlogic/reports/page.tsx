@@ -6,7 +6,7 @@ import { loadHullers, loadRuns, REPORT_LIST, type RunInfo } from "@/lib/almond-p
 import { loadCropDeliveries } from "@/lib/crops/deliveries";
 import { Reveal } from "@/app/(app)/_components/shell/reveal";
 import { resolveAlmondFarm, resolveContext, resolveDefaultContext } from "../_data";
-import { ReportList } from "../_components/reports/report-list";
+import { ReportList, type ReportView } from "../_components/reports/report-list";
 import {
   TurnoutReportTable,
   DeliverySummaryTable,
@@ -60,6 +60,26 @@ export default async function AlmondReportsPage({
   const deliverySummary = deliverySummaryByVariety(scopedDeliveries);
   const deliveryTotal = deliverySummaryTotal(deliverySummary);
 
+  // Report card status is data-driven: the turnout report renders here (anchor); run + delivery
+  // reports are backed by synced data and link to their tab; the rest are genuinely not synced yet.
+  const runsSynced = runs.length > 0;
+  const deliveriesSynced = deliveries.length > 0;
+  const reportViews: Record<string, ReportView | undefined> = {
+    "Turnout by Grower/Field/Variety": { kind: "anchor", anchor: "report-turnout" },
+    ...(runsSynced
+      ? {
+          "Turnout by Run": { kind: "link" as const, href: "/almondlogic/runs", label: "View in Runs" },
+          "Run Summary Report": { kind: "link" as const, href: "/almondlogic/runs", label: "View in Runs" },
+        }
+      : {}),
+    ...(deliveriesSynced
+      ? {
+          "Field Ticket Deliveries": { kind: "link" as const, href: "/almondlogic/deliveries", label: "View in Deliveries" },
+          "Grower Manifest Summary": { kind: "link" as const, href: "/almondlogic/deliveries", label: "View in Deliveries" },
+        }
+      : {}),
+  };
+
   const activeHuller = hullers.find((h) => h.id === ctx.hullerId) ?? null;
   const scopeLabel =
     activeHuller && ctx.cropYear != null
@@ -85,7 +105,7 @@ export default async function AlmondReportsPage({
         </header>
 
         <section className="mb-10">
-          <ReportList reports={REPORT_LIST} />
+          <ReportList reports={REPORT_LIST} views={reportViews} />
         </section>
 
         <section id="report-turnout" className="mb-10 scroll-mt-24">

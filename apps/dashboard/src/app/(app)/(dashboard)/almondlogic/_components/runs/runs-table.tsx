@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { lbs } from "@/copy/en";
 import type { RunInfo } from "@/lib/almond-portal/data";
+import { formatTurnoutPct, turnoutMismatch } from "@/lib/almond-portal/run-checks";
 
 // The Almond Logic "Runs" table, re-skinned in the Terra palette: one row per validated huller run,
 // with its turnout (the percent of delivered weight that came back as edible meat). A clean sortable
@@ -55,10 +56,6 @@ function weightLabel(value: number | null): string {
 
 function binsLabel(value: number | null): string {
   return value == null ? "-" : value.toLocaleString("en-US");
-}
-
-function turnoutLabel(value: number | null): string {
-  return value == null ? "-" : `${value}%`;
 }
 
 // Nulls sort last regardless of direction; otherwise compare by the typed value.
@@ -137,13 +134,32 @@ export function RunsTable({ runs }: { runs: RunInfo[] }) {
               className="scroll-mt-24 border-t border-outline-variant first:border-t-0 hover:bg-surface-container-low/40 target:bg-primary/10"
             >
               <td className="px-3 py-2.5 type-num tnum font-medium text-on-surface">{run.runId}</td>
-              <td className="px-3 py-2.5 type-num text-on-surface-variant">{dateLabel(run.validatedAt)}</td>
+              <td className="px-3 py-2.5 type-num text-on-surface-variant">
+                {run.validatedAt ? (
+                  dateLabel(run.validatedAt)
+                ) : (
+                  // Every run on this endpoint is a VALIDATED run; when the portal omits the date we
+                  // show the status rather than a misleading dash (matches the home screen).
+                  <span className="type-label-caps text-primary">Validated</span>
+                )}
+              </td>
               <td className="px-3 py-2.5 type-num text-on-surface">{run.field ?? "-"}</td>
               <td className="px-3 py-2.5 type-num text-on-surface">{run.variety || "-"}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{binsLabel(run.totalBins)}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{weightLabel(run.loadWeight)}</td>
               <td className="px-3 py-2.5 text-right type-num tnum text-on-surface-variant">{weightLabel(run.binWeight)}</td>
-              <td className="px-3 py-2.5 text-right type-num tnum font-medium text-on-surface">{turnoutLabel(run.turnout)}</td>
+              <td className="px-3 py-2.5 text-right type-num tnum font-medium text-on-surface">
+                <span className="inline-flex items-center justify-end gap-1">
+                  {turnoutMismatch(run.binWeight, run.loadWeight, run.turnout) && (
+                    <AlertTriangle
+                      size={12}
+                      className="text-destructive"
+                      aria-label="Turnout does not match this run's bin and load weights"
+                    />
+                  )}
+                  {formatTurnoutPct(run.turnout)}
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>

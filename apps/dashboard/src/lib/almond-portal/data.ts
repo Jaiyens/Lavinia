@@ -123,16 +123,25 @@ export async function loadRuns(
     growerId: await growerId(prisma, farmId),
     cropYear,
   })) as { runs?: unknown } | null;
-  return asArray(wrapper?.runs).map((r) => ({
-    runId: String(r.runId ?? ""),
-    validatedAt: str(r.validationDTS),
-    field: str(r.field),
-    variety: String(r.variety ?? ""),
-    totalBins: num(r.totalBins),
-    loadWeight: num(r.loadWeight),
-    binWeight: num(r.binWeight),
-    turnout: num(r.turnout),
-  }));
+  // Dedupe by runId: the portal's getRuns payload can repeat a run (overlapping snapshots / portal
+  // quirk), which rendered runs 745/720/702/703/659/650 twice. Keep the first occurrence of each id.
+  const seen = new Set<string>();
+  return asArray(wrapper?.runs)
+    .map((r) => ({
+      runId: String(r.runId ?? ""),
+      validatedAt: str(r.validationDTS),
+      field: str(r.field),
+      variety: String(r.variety ?? ""),
+      totalBins: num(r.totalBins),
+      loadWeight: num(r.loadWeight),
+      binWeight: num(r.binWeight),
+      turnout: num(r.turnout),
+    }))
+    .filter((run) => {
+      if (run.runId === "" || seen.has(run.runId)) return false;
+      seen.add(run.runId);
+      return true;
+    });
 }
 
 export async function loadRecentActivity(prisma: PrismaClient, farmId: string): Promise<ActivityInfo[]> {
