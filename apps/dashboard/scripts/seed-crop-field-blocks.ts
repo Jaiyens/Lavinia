@@ -24,49 +24,51 @@ async function main(): Promise<void> {
   const farm = await prisma.farm.findFirst({ select: { id: true, name: true } });
   if (!farm) throw new Error("no farm found");
 
-  // Distinct non-empty delivery fields for this farm.
-  const deliveryRows = await prisma.cropDelivery.findMany({
-    where: { farmId: farm.id, field: { not: null } },
-    select: { field: true },
-    distinct: ["field"],
-  });
-  const fields = deliveryRows
-    .map((r) => r.field)
-    .filter((f): f is string => typeof f === "string" && f.trim() !== "")
-    .sort();
+  // Everything (reads + upserts) runs inside withFarmTenant so it works with RLS enabled on
+  // CropDelivery / CropFieldBlock (a bare read would return zero rows under FORCE RLS).
+  const count = await withFarmTenant(prisma, farm.id, async (tx) => {
+    // Distinct non-empty delivery fields for this farm.
+    const deliveryRows = await tx.cropDelivery.findMany({
+      where: { farmId: farm.id, field: { not: null } },
+      select: { field: true },
+      distinct: ["field"],
+    });
+    const fields = deliveryRows
+      .map((r) => r.field)
+      .filter((f): f is string => typeof f === "string" && f.trim() !== "")
+      .sort();
 
-  // Prefer ENERGY-BEARING blocks (>=1 pump) so a mapped field yields a real ratio (not $0). Fall back
-  // to all blocks when none have meters (a block with yield but no meter shows $0 until meters are
-  // linked — honest, and lets the routing be verified even on a farm with no energy yet).
-  const energyBlocks = await prisma.block.findMany({
-    where: { farmId: farm.id, pumps: { some: {} } },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
-  const allBlocks = await prisma.block.findMany({
-    where: { farmId: farm.id },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
-  const blocks = energyBlocks.length > 0 ? energyBlocks : allBlocks;
+    // Prefer ENERGY-BEARING blocks (>=1 pump) so a mapped field yields a real ratio (not $0). Fall
+    // back to all blocks when none have meters (a block with yield but no meter shows $0 until meters
+    // are linked — honest, and lets the routing be verified even on a farm with no energy yet).
+    const energyBlocks = await tx.block.findMany({
+      where: { farmId: farm.id, pumps: { some: {} } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+    const allBlocks = await tx.block.findMany({
+      where: { farmId: farm.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+    const blocks = energyBlocks.length > 0 ? energyBlocks : allBlocks;
 
-  if (fields.length === 0) {
-    console.log(`No delivery fields to map for ${farm.name}; run the Almond Logic load first.`);
-    return;
-  }
-  if (blocks.length === 0) {
-    throw new Error(`${farm.name} has no blocks to map to.`);
-  }
-  if (energyBlocks.length === 0) {
+    if (fields.length === 0) {
+      console.log(`No delivery fields to map for ${farm.name}; run the Almond Logic load first.`);
+      return 0;
+    }
+    if (blocks.length === 0) {
+      throw new Error(`${farm.name} has no blocks to map to.`);
+    }
+    if (energyBlocks.length === 0) {
+      console.log(
+        "  WARNING: no energy-bearing blocks (no block has a linked meter) — $/lb will show $0 until meters are linked to blocks.",
+      );
+    }
+
     console.log(
-      "  WARNING: no energy-bearing blocks (no block has a linked meter) — $/lb will show $0 until meters are linked to blocks.",
+      `Placeholder field->block mapping for ${farm.name} (${fields.length} fields, ${blocks.length} blocks):`,
     );
-  }
-
-  console.log(
-    `Placeholder field->block mapping for ${farm.name} (${fields.length} fields, ${blocks.length} energy blocks):`,
-  );
-  await withFarmTenant(prisma, farm.id, async (tx) => {
     for (let i = 0; i < fields.length; i++) {
       const field = fields[i]!;
       const block = blocks[i % blocks.length]!;
@@ -77,9 +79,10 @@ async function main(): Promise<void> {
       });
       console.log(`  ${field}  ->  ${block.name}`);
     }
+    return fields.length;
   });
 
-  console.log(`Done. ${fields.length} placeholder mappings upserted (illustrative until Gagan's real map).`);
+  console.log(`Done. ${count} placeholder mappings upserted (illustrative until Gagan's real map).`);
   await prisma.$disconnect();
 }
 
