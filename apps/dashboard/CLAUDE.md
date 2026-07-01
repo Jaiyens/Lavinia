@@ -74,6 +74,20 @@ What still holds:
 
 Taste bar: modern, clean, alive (shadcn showcase, Linear, Vercel), tuned to the farm palette. Beat Wexus on polish and price.
 
+## AI SDK (Vercel AI SDK + AI Elements)
+This app is on `ai@^7.0.0-beta.184` / `@ai-sdk/react@^4.0.0-beta.188`, where the tool/extraction
+surface has churned across betas. To keep generated code matching the pinned versions, install the
+two skills once and let them ground every AI-SDK edit:
+- `npx skills add vercel/ai`
+- `npx skills add https://github.com/vercel/ai-elements --skill ai-elements`
+Rules that follow from the pinned versions: tool definitions use **`inputSchema`** (AI SDK v5+/v7-beta),
+**not** `parameters`; use `generateObject`/`streamObject` + a Zod schema for structured extraction,
+`useObject` (`@ai-sdk/react`) for the live client view, and `streamText` with read-only tools for
+chat. AI Elements components are already vendored under `src/components/ai-elements/`; reuse them.
+**ZDR boundary (crop module):** grower-data extraction goes through `src/lib/ai/zdr.ts` (direct
+Anthropic zero-data-retention endpoint), NEVER `src/lib/ai/gateway.ts`; non-PII orchestration may
+use the Gateway. An import-guard test enforces this.
+
 ## Conventions
 - TS strict, no `any`. Calculations are pure, tested functions in /lib/energy.
 - All user-facing copy in /copy. No em dashes in user-facing copy.

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Terra portability probe",
+  "version": "0.1.0",
+  "description": "One-time portability probe + manual backfill for Almond Logic. Checks whether a logged-in session travels via cookie-forward stealth. Not the production scraper.",
+  "permissions": ["cookies", "activeTab", "storage"],
+  "host_permissions": ["https://almondlogic.com/*", "https://*.almondlogic.com/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Terra portability probe",
+    "default_popup": "popup/popup.html"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  }
+}

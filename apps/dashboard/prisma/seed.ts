@@ -8,6 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import { runEngines } from "@/lib/recommendations/run";
 import { seedBatthFarm } from "./batth-farm";
 import { seedBatthRealFarm } from "./batth-real-farm";
+import { seedCropLedger } from "./crop-ledger-fixture";
 
 async function main() {
   const prisma = new PrismaClient();
@@ -39,6 +40,16 @@ async function main() {
     console.log(
       `Engine: ${engine.created} recommendations (${JSON.stringify(engine.byTool)}).`,
     );
+
+    // Opt-in crop ledger seed (SEED_CROP_LEDGER=1): lands one fully-known crop year so the crop
+    // production tab + Almond render a real position. The default (flag unset) is unchanged.
+    if (process.env.SEED_CROP_LEDGER === "1") {
+      const crop = await seedCropLedger(prisma, farm.id);
+      console.log(
+        `Crop ledger (${crop.cropYear}): ${crop.productionRows} production, ` +
+          `${crop.commitmentRows} commitment, ${crop.poolRows} pool rows.`,
+      );
+    }
   } finally {
     await prisma.$disconnect();
   }

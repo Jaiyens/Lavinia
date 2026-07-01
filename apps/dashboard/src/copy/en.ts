@@ -55,6 +55,28 @@ export function gallons(value: number): string {
   return `${num(value)} gal`;
 }
 
+/**
+ * Whole pounds, abbreviated to "M lb" above a million so a fleet crop total stays readable,
+ * e.g. "248,500 lb" / "1.2M lb". Tabular figures. Pounds come ONLY from the position; this just
+ * formats. A negative (oversold) value keeps its sign, never clamped.
+ */
+export function lbs(value: number): string {
+  if (Math.abs(value) >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `${millions.toLocaleString("en-US", { maximumFractionDigits: 1 })}M lb`;
+  }
+  return `${num(value)} lb`;
+}
+
+/**
+ * Cost per pound, from integer cents-per-pound, to two decimals: "$0.42 / lb". The differentiator
+ * number (energy cost / yield). Null cents (no honest ratio, e.g. zero yield) renders a dash.
+ */
+export function usdPerLb(centsPerLb: number | null): string {
+  if (centsPerLb === null) return "-";
+  return `$${(centsPerLb / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / lb`;
+}
+
 const MONTHS = [
   "January",
   "February",
@@ -1068,6 +1090,8 @@ export const en = {
       assistant: "Assistant",
       todos: "To-do",
       solar: "Solar",
+      crops: "Crops",
+      almondLogic: "Almond Logic",
       meters: "Meters",
       parcels: "Parcels",
       water: "Water",
@@ -3503,6 +3527,257 @@ export const en = {
     rule:
       "Under PG&E Rule 17.1 a billing-class error can be corrected for past cycles, capped at 36 months.",
     upTo: (amount: string): string => `Up to ${amount}`,
+  },
+
+  // The Crop production tab (Phase 6): produced / committed / pool / unsold by variety and crop
+  // year, plus the by-packer table, the year-over-year chart, and the reconciliation queue. Every
+  // pound comes from the position (recomputePositions) or a direct query; this copy only labels.
+  // No em dashes, no exclamation marks. An ALMOND_LOGIC estimate is never read as a settled final.
+  crops: {
+    eyebrow: "Crop production",
+    title: "Crop position",
+    // The header reads the crop year the KPI cards summarize, so the operator always knows which
+    // season the totals belong to.
+    yearLabel: (cropYear: number): string => `${cropYear} season`,
+    // Honest empty state: no ledger rows for this farm yet, never a fabricated zero position.
+    empty: "No crop records for this farm yet. Production, commitments, and pool deliveries show here once they are entered.",
+    noFarm: "Connect a farm to see its crop position.",
+
+    // The four KPI tiles. Each figure is a single position field, labeled with its crop year.
+    kpi: {
+      producedLabel: "Produced",
+      committedLabel: "Committed",
+      poolLabel: "In pool",
+      unsoldLabel: "Unsold",
+      // The provenance line under the Produced tile: settled (a packer statement is in) vs estimate.
+      settled: "Packer settled",
+      estimate: "Almond Logic estimate",
+      // The gap the settlement moved the estimate by, signed. Always shown when a settlement landed.
+      gap: (amount: string): string => `Settlement moved the estimate by ${amount}`,
+      // Unsold can be negative (oversold). Surfaced honestly, never clamped.
+      oversold: "Oversold against production",
+    },
+
+    // The pounds-by-packer table. Rows are commitments grouped by buyer for a crop year + variety,
+    // each tagged with its source so an estimate is never read as a final.
+    table: {
+      caption: "Pounds by packer",
+      rowCount: (n: number): string => (n === 1 ? "1 commitment" : `${n} commitments`),
+      empty: "No commitments recorded yet.",
+      columns: {
+        buyer: "Packer",
+        year: "Crop year",
+        variety: "Variety",
+        pounds: "Pounds",
+        source: "Source",
+        gap: "Estimate to settled",
+      },
+      // Source tags, paired with every figure so provenance is never lost.
+      sourceSettled: "Packer settled",
+      sourceEstimate: "Almond Logic estimate",
+      // The gap cell when no settlement has moved this cell's estimate yet.
+      gapNone: "No settlement yet",
+      export: "Export CSV",
+      exportAria: "Export the pounds by packer table as a CSV file",
+      sortBy: (column: string): string => `Sort by ${column}`,
+    },
+
+    // The year-over-year chart: produced, committed, pool, and unsold pounds per crop year.
+    chart: {
+      caption: "Pounds by crop year",
+      empty: "Not enough seasons to compare yet.",
+      producedLabel: "Produced",
+      committedLabel: "Committed",
+      poolLabel: "In pool",
+      unsoldLabel: "Unsold",
+    },
+
+    // The reconciliation queue: rows the pound-gate could not certify, with a manual resolve.
+    review: {
+      title: "Reconciliation queue",
+      subtitle: "Records that could not be certified against a control total. Resolve clears the review flag; it does not change any pounds.",
+      empty: "Nothing to reconcile. Every record is certified.",
+      // The kind of record on a queue row.
+      kindProduction: "Production",
+      kindCommitment: "Commitment",
+      kindPool: "Pool",
+      // A row line, e.g. "2026 Nonpareil, 248,500 lb".
+      line: (cropYear: number, variety: string, pounds: string): string =>
+        `${cropYear} ${variety}, ${pounds}`,
+      // Who the row is with (the buyer for a commitment, the pool for a pool row), when present.
+      party: (name: string): string => `with ${name}`,
+      resolve: "Mark reconciled",
+      resolveAria: (cropYear: number, variety: string): string =>
+        `Mark the ${cropYear} ${variety} record reconciled`,
+      resolving: "Resolving",
+      resolveError: "Could not resolve that record. Refresh and try again.",
+    },
+
+    // Grower portal credential capture (Phase 2 live scrape): a one-time form for the grower to store
+    // their Almond Logic login so Terra can sync yield data on its own. Plain operator English, no em
+    // dashes, no exclamation marks. The copy never implies the login is visible to anyone.
+    credential: {
+      eyebrow: "Almond Logic sync",
+      title: "Connect your Almond Logic login",
+      subtitle:
+        "Enter your Almond Logic username and password once. Terra encrypts them and uses them only to read your yield data. We never show or share them.",
+      username: "Almond Logic username",
+      password: "Almond Logic password",
+      save: "Save login",
+      saving: "Saving",
+      saved: "Login saved. Terra can now sync your Almond Logic data.",
+      saveError: "Could not save that login. Refresh and try again.",
+    },
+
+    // Cost per pound by block (WS1): the number only Terra can produce, reconciled PG&E energy cost
+    // divided by mapped almond yield. Plain operator English, no em dashes, no exclamation marks.
+    // Money and pounds are integers computed in the engine; the UI only formats them.
+    cost: {
+      eyebrow: "Cost per pound",
+      title: "Cost per pound by block",
+      // Sub-line on the page header, reads the crop year and the coverage the energy figure is built
+      // from, e.g. "2026 season, energy from 12 of 14 reconciled meters".
+      yearLabel: (cropYear: number): string => `${cropYear} season`,
+      coverage: (reconciled: number, total: number): string =>
+        `Energy from ${reconciled} of ${total} reconciled meters`,
+      // The headline tile (on this page and on the Crops tab): farm-wide energy cost per pound.
+      farmLabel: "Farm energy cost per pound",
+      // Shown under the headline so the figure is never read as more than it is.
+      farmCaveat: "Reconciled PG&E energy divided by delivered pounds. Solar and unreconciled meters are left out.",
+      // The link to this page from the Crops tab.
+      viewLink: "Cost per pound by block",
+      // The link to the reconciliation page (built separately) from the Crops tab.
+      reconcileLink: "Reconcile crop records",
+      // Honest empty / not-yet-computable states.
+      noEnergy: "No reconciled PG&E bills for this season yet. Cost per pound shows here once a bill is reconciled.",
+      noFarmRatio: "Not enough yet to show a cost per pound. It needs both reconciled energy and delivered pounds.",
+
+      // The per-block table: one row per block with allocated energy, mapped yield, and the ratio.
+      table: {
+        caption: "Cost per pound by block",
+        rowCount: (n: number): string => (n === 1 ? "1 block" : `${n} blocks`),
+        empty: "No blocks with energy or yield this season yet.",
+        columns: {
+          block: "Block",
+          acreage: "Acres",
+          energy: "Energy cost",
+          yield: "Yield",
+          costPerLb: "Cost per pound",
+        },
+        // A block with no mapped yield has no honest ratio; the cell reads this instead of a number.
+        noRatio: "No yield mapped",
+        export: "Export CSV",
+        exportAria: "Export the cost per pound by block table as a CSV file",
+        sortBy: (column: string): string => `Sort by ${column}`,
+      },
+
+      // The residual lines: pounds and dollars that could not be attributed, surfaced honestly so
+      // nothing is silently dropped or spread behind the grower's back.
+      residual: {
+        title: "Not yet attributed",
+        // Yield from deliveries whose field is not mapped to a block.
+        unmappedYield: (pounds: string): string => `${pounds} delivered from fields not mapped to a block`,
+        // Energy from meters serving blocks with no acreage on file (cannot be split honestly).
+        unallocatableEnergy: (amount: string): string => `${amount} of energy on blocks with no acreage on file`,
+        // Both clean: nothing is sitting unattributed.
+        allAttributed: "Every delivered pound and reconciled dollar is attributed to a block.",
+        // Nudge to the mapping UI below when there is unmapped yield.
+        mapHint: "Map the fields below to attribute their pounds.",
+      },
+
+      // The field -> block mapping UI: one row per distinct delivery field, a block dropdown each.
+      map: {
+        title: "Map fields to blocks",
+        subtitle: "Each Almond Logic field becomes a Terra block so its pounds join the block's energy cost. Unmapped fields stay in the residual line above.",
+        empty: "No delivery fields to map yet.",
+        // The per-field row: shows the field's total delivered pounds.
+        fieldLabel: (field: string): string => `Field ${field}`,
+        fieldWeight: (pounds: string): string => `${pounds} delivered`,
+        // The dropdown's "no block" option and placeholder.
+        unmapped: "Unmapped",
+        selectPlaceholder: "Choose a block",
+        selectAria: (field: string): string => `Block for field ${field}`,
+        saving: "Saving",
+        saveError: "Could not save that mapping. Refresh and try again.",
+        // The read-only note for a viewer (mapping is a write, manager or owner only).
+        readOnly: "Only a manager or owner can map fields to blocks.",
+      },
+    },
+    // The pound-gate reconciliation view: the grower's field weight beside the packer's settled
+    // weight, per crop year and variety, with the gap between them. A gap near 10 percent is normal
+    // almond shrink; this surfaces it instead of hiding it.
+    reconcile: {
+      eyebrow: "Crop production",
+      title: "Pound gate",
+      subtitle: "Field weight against settled weight. A gap near ten percent is normal shrink, surfaced so you can see it.",
+      back: "Crop position",
+      // Honest empty state: no deliveries or position to compare yet.
+      empty: "No field or settled weights to compare yet. Deliveries and packer settlements show here once they are entered.",
+      noFarm: "Connect a farm to see its pound gate.",
+      table: {
+        caption: "Field against settled",
+        rowCount: (n: number): string => (n === 1 ? "1 variety" : `${n} varieties`),
+        empty: "No varieties to reconcile yet.",
+        columns: {
+          year: "Crop year",
+          variety: "Variety",
+          field: "Field lb",
+          settled: "Settled lb",
+          gap: "Gap lb",
+          gapPct: "Gap %",
+        },
+        // The settled / gap cells when no packer settlement has landed for the cell yet.
+        settledNone: "No settlement yet",
+        gapNone: "No settlement yet",
+        // The gap-percent cell, signed, one decimal, e.g. "-10.0%".
+        gapPctValue: (pct: number): string => `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`,
+        // The badge on a row whose gap is in the ~10 percent band.
+        flag: "Check this",
+        sortBy: (column: string): string => `Sort by ${column}`,
+      },
+    },
+
+    // The commitment ledger lifecycle: each contract walks production -> sale -> COLLECTION. The cash
+    // strip totals committed, collected, and outstanding dollars; each row shows its stage and cash.
+    ledger: {
+      // The cash KPI strip on the reconcile page.
+      cash: {
+        committedLabel: "Committed",
+        collectedLabel: "Collected",
+        outstandingLabel: "Outstanding",
+        // Outstanding can go negative (a buyer overpaid). Surfaced honestly, never clamped.
+        overpaid: "Overpaid against contracts",
+      },
+      // The lifecycle columns added to the by-packer table.
+      columns: {
+        price: "$/lb",
+        status: "Status",
+        expected: "Expected",
+        collected: "Collected",
+        outstanding: "Outstanding",
+      },
+      // Status badge labels, one per lifecycle stage.
+      statusCommitted: "Committed",
+      statusSettled: "Settled",
+      statusCollected: "Collected",
+      // The cell value when no price is set on the contract yet (price TBD at pool true-up).
+      priceNone: "Price TBD",
+      // The expected / outstanding cells when no price means no honest dollar figure.
+      cashNone: "Price TBD",
+      // The "record collection" action (manager and above only).
+      collect: "Record collection",
+      collectAria: (buyer: string, cropYear: number, variety: string): string =>
+        `Record a collection for the ${cropYear} ${variety} commitment with ${buyer}`,
+      // The amount prompt in the inline collection form.
+      collectAmountLabel: "Amount collected (dollars)",
+      collectSave: "Save collection",
+      collectSaving: "Saving",
+      collectCancel: "Cancel",
+      collecting: "Recording",
+      collectError: "Could not record that collection. Refresh and try again.",
+      // Shown on a row already at the collected stage (no further action).
+      collected: "Cash received",
+    },
   },
 } as const;
 

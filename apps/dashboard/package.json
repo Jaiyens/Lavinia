@@ -29,14 +29,20 @@
     "db:import-fixture": "tsx scripts/persist-demo-fixture.ts",
     "levers:run": "tsx scripts/run-levers.ts",
     "extract:bills": "tsx scripts/extract-bills-batch.ts",
-    "verify:reconciliation": "tsx scripts/verify-reconciliation.ts"
+    "verify:reconciliation": "tsx scripts/verify-reconciliation.ts",
+    "almond:scrape": "tsx scripts/scrape-almond-logic.ts",
+    "almond:load": "tsx --env-file=.env.local scripts/load-almond.ts",
+    "almond:sync": "npm run almond:scrape && npm run almond:load",
+    "almond:sync:tracked": "tsx scripts/almond-sync-runner.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/react": "^4.0.0-beta.188",
     "@auth/prisma-adapter": "^2.11.2",
+    "@aws-sdk/client-s3": "^3.1075.0",
     "@base-ui-components/react": "^1.0.0-rc.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -48,6 +54,8 @@
     "@streamdown/code": "^1.1.1",
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.4",
     "@vercel/blob": "^2.4.0",
     "@vercel/sandbox": "^1.9.0",
     "@visx/scale": "^3.12.0",
@@ -94,6 +102,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.7",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "playwright": "^1.60.0",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",

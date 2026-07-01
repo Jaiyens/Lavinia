@@ -8,6 +8,7 @@ import { accessibleFarms } from "@/lib/onboarding/farm";
 import { resolveActiveFarmId, resolveFarm } from "./_data";
 import { SidebarProvider } from "@/components/ui";
 import { AgentRail } from "../_components/shell/agent-rail";
+import { RailReopen } from "../_components/shell/rail-reopen";
 import { AgentTabBar } from "../_components/shell/agent-tabbar";
 import { AlmondLauncher } from "../_components/almond/almond-launcher";
 import { TopoBackground } from "../_components/topo-background";
@@ -67,6 +68,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           access={access}
           pendingRequests={pendingRequests}
         />
+        <RailReopen />
         <main className="min-w-0 flex-1 pb-32 lg:pb-12">{children}</main>
       </SidebarProvider>
       <AgentTabBar />

@@ -15,6 +15,8 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui";
 import { FarmSwitcher } from "./farm-switcher";
 import { RolePill } from "./role-pill";
@@ -41,6 +43,10 @@ export function AgentRail({
   pendingRequests?: number;
 } = {}) {
   const pathname = usePathname();
+  // The rail is hideable: the shadcn SidebarProvider tracks `open` (persisted to a cookie + the
+  // Cmd/Ctrl-B shortcut). We keep collapsible="none" (the custom sticky dark-green panel) and just
+  // toggle desktop visibility off `open`, so hiding the rail lets the content take the full width.
+  const { open } = useSidebar();
 
   // Whether an item is shown to the current viewer: app-only items are hidden on the public tour, and
   // the admin-only Team entry is hidden from members who cannot manage the team.
@@ -91,11 +97,18 @@ export function AgentRail({
       collapsible="none"
       aria-label={en.shell.agentsLabel}
       // z-10 + a soft shadow on the right edge so the dark-green panel casts a drop shadow over the
-      // content area beside it.
-      className="sticky top-0 z-10 hidden h-dvh shadow-[8px_0_24px_-6px_rgba(20,25,15,0.25)] lg:flex"
+      // content area beside it. Desktop-only; hidden entirely (so the content takes the full width)
+      // when the operator collapses the rail via the toggle.
+      className={`sticky top-0 z-10 hidden h-dvh shadow-[8px_0_24px_-6px_rgba(20,25,15,0.25)] ${
+        open ? "lg:flex" : "lg:hidden"
+      }`}
     >
       <SidebarHeader className="gap-3 p-3">
-        <Wordmark className="px-1 text-sidebar-foreground" />
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark className="px-1 text-sidebar-foreground" />
+          {/* Hide the rail. A floating button (RailReopen) brings it back when collapsed. */}
+          <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" />
+        </div>
         {demo ? null : <FarmSwitcher farms={farms} activeFarmId={activeFarmId} />}
         {!demo && access ? (
           <div className="px-1">

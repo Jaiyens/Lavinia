@@ -54,24 +54,32 @@ model Farm {
   // code maps to exactly one farm.
   joinCode String? @unique
 
-  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  memberships     FarmMembership[]
-  invites         FarmInvite[]
-  joinRequests    FarmJoinRequest[]
-  blocks          Block[]
-  ranches         Ranch[]
-  pumps           Pump[]
-  entities        Entity[]
-  accounts        Account[]
-  solarArrays     SolarArray[]
-  people          Person[]
-  connections     Connection[]
-  recommendations Recommendation[]
-  generatedReports GeneratedReport[]
+  user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  memberships         FarmMembership[]
+  invites             FarmInvite[]
+  joinRequests        FarmJoinRequest[]
+  blocks              Block[]
+  ranches             Ranch[]
+  pumps               Pump[]
+  entities            Entity[]
+  accounts            Account[]
+  solarArrays         SolarArray[]
+  people              Person[]
+  connections         Connection[]
+  recommendations     Recommendation[]
+  generatedReports    GeneratedReport[]
   almondConversations AlmondConversation[]
-  almondUsageEvents AlmondUsageEvent[]
-  agentRuns       AgentRun[]
-  agentActions    AgentAction[]
+  almondUsageEvents   AlmondUsageEvent[]
+  agentRuns           AgentRun[]
+  agentActions        AgentAction[]
+  productionRecords   ProductionRecord[]
+  commitmentRecords   CommitmentRecord[]
+  poolRecords         PoolRecord[]
+  rawReportChunks     RawReportChunk[]
+  cropDeliveries      CropDelivery[]
+  almondSnapshots     AlmondSnapshot[]
+  cropFieldBlocks     CropFieldBlock[]
+  portalCredentials   GrowerPortalCredential[]
 
   @@index([userId])
 }
@@ -121,17 +129,17 @@ model FarmMembership {
 }
 
 model FarmInvite {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   farmId           String
   // ALWAYS stored via normalizeEmail() (lowercased) so the sign-in claim matches reliably; the
   // partial unique index in the migration keeps one live invite per email per farm.
   invitedEmail     String
   // Least privilege by default; inviteMembers always passes an explicit role (this is the safety net).
-  role             FarmRole @default(viewer)
+  role             FarmRole  @default(viewer)
   // pending | accepted | revoked | declined. A revoke is TERMINAL (a re-grant is a new row).
-  status           String   @default("pending")
+  status           String    @default("pending")
   invitedById      String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
   expiresAt        DateTime // createdAt + 14d; the claim filters on this
   acceptedAt       DateTime?
   acceptedByUserId String?
@@ -249,15 +257,19 @@ model Block {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  crop  Crop?  @relation(fields: [cropId], references: [id])
-  pumps Pump[] // m-n: pumps that serve this block
+  farm              Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop              Crop?              @relation(fields: [cropId], references: [id])
+  pumps             Pump[] // m-n: pumps that serve this block
+  productionRecords ProductionRecord[]
+  commitmentRecords CommitmentRecord[]
+  poolRecords       PoolRecord[]
+  cropFieldBlocks   CropFieldBlock[]
 
   @@index([farmId])
 }
 
 model Pump {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   name                String
   serviceId           String? // PG&E service ID / ESPI UsagePoint
   meterSerial         String?
@@ -275,20 +287,20 @@ model Pump {
   // engine is electric-only in v1; gas meters are carried through the normalizer but
   // not persisted as Pumps, so this stays "electric" here. Having the column makes
   // turning gas on later a flag flip, not a migration.
-  fuel                String   @default("electric") // "electric" | "gas"
+  fuel                String    @default("electric") // "electric" | "gas"
   // The PG&E account this meter bills under. Nullable: the ESPI feed carries no
   // account number, so ESPI-imported pumps link up only once the spreadsheet does.
   accountId           String?
   // Set at onboarding. kind is auto-classified from the usage signature (a big
   // seasonal load is a pump; a small flat one is an office/shop) and the farmer
   // can override it; non-pump meters are excluded from pump-timing advice.
-  kind                String   @default("pump") // "pump" | "non_pump"
+  kind                String    @default("pump") // "pump" | "non_pump"
   // The classifier's confidence in `kind` (0..1), persisted at import so the onboarding
   // confirm step can flag "look twice" meters WITHOUT reloading every meter's interval
   // history to re-derive it (the confirm-step OOM at 183 meters). Null for meters never
   // classified (legacy / hand-entered); treated as confident there.
   confidence          Float?
-  powerSource         String   @default("electric") // "electric" | "diesel" | "gas"
+  powerSource         String    @default("electric") // "electric" | "diesel" | "gas"
   // Map pin. Pre-placed from `location` at onboarding, dragged to the real spot.
   latitude            Float?
   longitude           Float?
@@ -310,25 +322,25 @@ model Pump {
   // from serviceId (SA ID) and the cuid primary key. Story 1.6 identity-checks on it.
   growerPumpId        String?
   // Legacy AG-4/AG-5 schedule flag. The 27 legacy-flagged meters lead rate optimization.
-  isLegacy            Boolean  @default(false)
+  isLegacy            Boolean   @default(false)
   // Pump health from the master spreadsheet's Status field (FR-17). Mirrored as PumpStatus.
   status              String? // "GOOD" | "BAD" | "NEW WELL" | "OLD"
   // Explicit solar flag (FR-1 "each Meter carries a Solar flag"), legible day one even
   // before the SolarArray/NEMA graph is wired from billing.
-  isSolar             Boolean  @default(false)
+  isSolar             Boolean   @default(false)
   cropId              String? // crop carried on the meter (FR-1), alongside ranch/block crop
   ranchId             String? // rollup membership (Entity -> Account -> Ranch -> Meter)
   // Billing coverage for this meter (FR-6): no_bill | needs_review | reconciled. Defaults
   // to no_bill; Story 1.7 sets it from reconciliation. Mirrored as CoverageState in TS.
-  coverageState       String   @default("no_bill")
+  coverageState       String    @default("no_bill")
   // Modeled monthly tariff-component cost in integer cents, computed from interval data by
   // src/lib/energy/modeled-cost.ts when a meter has usage but no reconciled printed bill
   // (costSource MODELED). Always surfaced as an estimate, never as actual billed cost. Null
   // when there is no interval basis (costSource NONE) or a printed bill exists (BILLED).
   modeledMonthlyCents Int?
   farmId              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   farm             Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
   account          Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
@@ -379,10 +391,10 @@ model UsageInterval {
 // are read from the bill/ESPI data, never hardcoded. peakKw is the derived
 // highest 15-minute demand in the window and is what sets the demand charge.
 model BillingPeriod {
-  id              String    @id @default(cuid())
-  pumpId          String
-  start           DateTime
-  close           DateTime
+  id                String    @id @default(cuid())
+  pumpId            String
+  start             DateTime
+  close             DateTime
   // The actual posted billing-cycle close from the scanned bill (AR-14): distinct from
   // `close` (the source period end) and from the scheduled serial-code close. Null until
   // a bill is extracted.
@@ -390,17 +402,17 @@ model BillingPeriod {
   // The SA's printed total in integer cents (AR-6). Story 1.7 reconciles the sum of this
   // period's BillingLineItem.amountCents against it within one cent. Null until extracted.
   printedTotalCents Int?
-  tariff          String? // rate schedule, e.g. "AG-C"
-  demandChargeUsd Float? // total of the cycle's demand line items
-  peakKw          Float? // derived max demand (highest 15-min kW)
-  peakAt          DateTime? // when that peak occurred
-  totalBillUsd    Float? // billLastPeriod
+  tariff            String? // rate schedule, e.g. "AG-C"
+  demandChargeUsd   Float? // total of the cycle's demand line items
+  peakKw            Float? // derived max demand (highest 15-min kW)
+  peakAt            DateTime? // when that peak occurred
+  totalBillUsd      Float? // billLastPeriod
   // Total metered energy for the cycle (kWh). The summary feed carries this even for
   // meters with no 15-minute interval history, so fleet-wide usage is readable without
   // re-deriving from intervals. Null when the source did not carry a cycle total.
-  totalKwh        Float?
-  source          String    @default("green_button")
-  createdAt       DateTime  @default(now())
+  totalKwh          Float?
+  source            String    @default("green_button")
+  createdAt         DateTime  @default(now())
 
   pump             Pump              @relation(fields: [pumpId], references: [id], onDelete: Cascade)
   billingLineItems BillingLineItem[] // the per-line-item breakdown that reconciles to printedTotalCents
@@ -434,9 +446,14 @@ model Crop {
   name            String @unique
   cropCoefficient Float? // Kc for CIMIS water math (later tool)
 
-  blocks  Block[]
-  ranches Ranch[]
-  pumps   Pump[]
+  blocks            Block[]
+  ranches           Ranch[]
+  pumps             Pump[]
+  // Optional rollup from the crop ledger ("all almond varieties"). Never the variety key —
+  // varieties (Nonpareil, Monterey, ...) live as a verbatim string on the ledger rows.
+  productionRecords ProductionRecord[]
+  commitmentRecords CommitmentRecord[]
+  poolRecords       PoolRecord[]
 }
 
 // The rollup level between Account and Meter (Entity -> Account -> Ranch -> Meter).
@@ -466,19 +483,19 @@ model Ranch {
 // credits offset many meters, and a meter can draw from more than one array. trueUpMonth
 // is per array. Named SolarArray (never Array) to avoid shadowing the JS global Array<T>.
 model SolarArray {
-  id          String   @id @default(cuid())
-  name        String?
-  nameplateKw Float // array nameplate, e.g. 840 or 1092
-  nemType     String? // "nem2" | "nem2_agg" | "vnem"   (DM3: "vnem" widened in, forward-compatible, no launch instance)
-  trueUpMonth Int? // per-array annual true-up month (1-12)
+  id                  String    @id @default(cuid())
+  name                String?
+  nameplateKw         Float // array nameplate, e.g. 840 or 1092
+  nemType             String? // "nem2" | "nem2_agg" | "vnem"   (DM3: "vnem" widened in, forward-compatible, no launch instance)
+  trueUpMonth         Int? // per-array annual true-up month (1-12)
   // DM1 (F-1, FR16): Permission-to-Operate / interconnection date. Nullable and absent from the
   // current export (A6): the 20-year-from-PTO grandfather countdown renders ONLY where this is on
   // file, and honest-unknown otherwise. Never estimated, never inferred from a program code.
   interconnectionDate DateTime?
-  saId        String? // the generating meter's SA ID (the array's own service)
-  farmId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  saId                String? // the generating meter's SA ID (the array's own service)
+  farmId              String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   farm             Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
   benefitingMeters Pump[] @relation("NemAllocation") // NEMA m-n: meters this array's credits offset
@@ -866,17 +883,17 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts           AuthAccount[]
-  sessions           Session[]
-  farms              Farm[]
-  generatedReports   GeneratedReport[]
+  accounts            AuthAccount[]
+  sessions            Session[]
+  farms               Farm[]
+  generatedReports    GeneratedReport[]
   almondConversations AlmondConversation[]
-  almondUsageEvents  AlmondUsageEvent[]
-  farmMemberships    FarmMembership[] @relation("FarmMemberships")
-  invitedMemberships FarmMembership[] @relation("SentFarmInvites")
-  sentInvites        FarmInvite[]     @relation("InviteInviter")
-  joinRequests       FarmJoinRequest[] @relation("FarmJoinRequester")
-  decidedJoinRequests FarmJoinRequest[] @relation("FarmJoinDecider")
+  almondUsageEvents   AlmondUsageEvent[]
+  farmMemberships     FarmMembership[]     @relation("FarmMemberships")
+  invitedMemberships  FarmMembership[]     @relation("SentFarmInvites")
+  sentInvites         FarmInvite[]         @relation("InviteInviter")
+  joinRequests        FarmJoinRequest[]    @relation("FarmJoinRequester")
+  decidedJoinRequests FarmJoinRequest[]    @relation("FarmJoinDecider")
 }
 
 // OAuth account link (renamed from the adapter's default `Account` to avoid colliding
@@ -918,4 +935,269 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// --- Crop production commitment ledger (Tool 2) --------------------------------------------------
+// An append-only, farmId-scoped ledger of POUNDS. Mirrors the cent-ledger discipline: integer units
+// only (whole pounds, never a float); a settlement is a NEW row that supersedes an estimate via
+// supersedesId, never an in-place rewrite. The deterministic recomputePositions()
+// (src/lib/crops/positions.ts) owns every derived number; no model touches it. `source` is String
+// + the ProductionSource TS union (src/lib/crops/types.ts): ALMOND_LOGIC (estimate) vs
+// PACKER_SETTLED (final). These three tables additionally enforce Postgres Row Level Security keyed
+// on farmId (the crop_ledger_rls migration; db push does NOT emit RLS — see migrations/README.md).
+
+model ProductionRecord {
+  id     String @id @default(cuid())
+  farmId String // the tenant gate (non-nullable), FK Farm Cascade, RLS-enforced
+
+  cropYear Int // whole calendar year, e.g. 2026 — exact grouping key
+  variety  String // variety name stored verbatim (Nonpareil, Monterey, ...), never inferred
+  cropId   String? // optional rollup to Crop ("almond"); never the variety key
+  blockId  String? // optional block attribution; SetNull (pounds outlive a deleted block)
+
+  pounds Int // whole pounds produced (the pound-gate surface). Never a float.
+  source String // "ALMOND_LOGIC" (estimate) | "PACKER_SETTLED" (final)
+
+  // Append-only supersede pointer: a settlement row points at the estimate it replaces. The
+  // estimate row is never edited. Restrict so a settled row can never be orphaned.
+  supersedesId     String?
+  supersededReason String? // plain-English provenance, e.g. "2026 packer settlement statement"
+
+  // Pound-gate provenance: the control total STATED on the same source document (a packer
+  // statement's printed grand total), and the gate verdict. Null controlTotal => needs_review.
+  controlTotalPounds Int?
+  coverageState      String @default("no_doc") // "no_doc" | "reconciled" | "needs_review"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm         Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop         Crop?              @relation(fields: [cropId], references: [id])
+  block        Block?             @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  supersedes   ProductionRecord?  @relation("ProductionSupersede", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy ProductionRecord[] @relation("ProductionSupersede")
+
+  @@index([farmId, createdAt])
+  @@index([farmId, cropYear, variety])
+  @@index([supersedesId])
+}
+
+model CommitmentRecord {
+  id     String @id @default(cuid())
+  farmId String
+
+  cropYear Int
+  variety  String
+  cropId   String?
+  blockId  String?
+
+  pounds             Int // whole pounds sold / under contract to a named buyer
+  buyer              String // packer/buyer name, verbatim
+  // Price as integer cents PER POUND (money law: integer cents, never float dollars), as the
+  // contract states it. Null when the contract is pounds-only (price TBD at pool true-up).
+  priceCentsPerPound Int?
+  source             String
+
+  // Production -> sale -> COLLECTION lifecycle. status advances committed -> settled -> collected
+  // via SUPERSEDE (a new row supersedes the prior, append-only; never mutate). settledPrice is the
+  // final $/lb once the settlement lands; collectedCents is integer cents actually received.
+  status                    String    @default("committed") // committed | settled | collected
+  settledPriceCentsPerPound Int?
+  collectedCents            Int?
+  collectedAt               DateTime?
+
+  supersedesId       String?
+  supersededReason   String?
+  controlTotalPounds Int?
+  coverageState      String  @default("no_doc")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm         Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop         Crop?              @relation(fields: [cropId], references: [id])
+  block        Block?             @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  supersedes   CommitmentRecord?  @relation("CommitmentSupersede", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy CommitmentRecord[] @relation("CommitmentSupersede")
+
+  @@index([farmId, createdAt])
+  @@index([farmId, cropYear, variety])
+  @@index([supersedesId])
+}
+
+model PoolRecord {
+  id     String @id @default(cuid())
+  farmId String
+
+  cropYear Int
+  variety  String
+  cropId   String?
+  blockId  String?
+
+  pounds              Int // whole pounds delivered into a marketing pool that settles at annual true-up
+  pool                String // pool/handler name, verbatim
+  // Annual true-up settlement, when it lands: integer cents per pound (negative allowed if a pool
+  // can claw back). Null until the true-up statement is extracted (honest-unknown).
+  trueUpCentsPerPound Int?
+  trueUpAt            DateTime?
+  source              String
+
+  supersedesId       String?
+  supersededReason   String?
+  controlTotalPounds Int?
+  coverageState      String  @default("no_doc")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop         Crop?        @relation(fields: [cropId], references: [id])
+  block        Block?       @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  supersedes   PoolRecord?  @relation("PoolSupersede", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy PoolRecord[] @relation("PoolSupersede")
+
+  @@index([farmId, createdAt])
+  @@index([farmId, cropYear, variety])
+  @@index([supersedesId])
+}
+
+// --- Crop report retrieval (Phase 7, Track E) ----------------------------------------------------
+// One embedded chunk of a grower's raw crop document (a packer statement / pool true-up the grower
+// uploaded to R2), for the Almond crop responder's `find-report` retrieval tool. This is GROWER
+// DATA: chunks are embedded only via the ZDR path (src/lib/crops/retrieve/embed.ts), never the
+// Gateway, and the retrieval tool is capability-gated (no key / no pgvector extension -> an explicit
+// "retrieval unavailable" tool result, never a fabricated citation). Additive, farmId-scoped, and
+// RLS-eligible exactly like the three ledger tables.
+//
+// `embedding` is the pgvector column. Prisma has no native vector type, so it is modeled as
+// `Unsupported("vector(1536)")?`: Prisma manages the row but never reads/writes the embedding
+// through the typed client — embeddings are written and the nearest-neighbour search is run via raw
+// SQL ($queryRaw / $executeRaw) so the `vector` ops + the hnsw index are used. Nullable so a chunk
+// can be inserted before its embedding lands (or when no ZDR key is configured at ingest).
+model RawReportChunk {
+  id     String @id @default(cuid())
+  farmId String // the tenant gate (non-nullable), FK Farm Cascade, RLS-eligible
+
+  // Where the source document lives in object storage (the grower's uploaded statement in R2). The
+  // chunk's content is a slice of that document's extracted text.
+  r2Key   String
+  content String
+
+  // The crop year this chunk is about, when known from the document (lets the responder scope a
+  // retrieval to a season). Null when the document spans years or the year is not yet parsed.
+  cropYear Int?
+
+  // pgvector embedding (1536-dim, the ZDR embed model's width). See the model comment: managed by
+  // Prisma as Unsupported, read/written only via raw SQL. `db push` will NOT emit the vector type or
+  // the hnsw index — the raw-SQL migration does (documented like the RLS block in migrations/README).
+  embedding Unsupported("vector(1536)")?
+
+  createdAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, createdAt])
+}
+
+// Full per-delivery rows scraped from Almond Logic (the operational detail behind the rolled-up
+// position). farmId-scoped. Integer pounds. This is structured operational data (not raw files),
+// so it lives in Postgres; it powers the Terra-themed "Deliveries" replica view.
+model CropDelivery {
+  id           String    @id @default(cuid())
+  farmId       String
+  hullerId     Int
+  huller       String
+  cropYear     Int
+  loadId       String
+  fieldTicket  String?
+  field        String?
+  variety      String
+  grossLb      Int       @default(0)
+  tareLb       Int       @default(0)
+  netLb        Int       @default(0)
+  deliveryDate DateTime?
+  mediaId      String?
+  source       String    @default("ALMOND_LOGIC")
+  createdAt    DateTime  @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, hullerId, cropYear, loadId])
+  @@index([farmId, cropYear])
+  @@index([farmId, hullerId, cropYear])
+}
+
+// Raw Almond Logic API snapshots — the portal's own JSON responses, captured through the grower's
+// session and stored verbatim (farmId-scoped) so the Terra-themed 1:1 portal replica renders the
+// real data. One row per (endpoint, paramsKey); re-import overwrites. Private grower data lives in
+// Postgres (the destination), never in git.
+model AlmondSnapshot {
+  id        String   @id @default(cuid())
+  farmId    String
+  endpoint  String // e.g. "getDeliveries.php"
+  paramsKey String // stable serialization of the query params, "" for none
+  payload   Json
+  fetchedAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, endpoint, paramsKey])
+  @@index([farmId, endpoint])
+}
+
+// Maps an Almond Logic "field" string (e.g. "10", "22") to a Terra Block, so block-scoped yield
+// (CropDelivery.netLb by field) can be joined to block-scoped energy cost (meters serving the block)
+// to produce cost-per-pound by block. One block per field; re-mapping is an update. farmId-scoped.
+model CropFieldBlock {
+  id        String   @id @default(cuid())
+  farmId    String
+  field     String // the Almond Logic field string, verbatim (matches CropDelivery.field)
+  blockId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  block Block @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, field])
+  @@index([farmId])
+  @@index([blockId])
+}
+
+// A grower's login-gated portal credential (Phase 2 live-scrape store). ONE row per (farm, portal):
+// Batth's single Almond Logic login enumerates all their hullers/handlers, so the credential is
+// farm-level, not per-entity. NEVER holds a plaintext secret:
+//   - encryptedCredential: the AES-256-GCM blob { ciphertext, iv, authTag } of { username, password }
+//     encrypted with CROP_CRED_ENC_KEY. Decrypted ONLY inside the Vercel Sandbox at the moment of a
+//     headless login (decryptCredential), never in a normal function, never logged.
+//   - sessionCookie / sessionCookieExpiresAt: a reusable portal session cookie captured after a prior
+//     login, preferred over a fresh login while still valid (the cookie_forward branch). Also secret
+//     in the sense that it authenticates the session, so it is never logged either.
+// At least one of the two is present for the row to be usable; the branch selector decides which is
+// reachable at run time. farmId-scoped + RLS (db push does NOT emit the RLS block — see the migration).
+model GrowerPortalCredential {
+  id     String @id @default(cuid())
+  farmId String
+
+  // The portal this credential is for. A literal today ("ALMOND_LOGIC"); String (repo union
+  // convention) so a second portal (a packer's grower site) slots in without a schema change.
+  portal String @default("ALMOND_LOGIC")
+
+  // The encrypted { username, password } blob (ciphertext/iv/authTag base64). Json, not separate
+  // columns, so the EncryptedCredential shape is stored/loaded as one unit. Null when the row holds
+  // only a forwarded session cookie (no stored password).
+  encryptedCredential Json?
+
+  // A reusable portal session cookie captured on a prior successful login, and its expiry. Null
+  // until a login lands / after it is cleared. Preferred over a fresh login while unexpired.
+  sessionCookie          String?
+  sessionCookieExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, portal])
+  @@index([farmId])
 }

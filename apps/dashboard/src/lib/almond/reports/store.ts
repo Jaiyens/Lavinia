@@ -27,8 +27,11 @@ import { newReportBlobKey, putPrivateBlob, XLSX_CONTENT_TYPE } from "@/lib/stora
  *  round-trips to the same builder; `"report"` is the generateReport skill's PDF (Story 9.3);
  *  `"codegen"` is the model-authored bespoke PDF from the code-gen export POC (rendered in a Vercel
  *  Sandbox, verified fail-closed) — a distinct kind so Reports history can tell a custom report from a
- *  deterministic one. The column stays a free String, so storing a new kind needs no migration. */
-export const GENERATED_REPORT_KINDS = ["workbook", "meters", "billDue", "report", "codegen", "bill_dispute"] as const;
+ *  deterministic one; `"crop_production"` is the crop module's production / bank-style report (Phase
+ *  8) whose prose is generated AROUND a numbers-locked context (every pound comes from the
+ *  deterministic position, never the model). The column stays a free String, so a new kind needs no
+ *  migration. */
+export const GENERATED_REPORT_KINDS = ["workbook", "meters", "billDue", "report", "codegen", "bill_dispute", "crop_production"] as const;
 export type GeneratedReportKind = (typeof GENERATED_REPORT_KINDS)[number];
 
 /** The deps the store closes over: a Prisma client, the resolved farm scope, and (optionally) the
