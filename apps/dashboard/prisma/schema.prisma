@@ -54,7 +54,7 @@ model Farm {
   // code maps to exactly one farm.
   joinCode String? @unique
 
-  user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user                User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
   memberships         FarmMembership[]
   invites             FarmInvite[]
   joinRequests        FarmJoinRequest[]
@@ -80,6 +80,9 @@ model Farm {
   almondSnapshots     AlmondSnapshot[]
   cropFieldBlocks     CropFieldBlock[]
   portalCredentials   GrowerPortalCredential[]
+  blockPlantings      BlockPlanting[]
+  cropRuns            CropRun[]
+  tgmRecords          TgmRecord[]
 
   @@index([userId])
 }
@@ -220,6 +223,7 @@ model Entity {
 
   farm     Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
   accounts Account[]
+  blocks   Block[] // crop blocks this legal entity owns (Gagan's worksheet Column C)
 
   @@index([farmId])
 }
@@ -254,18 +258,25 @@ model Block {
   acreage   Float?
   farmId    String
   cropId    String?
+  // Owning legal entity (Gagan's worksheet Column C). Nullable: pre-worksheet blocks own none, and a
+  // deleted entity SetNulls rather than orphaning the block. Populated by the Batth worksheet seed.
+  entityId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   farm              Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
   crop              Crop?              @relation(fields: [cropId], references: [id])
+  entity            Entity?            @relation(fields: [entityId], references: [id], onDelete: SetNull)
   pumps             Pump[] // m-n: pumps that serve this block
   productionRecords ProductionRecord[]
   commitmentRecords CommitmentRecord[]
   poolRecords       PoolRecord[]
   cropFieldBlocks   CropFieldBlock[]
+  blockPlantings    BlockPlanting[]
+  tgmRecords        TgmRecord[]
 
   @@index([farmId])
+  @@index([entityId])
 }
 
 model Pump {
@@ -1200,4 +1211,94 @@ model GrowerPortalCredential {
 
   @@unique([farmId, portal])
   @@index([farmId])
+}
+
+// Per-block-per-variety planted acreage (Gagan's worksheet Column E). Acreage is Terra-side (from the
+// master worksheet / Parcels / manual), NEVER scraped from Almond Logic and never fabricated. One row
+// per (block, variety); Block.acreage stays as the block total for energy allocation. farmId-scoped,
+// RLS-eligible. cropYear optional (acreage is usually stable year to year; null = current planting).
+model BlockPlanting {
+  id       String @id @default(cuid())
+  farmId   String
+  blockId  String
+  variety  String // canonical (normalizeVariety)
+  acres    Float
+  cropYear Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  block Block @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, blockId, variety, cropYear])
+  @@index([farmId])
+  @@index([blockId])
+}
+
+// A durable, block-joinable huller RUN (the source of "huller weight" / turnout on Gagan's worksheet).
+// Today run data lives only in ephemeral AlmondSnapshot getRuns JSON; this persists it (parsed by the
+// CropRun loader, deduped by runId) so the worksheet + year-over-year can sum bin weight by
+// field->block+variety across years. Weights are integer pounds; turnout is the SOURCE-PROVIDED percent
+// (Terra recomputes its own from the sums, never trusting this blindly). farmId-scoped, RLS-eligible.
+model CropRun {
+  id          String    @id @default(cuid())
+  farmId      String
+  hullerId    Int
+  cropYear    Int
+  runId       String
+  field       String?
+  variety     String // canonical (normalizeVariety)
+  binWeight   Int? // huller weight (turned-out meat), when reported
+  loadWeight  Int? // field/delivered weight, when reported
+  totalBins   Int?
+  turnout     Float? // source-provided turnout %, when reported
+  validatedAt DateTime?
+  source      String    @default("ALMOND_LOGIC")
+  createdAt   DateTime  @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, hullerId, cropYear, runId])
+  @@index([farmId, cropYear])
+  @@index([farmId, field, cropYear])
+}
+
+// Total Good Meats — the payable pounds the packer pays on (Gagan's worksheet Column M). CUSTOMER-
+// SOURCED ONLY: a Blue Diamond grower statement or a manual entry, NEVER derived from Almond Logic and
+// never model-generated (the check constraint + the app both enforce it). One (superseding, append-only)
+// row per (block, variety, cropYear). gradeDeductionRate defaults to 0.03 (editable, never hard-coded
+// into the payable math). controlTotalPounds + coverageState carry the pound-gate verdict; r2Key links
+// the raw statement artifact. farmId-scoped, RLS-eligible.
+model TgmRecord {
+  id                 String  @id @default(cuid())
+  farmId             String
+  cropYear           Int
+  blockId            String?
+  variety            String // canonical (normalizeVariety)
+  tgmLbs             Int // whole pounds of Total Good Meats
+  gradeDeductionRate Float   @default(0.03)
+  // Provenance: BLUE_DIAMOND_STATEMENT | MANUAL_ENTRY. A DB check constraint (applied in the migration)
+  // forbids ALMOND_LOGIC so TGM can never be sourced from the scrape.
+  source             String
+
+  controlTotalPounds Int?
+  coverageState      String  @default("no_doc") // no_doc | reconciled | needs_review
+  r2Key              String? // raw statement artifact in object storage, when uploaded
+
+  supersedesId     String?
+  supersededReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm         Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  block        Block?      @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  supersedes   TgmRecord?  @relation("TgmSupersede", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy TgmRecord[] @relation("TgmSupersede")
+
+  @@index([farmId, cropYear])
+  @@index([farmId, cropYear, variety])
+  @@index([blockId])
+  @@index([supersedesId])
 }
