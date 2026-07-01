@@ -4,7 +4,8 @@
 
 import type { PrismaClient } from "@prisma/client";
 import { withFarmTenant } from "./tenant-db";
-import { worksheetRows, type WorksheetResult } from "./worksheet";
+import { worksheetRows, type WorksheetResult, type WorksheetRow } from "./worksheet";
+import { yearOverYear, type YoyResult } from "./yoy";
 
 /**
  * The crop years this farm has any worksheet-relevant data for (deliveries, huller runs, or TGM),
@@ -24,6 +25,29 @@ export async function worksheetSeasons(prisma: PrismaClient, farmId: string): Pr
     ]);
     return [...years].sort((a, b) => b - a);
   }) as Promise<number[]>;
+}
+
+/** How many recent seasons the year-over-year view spans by default (bounds the per-season loads). */
+export const YOY_DEFAULT_WINDOW = 6;
+
+/**
+ * Load the year-over-year comparison: run loadWorksheet for each recent season and pivot the rows.
+ * Bounded to the most recent `maxSeasons` seasons so a farm with a decade of scrape does not fan out
+ * unboundedly. Every figure is the season's own gated worksheet figure; this only reshapes them.
+ */
+export async function loadYearOverYear(
+  prisma: PrismaClient,
+  farmId: string,
+  opts?: { maxSeasons?: number },
+): Promise<YoyResult> {
+  const seasons = await worksheetSeasons(prisma, farmId);
+  const window = seasons.slice(0, opts?.maxSeasons ?? YOY_DEFAULT_WINDOW);
+  const perYear = new Map<number, WorksheetRow[]>();
+  for (const year of window) {
+    const { rows } = await loadWorksheet(prisma, farmId, year);
+    perYear.set(year, rows);
+  }
+  return yearOverYear({ perYear });
 }
 
 export async function loadWorksheet(

@@ -3595,6 +3595,25 @@ export const en = {
       sourceData: "Source data",
       sourceDataHint: "The raw Almond Logic screens this worksheet is built from.",
 
+      // Year-over-year comparison: one measure across seasons, block + variety down, seasons across.
+      yoyView: {
+        eyebrow: "Year over year",
+        title: "Year over year",
+        subtitle: "One measure across your seasons, by block and variety. Field and huller weights are from Almond Logic; good meats are from your statements.",
+        link: "Year over year",
+        empty: "Not enough seasons to compare yet. A second season shows here once its data is loaded.",
+        metricLabel: "Measure",
+        metricField: "Field lb",
+        metricHuller: "Huller lb",
+        metricTgm: "Good meats",
+        metricTurnout: "Turnout",
+        noData: "-",
+        // The signed change vs the prior season, e.g. "+28%".
+        deltaValue: (ratio: number): string => `${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)}%`,
+        deltaHeader: "vs prior",
+        farmTotal: "Farm total",
+      },
+
       // Good-meats (TGM) ingestion: the two customer-sourced entry paths. Plain operator English, no
       // em dashes, no exclamation marks. TGM is the payable good-meats figure; it comes from a Blue
       // Diamond statement or a manual entry, never from Almond Logic.
