@@ -51,7 +51,7 @@ export default async function SalesPage() {
       <Reveal>
         <header className="mb-6">
           <Link
-            href="/almondlogic"
+            href="/almondlogic/worksheet"
             className="type-label-caps inline-flex items-center gap-1 text-on-surface-variant transition-colors hover:text-on-surface"
           >
             <ArrowLeft size={14} aria-hidden /> {en.crops.worksheet.title}

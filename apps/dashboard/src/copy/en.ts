@@ -3557,6 +3557,12 @@ export const en = {
       seasonPicker: "Season",
       empty: "No blocks to show for this season yet. Once deliveries, huller runs, or good meats are loaded they group here by block and variety.",
       noFarm: "Connect a farm to see its production worksheet.",
+      // The full-screen toggle shown above each wide table.
+      fullscreen: "Full screen",
+      fullscreenExit: "Exit full screen",
+      fullscreenAria: (label: string): string => `Show ${label} full screen`,
+      fullscreenExitAria: "Exit full screen",
+
       // The reconciled vs pending badge on a row.
       reconciled: "Settled",
       pending: "Almond Logic only",

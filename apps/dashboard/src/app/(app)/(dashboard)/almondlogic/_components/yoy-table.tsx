@@ -5,6 +5,7 @@ import { en, num } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import type { WorksheetSubtotal } from "@/lib/crops/worksheet";
 import { yoyRatio, type YoyCell, type YoyRow } from "@/lib/crops/yoy";
+import { FullscreenPanel } from "./fullscreen-panel";
 
 // Year-over-year table: one measure across seasons, block + variety down. The measure toggle picks
 // which figure the cells show; every figure is the season's own gated worksheet figure (this only
@@ -57,6 +58,7 @@ export function YoyTable({
   const showDelta = metric !== "turnoutPct" && years.length >= 2;
 
   return (
+    <FullscreenPanel label={c.title}>
     <div className="flex flex-col gap-4">
       {/* Measure toggle */}
       <div className="flex flex-wrap items-center gap-2">
@@ -126,5 +128,6 @@ export function YoyTable({
         </table>
       </div>
     </div>
+    </FullscreenPanel>
   );
 }

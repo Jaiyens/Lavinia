@@ -112,7 +112,7 @@ export default async function CropCostPage() {
       <Reveal>
         <header className="mb-8">
           <Link
-            href="/almondlogic"
+            href="/almondlogic/worksheet"
             className="type-label-caps inline-flex items-center gap-1 text-on-surface-variant transition-colors hover:text-on-surface"
           >
             <ArrowLeft size={14} aria-hidden /> {en.crops.title}

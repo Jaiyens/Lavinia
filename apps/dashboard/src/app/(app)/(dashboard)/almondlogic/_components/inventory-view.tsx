@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { INVENTORY_STAGES, type InventoryPosition, type InventoryStage } from "@/lib/crops/inventory";
 import { addInventoryAdjustmentAction } from "@/lib/crops/inventory-actions";
+import { FullscreenPanel } from "./fullscreen-panel";
 
 const c = en.crops.worksheet.inventory;
 
@@ -86,7 +87,8 @@ export function InventoryView({
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters + positions table (full-screen-able together so filtering works while expanded). */}
+      <FullscreenPanel label={c.title}>
       <div className="flex flex-wrap items-end gap-3">
         <Field label={c.filterPacker}>
           <Select value={fPacker} onValueChange={setFPacker}>
@@ -157,6 +159,7 @@ export function InventoryView({
           </tbody>
         </table>
       </div>
+      </FullscreenPanel>
 
       {canWrite ? <InventoryForm blocks={blocks} seasons={seasons} /> : null}
     </div>

@@ -4,19 +4,19 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 
-// The Almond Logic sub-nav, reframed around Gagan's production worksheet. The worksheet ("Crop
-// position") is the front door; Cost per pound and Reconcile are the analytics built on it; the five
-// portal-mirror screens (Home / Grower / Runs / Reports / Deliveries) are grouped under "Source data"
-// as the raw drill-down. The active ?hullerId & ?cropYear context carries across tabs so a selected
-// huller + season follows the operator from the worksheet down into the source screens.
+// The Almond Logic sub-nav. Home is the module landing (/almondlogic); Gagan's production worksheet
+// ("Crop position") plus Cost per pound and Reconcile are the analytics tabs; the portal-mirror screens
+// (Grower / Runs / Reports / Deliveries) are grouped under "Source data" as the raw drill-down. The
+// active ?hullerId & ?cropYear context carries across tabs so a selected huller + season follows the
+// operator between screens.
 const PRIMARY = [
-  { href: "/almondlogic", label: "Crop position" },
+  { href: "/almondlogic", label: "Home" },
+  { href: "/almondlogic/worksheet", label: "Crop position" },
   { href: "/almondlogic/cost", label: "Cost / lb" },
   { href: "/almondlogic/reconcile", label: "Reconcile" },
 ] as const;
 
 const SOURCE = [
-  { href: "/almondlogic/home", label: "Home" },
   { href: "/almondlogic/grower", label: "Grower Details" },
   { href: "/almondlogic/runs", label: "Runs" },
   { href: "/almondlogic/reports", label: "Reports" },

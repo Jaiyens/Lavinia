@@ -3,6 +3,7 @@ import { en, num } from "@/copy/en";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/badge";
 import type { WorksheetGroup, WorksheetRow, WorksheetSubtotal } from "@/lib/crops/worksheet";
+import { FullscreenPanel } from "./fullscreen-panel";
 
 // Gagan's worksheet, rendered. Every figure here is formatted from the pure worksheetRows() result;
 // this component computes nothing. Rows group by owning entity with an entity subtotal, then a farm
@@ -63,6 +64,7 @@ export function WorksheetTable({
   farmTotal: WorksheetSubtotal;
 }) {
   return (
+    <FullscreenPanel label={en.crops.worksheet.title}>
     <div className="overflow-x-auto rounded-[var(--radius-control)] border border-outline-variant">
       <table className="w-full border-collapse type-body-sm">
         <caption className="sr-only">{t.caption}</caption>
@@ -130,5 +132,6 @@ export function WorksheetTable({
         </tfoot>
       </table>
     </div>
+    </FullscreenPanel>
   );
 }

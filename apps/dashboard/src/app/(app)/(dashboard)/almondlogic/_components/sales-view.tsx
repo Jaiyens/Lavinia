@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import type { SalePosition } from "@/lib/crops/sale";
 import { createSaleAction } from "@/lib/crops/sale-actions";
+import { FullscreenPanel } from "./fullscreen-panel";
 
 const c = en.crops.worksheet.sales;
 
@@ -50,6 +51,7 @@ export function SalesView({
 }) {
   return (
     <div className="flex flex-col gap-8">
+      <FullscreenPanel label={c.title}>
       <div className="overflow-x-auto rounded-[var(--radius-control)] border border-outline-variant">
         <table className="w-full border-collapse type-body-sm">
           <caption className="sr-only">{c.table.caption}</caption>
@@ -90,6 +92,7 @@ export function SalesView({
           </tbody>
         </table>
       </div>
+      </FullscreenPanel>
 
       {canWrite ? <SaleForm blocks={blocks} seasons={seasons} /> : null}
     </div>
