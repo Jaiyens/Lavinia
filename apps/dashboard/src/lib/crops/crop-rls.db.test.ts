@@ -28,6 +28,24 @@ const RLS_SQL = [
      WITH CHECK ("farmId" = current_setting('app.current_farm_id', true))`,
 ];
 
+// The worksheet-spine + inventory tables added by the Batth build. db push creates the tables but
+// emits neither the RLS block nor the customer-sourced / stage CHECK constraints, so the test applies
+// both here and exercises them. Every one is farmId-scoped with the same GUC policy.
+const SPINE_TABLES = ["BlockPlanting", "CropRun", "TgmRecord", "InventoryItem"] as const;
+const SPINE_RLS_SQL = [
+  ...SPINE_TABLES.flatMap((t) => [
+    `ALTER TABLE "${t}" ENABLE ROW LEVEL SECURITY`,
+    `ALTER TABLE "${t}" FORCE ROW LEVEL SECURITY`,
+    `CREATE POLICY "${t}_farm_isolation" ON "${t}"
+       USING ("farmId" = current_setting('app.current_farm_id', true))
+       WITH CHECK ("farmId" = current_setting('app.current_farm_id', true))`,
+  ]),
+  // The provenance / stage guards (the "TGM customer-sourced only" hard rule + inventory stage/source).
+  `ALTER TABLE "TgmRecord" ADD CONSTRAINT "TgmRecord_source_customer_sourced" CHECK ("source" IN ('BLUE_DIAMOND_STATEMENT', 'MANUAL_ENTRY'))`,
+  `ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_stage_check" CHECK ("stage" IN ('RAW', 'STOCKPILE', 'MEATS'))`,
+  `ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_source_customer_sourced" CHECK ("source" IN ('MANUAL_ENTRY', 'TGM_DERIVED'))`,
+];
+
 let db: TestDb;
 let prisma: PrismaClient;
 let farmA: string;
@@ -38,10 +56,10 @@ beforeAll(async () => {
   prisma = db.prisma;
 
   // Apply the RLS policy (db push skipped it) and a non-superuser role to exercise it under.
-  for (const stmt of RLS_SQL) await prisma.$executeRawUnsafe(stmt);
+  for (const stmt of [...RLS_SQL, ...SPINE_RLS_SQL]) await prisma.$executeRawUnsafe(stmt);
   await prisma.$executeRawUnsafe(`DROP ROLE IF EXISTS crop_rls_tester`);
   await prisma.$executeRawUnsafe(`CREATE ROLE crop_rls_tester NOLOGIN`);
-  for (const table of ["ProductionRecord", "CropDelivery", "AlmondSnapshot"]) {
+  for (const table of ["ProductionRecord", "CropDelivery", "AlmondSnapshot", ...SPINE_TABLES]) {
     await prisma.$executeRawUnsafe(
       `GRANT SELECT, INSERT, UPDATE, DELETE ON "${table}" TO crop_rls_tester`,
     );
@@ -70,6 +88,19 @@ beforeAll(async () => {
   await prisma.almondSnapshot.create({
     data: { farmId: farmB, endpoint: "getHullers.php", paramsKey: "", payload: [{ id: 32 }] },
   });
+
+  // A block per farm, then one spine row per table per farm (blockId-bearing rows reference the
+  // same-farm block).
+  const blockA = await prisma.block.create({ data: { farmId: farmA, name: "1" } });
+  const blockB = await prisma.block.create({ data: { farmId: farmB, name: "1" } });
+  await prisma.blockPlanting.create({ data: { farmId: farmA, blockId: blockA.id, variety: "NONPAREIL", acres: 80, cropYear: 2025 } });
+  await prisma.blockPlanting.create({ data: { farmId: farmB, blockId: blockB.id, variety: "MONTEREY", acres: 40, cropYear: 2025 } });
+  await prisma.cropRun.create({ data: { farmId: farmA, hullerId: 10, cropYear: 2025, runId: "A-1", variety: "NONPAREIL", binWeight: 60_000 } });
+  await prisma.cropRun.create({ data: { farmId: farmB, hullerId: 32, cropYear: 2025, runId: "B-1", variety: "MONTEREY", binWeight: 20_000 } });
+  await prisma.tgmRecord.create({ data: { farmId: farmA, cropYear: 2025, blockId: blockA.id, variety: "NONPAREIL", tgmLbs: 108_652, source: "MANUAL_ENTRY", coverageState: "reconciled" } });
+  await prisma.tgmRecord.create({ data: { farmId: farmB, cropYear: 2025, blockId: blockB.id, variety: "MONTEREY", tgmLbs: 70_049, source: "MANUAL_ENTRY", coverageState: "reconciled" } });
+  await prisma.inventoryItem.create({ data: { farmId: farmA, cropYear: 2025, blockId: blockA.id, variety: "NONPAREIL", stage: "MEATS", netGoodMeatsLbs: 100_000, source: "MANUAL_ENTRY", reason: "seed" } });
+  await prisma.inventoryItem.create({ data: { farmId: farmB, cropYear: 2025, blockId: blockB.id, variety: "MONTEREY", stage: "RAW", netGoodMeatsLbs: 50_000, source: "MANUAL_ENTRY", reason: "seed" } });
 });
 
 afterAll(async () => {
@@ -129,5 +160,76 @@ describe("crop ledger RLS", () => {
   it("CropDelivery + AlmondSnapshot fail closed with no farm set", async () => {
     expect(await asTenant(null, (tx) => tx.cropDelivery.findMany())).toHaveLength(0);
     expect(await asTenant(null, (tx) => tx.almondSnapshot.findMany())).toHaveLength(0);
+  });
+});
+
+describe("worksheet-spine + inventory RLS", () => {
+  it("each spine table isolates by tenant", async () => {
+    const [plantings, runs, tgm, inv] = await asTenant(farmA, (tx) =>
+      Promise.all([
+        tx.blockPlanting.findMany(),
+        tx.cropRun.findMany(),
+        tx.tgmRecord.findMany(),
+        tx.inventoryItem.findMany(),
+      ]),
+    );
+    expect(plantings.map((r) => r.farmId)).toEqual([farmA]);
+    expect(runs.map((r) => r.farmId)).toEqual([farmA]);
+    expect(tgm.map((r) => r.farmId)).toEqual([farmA]);
+    expect(inv.map((r) => r.farmId)).toEqual([farmA]);
+  });
+
+  it("each spine table fails closed with no farm set", async () => {
+    const [plantings, runs, tgm, inv] = await asTenant(null, (tx) =>
+      Promise.all([
+        tx.blockPlanting.findMany(),
+        tx.cropRun.findMany(),
+        tx.tgmRecord.findMany(),
+        tx.inventoryItem.findMany(),
+      ]),
+    );
+    expect(plantings).toHaveLength(0);
+    expect(runs).toHaveLength(0);
+    expect(tgm).toHaveLength(0);
+    expect(inv).toHaveLength(0);
+  });
+
+  it("cannot write a spine row under another farm (WITH CHECK)", async () => {
+    await expect(
+      asTenant(farmB, (tx) =>
+        tx.tgmRecord.create({
+          data: { farmId: farmA, cropYear: 2025, variety: "NONPAREIL", tgmLbs: 1, source: "MANUAL_ENTRY", coverageState: "reconciled" },
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+describe("customer-sourced + stage CHECK constraints", () => {
+  it("TgmRecord refuses an ALMOND_LOGIC source (TGM is never scrape-derived)", async () => {
+    await expect(
+      asTenant(farmA, (tx) =>
+        tx.tgmRecord.create({
+          data: { farmId: farmA, cropYear: 2025, variety: "NONPAREIL", tgmLbs: 1, source: "ALMOND_LOGIC", coverageState: "reconciled" },
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("InventoryItem refuses an unknown stage and a non-customer source", async () => {
+    await expect(
+      asTenant(farmA, (tx) =>
+        tx.inventoryItem.create({
+          data: { farmId: farmA, cropYear: 2025, variety: "NONPAREIL", stage: "BOGUS", netGoodMeatsLbs: 1, source: "MANUAL_ENTRY", reason: "x" },
+        }),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asTenant(farmA, (tx) =>
+        tx.inventoryItem.create({
+          data: { farmId: farmA, cropYear: 2025, variety: "NONPAREIL", stage: "MEATS", netGoodMeatsLbs: 1, source: "ALMOND_LOGIC", reason: "x" },
+        }),
+      ),
+    ).rejects.toThrow();
   });
 });
