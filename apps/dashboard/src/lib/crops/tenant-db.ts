@@ -22,9 +22,16 @@ export function withFarmTenant<T>(
   prisma: PrismaClient,
   farmId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  opts?: { timeout?: number; maxWait?: number },
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_farm_id', ${farmId}, true)`;
-    return fn(tx);
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.current_farm_id', ${farmId}, true)`;
+      return fn(tx);
+    },
+    // Request paths keep Prisma's short defaults; bulk callers (e.g. the seed, which runs dozens of
+    // sequential statements against a remote DB) pass a longer timeout so the interactive transaction
+    // does not expire mid-run (P2028) over network latency.
+    opts,
+  );
 }

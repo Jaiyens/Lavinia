@@ -121,7 +121,7 @@ async function main(): Promise<void> {
     console.log(
       `seeded ${entityId.size} entities, ${blockId.size} blocks, ${parsed.length} plantings, ${tgmRows} TGM rows for ${farm.name}`,
     );
-  });
+  }, { timeout: 120_000, maxWait: 20_000 }); // remote DB: dozens of sequential writes, so give the tx room
 
   const { runs } = await writeCropRuns(prisma, farm.id);
   console.log(`persisted ${runs} huller runs (CropRun)`);
