@@ -82,28 +82,41 @@ async function main(): Promise<void> {
 
     // Per-block-variety acreage + TGM (MANUAL_ENTRY, the CSV's manual/Blue-Diamond figure).
     let tgmRows = 0;
+    const acresByBlock = new Map<string, number>(); // block id -> total planted acres (for Block.acreage)
     for (const p of parsed) {
       const id = blockId.get(p.block)!;
+      acresByBlock.set(id, (acresByBlock.get(id) ?? 0) + p.acres);
       await tx.blockPlanting.upsert({
         where: { farmId_blockId_variety_cropYear: { farmId: farm.id, blockId: id, variety: p.variety, cropYear: SEED_YEAR } },
         create: { farmId: farm.id, blockId: id, variety: p.variety, acres: p.acres, cropYear: SEED_YEAR },
         update: { acres: p.acres },
       });
       if (p.tgm2025 != null && p.tgm2025 > 0) {
-        // Replace any prior seed row for this key (append-only supersede is for statement updates; the
-        // seed is a straight refresh of the manual figure).
-        await tx.tgmRecord.deleteMany({
-          where: { farmId: farm.id, cropYear: SEED_YEAR, blockId: id, variety: p.variety, source: "MANUAL_ENTRY", supersedesId: null },
+        // Establish the INITIAL good-meats figure only if none exists yet for this key. Find-or-create
+        // (never delete-and-recreate): a real Blue Diamond statement or manual entry may have since
+        // SUPERSEDED the seed figure, and re-running the seed must never clobber the customer's newer
+        // number — nor fail on the supersede FK when a superseding row references the seed row.
+        const existing = await tx.tgmRecord.findFirst({
+          where: { farmId: farm.id, cropYear: SEED_YEAR, blockId: id, variety: p.variety },
+          select: { id: true },
         });
-        await tx.tgmRecord.create({
-          data: {
-            farmId: farm.id, cropYear: SEED_YEAR, blockId: id, variety: p.variety,
-            tgmLbs: p.tgm2025, source: "MANUAL_ENTRY", coverageState: "reconciled",
-            supersededReason: "batth worksheet seed",
-          },
-        });
-        tgmRows += 1;
+        if (!existing) {
+          await tx.tgmRecord.create({
+            data: {
+              farmId: farm.id, cropYear: SEED_YEAR, blockId: id, variety: p.variety,
+              tgmLbs: p.tgm2025, source: "MANUAL_ENTRY", coverageState: "reconciled",
+              supersededReason: "batth worksheet seed",
+            },
+          });
+          tgmRows += 1;
+        }
       }
+    }
+    // Block.acreage = sum of the block's planted acres, so the cost-per-pound engine can split each
+    // serving meter's energy across the blocks it serves by acreage (the per-variety detail lives in
+    // BlockPlanting; Block.acreage is the rollup the energy allocation needs).
+    for (const [id, acres] of acresByBlock) {
+      await tx.block.update({ where: { id }, data: { acreage: acres } });
     }
     console.log(
       `seeded ${entityId.size} entities, ${blockId.size} blocks, ${parsed.length} plantings, ${tgmRows} TGM rows for ${farm.name}`,
