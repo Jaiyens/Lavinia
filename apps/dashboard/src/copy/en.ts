@@ -3710,6 +3710,52 @@ export const en = {
         invalid: "Check the season, variety, stage, amount, and reason, then try again.",
         readOnly: "Only a manager or owner can record inventory.",
       },
+
+      // Sales: record a sale (a commitment to a buyer) and see what is left to sell. Available = good
+      // meats on hand minus what is already committed. A forward sale beyond that is allowed but
+      // flagged, never shown as a silent negative. Plain operator English, no em dashes.
+      sales: {
+        eyebrow: "Sales",
+        title: "Sales",
+        subtitle: "What is left to sell by variety, and a place to record a sale. Available is your good meats on hand minus what is already committed.",
+        link: "Record a sale",
+        noFarm: "Connect a farm to record sales.",
+        // The available-to-sell table.
+        table: {
+          caption: "Available to sell",
+          columns: {
+            year: "Crop year",
+            variety: "Variety",
+            ngm: "Good meats",
+            committed: "Committed",
+            available: "Available",
+          },
+          empty: "Nothing to sell yet. Good meats show here once a statement or manual figure is entered.",
+          // The badge on an oversold cell.
+          oversold: "Oversold",
+        },
+        // The add-a-sale form.
+        addTitle: "Record a sale",
+        addSubtitle: "A commitment of pounds to a named buyer, at a price or pounds-only (price set at pool true-up).",
+        season: "Season",
+        variety: "Variety",
+        buyer: "Buyer",
+        pounds: "Pounds",
+        price: "Price per lb",
+        priceHint: "Leave blank for a pounds-only sale.",
+        block: "Block",
+        save: "Record sale",
+        saving: "Recording",
+        saved: "Sale recorded.",
+        // Shown when the sale exceeds available (forward sale). Not an error; a heads-up.
+        savedOversold: (pounds: string): string => `Sale recorded. This oversells by ${pounds} against good meats on hand.`,
+        buyerPlaceholder: "e.g. Blue Diamond",
+        varietyPlaceholder: "e.g. Nonpareil",
+        blockPlaceholder: "Whole farm",
+        error: "Could not record that sale. Refresh and try again.",
+        invalid: "Check the season, variety, buyer, and pounds, then try again.",
+        readOnly: "Only a manager or owner can record a sale.",
+      },
     },
 
     // The four KPI tiles. Each figure is a single position field, labeled with its crop year.

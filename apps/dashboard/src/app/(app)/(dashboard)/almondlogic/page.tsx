@@ -71,6 +71,12 @@ export default async function WorksheetLandingPage({
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/almondlogic/sales"
+              className="type-label-caps whitespace-nowrap text-primary transition-colors hover:text-primary/80"
+            >
+              {t.sales.link}
+            </Link>
+            <Link
               href="/almondlogic/inventory"
               className="type-label-caps whitespace-nowrap text-primary transition-colors hover:text-primary/80"
             >
