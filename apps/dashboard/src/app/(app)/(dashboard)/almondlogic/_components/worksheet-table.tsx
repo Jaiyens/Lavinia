@@ -30,6 +30,10 @@ function TurnoutBadges({ row }: { row: WorksheetRow }): React.ReactNode {
         <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary" title={en.crops.worksheet.reconciledAria}>
           {en.crops.worksheet.reconciled}
         </Badge>
+      ) : row.tgmNeedsReview ? (
+        <Badge variant="outline" className="border-destructive/40 text-destructive" title={en.crops.worksheet.needsReviewAria}>
+          {en.crops.worksheet.needsReview}
+        </Badge>
       ) : (
         <Badge variant="outline" className="text-on-surface-variant" title={en.crops.worksheet.pendingAria}>
           {en.crops.worksheet.pending}

@@ -8,9 +8,10 @@ import { salePositions, type SalePosition } from "./sale";
 export async function loadSalePositions(prisma: PrismaClient, farmId: string): Promise<SalePosition[]> {
   return withFarmTenant(prisma, farmId, async (tx) => {
     const [tgm, commitments] = await Promise.all([
-      // Live TGM only (a superseded figure is dead).
+      // Live AND certified TGM only: a superseded figure is dead, and a needs_review figure the
+      // pound-gate could not certify is NOT sellable good-meats-on-hand (never trade against it).
       tx.tgmRecord.findMany({
-        where: { farmId, supersededBy: { none: {} } },
+        where: { farmId, supersededBy: { none: {} }, coverageState: "reconciled" },
         select: { cropYear: true, variety: true, tgmLbs: true },
       }),
       // Live commitments only.

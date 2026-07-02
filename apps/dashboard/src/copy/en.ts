@@ -3562,6 +3562,10 @@ export const en = {
       pending: "Almond Logic only",
       reconciledAria: "Good meats settled against a statement",
       pendingAria: "Almond Logic estimate, no statement yet",
+      // A statement was read but its weights did not match its own printed total, so the good meats
+      // are shown UNVERIFIED, never as settled.
+      needsReview: "Check statement",
+      needsReviewAria: "A statement was read but its good meats did not match its printed total, so this figure is not settled",
       // The flag when the two Almond Logic weight sources (delivery net vs run load weight) disagree.
       sourceMismatch: "Check weights",
       sourceMismatchAria: "Delivery weight and huller load weight disagree for this row",

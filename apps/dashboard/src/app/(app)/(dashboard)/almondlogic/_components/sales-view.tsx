@@ -110,10 +110,14 @@ function SaleForm({ blocks, seasons }: { blocks: readonly BlockChoice[]; seasons
     e.preventDefault();
     const lbs = Number(pounds.replace(/,/g, ""));
     if (pending || variety.trim() === "" || buyer.trim() === "" || !Number.isFinite(lbs)) return;
-    // Price is dollars/lb in the field; convert to integer cents/lb. Blank -> pounds-only.
-    const priceStr = price.trim();
+    // Price is dollars/lb in the field; convert to integer cents/lb. Blank -> pounds-only. A
+    // malformed price surfaces the calm invalid note instead of silently doing nothing.
+    const priceStr = price.replace(/,/g, "").trim();
     const priceCentsPerPound = priceStr === "" ? null : Math.round(Number(priceStr) * 100);
-    if (priceCentsPerPound !== null && !Number.isFinite(priceCentsPerPound)) return;
+    if (priceCentsPerPound !== null && !Number.isFinite(priceCentsPerPound)) {
+      setNote({ ok: false, message: c.invalid });
+      return;
+    }
     start(async () => {
       const res = await createSaleAction({
         cropYear: Number(season),

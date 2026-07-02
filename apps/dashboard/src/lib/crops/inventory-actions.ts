@@ -16,6 +16,7 @@ import { en } from "@/copy/en";
 import type { ActionResult } from "@/app/(app)/actions";
 import { withFarmTenant } from "./tenant-db";
 import { toInventoryWrite, type InventoryWriteRaw } from "./inventory";
+import { blockInFarm } from "./block-scope";
 
 export async function addInventoryAdjustmentAction(
   raw: InventoryWriteRaw,
@@ -35,6 +36,10 @@ export async function addInventoryAdjustmentAction(
 
   const input = toInventoryWrite(raw);
   if (input === null) return { ok: false, error: en.crops.worksheet.inventory.invalid };
+  // A supplied block must belong to this farm (Block is not RLS-scoped); null = whole farm.
+  if (!(await blockInFarm(prisma, farmId, input.blockId))) {
+    return { ok: false, error: en.crops.worksheet.inventory.invalid };
+  }
 
   try {
     await withFarmTenant(prisma, farmId, (tx) =>

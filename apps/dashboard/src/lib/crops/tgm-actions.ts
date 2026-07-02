@@ -21,6 +21,7 @@ import { en } from "@/copy/en";
 import type { ActionResult } from "@/app/(app)/actions";
 import { manualTgmInput, tgmInputsFromStatement, type ManualTgmRaw } from "./tgm-ingest";
 import { writeTgmRecords } from "./tgm-write";
+import { blockInFarm } from "./block-scope";
 import { createZdrPoundReader, runExtraction } from "./extract/reader";
 import type { PoundCoverage } from "./types";
 
@@ -50,6 +51,10 @@ export async function recordManualTgmAction(raw: ManualTgmRaw): Promise<ActionRe
 
   const input = manualTgmInput(raw);
   if (input === null) return { ok: false, error: en.crops.worksheet.tgmForm.invalid };
+  // The block must belong to this farm (Block is not RLS-scoped).
+  if (!(await blockInFarm(prisma, gate.data.farmId, input.blockId))) {
+    return { ok: false, error: en.crops.worksheet.tgmForm.invalid };
+  }
 
   try {
     await writeTgmRecords(prisma, gate.data.farmId, [input], "manual good-meats entry");
@@ -79,6 +84,10 @@ export async function ingestTgmStatementAction(
   }
   const page = typeof raw.page === "string" ? raw.page.trim() : "";
   if (page.length === 0) return { ok: false, error: en.crops.worksheet.tgmForm.invalid };
+  // The target block must belong to this farm (Block is not RLS-scoped).
+  if (!(await blockInFarm(prisma, gate.data.farmId, raw.blockId))) {
+    return { ok: false, error: en.crops.worksheet.tgmForm.invalid };
+  }
 
   // Fail closed: never send grower data without a zero-retention path.
   if (!hasZdrKey()) return { ok: false, error: en.crops.worksheet.tgmForm.zdrUnavailable };

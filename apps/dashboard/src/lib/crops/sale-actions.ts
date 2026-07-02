@@ -18,6 +18,7 @@ import { en } from "@/copy/en";
 import type { ActionResult } from "@/app/(app)/actions";
 import { withFarmTenant } from "./tenant-db";
 import { availableToSell, oversoldBy, saleInput, type SaleRaw } from "./sale";
+import { blockInFarm } from "./block-scope";
 
 export async function createSaleAction(
   raw: SaleRaw,
@@ -37,13 +38,24 @@ export async function createSaleAction(
 
   const input = saleInput(raw);
   if (input === null) return { ok: false, error: en.crops.worksheet.sales.invalid };
+  // A supplied block must belong to this farm (Block is not RLS-scoped); null = whole farm.
+  if (!(await blockInFarm(prisma, farmId, input.blockId))) {
+    return { ok: false, error: en.crops.worksheet.sales.invalid };
+  }
 
   try {
     const over = await withFarmTenant(prisma, farmId, async (tx) => {
       // Available for this cell = live TGM (NGM) - live committed, at write time.
       const [tgm, commitments] = await Promise.all([
         tx.tgmRecord.aggregate({
-          where: { farmId, cropYear: input.cropYear, variety: input.variety, supersededBy: { none: {} } },
+          // Certified (reconciled) live TGM only — a needs_review figure is not sellable NGM.
+          where: {
+            farmId,
+            cropYear: input.cropYear,
+            variety: input.variety,
+            supersededBy: { none: {} },
+            coverageState: "reconciled",
+          },
           _sum: { tgmLbs: true },
         }),
         tx.commitmentRecord.aggregate({

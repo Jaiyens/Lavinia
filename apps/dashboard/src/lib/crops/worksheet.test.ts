@@ -62,6 +62,51 @@ describe("worksheetRows — Gagan's worksheet computation", () => {
   });
 });
 
+describe("needs_review TGM is never treated as settled", () => {
+  it("flags an uncertified statement figure distinctly (not reconciled, not a plain pending row)", () => {
+    const { rows } = worksheetRows({
+      ...INPUT,
+      tgm: [
+        {
+          blockId: "b1",
+          variety: "NONPAREIL",
+          tgmLbs: 108_652,
+          gradeDeductionRate: 0.03,
+          source: "BLUE_DIAMOND_STATEMENT",
+          coverageState: "needs_review", // the pound-gate could not certify it
+        },
+      ],
+    });
+    const r = rows[0]!;
+    expect(r.reconciled).toBe(false); // never reads as settled
+    expect(r.tgmNeedsReview).toBe(true); // but distinct from an Almond-Logic-only row
+    expect(r.tgmLbs).toBe(108_652); // the figure is still shown (flagged), not dropped
+  });
+
+  it("a row with no TGM at all is neither reconciled nor needs-review", () => {
+    const { rows } = worksheetRows({ ...INPUT, tgm: [] });
+    const r = rows[0]!;
+    expect(r.reconciled).toBe(false);
+    expect(r.tgmNeedsReview).toBe(false);
+    expect(r.tgmLbs).toBeNull();
+  });
+});
+
+describe("acreage is deterministic when duplicate plantings exist", () => {
+  it("prefers the exact crop-year planting over a year-agnostic template, regardless of order", () => {
+    const base = {
+      ...INPUT,
+      plantings: [
+        { blockId: "b1", variety: "NONPAREIL", acres: 75, cropYear: null }, // template
+        { blockId: "b1", variety: "NONPAREIL", acres: 80, cropYear: 2025 }, // exact year -> wins
+      ],
+    };
+    expect(worksheetRows(base).rows[0]!.acres).toBe(80);
+    // Reversed input order must give the same answer (no last-write-wins nondeterminism).
+    expect(worksheetRows({ ...base, plantings: [...base.plantings].reverse() }).rows[0]!.acres).toBe(80);
+  });
+});
+
 describe("source cross-check + subtotal", () => {
   it("flags a (block,variety) whose delivery net and run load weight disagree > 2%", () => {
     const { rows } = worksheetRows({
@@ -74,9 +119,9 @@ describe("source cross-check + subtotal", () => {
 
   it("groups sorted rows by entity, each group carrying its own subtotal", () => {
     const rows = [
-      { entityName: "CSB", blockId: "b1", blockName: "1", variety: "NONPAREIL", cropYear: 2025, acres: 80, fieldWeightLb: 600_000, hullerWeightLb: 100_000, turnoutPct: 0.1667, yoyFieldWeight: null, tgmLbs: 99_000, tgmSource: "MANUAL_ENTRY", gradeDeductionRate: 0.03, lossLb: 1_000, sellablePct: 0.99, reconciled: true, sourceMismatch: false },
-      { entityName: "CSB", blockId: "b2", blockName: "5", variety: "MONTEREY", cropYear: 2025, acres: 40, fieldWeightLb: 400_000, hullerWeightLb: 100_000, turnoutPct: 0.25, yoyFieldWeight: null, tgmLbs: null, tgmSource: null, gradeDeductionRate: null, lossLb: null, sellablePct: null, reconciled: false, sourceMismatch: false },
-      { entityName: "FLP", blockId: "b3", blockName: "6", variety: "NONPAREIL", cropYear: 2025, acres: 80, fieldWeightLb: 500_000, hullerWeightLb: 80_000, turnoutPct: 0.16, yoyFieldWeight: null, tgmLbs: 79_000, tgmSource: "MANUAL_ENTRY", gradeDeductionRate: 0.03, lossLb: 1_000, sellablePct: 0.9875, reconciled: true, sourceMismatch: false },
+      { entityName: "CSB", blockId: "b1", blockName: "1", variety: "NONPAREIL", cropYear: 2025, acres: 80, fieldWeightLb: 600_000, hullerWeightLb: 100_000, turnoutPct: 0.1667, yoyFieldWeight: null, tgmLbs: 99_000, tgmSource: "MANUAL_ENTRY", gradeDeductionRate: 0.03, lossLb: 1_000, sellablePct: 0.99, reconciled: true, tgmNeedsReview: false, sourceMismatch: false },
+      { entityName: "CSB", blockId: "b2", blockName: "5", variety: "MONTEREY", cropYear: 2025, acres: 40, fieldWeightLb: 400_000, hullerWeightLb: 100_000, turnoutPct: 0.25, yoyFieldWeight: null, tgmLbs: null, tgmSource: null, gradeDeductionRate: null, lossLb: null, sellablePct: null, reconciled: false, tgmNeedsReview: false, sourceMismatch: false },
+      { entityName: "FLP", blockId: "b3", blockName: "6", variety: "NONPAREIL", cropYear: 2025, acres: 80, fieldWeightLb: 500_000, hullerWeightLb: 80_000, turnoutPct: 0.16, yoyFieldWeight: null, tgmLbs: 79_000, tgmSource: "MANUAL_ENTRY", gradeDeductionRate: 0.03, lossLb: 1_000, sellablePct: 0.9875, reconciled: true, tgmNeedsReview: false, sourceMismatch: false },
     ] as const;
     const groups = groupByEntity(rows);
     expect(groups.map((g) => g.entityName)).toEqual(["CSB", "FLP"]);
@@ -96,7 +141,7 @@ describe("source cross-check + subtotal", () => {
         entityName: "CSB", blockId: "b2", blockName: "5", variety: "NONPAREIL", cropYear: 2025,
         acres: 40, fieldWeightLb: 369_000, hullerWeightLb: 91_000, turnoutPct: 0.2466,
         yoyFieldWeight: null, tgmLbs: 90_000, tgmSource: "MANUAL_ENTRY", gradeDeductionRate: 0.03,
-        lossLb: 1_000, sellablePct: 0.989, reconciled: true, sourceMismatch: false,
+        lossLb: 1_000, sellablePct: 0.989, reconciled: true, tgmNeedsReview: false, sourceMismatch: false,
       },
     ]);
     expect(st.fieldWeightLb).toBe(1_000_000); // 631k + 369k

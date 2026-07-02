@@ -15,6 +15,7 @@ function row(over: Partial<WorksheetRow> & Pick<WorksheetRow, "blockId" | "block
     lossLb: null,
     sellablePct: null,
     reconciled: false,
+    tgmNeedsReview: false,
     sourceMismatch: false,
     ...over,
   };

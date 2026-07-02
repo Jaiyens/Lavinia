@@ -64,7 +64,7 @@ export async function loadWorksheet(
       tx.block.findMany({ where: { farmId }, select: { id: true, name: true, entity: { select: { name: true } } } }),
       tx.blockPlanting.findMany({
         where: { farmId, OR: [{ cropYear }, { cropYear: null }] },
-        select: { blockId: true, variety: true, acres: true },
+        select: { blockId: true, variety: true, acres: true, cropYear: true },
       }),
       tx.tgmRecord.findMany({
         where: { farmId, cropYear },
